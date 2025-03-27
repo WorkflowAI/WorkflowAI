@@ -1,0 +1,13 @@
+title: Changelog - [Date of Release]
+body:   
+- type: markdown
+    attributes:
+      value: |
+        Here are the highlights from our release this week: 
+        
+        [change 1]
+        [change 2]
+        [change 3]
+        
+        We look forward to hearing your feedback! If you encounter any problems with this release, post in [Bug Reports](https://github.com/WorkflowAI/WorkflowAI/discussions/categories/bug-reports) or send us an email at team@workflowai.support.
+        
