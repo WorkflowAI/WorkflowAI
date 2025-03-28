@@ -4,7 +4,7 @@ import os
 from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager
-from typing import Any, AsyncGenerator, Callable, Generic, Optional, Protocol, Self, Sequence, TypeVar
+from typing import Any, AsyncGenerator, Callable, Generic, Optional, Protocol, Sequence, TypeVar
 
 from pydantic import ValidationError
 
@@ -12,7 +12,6 @@ from core.domain.errors import (
     InternalError,
     InvalidGenerationError,
     JSONSchemaValidationError,
-    MissingEnvVariablesError,
     ProviderDoesNotSupportModelError,
     ProviderError,
     UnpriceableRunError,
@@ -55,9 +54,12 @@ ProviderOutput = TypeVar("ProviderOutput")
 
 
 class AbstractProvider(ABC, Generic[ProviderConfigVar, ProviderRequestVar]):
-    def __init__(self, config: Optional[ProviderConfigVar] = None, config_id: Optional[str] = None):
-        self.config: ProviderConfigVar = config or self._default_config()
+    def __init__(self, config: Optional[ProviderConfigVar] = None, config_id: Optional[str] = None, index: int = 0):
+        self.config: ProviderConfigVar = config or self._default_config(index=index)
         self.config_id = config_id
+        # The index of the provider, useful when there are multiple
+        # Providers configured for a single provider type
+        self._index = index
         self.logger = logging.getLogger(type(self).__name__)
 
     @property
@@ -105,22 +107,9 @@ class AbstractProvider(ABC, Generic[ProviderConfigVar, ProviderRequestVar]):
                 return False
         return True
 
-    # TODO: only used by the CLI. remove
-    @classmethod
-    def from_env(cls) -> Self:
-        cls.throw_for_missing_env()
-        return cls()
-
-    # TODO: only used by the CLI. remove
-    @classmethod
-    def throw_for_missing_env(cls) -> None:
-        missing = [key for key in cls.required_env_vars() if key not in os.environ]
-        if missing:
-            raise MissingEnvVariablesError(missing)
-
     @classmethod
     @abstractmethod
-    def _default_config(cls) -> ProviderConfigVar:
+    def _default_config(cls, index: int) -> ProviderConfigVar:
         pass
 
     @abstractmethod

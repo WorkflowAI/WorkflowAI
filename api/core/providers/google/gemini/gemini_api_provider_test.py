@@ -16,7 +16,6 @@ from core.domain.models.model_provider_datas_mapping import GOOGLE_GEMINI_API_PR
 from core.domain.structured_output import StructuredOutput
 from core.providers.base.models import RawCompletion
 from core.providers.base.provider_options import ProviderOptions
-from core.providers.factory.local_provider_factory import LocalProviderFactory
 from core.providers.google.gemini.gemini_api_provider import GoogleGeminiAPIProvider, GoogleGeminiAPIProviderConfig
 from core.providers.google.google_provider_domain import (
     Blob,
@@ -92,17 +91,11 @@ class TestGeminiAPIProvider(unittest.TestCase):
     async def test_default_config(self):
         """Test the _default_config method returns the correct configuration."""
         provider = GoogleGeminiAPIProvider()
-        config = provider._default_config()  # pyright: ignore [reportPrivateUsage]
+        config = provider._default_config(0)  # pyright: ignore [reportPrivateUsage]
 
         self.assertIsInstance(config, GoogleGeminiAPIProviderConfig)
         self.assertEqual(config.api_key, "worfklowai")
         self.assertEqual(config.url, "https://generativelanguage.googleapis.com")
-
-
-def list_google_vertex_ai_provider_x_models():
-    for provider, model in LocalProviderFactory().list_provider_x_models():
-        if type(provider) in [GoogleGeminiAPIProvider]:
-            yield provider, model
 
 
 class PerTokenPricing(BaseModel):

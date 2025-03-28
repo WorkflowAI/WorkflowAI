@@ -135,7 +135,7 @@ class _MockedProvider(AbstractProvider[Any, Any]):
 
     @classmethod
     @override
-    def _default_config(cls) -> Any:
+    def _default_config(cls, index: int) -> Any:
         return Mock(spec=ProviderConfigInterface)
 
     @override

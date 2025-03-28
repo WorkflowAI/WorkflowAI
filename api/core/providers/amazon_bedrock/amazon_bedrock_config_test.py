@@ -21,7 +21,7 @@ class TestFromEnv:
         clear=True,
     )
     def test_no_maps(self):
-        config = AmazonBedrockConfig.from_env()
+        config = AmazonBedrockConfig.from_env(0)
         assert config.provider == Provider.AMAZON_BEDROCK
         assert config.aws_bedrock_access_key == "aws_bedrock_access_key"
         assert config.aws_bedrock_secret_key == "aws_bedrock_secret_key"
@@ -38,7 +38,7 @@ class TestFromEnv:
         clear=True,
     )
     def test_resource_id_x_model_map(self):
-        config = AmazonBedrockConfig.from_env()
+        config = AmazonBedrockConfig.from_env(0)
         assert config.resource_id_x_model_map == {Model.CLAUDE_3_5_HAIKU_20241022: "resource1"}
 
     @patch.dict(
@@ -50,7 +50,7 @@ class TestFromEnv:
         },
     )
     def test_resource_id_x_model_map_invalid(self):
-        config = AmazonBedrockConfig.from_env()
+        config = AmazonBedrockConfig.from_env(0)
         assert config.resource_id_x_model_map == _default_resource_ids()
 
 
@@ -66,7 +66,7 @@ def test_amazon_provider_works_with_unknown_model_in_region_map():
             },
             clear=True,
         ):
-            config = AmazonBedrockConfig.from_env()
+            config = AmazonBedrockConfig.from_env(0)
             assert config.available_model_x_region_map == {
                 Model.CLAUDE_3_5_SONNET_20240620: "us-west-2",
                 Model.CLAUDE_3_OPUS_20240229: "us-west-2",

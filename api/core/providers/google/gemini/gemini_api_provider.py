@@ -1,4 +1,3 @@
-import os
 from typing import Any, Literal
 
 from pydantic import BaseModel
@@ -6,6 +5,7 @@ from typing_extensions import override
 
 from core.domain.llm_usage import LLMUsage
 from core.domain.models import Model, Provider
+from core.providers.base.utils import get_provider_config_env
 from core.providers.google.google_provider_base import GoogleProviderBase
 from core.providers.google.google_provider_domain import (
     BLOCK_THRESHOLD,
@@ -60,10 +60,10 @@ class GoogleGeminiAPIProvider(GoogleProviderBase[GoogleGeminiAPIProviderConfig])
 
     @override
     @classmethod
-    def _default_config(cls) -> GoogleGeminiAPIProviderConfig:
+    def _default_config(cls, index: int) -> GoogleGeminiAPIProviderConfig:
         return GoogleGeminiAPIProviderConfig(
             url="https://generativelanguage.googleapis.com",
-            api_key=os.environ["GEMINI_API_KEY"],
+            api_key=get_provider_config_env("GEMINI_API_KEY", index),
         )
 
     @override

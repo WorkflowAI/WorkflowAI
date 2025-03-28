@@ -109,7 +109,7 @@ class MockedProvider(HTTPXProvider[Any, Any]):
 
     @classmethod
     @override
-    def _default_config(cls) -> dict[str, Any]:
+    def _default_config(cls, index: int) -> dict[str, Any]:
         return {}
 
     @classmethod

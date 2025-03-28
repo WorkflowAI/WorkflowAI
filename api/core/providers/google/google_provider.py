@@ -1,6 +1,5 @@
 import base64
 import json
-import os
 import random
 from typing import Any, Literal
 
@@ -13,6 +12,7 @@ from core.domain.errors import (
 )
 from core.domain.llm_usage import LLMUsage
 from core.domain.models import Model, Provider
+from core.providers.base.utils import get_provider_config_env
 from core.providers.google import google_provider_auth
 from core.providers.google.google_provider_base import GoogleProviderBase
 from core.providers.google.google_provider_domain import (
@@ -125,11 +125,11 @@ class GoogleProvider(GoogleProviderBase[GoogleProviderConfig]):
 
     @override
     @classmethod
-    def _default_config(cls) -> GoogleProviderConfig:
+    def _default_config(cls, index: int) -> GoogleProviderConfig:
         return GoogleProviderConfig(
-            vertex_project=os.environ["GOOGLE_VERTEX_AI_PROJECT_ID"],
-            vertex_credentials=os.environ["GOOGLE_VERTEX_AI_CREDENTIALS"],
-            vertex_location=os.environ["GOOGLE_VERTEX_AI_LOCATION"].split(","),
+            vertex_project=get_provider_config_env("GOOGLE_VERTEX_AI_PROJECT_ID", index),
+            vertex_credentials=get_provider_config_env("GOOGLE_VERTEX_AI_CREDENTIALS", index),
+            vertex_location=get_provider_config_env("GOOGLE_VERTEX_AI_LOCATION", index).split(","),
             default_block_threshold="BLOCK_NONE",
         )
 

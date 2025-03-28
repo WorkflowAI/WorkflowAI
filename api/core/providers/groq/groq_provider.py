@@ -1,4 +1,3 @@
-import os
 from typing import Any, Literal
 
 from httpx import Response
@@ -16,6 +15,7 @@ from core.providers.base.httpx_provider import HTTPXProvider, ParsedResponse
 from core.providers.base.models import StandardMessage
 from core.providers.base.provider_options import ProviderOptions
 from core.providers.base.streaming_context import ToolCallRequestBuffer
+from core.providers.base.utils import get_provider_config_env
 from core.providers.groq.groq_domain import (
     CompletionRequest,
     CompletionResponse,
@@ -129,9 +129,9 @@ class GroqProvider(HTTPXProvider[GroqConfig, CompletionResponse]):
 
     @override
     @classmethod
-    def _default_config(cls) -> GroqConfig:
+    def _default_config(cls, index: int) -> GroqConfig:
         return GroqConfig(
-            api_key=os.environ["GROQ_API_KEY"],
+            api_key=get_provider_config_env("GROQ_API_KEY", index),
         )
 
     @override

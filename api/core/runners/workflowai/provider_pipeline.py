@@ -1,26 +1,45 @@
 import logging
+import random
+from collections.abc import Iterator
 from contextlib import contextmanager
 from typing import Any, NoReturn, Protocol
 
-from core.domain.errors import InternalError, MissingEnvVariablesError, ProviderError, StructuredGenerationError
-from core.domain.models import Provider
+from core.domain.errors import InternalError, NoProviderSupportingModelError, ProviderError, StructuredGenerationError
 from core.domain.models.model_data import FinalModelData, ModelData
+from core.domain.models.providers import Provider
 from core.domain.models.utils import get_model_data
 from core.providers.base.abstract_provider import AbstractProvider
 from core.providers.base.config import ProviderConfig
 from core.providers.base.provider_options import ProviderOptions
+from core.providers.factory.abstract_provider_factory import AbstractProviderFactory
 from core.runners.workflowai.templates import TemplateName
 from core.runners.workflowai.workflowai_options import WorkflowAIRunnerOptions
+
+PipelineProviderData = tuple[AbstractProvider[Any, Any], TemplateName, ProviderOptions, ModelData]
 
 
 class ProviderPipelineBuilder(Protocol):
     def __call__(
         self,
+        provider: AbstractProvider[Any, Any],
         model_data: FinalModelData,
         is_structured_generation_enabled: bool,
-        provider_type: Provider,
-        provider_config: tuple[str, ProviderConfig] | None,
-    ) -> tuple[AbstractProvider[Any, Any], TemplateName, ProviderOptions, ModelData]: ...
+    ) -> PipelineProviderData: ...
+
+
+# By default we try providers in order
+# This allows maxing out the first key before attacking the following ones
+# which is good to create grounds to request quota increase. The downside is that
+# there is some added latency when the first providers return 429s but it should
+# be minimal.
+#
+# However, some providers do not return an immediate 429 on quota reached but instead
+# start throttling requests or treating them with a lower priority, making inference
+# way longer. To circumvent that, we use a round robin strategy, aka we shuffle the array
+# before iterating over it.
+_round_robin_similar_providers: set[Provider] = {
+    Provider.FIREWORKS,
+}
 
 
 class ProviderPipeline:
@@ -28,8 +47,10 @@ class ProviderPipeline:
         self,
         options: WorkflowAIRunnerOptions,
         provider_config: tuple[str, ProviderConfig] | None,
+        factory: AbstractProviderFactory,
         builder: ProviderPipelineBuilder,
     ):
+        self._factory = factory
         self._options = options
         self.model_data = get_model_data(options.model)
         self.provider_config = provider_config
@@ -64,7 +85,7 @@ class ProviderPipeline:
         except ProviderError as e:
             e.capture_if_needed()
             self.errors.append(e)
-            # TODO: add metric and monitor overall provider health
+
             if provider.config_id is not None:
                 # In case of custom configs, we always retry
                 return
@@ -79,63 +100,67 @@ class ProviderPipeline:
         # We pop the flag and set the force structured generation to false to
         # trigger a provider without structured gen only
         if self._last_error_was_structured_generation and self._force_structured_generation is None:
-            self._force_structured_generation = True
+            self._force_structured_generation = False
             self._last_error_was_structured_generation = False
             return True
 
         return False
 
-    def provider_iterator(self):
-        def _structured_output():
-            if self._force_structured_generation is not None:
-                return self._force_structured_generation
-            return self.model_data.supports_structured_output
+    def _use_structured_output(self):
+        if self._force_structured_generation is not None:
+            return self._force_structured_generation
+        return self.model_data.supports_structured_output
 
+    def _build(self, provider: AbstractProvider[Any, Any], model_data: FinalModelData) -> PipelineProviderData:
+        return self.builder(provider, model_data, self._use_structured_output())
+
+    def _single_provider_iterator(
+        self,
+        model_data: FinalModelData,
+        provider_type: Provider,
+    ) -> Iterator[PipelineProviderData]:
+        def _iter_with_structured_gen(provider: AbstractProvider[Any, Any]) -> Iterator[PipelineProviderData]:
+            yield self._build(provider, model_data)
+
+            if self._should_retry_without_structured_generation():
+                yield self._build(provider, model_data)
+
+        providers = iter(self._factory.get_providers(provider_type))
+        if provider_type not in _round_robin_similar_providers:
+            # We yield the first provider first in order to max out quotas
+            try:
+                provider = next(providers)
+            except StopIteration:
+                raise NoProviderSupportingModelError(model=self._options.model)
+            yield from _iter_with_structured_gen(provider)
+
+        # Then we shuffle the rest
+        shuffled = list(providers)
+        if not shuffled:
+            return
+
+        random.shuffle(shuffled)
+
+        for provider in shuffled:
+            # We can safely call _iter_with_structured_gen multiple times
+            # if the structured generation fails the first time, the retries
+            # Without the structured gen will not happen
+            yield from _iter_with_structured_gen(provider)
+
+    def provider_iterator(self) -> Iterator[PipelineProviderData]:
         if self.provider_config:
-            yield self.builder(
+            yield self._build(
+                self._factory.build_provider(self.provider_config[1], config_id=self.provider_config[0]),
                 self.model_data,
-                _structured_output(),
-                self.provider_config[1].provider,
-                self.provider_config,
             )
 
         if self._options.provider:
-            yield self.builder(
-                self.model_data,
-                _structured_output(),
-                self._options.provider,
-                None,
-            )
-            if self._should_retry_without_structured_generation():
-                yield self.builder(
-                    self.model_data,
-                    False,
-                    self._options.provider,
-                    None,
-                )
+            yield from self._single_provider_iterator(self.model_data, self._options.provider)
             return
 
         for provider, provider_data in self.model_data.providers:
             # We only use the override for the default pipeline
+            # We assume that
             provider_model_data = provider_data.override(self.model_data)
 
-            # We only need to wrap the first call in a try/except block
-            # Since the env var are present once they will be present always.
-            try:
-                yield self.builder(
-                    provider_model_data,
-                    _structured_output(),
-                    provider,
-                    None,
-                )
-            except MissingEnvVariablesError as e:
-                self._logger.exception(e, extra={"provider": provider})
-                continue
-
-            if self._should_retry_without_structured_generation():
-                yield self.builder(
-                    self.model_data,
-                    False,
-                    provider,
-                    None,
-                )
+            yield from self._single_provider_iterator(provider_model_data, provider)

@@ -155,7 +155,7 @@ class NoProviderSupportingModelError(DefaultError):
     default_message = "No configured providers support model"
     code = "no_provider_supporting_model"
 
-    def __init__(self, model: str, available_providers: list[str]):
+    def __init__(self, model: str, available_providers: list[str] | None = None):
         super().__init__(details={"model": model, "available_providers": available_providers})
 
         self.model = model

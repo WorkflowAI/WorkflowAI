@@ -1,6 +1,5 @@
 import copy
 import json
-import os
 from contextvars import ContextVar
 from json import JSONDecodeError
 from typing import Any, AsyncIterator, Literal, override
@@ -26,6 +25,7 @@ from core.providers.base.httpx_provider import HTTPXProvider, ParsedResponse
 from core.providers.base.models import RawCompletion, StandardMessage
 from core.providers.base.provider_options import ProviderOptions
 from core.providers.base.streaming_context import ToolCallRequestBuffer
+from core.providers.base.utils import get_provider_config_env
 from core.providers.fireworks.fireworks_domain import (
     CompletionRequest,
     CompletionResponse,
@@ -323,10 +323,14 @@ class FireworksAIProvider(HTTPXProvider[FireworksConfig, CompletionResponse]):
 
     @override
     @classmethod
-    def _default_config(cls) -> FireworksConfig:
+    def _default_config(cls, index: int) -> FireworksConfig:
         return FireworksConfig(
-            api_key=os.environ["FIREWORKS_API_KEY"],
-            url=os.environ.get("FIREWORKS_URL", "https://api.fireworks.ai/inference/v1/chat/completions"),
+            api_key=get_provider_config_env("FIREWORKS_API_KEY", index),
+            url=get_provider_config_env(
+                "FIREWORKS_URL",
+                index,
+                "https://api.fireworks.ai/inference/v1/chat/completions",
+            ),
         )
 
     @override

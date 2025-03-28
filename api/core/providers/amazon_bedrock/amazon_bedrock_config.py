@@ -1,14 +1,15 @@
 import json
 import logging
-import os
 from typing import Literal, cast
 
 from pydantic import BaseModel
 
 from core.domain.errors import (
+    MissingEnvVariablesError,
     MissingModelError,
 )
 from core.domain.models import Model, Provider
+from core.providers.base.utils import get_provider_config_env
 
 logger = logging.getLogger(__name__)
 
@@ -58,10 +59,11 @@ class AmazonBedrockConfig(BaseModel):
         )
 
     @classmethod
-    def from_env(cls):
+    def from_env(cls, index: int):
         def _map_model_map(key: str, default: dict[Model, str]) -> dict[Model, str]:
-            value = os.environ.get(key)
-            if not value:
+            try:
+                value = get_provider_config_env(key, index)
+            except MissingEnvVariablesError:
                 return default
             try:
                 d = json.loads(value)
@@ -86,11 +88,11 @@ class AmazonBedrockConfig(BaseModel):
             return out
 
         return cls(
-            aws_bedrock_access_key=os.environ["AWS_BEDROCK_ACCESS_KEY"],
-            aws_bedrock_secret_key=os.environ["AWS_BEDROCK_SECRET_KEY"],
+            aws_bedrock_access_key=get_provider_config_env("AWS_BEDROCK_ACCESS_KEY", index),
+            aws_bedrock_secret_key=get_provider_config_env("AWS_BEDROCK_SECRET_KEY", index),
             available_model_x_region_map=_map_model_map("AWS_BEDROCK_MODEL_REGION_MAP", {}),
             resource_id_x_model_map=_map_model_map("AWS_BEDROCK_RESOURCE_ID_MODEL_MAP", _default_resource_ids()),
-            default_region=os.environ.get("AWS_BEDROCK_DEFAULT_REGION", "us-west-2"),
+            default_region=get_provider_config_env("AWS_BEDROCK_DEFAULT_REGION", index, "us-west-2"),
         )
 
     def region_for_model(self, model: Model):

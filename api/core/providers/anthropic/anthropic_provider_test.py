@@ -17,6 +17,7 @@ from core.domain.fields.file import File
 from core.domain.llm_usage import LLMUsage
 from core.domain.message import Message
 from core.domain.models import Model
+from core.domain.models.model_provider_datas_mapping import ANTHROPIC_PROVIDER_DATA
 from core.domain.models.utils import get_model_data
 from core.domain.structured_output import StructuredOutput
 from core.domain.tool import Tool
@@ -31,7 +32,6 @@ from core.providers.anthropic.anthropic_provider import AnthropicConfig, Anthrop
 from core.providers.base.models import RawCompletion
 from core.providers.base.provider_options import ProviderOptions
 from core.providers.base.streaming_context import ToolCallRequestBuffer
-from core.providers.factory.local_provider_factory import LocalProviderFactory
 from tests.utils import fixture_bytes, fixtures_json, mock_aiter
 
 
@@ -46,18 +46,12 @@ def _output_factory(x: str, _: bool):
     return StructuredOutput(json.loads(x))
 
 
-def _list_provider_x_models():
-    for provider, model in LocalProviderFactory().list_provider_x_models():
-        if type(provider) is AnthropicProvider:
-            yield provider, model
-
-
 class TestBuildRequest:
-    @pytest.mark.parametrize("provider, model", _list_provider_x_models())
-    def test_build_request(self, provider: Any, model: Model):
+    @pytest.mark.parametrize("model", ANTHROPIC_PROVIDER_DATA.keys())
+    def test_build_request(self, anthropic_provider: AnthropicProvider, model: Model):
         request = cast(
             CompletionRequest,
-            provider._build_request(  # pyright: ignore[reportPrivateUsage]
+            anthropic_provider._build_request(  # pyright: ignore[reportPrivateUsage]
                 messages=[
                     Message(role=Message.Role.SYSTEM, content="Hello 1"),
                     Message(role=Message.Role.USER, content="Hello"),
@@ -89,11 +83,11 @@ class TestBuildRequest:
         assert request.temperature == 0
         assert request.max_tokens == 10
 
-    @pytest.mark.parametrize("provider, model", _list_provider_x_models())
-    def test_build_request_without_max_tokens(self, provider: Any, model: Model):
+    @pytest.mark.parametrize("model", ANTHROPIC_PROVIDER_DATA.keys())
+    def test_build_request_without_max_tokens(self, anthropic_provider: AnthropicProvider, model: Model):
         request = cast(
             CompletionRequest,
-            provider._build_request(  # pyright: ignore[reportPrivateUsage]
+            anthropic_provider._build_request(  # pyright: ignore[reportPrivateUsage]
                 messages=[
                     Message(role=Message.Role.SYSTEM, content="Hello 1"),
                     Message(role=Message.Role.USER, content="Hello"),
@@ -111,8 +105,8 @@ class TestBuildRequest:
         else:
             assert request.max_tokens == 1024
 
-    @pytest.mark.parametrize("provider, model", _list_provider_x_models())
-    def test_build_request_with_tools(self, provider: Any, model: Model) -> None:
+    @pytest.mark.parametrize("model", ANTHROPIC_PROVIDER_DATA.keys())
+    def test_build_request_with_tools(self, anthropic_provider: AnthropicProvider, model: Model) -> None:
         # Import the expected Tool type
 
         # Use a dummy tool based on SimpleNamespace and cast it to the expected Tool type
@@ -128,7 +122,7 @@ class TestBuildRequest:
 
         request = cast(
             CompletionRequest,
-            provider._build_request(  # pyright: ignore[reportPrivateUsage]
+            anthropic_provider._build_request(  # pyright: ignore[reportPrivateUsage]
                 messages=[message],
                 options=options,
                 stream=False,
@@ -329,14 +323,19 @@ class TestComplete:
             },
         )
 
-    @pytest.mark.parametrize("provider, model", _list_provider_x_models())
-    async def test_complete_with_max_tokens(self, httpx_mock: HTTPXMock, provider: AnthropicProvider, model: Model):
+    @pytest.mark.parametrize("model", ANTHROPIC_PROVIDER_DATA.keys())
+    async def test_complete_with_max_tokens(
+        self,
+        httpx_mock: HTTPXMock,
+        anthropic_provider: AnthropicProvider,
+        model: Model,
+    ):
         httpx_mock.add_response(
             url="https://api.anthropic.com/v1/messages",
             json=fixtures_json("anthropic", "completion.json"),
         )
 
-        o = await provider.complete(
+        o = await anthropic_provider.complete(
             [Message(role=Message.Role.USER, content="Hello")],
             options=ProviderOptions(model=model, max_tokens=10, temperature=0),
             output_factory=_output_factory,
@@ -350,11 +349,11 @@ class TestComplete:
         body = json.loads(request.read().decode())
         assert body["max_tokens"] == 10
 
-    @pytest.mark.parametrize("provider, model", _list_provider_x_models())
+    @pytest.mark.parametrize("model", ANTHROPIC_PROVIDER_DATA.keys())
     async def test_complete_with_max_tokens_not_set(
         self,
         httpx_mock: HTTPXMock,
-        provider: AnthropicProvider,
+        anthropic_provider: AnthropicProvider,
         model: Model,
     ):
         httpx_mock.add_response(
@@ -362,7 +361,7 @@ class TestComplete:
             json=fixtures_json("anthropic", "completion.json"),
         )
 
-        o = await provider.complete(
+        o = await anthropic_provider.complete(
             [Message(role=Message.Role.USER, content="Hello")],
             options=ProviderOptions(model=model, temperature=0),
             output_factory=_output_factory,

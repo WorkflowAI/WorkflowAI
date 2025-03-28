@@ -18,7 +18,7 @@ from core.domain.errors import (
 )
 from core.domain.llm_usage import LLMUsage
 from core.domain.message import Message
-from core.domain.models import Model, Provider
+from core.domain.models import Model
 from core.domain.structured_output import StructuredOutput
 from core.domain.tool_call import ToolCallRequestWithID
 from core.providers.base.abstract_provider import ProviderConfigInterface, RawCompletion
@@ -329,25 +329,6 @@ class OpenAIProviderBase(HTTPXProvider[_OpenAIConfigVar, CompletionResponse], Ge
     def requires_downloading_file(cls, file: FileWithKeyPath, model: Model) -> bool:
         # OpenAI requires downloading files for non-image files
         return not file.is_image
-
-    @classmethod
-    @abstractmethod
-    def required_env_vars(cls) -> list[str]:
-        pass
-
-    @classmethod
-    @abstractmethod
-    def name(cls) -> Provider:
-        pass
-
-    @classmethod
-    @abstractmethod
-    def _default_config(cls) -> _OpenAIConfigVar:
-        pass
-
-    @abstractmethod
-    def default_model(self) -> Model:
-        pass
 
     @property
     def is_structured_generation_supported(self) -> bool:

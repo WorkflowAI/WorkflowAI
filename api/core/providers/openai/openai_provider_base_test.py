@@ -40,7 +40,7 @@ class _TestOpenAIProviderBase(OpenAIProviderBase[_TestProviderConfig]):
         return Provider.OPEN_AI
 
     @classmethod
-    def _default_config(cls) -> _TestProviderConfig:
+    def _default_config(cls, index: int) -> _TestProviderConfig:
         return _TestProviderConfig()
 
     def default_model(self) -> Model:

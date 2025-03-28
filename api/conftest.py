@@ -10,6 +10,7 @@ from fastapi import FastAPI, Request
 from freezegun import freeze_time
 from httpx import ASGITransport, AsyncClient
 
+from core.domain.models.providers import Provider
 from core.domain.organization_settings import PublicOrganizationData
 from core.domain.task_info import TaskInfo
 from core.domain.task_io import SerializableTaskIO
@@ -340,9 +341,50 @@ def mock_internal_tasks_service() -> Mock:
 
 @pytest.fixture()
 def mock_provider_factory():
+    from core.providers.base.abstract_provider import AbstractProvider
     from core.providers.factory.abstract_provider_factory import AbstractProviderFactory
 
-    return AsyncMock(spec=AbstractProviderFactory)
+    def _mock_provider(name: Provider):
+        m = Mock(spec=AbstractProvider)
+        m.config_id = None
+        m.requires_downloading_file.return_value = False
+        m.sanitize_template.side_effect = lambda x: x  # pyright: ignore[reportUnknownLambdaType]
+        m.sanitize_agent_instructions.side_effect = lambda x: x  # pyright: ignore[reportUnknownLambdaType]
+        m.name.return_value = name
+        return m
+
+    google = _mock_provider(Provider.GOOGLE)
+    gemini = _mock_provider(Provider.GOOGLE_GEMINI)
+    openai = _mock_provider(Provider.OPEN_AI)
+    anthropic = _mock_provider(Provider.ANTHROPIC)
+    bedrock = _mock_provider(Provider.AMAZON_BEDROCK)
+    azure_openai = _mock_provider(Provider.AZURE_OPEN_AI)
+
+    def _side_effect(provider: Provider):
+        if provider == Provider.GOOGLE:
+            return google
+        if provider == Provider.GOOGLE_GEMINI:
+            return gemini
+        if provider == Provider.OPEN_AI:
+            return openai
+        if provider == Provider.ANTHROPIC:
+            return anthropic
+        if provider == Provider.AMAZON_BEDROCK:
+            return bedrock
+        if provider == Provider.AZURE_OPEN_AI:
+            return azure_openai
+        assert False, "Invalid provider"
+
+    mock = Mock(spec=AbstractProviderFactory)
+    mock.get_provider.side_effect = _side_effect
+    mock.get_providers.side_effect = lambda p: [_side_effect(p)]  # pyright: ignore
+    mock.google = google
+    mock.gemini = gemini
+    mock.openai = openai
+    mock.anthropic = anthropic
+    mock.bedrock = bedrock
+    mock.azure_openai = azure_openai
+    return mock
 
 
 # We make sure we have a test storage container for the tests

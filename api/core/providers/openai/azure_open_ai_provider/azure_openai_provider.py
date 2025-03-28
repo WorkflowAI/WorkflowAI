@@ -1,13 +1,13 @@
 import json
-import os
 from typing import Any, Literal
 
 from pydantic import BaseModel
 from typing_extensions import override
 
-from core.domain.errors import ProviderDoesNotSupportModelError
+from core.domain.errors import InvalidProviderConfig, ProviderDoesNotSupportModelError
 from core.domain.models import Model, Provider
 from core.domain.tool import Tool
+from core.providers.base.utils import get_provider_config_env
 from core.providers.openai.openai_domain import MODEL_NAME_MAP
 from core.providers.openai.openai_provider_base import OpenAIProviderBase
 
@@ -81,9 +81,12 @@ class AzureOpenAIProvider(OpenAIProviderBase[AzureOpenAIConfig]):
 
     @override
     @classmethod
-    def _default_config(cls) -> AzureOpenAIConfig:
-        config_str = os.getenv("AZURE_OPENAI_CONFIG", "{}")
-        config_data = json.loads(config_str)
+    def _default_config(cls, index: int) -> AzureOpenAIConfig:
+        config_str = get_provider_config_env("AZURE_OPENAI_CONFIG", index)
+        try:
+            config_data = json.loads(config_str)
+        except Exception as e:
+            raise InvalidProviderConfig("Azure config is not a valid json") from e
 
         return AzureOpenAIConfig(
             deployments=config_data.get("deployments", {}),

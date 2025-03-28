@@ -36,7 +36,6 @@ from core.domain.tool_call import ToolCall, ToolCallRequestWithID
 from core.domain.types import TaskOutputDict
 from core.providers.base.abstract_provider import AbstractProvider
 from core.providers.base.provider_options import ProviderOptions
-from core.providers.factory.abstract_provider_factory import AbstractProviderFactory
 from core.providers.google.gemini.gemini_api_provider import GoogleGeminiAPIProviderConfig
 from core.runners.workflowai.internal_tool import InternalTool
 from core.runners.workflowai.templates import TemplateName
@@ -1323,47 +1322,10 @@ class TestInit:
         assert runner.properties.model == Model.GPT_4O_LATEST  # pyright: ignore[reportPrivateUsage]
 
 
-@pytest.fixture
-def mock_provider_factory(patched_runner: WorkflowAIRunner):
-    def _mock_provider():
-        m = Mock(spec=AbstractProvider)
-        m.config_id = None
-        m.requires_downloading_file.return_value = False
-        m.sanitize_template.side_effect = lambda x: x  # pyright: ignore[reportUnknownLambdaType]
-        m.sanitize_agent_instructions.side_effect = lambda x: x  # pyright: ignore[reportUnknownLambdaType]
-        return m
-
-    google = _mock_provider()
-    gemini = _mock_provider()
-    openai = _mock_provider()
-    anthropic = _mock_provider()
-    bedrock = _mock_provider()
-    azure_openai = _mock_provider()
-
-    def _side_effect(provider: Provider):
-        if provider == Provider.GOOGLE:
-            return google
-        if provider == Provider.GOOGLE_GEMINI:
-            return gemini
-        if provider == Provider.OPEN_AI:
-            return openai
-        if provider == Provider.ANTHROPIC:
-            return anthropic
-        if provider == Provider.AMAZON_BEDROCK:
-            return bedrock
-        if provider == Provider.AZURE_OPEN_AI:
-            return azure_openai
-        assert False, "Invalid provider"
-
-    with patch.object(patched_runner, "provider_factory", return_value=Mock(spec=AbstractProviderFactory)) as mock:
-        mock.get_provider.side_effect = _side_effect
-        mock.google = google
-        mock.gemini = gemini
-        mock.openai = openai
-        mock.anthropic = anthropic
-        mock.bedrock = bedrock
-        mock.azure_openai = azure_openai
-        yield mock
+@pytest.fixture()
+def patched_provider_factory(patched_runner: WorkflowAIRunner, mock_provider_factory: Mock):
+    with patch.object(patched_runner, "provider_factory", new=mock_provider_factory):
+        yield mock_provider_factory
 
 
 class TestBuildTaskOutput:
@@ -1373,38 +1335,38 @@ class TestBuildTaskOutput:
     async def test_provider_failover(
         self,
         patched_runner: WorkflowAIRunner,
-        mock_provider_factory: Mock,
+        patched_provider_factory: Mock,
     ):
         patched_runner._options.model = Model.GEMINI_1_5_FLASH_002  # pyright: ignore[reportPrivateUsage]
         patched_runner._options.provider = None  # pyright: ignore[reportPrivateUsage]
 
-        mock_provider_factory.google.complete.side_effect = ProviderInternalError()
-        mock_provider_factory.gemini.complete.return_value = StructuredOutput(
+        patched_provider_factory.google.complete.side_effect = ProviderInternalError()
+        patched_provider_factory.gemini.complete.return_value = StructuredOutput(
             {"output": "final"},
         )
 
         result = await patched_runner._build_task_output({"input": "test"})  # pyright: ignore[reportPrivateUsage]
         assert result == RunOutput({"output": "final"})
 
-        mock_provider_factory.google.complete.assert_awaited_once()
-        first_opts = mock_provider_factory.google.complete.call_args_list[0].args[1]
+        patched_provider_factory.google.complete.assert_awaited_once()
+        first_opts = patched_provider_factory.google.complete.call_args_list[0].args[1]
         assert isinstance(first_opts, ProviderOptions), "sanity check"
         # Google does not support structured generation
         assert first_opts.structured_generation is False
 
-        mock_provider_factory.gemini.complete.assert_awaited_once()
+        patched_provider_factory.gemini.complete.assert_awaited_once()
 
     async def test_provider_failover_with_structured_generation(
         self,
         patched_runner: WorkflowAIRunner,
-        mock_provider_factory: Mock,
+        patched_provider_factory: Mock,
     ):
         # OpenAI supports structured generation
         patched_runner._options.model = Model.GPT_4O_MINI_2024_07_18  # pyright: ignore[reportPrivateUsage]
         patched_runner._options.provider = None  # pyright: ignore[reportPrivateUsage]
         patched_runner._options.is_structured_generation_enabled = None  # pyright: ignore[reportPrivateUsage]
 
-        mock_provider_factory.openai.complete.side_effect = [
+        patched_provider_factory.openai.complete.side_effect = [
             StructuredGenerationError(),
             StructuredOutput({"output": "final"}),
         ]
@@ -1412,27 +1374,27 @@ class TestBuildTaskOutput:
         result = await patched_runner._build_task_output({"input": "test"})  # pyright: ignore[reportPrivateUsage]
         assert result == RunOutput({"output": "final"})
 
-        assert mock_provider_factory.openai.complete.await_count == 2
+        assert patched_provider_factory.openai.complete.await_count == 2
 
-        first_opts = mock_provider_factory.openai.complete.call_args_list[0].args[1]
+        first_opts = patched_provider_factory.openai.complete.call_args_list[0].args[1]
         assert isinstance(first_opts, ProviderOptions), "sanity check"
         assert first_opts.structured_generation is True
 
-        second_opts = mock_provider_factory.openai.complete.call_args_list[1].args[1]
+        second_opts = patched_provider_factory.openai.complete.call_args_list[1].args[1]
         assert isinstance(second_opts, ProviderOptions), "sanity check"
         assert second_opts.structured_generation is False
 
     async def test_provider_failover_with_structured_generation_forced(
         self,
         patched_runner: WorkflowAIRunner,
-        mock_provider_factory: Mock,
+        patched_provider_factory: Mock,
     ):
         # OpenAI supports structured generation
         patched_runner._options.model = Model.GPT_4O_MINI_2024_07_18  # pyright: ignore[reportPrivateUsage]
         patched_runner._options.provider = None  # pyright: ignore[reportPrivateUsage]
         patched_runner._options.is_structured_generation_enabled = True  # pyright: ignore[reportPrivateUsage]
 
-        mock_provider_factory.openai.complete.side_effect = [
+        patched_provider_factory.openai.complete.side_effect = [
             StructuredGenerationError(),
             StructuredOutput({"output": "final"}),
         ]
@@ -1440,36 +1402,36 @@ class TestBuildTaskOutput:
         with pytest.raises(StructuredGenerationError):
             await patched_runner._build_task_output({"input": "test"})  # pyright: ignore[reportPrivateUsage]
 
-        assert mock_provider_factory.openai.complete.await_count == 1
+        assert patched_provider_factory.openai.complete.await_count == 1
 
-        first_opts = mock_provider_factory.openai.complete.call_args_list[0].args[1]
+        first_opts = patched_provider_factory.openai.complete.call_args_list[0].args[1]
         assert isinstance(first_opts, ProviderOptions), "sanity check"
         assert first_opts.structured_generation is True
 
     async def test_provider_failover_with_structured_generation_disabled(
         self,
         patched_runner: WorkflowAIRunner,
-        mock_provider_factory: Mock,
+        patched_provider_factory: Mock,
     ):
         # OpenAI supports structured generation
         patched_runner._options.model = Model.GPT_4O_MINI_2024_07_18  # pyright: ignore[reportPrivateUsage]
         patched_runner._options.provider = None  # pyright: ignore[reportPrivateUsage]
         patched_runner._options.is_structured_generation_enabled = False  # pyright: ignore[reportPrivateUsage]
 
-        mock_provider_factory.openai.complete.return_value = StructuredOutput({"output": "final"})
+        patched_provider_factory.openai.complete.return_value = StructuredOutput({"output": "final"})
         result = await patched_runner._build_task_output({"input": "test"})  # pyright: ignore[reportPrivateUsage]
         assert result == RunOutput({"output": "final"})
 
-        assert mock_provider_factory.openai.complete.await_count == 1
+        assert patched_provider_factory.openai.complete.await_count == 1
 
-        first_opts = mock_provider_factory.openai.complete.call_args_list[0].args[1]
+        first_opts = patched_provider_factory.openai.complete.call_args_list[0].args[1]
         assert isinstance(first_opts, ProviderOptions), "sanity check"
         assert first_opts.structured_generation is False
 
     async def test_provider_sanitizes_template(
         self,
         patched_runner: WorkflowAIRunner,
-        mock_provider_factory: Mock,
+        patched_provider_factory: Mock,
     ):
         patched_runner._options.model = Model.GPT_4O_MINI_2024_07_18  # pyright: ignore[reportPrivateUsage]
         patched_runner._options.provider = None  # pyright: ignore[reportPrivateUsage]
@@ -1478,23 +1440,23 @@ class TestBuildTaskOutput:
             assert template != TemplateName.V1, "sanity check"
             return TemplateName.V1
 
-        mock_provider_factory.openai.sanitize_template.side_effect = _sanitize_template  # pyright: ignore[reportUnknownLambdaType]
-        mock_provider_factory.openai.complete.return_value = StructuredOutput(
+        patched_provider_factory.openai.sanitize_template.side_effect = _sanitize_template  # pyright: ignore[reportUnknownLambdaType]
+        patched_provider_factory.openai.complete.return_value = StructuredOutput(
             {"output": "final"},
         )
 
         result = await patched_runner._build_task_output({"input": "test"})  # pyright: ignore[reportPrivateUsage]
         assert result == RunOutput({"output": "final"})
 
-        mock_provider_factory.openai.sanitize_template.assert_called_once()
-        messages = mock_provider_factory.openai.complete.call_args_list[0].args[0]
+        patched_provider_factory.openai.sanitize_template.assert_called_once()
+        messages = patched_provider_factory.openai.complete.call_args_list[0].args[0]
         # As a genius expert is not in not v1 tempaltes
         assert "<instructions>" in messages[0].content
 
     async def test_provider_failover_with_different_modes(
         self,
         patched_runner: WorkflowAIRunner,
-        mock_provider_factory: Mock,
+        patched_provider_factory: Mock,
         mock_task: Mock,
     ):
         mock_task.input_schema.json_schema = {
@@ -1510,7 +1472,7 @@ class TestBuildTaskOutput:
         patched_runner._options.model = Model.CLAUDE_3_5_SONNET_20241022  # pyright: ignore[reportPrivateUsage]
         patched_runner._options.provider = None  # pyright: ignore[reportPrivateUsage]
 
-        mock_provider_factory.anthropic.complete.return_value = StructuredOutput(
+        patched_provider_factory.anthropic.complete.return_value = StructuredOutput(
             {"output": "final"},
         )
 
@@ -1523,22 +1485,22 @@ class TestBuildTaskOutput:
             },
         )
         assert result == RunOutput({"output": "final"})
-        mock_provider_factory.anthropic.complete.assert_called_once()
-        mock_provider_factory.bedrock.complete.assert_not_called()
+        patched_provider_factory.anthropic.complete.assert_called_once()
+        patched_provider_factory.bedrock.complete.assert_not_called()
 
-    async def test_with_latest_model(self, patched_runner: WorkflowAIRunner, mock_provider_factory: Mock):
+    async def test_with_latest_model(self, patched_runner: WorkflowAIRunner, patched_provider_factory: Mock):
         patched_runner._options.model = Model.GPT_4O_LATEST  # pyright: ignore[reportPrivateUsage]
         patched_runner._options.provider = None  # pyright: ignore[reportPrivateUsage]
 
-        mock_provider_factory.openai.complete.return_value = StructuredOutput(
+        patched_provider_factory.openai.complete.return_value = StructuredOutput(
             {"output": "final"},
         )
 
         result = await patched_runner._build_task_output({"input": "test"})  # pyright: ignore[reportPrivateUsage]
         assert result == RunOutput({"output": "final"})
 
-        mock_provider_factory.openai.complete.assert_called_once()
-        first_opts = mock_provider_factory.openai.complete.call_args_list[0].args[1]
+        patched_provider_factory.openai.complete.assert_called_once()
+        first_opts = patched_provider_factory.openai.complete.call_args_list[0].args[1]
         assert isinstance(first_opts, ProviderOptions), "sanity check"
         assert first_opts.model != Model.GPT_4O_LATEST, "sanity check"
         latest_model_data = MODEL_DATAS[Model.GPT_4O_LATEST]
@@ -1550,12 +1512,12 @@ class TestBuildTaskOutput:
         self,
         patched_runner: WorkflowAIRunner,
         mock_tool_fn: Mock,
-        mock_provider_factory: Mock,
+        patched_provider_factory: Mock,
     ):
         patched_runner._options.model = Model.GPT_4O_LATEST  # pyright: ignore[reportPrivateUsage]
         patched_runner._options.provider = None  # pyright: ignore[reportPrivateUsage]
 
-        mock_provider_factory.openai.complete.side_effect = [
+        patched_provider_factory.openai.complete.side_effect = [
             StructuredOutput({}, [ToolCallRequestWithID(tool_name="test_tool", tool_input_dict={"input": "test"})]),
             StructuredOutput({"output": "final"}),
         ]
@@ -1569,13 +1531,13 @@ class TestBuildTaskOutput:
         )
 
         mock_tool_fn.assert_called_once_with(input="test")
-        assert mock_provider_factory.openai.complete.call_count == 2
+        assert patched_provider_factory.openai.complete.call_count == 2
 
-        messages: list[Message] = mock_provider_factory.openai.complete.call_args_list[0].args[0]
+        messages: list[Message] = patched_provider_factory.openai.complete.call_args_list[0].args[0]
         assert len(messages) == 2
 
         # TODO[tools]: change to account for assistant message
-        messages: list[Message] = mock_provider_factory.openai.complete.call_args_list[1].args[0]
+        messages: list[Message] = patched_provider_factory.openai.complete.call_args_list[1].args[0]
         assert len(messages) == 4
         assert messages[-1].tool_call_results == [
             ToolCall(
@@ -1739,7 +1701,7 @@ class TestBuildTaskOutput:
 
 
 class TestBuildProviderData:
-    def test_model_data_is_copied(self, patched_runner: WorkflowAIRunner, mock_provider_factory: Mock):
+    def test_model_data_is_copied(self, patched_runner: WorkflowAIRunner, patched_provider_factory: Mock):
         model_data = FinalModelData(
             model=Model.GPT_4O_MINI_2024_07_18,
             supports_structured_output=True,
@@ -1762,8 +1724,8 @@ class TestBuildProviderData:
         def side_effect(model_data: ModelData):
             model_data.supports_structured_output = False
 
-        mock_provider_factory.azure_openai.sanitize_model_data.side_effect = side_effect
-        mock_provider_factory.azure_openai.sanitize_template.side_effect = lambda x: x  # pyright: ignore[reportUnknownLambdaType]
+        patched_provider_factory.azure_openai.sanitize_model_data.side_effect = side_effect
+        patched_provider_factory.azure_openai.sanitize_template.side_effect = lambda x: x  # pyright: ignore[reportUnknownLambdaType]
 
         with patch.object(
             patched_runner,
@@ -1771,10 +1733,9 @@ class TestBuildProviderData:
             return_value=TemplateName.V2_DEFAULT,
         ) as mock_pick_template:
             _, _, _, model_data_copy = patched_runner._build_provider_data(  # pyright: ignore[reportPrivateUsage]
+                patched_provider_factory.azure_openai,
                 model_data,
                 True,
-                Provider.AZURE_OPEN_AI,
-                None,
             )
         assert model_data_copy.supports_structured_output is False
         assert model_data.supports_structured_output is True
@@ -1783,7 +1744,7 @@ class TestBuildProviderData:
     async def test_build_provider_data_with_chain_of_thought_and_tools(
         self,
         patched_runner: WorkflowAIRunner,
-        mock_provider_factory: Mock,
+        patched_provider_factory: Mock,
     ) -> None:
         """
         Test that build_provider_data adapts the output_schema to include reasoning steps (COT)
@@ -1820,10 +1781,9 @@ class TestBuildProviderData:
 
         # Act: build provider data
         provider, _, provider_options, _ = patched_runner._build_provider_data(  # pyright: ignore[reportPrivateUsage]
+            patched_provider_factory.openai,
             model_data,
             is_structured_generation_enabled=True,
-            provider_type=Provider.OPEN_AI,
-            provider_config=None,
         )
 
         # Assert: provider should be instantiated, and output_schema should contain "steps" and "tools"
@@ -1837,7 +1797,7 @@ class TestBuildProviderData:
     async def test_build_provider_data_without_chain_of_thought_and_tools(
         self,
         patched_runner: WorkflowAIRunner,
-        mock_provider_factory: Mock,
+        patched_provider_factory: Mock,
     ) -> None:
         """
         Test that build_provider_data does not modify the output_schema when chain_of_thought and tools are disabled.
@@ -1872,10 +1832,9 @@ class TestBuildProviderData:
 
         # Act: build provider data
         provider, _, provider_options, _ = patched_runner._build_provider_data(  # pyright: ignore[reportPrivateUsage]
+            patched_provider_factory.openai,
             model_data,
             is_structured_generation_enabled=True,
-            provider_type=Provider.OPEN_AI,
-            provider_config=None,
         )
 
         # Assert: provider should be instantiated, and output_schema should contain "steps" and "tools"
@@ -1902,32 +1861,32 @@ class TestStreamTaskOutput:
     async def test_provider_failover(
         self,
         patched_runner: WorkflowAIRunner,
-        mock_provider_factory: Mock,
+        patched_provider_factory: Mock,
         stream_fn: Callable[[], Awaitable[Any]],
     ):
         patched_runner._options.model = Model.GEMINI_1_5_FLASH_002  # pyright: ignore[reportPrivateUsage]
         patched_runner._options.provider = None  # pyright: ignore[reportPrivateUsage]
 
-        mock_provider_factory.google.stream.side_effect = ProviderInternalError()
-        mock_provider_factory.gemini.stream.return_value = mock_aiter(
+        patched_provider_factory.google.stream.side_effect = ProviderInternalError()
+        patched_provider_factory.gemini.stream.return_value = mock_aiter(
             StructuredOutput({"output": "final"}),
         )
 
         results = await stream_fn()
         assert results == [RunOutput({"output": "final"})]
 
-        mock_provider_factory.google.stream.assert_called_once()
-        first_opts = mock_provider_factory.google.stream.call_args_list[0].args[1]
+        patched_provider_factory.google.stream.assert_called_once()
+        first_opts = patched_provider_factory.google.stream.call_args_list[0].args[1]
         assert isinstance(first_opts, ProviderOptions), "sanity check"
         # Google does not support structured generation
         assert first_opts.structured_generation is False
 
-        mock_provider_factory.gemini.stream.assert_called_once()
+        patched_provider_factory.gemini.stream.assert_called_once()
 
     async def test_provider_failover_with_structured_generation(
         self,
         patched_runner: WorkflowAIRunner,
-        mock_provider_factory: Mock,
+        patched_provider_factory: Mock,
         stream_fn: Callable[[], Awaitable[Any]],
     ):
         # OpenAI supports structured generation
@@ -1941,25 +1900,25 @@ class TestStreamTaskOutput:
                 raise StructuredGenerationError()
             return mock_aiter(StructuredOutput({"output": "final"}))
 
-        mock_provider_factory.openai.stream.side_effect = _side_effect
+        patched_provider_factory.openai.stream.side_effect = _side_effect
 
         results = await stream_fn()
         assert results == [RunOutput({"output": "final"})]
 
-        assert mock_provider_factory.openai.stream.call_count == 2
+        assert patched_provider_factory.openai.stream.call_count == 2
 
-        first_opts = mock_provider_factory.openai.stream.call_args_list[0].args[1]
+        first_opts = patched_provider_factory.openai.stream.call_args_list[0].args[1]
         assert isinstance(first_opts, ProviderOptions), "sanity check"
         assert first_opts.structured_generation is True
 
-        second_opts = mock_provider_factory.openai.stream.call_args_list[1].args[1]
+        second_opts = patched_provider_factory.openai.stream.call_args_list[1].args[1]
         assert isinstance(second_opts, ProviderOptions), "sanity check"
         assert second_opts.structured_generation is False
 
     async def test_provider_failover_with_structured_generation_forced(
         self,
         patched_runner: WorkflowAIRunner,
-        mock_provider_factory: Mock,
+        patched_provider_factory: Mock,
         stream_fn: Callable[[], Awaitable[Any]],
     ):
         # OpenAI supports structured generation
@@ -1967,21 +1926,21 @@ class TestStreamTaskOutput:
         patched_runner._options.provider = None  # pyright: ignore[reportPrivateUsage]
         patched_runner._options.is_structured_generation_enabled = True  # pyright: ignore[reportPrivateUsage]
 
-        mock_provider_factory.openai.stream.side_effect = StructuredGenerationError()
+        patched_provider_factory.openai.stream.side_effect = StructuredGenerationError()
 
         with pytest.raises(StructuredGenerationError):
             await stream_fn()
 
-        assert mock_provider_factory.openai.stream.call_count == 1
+        assert patched_provider_factory.openai.stream.call_count == 1
 
-        first_opts = mock_provider_factory.openai.stream.call_args_list[0].args[1]
+        first_opts = patched_provider_factory.openai.stream.call_args_list[0].args[1]
         assert isinstance(first_opts, ProviderOptions), "sanity check"
         assert first_opts.structured_generation is True
 
     async def test_provider_failover_with_structured_generation_disabled(
         self,
         patched_runner: WorkflowAIRunner,
-        mock_provider_factory: Mock,
+        patched_provider_factory: Mock,
         stream_fn: Callable[[], Awaitable[Any]],
     ):
         # OpenAI supports structured generation
@@ -1989,23 +1948,23 @@ class TestStreamTaskOutput:
         patched_runner._options.provider = None  # pyright: ignore[reportPrivateUsage]
         patched_runner._options.is_structured_generation_enabled = False  # pyright: ignore[reportPrivateUsage]
 
-        mock_provider_factory.openai.stream.return_value = mock_aiter(
+        patched_provider_factory.openai.stream.return_value = mock_aiter(
             StructuredOutput({"output": "final"}),
         )
 
         result = await stream_fn()  # pyright: ignore[reportPrivateUsage]
         assert result == [RunOutput({"output": "final"})]
 
-        assert mock_provider_factory.openai.stream.call_count == 1
+        assert patched_provider_factory.openai.stream.call_count == 1
 
-        first_opts = mock_provider_factory.openai.stream.call_args_list[0].args[1]
+        first_opts = patched_provider_factory.openai.stream.call_args_list[0].args[1]
         assert isinstance(first_opts, ProviderOptions), "sanity check"
         assert first_opts.structured_generation is False
 
     async def test_stream_task_output_with_multiple_providers(
         self,
         patched_runner: WorkflowAIRunner,
-        mock_provider_factory: Mock,
+        patched_provider_factory: Mock,
         stream_fn: Callable[[], Awaitable[Any]],
     ):
         # Check that we stop at the first provider that succeeds
@@ -2013,11 +1972,11 @@ class TestStreamTaskOutput:
         patched_runner._options.model = Model.GEMINI_1_5_FLASH_002  # pyright: ignore[reportPrivateUsage]
         patched_runner._options.provider = None  # pyright: ignore[reportPrivateUsage]
 
-        mock_provider_factory.google.stream.return_value = mock_aiter(
+        patched_provider_factory.google.stream.return_value = mock_aiter(
             StructuredOutput({"output": "final"}),
             StructuredOutput({"output": "final1"}),
         )
-        mock_provider_factory.gemini.stream.return_value = mock_aiter(
+        patched_provider_factory.gemini.stream.return_value = mock_aiter(
             StructuredOutput({"output": "final2"}),
         )
 
@@ -2027,26 +1986,26 @@ class TestStreamTaskOutput:
             RunOutput({"output": "final1"}),
         ]
 
-        mock_provider_factory.google.stream.assert_called_once()
-        first_opts = mock_provider_factory.google.stream.call_args_list[0].args[1]
+        patched_provider_factory.google.stream.assert_called_once()
+        first_opts = patched_provider_factory.google.stream.call_args_list[0].args[1]
         assert isinstance(first_opts, ProviderOptions), "sanity check"
         # Google does not support structured generation
         assert first_opts.structured_generation is False
 
-        mock_provider_factory.gemini.stream.assert_not_called()
+        patched_provider_factory.gemini.stream.assert_not_called()
 
     async def test_no_provider_available(
         self,
         patched_runner: WorkflowAIRunner,
-        mock_provider_factory: Mock,
+        patched_provider_factory: Mock,
         stream_fn: Callable[[], Awaitable[Any]],
     ):
         # Check that we raise the first error
         patched_runner._options.model = Model.GEMINI_1_5_FLASH_002  # pyright: ignore[reportPrivateUsage]
         patched_runner._options.provider = None  # pyright: ignore[reportPrivateUsage]
 
-        mock_provider_factory.google.stream.side_effect = ProviderUnavailableError()
-        mock_provider_factory.gemini.stream.side_effect = ProviderInternalError()
+        patched_provider_factory.google.stream.side_effect = ProviderUnavailableError()
+        patched_provider_factory.gemini.stream.side_effect = ProviderInternalError()
 
         with pytest.raises(ProviderUnavailableError):
             await stream_fn()
@@ -2550,7 +2509,7 @@ class TestRun:
     async def test_requires_downloading_file(
         self,
         patched_runner: WorkflowAIRunner,
-        mock_provider_factory: Mock,
+        patched_provider_factory: Mock,
         mock_task: Mock,
     ):
         """Check that requires_downloading_file is called with the correct FileWithKeyPath object when:
@@ -2560,7 +2519,7 @@ class TestRun:
         note: Tests uses a mocked openai provider but is not specific to openai
         """
         # Return false for downloading files, not really important here since we just want to check the arguments
-        mock_provider_factory.openai.requires_downloading_file.return_value = False
+        patched_provider_factory.openai.requires_downloading_file.return_value = False
         # Input schema with a named def for Image
         mock_task.input_schema = SerializableTaskIO.from_json_schema(
             {
@@ -2579,7 +2538,7 @@ class TestRun:
             },
         )
         # Mock the openai complete method to return a structured output
-        mock_provider_factory.openai.complete.return_value = StructuredOutput({"hello": "world"})
+        patched_provider_factory.openai.complete.return_value = StructuredOutput({"hello": "world"})
 
         # Input with a URL without an extension and without a content type
         # Default builder will use openai
@@ -2595,7 +2554,7 @@ class TestRun:
         assert run.task_output == {"hello": "world"}
 
         # Check that the FileWithKeyPath object was correctly passed to requires_downloading_file
-        mock_provider_factory.openai.requires_downloading_file.assert_called_once_with(
+        patched_provider_factory.openai.requires_downloading_file.assert_called_once_with(
             # format=image is what we want, the file with keypath is passed to
             # the provider to decide whether to download or not
             FileWithKeyPath(url="https://example.com/image", format="image", key_path=["image"]),
@@ -2605,7 +2564,7 @@ class TestRun:
     async def test_provider_failover(
         self,
         patched_runner: WorkflowAIRunner,
-        mock_provider_factory: Mock,
+        patched_provider_factory: Mock,
         patch_metric_send: Mock,
     ):
         """Test that the correct metric is sent when a provider fails"""
@@ -2613,8 +2572,8 @@ class TestRun:
         patched_runner._options.provider = None  # pyright: ignore[reportPrivateUsage]
         patched_runner.properties.model = Model.GEMINI_1_5_FLASH_002
 
-        mock_provider_factory.google.complete.side_effect = ProviderInternalError()
-        mock_provider_factory.gemini.complete.return_value = StructuredOutput(
+        patched_provider_factory.google.complete.side_effect = ProviderInternalError()
+        patched_provider_factory.gemini.complete.return_value = StructuredOutput(
             {"output": "final"},
         )
         builder = await patched_runner.task_run_builder({})
@@ -2622,13 +2581,13 @@ class TestRun:
         run = await patched_runner.run(builder)
         assert run.task_output == {"output": "final"}
 
-        mock_provider_factory.google.complete.assert_awaited_once()
-        first_opts = mock_provider_factory.google.complete.call_args_list[0].args[1]
+        patched_provider_factory.google.complete.assert_awaited_once()
+        first_opts = patched_provider_factory.google.complete.call_args_list[0].args[1]
         assert isinstance(first_opts, ProviderOptions), "sanity check"
         # Google does not support structured generation
         assert first_opts.structured_generation is False
 
-        mock_provider_factory.gemini.complete.assert_awaited_once()
+        patched_provider_factory.gemini.complete.assert_awaited_once()
         patch_metric_send.assert_called_once()
 
         metric = patch_metric_send.call_args_list[0].args[0]

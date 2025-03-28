@@ -1,10 +1,10 @@
-import os
 from typing import Any, Literal
 
 from pydantic import BaseModel
 from typing_extensions import override
 
 from core.domain.models import Model, Provider
+from core.providers.base.utils import get_provider_config_env
 from core.providers.openai.openai_provider_base import OpenAIProviderBase
 
 
@@ -41,10 +41,10 @@ class OpenAIProvider(OpenAIProviderBase[OpenAIConfig]):
 
     @override
     @classmethod
-    def _default_config(cls) -> OpenAIConfig:
+    def _default_config(cls, index: int) -> OpenAIConfig:
         return OpenAIConfig(
-            api_key=os.environ["OPENAI_API_KEY"],
-            url=os.environ.get("OPENAI_URL", "https://api.openai.com/v1/chat/completions"),
+            api_key=get_provider_config_env("OPENAI_API_KEY", index),
+            url=get_provider_config_env("OPENAI_URL", index, "https://api.openai.com/v1/chat/completions"),
         )
 
     @override

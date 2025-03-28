@@ -22,6 +22,7 @@ from core.domain.llm_completion import LLMCompletion
 from core.domain.llm_usage import LLMUsage
 from core.domain.message import Message
 from core.domain.models import Model, Provider
+from core.domain.models.model_provider_datas_mapping import AMAZON_BEDROCK_PROVIDER_DATA
 from core.domain.models.utils import get_model_provider_data
 from core.domain.structured_output import StructuredOutput
 from core.domain.task_run_reply import RunReply
@@ -43,7 +44,6 @@ from core.providers.amazon_bedrock.amazon_bedrock_provider import (
 from core.providers.base.models import RawCompletion
 from core.providers.base.provider_options import ProviderOptions
 from core.providers.base.streaming_context import ToolCallRequestBuffer
-from core.providers.factory.local_provider_factory import LocalProviderFactory
 from core.runners.builder_context import builder_context
 from tests.utils import fixtures_json, request_json_body
 
@@ -54,18 +54,9 @@ def amazon_provider():
         os.environ,
         {"AWS_BEDROCK_ACCESS_KEY": "test_access_key", "AWS_BEDROCK_SECRET_KEY": "test_secret_key"},
     ):
-        provider = AmazonBedrockProvider(
-            config=AmazonBedrockConfig.from_env(),
-            config_id=None,
-        )
+        provider = AmazonBedrockProvider()
     provider.logger = Mock(spec=logging.Logger)
     return provider
-
-
-def _list_provider_x_models():
-    for provider, model in LocalProviderFactory().list_provider_x_models():
-        if type(provider) is AmazonBedrockProvider:
-            yield provider, model
 
 
 class TestAmazonBedrockProvider(unittest.TestCase):
@@ -104,7 +95,7 @@ class TestAmazonBedrockProvider(unittest.TestCase):
     def test_default_config(self):
         """Test the _default_config method returns the correct configuration."""
         provider = AmazonBedrockProvider()
-        config = provider._default_config()  # pyright: ignore [reportPrivateUsage]
+        config = provider._default_config(0)  # pyright: ignore [reportPrivateUsage]
 
         self.assertIsInstance(config, AmazonBedrockConfig)
         self.assertEqual(config.aws_bedrock_access_key, "test_access_key")
@@ -128,7 +119,7 @@ class TestAmazonBedrockProvider(unittest.TestCase):
     )
     def test_default_config_raises_AmazonBedrockModelError_on_broken_json(self):
         provider = AmazonBedrockProvider()
-        config = provider._default_config()  # pyright: ignore [reportPrivateUsage]
+        config = provider._default_config(0)  # pyright: ignore [reportPrivateUsage]
         assert config.available_model_x_region_map == {}
         assert config.default_region
 
@@ -289,11 +280,11 @@ def _llm_completion(messages: list[dict[str, Any]], usage: LLMUsage, response: s
 class TestProviderCostCalculation:
     # TODO: only use static values (instead of 'prompt_cost_per_token * 10' e.g), when the codebase will be more stable.
 
-    @pytest.mark.parametrize("provider, model", _list_provider_x_models())
-    async def test_token_count_is_fed(self, provider: Any, model: Model):
+    @pytest.mark.parametrize("model", AMAZON_BEDROCK_PROVIDER_DATA.keys())
+    async def test_token_count_is_fed(self, amazon_provider: AmazonBedrockProvider, model: Model):
         # Test the case when both the prompt and completion token counts are fed in the original usage
 
-        llm_usage = await provider.compute_llm_completion_usage(
+        llm_usage = await amazon_provider.compute_llm_completion_usage(
             model=model,
             completion=_llm_completion(
                 messages=[],
@@ -311,11 +302,11 @@ class TestProviderCostCalculation:
         assert llm_usage.completion_token_count == 20  # from initial usage
         assert llm_usage.completion_cost_usd == completion_cost_per_token * 20
 
-    @pytest.mark.parametrize("provider, model", _list_provider_x_models())
-    async def test_token_count_is_fed_with_no_response(self, provider: Any, model: Model):
+    @pytest.mark.parametrize("model", AMAZON_BEDROCK_PROVIDER_DATA.keys())
+    async def test_token_count_is_fed_with_no_response(self, amazon_provider: AmazonBedrockProvider, model: Model):
         # Test the case when both the prompt and completion token counts are fed in the original usage
 
-        llm_usage = await provider.compute_llm_completion_usage(
+        llm_usage = await amazon_provider.compute_llm_completion_usage(
             model=model,
             completion=_llm_completion(
                 messages=[],
@@ -325,11 +316,15 @@ class TestProviderCostCalculation:
         )
         assert llm_usage.cost_usd != 0
 
-    @pytest.mark.parametrize("provider, model", _list_provider_x_models())
-    async def test_token_count_is_fed_with_no_response_and_no_completion_token_count(self, provider: Any, model: Model):
+    @pytest.mark.parametrize("model", AMAZON_BEDROCK_PROVIDER_DATA.keys())
+    async def test_token_count_is_fed_with_no_response_and_no_completion_token_count(
+        self,
+        amazon_provider: AmazonBedrockProvider,
+        model: Model,
+    ):
         # Test the case when both the prompt and completion token counts are fed in the original usage
 
-        llm_usage = await provider.compute_llm_completion_usage(
+        llm_usage = await amazon_provider.compute_llm_completion_usage(
             model=model,
             completion=_llm_completion(
                 messages=[],
@@ -339,11 +334,11 @@ class TestProviderCostCalculation:
         )
         assert llm_usage.cost_usd == 0
 
-    @pytest.mark.parametrize("provider, model", _list_provider_x_models())
-    async def test_token_count_is_not_fed(self, provider: Any, model: Model):
+    @pytest.mark.parametrize("model", AMAZON_BEDROCK_PROVIDER_DATA.keys())
+    async def test_token_count_is_not_fed(self, amazon_provider: AmazonBedrockProvider, model: Model):
         # Test the case when the token count is not fed in the original usage
 
-        llm_usage = await provider.compute_llm_completion_usage(
+        llm_usage = await amazon_provider.compute_llm_completion_usage(
             model=model,
             completion=_llm_completion(
                 messages=[{"role": "user", "content": [{"text": "Hello !"}]}],
@@ -363,11 +358,11 @@ class TestProviderCostCalculation:
         assert llm_usage.completion_token_count == 3  # computed from the completion
         assert llm_usage.completion_cost_usd == completion_cost_per_token * 3
 
-    @pytest.mark.parametrize("provider, model", _list_provider_x_models())
-    async def test_token_count_is_not_fed_with_no_response(self, provider: Any, model: Model):
+    @pytest.mark.parametrize("model", AMAZON_BEDROCK_PROVIDER_DATA.keys())
+    async def test_token_count_is_not_fed_with_no_response(self, amazon_provider: AmazonBedrockProvider, model: Model):
         # Test the case when the token count is not fed in the original usage
 
-        llm_usage = await provider.compute_llm_completion_usage(
+        llm_usage = await amazon_provider.compute_llm_completion_usage(
             model=model,
             completion=_llm_completion(
                 messages=[{"role": "user", "content": [{"text": "Hello !"}]}],
@@ -377,11 +372,15 @@ class TestProviderCostCalculation:
         )
         assert llm_usage.cost_usd == 0
 
-    @pytest.mark.parametrize("provider, model", _list_provider_x_models())
-    async def test_token_count_is_not_fed_multiple_messages_and_long_completion(self, provider: Any, model: Model):
+    @pytest.mark.parametrize("model", AMAZON_BEDROCK_PROVIDER_DATA.keys())
+    async def test_token_count_is_not_fed_multiple_messages_and_long_completion(
+        self,
+        amazon_provider: AmazonBedrockProvider,
+        model: Model,
+    ):
         # Test the case when the token count is not fed in the original usage
 
-        llm_usage = await provider.compute_llm_completion_usage(
+        llm_usage = await amazon_provider.compute_llm_completion_usage(
             model=model,
             completion=_llm_completion(
                 messages=[
@@ -404,15 +403,15 @@ class TestProviderCostCalculation:
         assert llm_usage.completion_token_count == 1000  # computed from the completion, 999 hellos + 1 period
         assert llm_usage.completion_cost_usd == completion_cost_per_token * 1000
 
-    @pytest.mark.parametrize("provider, model", _list_provider_x_models())
+    @pytest.mark.parametrize("model", AMAZON_BEDROCK_PROVIDER_DATA.keys())
     async def test_token_count_is_not_fed_multiple_messages_and_long_completion_with_no_response(
         self,
-        provider: Any,
+        amazon_provider: AmazonBedrockProvider,
         model: Model,
     ):
         # Test the case when the token count is not fed in the original usage
 
-        llm_usage = await provider.compute_llm_completion_usage(
+        llm_usage = await amazon_provider.compute_llm_completion_usage(
             model=model,
             completion=_llm_completion(
                 messages=[
@@ -425,11 +424,11 @@ class TestProviderCostCalculation:
         )
         assert llm_usage.cost_usd == 0
 
-    @pytest.mark.parametrize("provider, model", _list_provider_x_models())
-    async def test_only_prompt_count_is_fed(self, provider: Any, model: Model):
+    @pytest.mark.parametrize("model", AMAZON_BEDROCK_PROVIDER_DATA.keys())
+    async def test_only_prompt_count_is_fed(self, amazon_provider: AmazonBedrockProvider, model: Model):
         # Test the case when the prompt token count is fed in the original usage but the completion token count is not
 
-        llm_usage = await provider.compute_llm_completion_usage(
+        llm_usage = await amazon_provider.compute_llm_completion_usage(
             model=model,
             completion=_llm_completion(
                 messages=[{"role": "user", "content": [{"text": "Hello !"}]}],
@@ -447,11 +446,11 @@ class TestProviderCostCalculation:
         assert llm_usage.completion_token_count == 3  # computed from the completion
         assert llm_usage.completion_cost_usd == completion_cost_per_token * 3
 
-    @pytest.mark.parametrize("provider, model", _list_provider_x_models())
-    async def test_only_completion_count_is_fed(self, provider: Any, model: Model):
+    @pytest.mark.parametrize("model", AMAZON_BEDROCK_PROVIDER_DATA.keys())
+    async def test_only_completion_count_is_fed(self, amazon_provider: AmazonBedrockProvider, model: Model):
         # Test the case when the completion token count is fed in the original usage but the prompt token count is not
 
-        llm_usage = await provider.compute_llm_completion_usage(
+        llm_usage = await amazon_provider.compute_llm_completion_usage(
             model=model,
             completion=_llm_completion(
                 messages=[{"role": "user", "content": [{"text": "Hello !"}]}],

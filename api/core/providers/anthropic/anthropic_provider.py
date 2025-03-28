@@ -1,5 +1,4 @@
 import json
-import os
 from typing import Any, AsyncIterator, Literal
 
 from httpx import Response
@@ -35,6 +34,7 @@ from core.providers.base.httpx_provider import HTTPXProvider, ParsedResponse
 from core.providers.base.models import RawCompletion, StandardMessage
 from core.providers.base.provider_options import ProviderOptions
 from core.providers.base.streaming_context import ToolCallRequestBuffer
+from core.providers.base.utils import get_provider_config_env
 from core.providers.google.google_provider_domain import (
     internal_tool_name_to_native_tool_call,
     native_tool_name_to_internal,
@@ -147,10 +147,10 @@ class AnthropicProvider(HTTPXProvider[AnthropicConfig, CompletionResponse]):
 
     @override
     @classmethod
-    def _default_config(cls):
+    def _default_config(cls, index: int) -> AnthropicConfig:
         return AnthropicConfig(
-            api_key=os.environ["ANTHROPIC_API_KEY"],
-            url=os.environ.get("ANTHROPIC_API_URL", "https://api.anthropic.com/v1/messages"),
+            api_key=get_provider_config_env("ANTHROPIC_API_KEY", index),
+            url=get_provider_config_env("ANTHROPIC_API_URL", index, "https://api.anthropic.com/v1/messages"),
         )
 
     async def wrap_sse(self, raw: AsyncIterator[bytes], termination_chars: bytes = b""):

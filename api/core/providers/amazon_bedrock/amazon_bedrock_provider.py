@@ -167,8 +167,8 @@ class AmazonBedrockProvider(HTTPXProvider[AmazonBedrockConfig, CompletionRespons
 
     @override
     @classmethod
-    def _default_config(cls) -> AmazonBedrockConfig:
-        return AmazonBedrockConfig.from_env()
+    def _default_config(cls, index: int) -> AmazonBedrockConfig:
+        return AmazonBedrockConfig.from_env(index)
 
     @override
     def default_model(self) -> Model:

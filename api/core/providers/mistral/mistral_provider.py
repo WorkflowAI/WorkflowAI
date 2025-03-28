@@ -1,5 +1,4 @@
 import json
-import os
 from typing import Any, Literal
 
 from httpx import Response
@@ -16,6 +15,7 @@ from core.providers.base.httpx_provider import HTTPXProvider, ParsedResponse
 from core.providers.base.models import StandardMessage
 from core.providers.base.provider_options import ProviderOptions
 from core.providers.base.streaming_context import ToolCallRequestBuffer
+from core.providers.base.utils import get_provider_config_env
 from core.providers.google.google_provider_domain import (
     internal_tool_name_to_native_tool_call,
     native_tool_name_to_internal,
@@ -201,10 +201,10 @@ class MistralAIProvider(HTTPXProvider[MistralAIConfig, CompletionResponse]):
 
     @override
     @classmethod
-    def _default_config(cls):
+    def _default_config(cls, index: int):
         return MistralAIConfig(
-            api_key=os.environ["MISTRAL_API_KEY"],
-            url=os.environ.get("MISTRAL_API_URL", "https://api.mistral.ai/v1/chat/completions"),
+            api_key=get_provider_config_env("MISTRAL_API_KEY", index),
+            url=get_provider_config_env("MISTRAL_API_URL", index, "https://api.mistral.ai/v1/chat/completions"),
         )
 
     @override

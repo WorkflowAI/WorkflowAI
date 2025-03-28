@@ -20,7 +20,6 @@ from core.domain.errors import (
 )
 from core.domain.fields.internal_reasoning_steps import InternalReasoningStep
 from core.domain.message import Message
-from core.domain.models import Provider
 from core.domain.models.model_data import FinalModelData, ModelData
 from core.domain.models.model_datas_mapping import MODEL_DATAS
 from core.domain.models.utils import get_model_data, get_model_provider_data
@@ -762,20 +761,12 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
                 msg=f"{model_data.model.value} does not support tool calling",
             )
 
-    def _build_provider(self, provider_type: Provider, provider_config: tuple[str, ProviderConfig] | None):
-        if provider_config:
-            return self.provider_factory.build_provider(provider_config[1], config_id=provider_config[0])
-
-        return self.provider_factory.get_provider(provider_type)
-
     def _build_provider_data(
         self,
+        provider: AbstractProvider[Any, Any],
         model_data: FinalModelData,
         is_structured_generation_enabled: bool,
-        provider_type: Provider,
-        provider_config: tuple[str, ProviderConfig] | None,
     ) -> tuple[AbstractProvider[Any, Any], TemplateName, ProviderOptions, FinalModelData]:
-        provider = self._build_provider(provider_type, provider_config)
         provider_options = ProviderOptions(
             model=model_data.model,
             temperature=self._options.temperature,
@@ -785,8 +776,6 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
             structured_generation=is_structured_generation_enabled,
             tenant=self.task.tenant,
         )
-
-        provider = self._build_provider(provider_type, provider_config)
 
         model_data_copy = model_data.model_copy()
         provider.sanitize_model_data(model_data_copy)
@@ -984,6 +973,7 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
         pipeline = ProviderPipeline(
             options=self._options,
             provider_config=self._provider_config,
+            factory=self.provider_factory,
             builder=self._build_provider_data,
         )
 
