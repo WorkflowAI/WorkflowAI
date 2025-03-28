@@ -41,7 +41,7 @@ async def test_run_with_file_url(test_client: IntegrationTestClient):
             "content_type": "image/png",
             "storage_url": test_client.storage_url(
                 task,
-                "b59dccc6e7a926dabccc2f230503ef19dfe4be5634ad5a471d66c1646cd0a1a0.png",
+                "23439dd28abda73e46eb007534630bebe9cd930710f22171af0d62fa75187bb8.png",
             ),
         },
     }

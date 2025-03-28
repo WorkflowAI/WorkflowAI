@@ -1,4 +1,3 @@
-import os
 from collections.abc import Callable
 from typing import Annotated
 
@@ -19,6 +18,7 @@ from api.dependencies.storage import (
     TranscriptionStorageDep,
 )
 from api.dependencies.task_info import TaskTupleDep
+from api.services import file_storage
 from api.services.analytics import AnalyticsService, analytics_service
 from api.services.api_keys import APIKeyService
 from api.services.feedback_svc import FeedbackTokenGenerator
@@ -36,7 +36,7 @@ from api.services.transcriptions import TranscriptionService
 from api.services.versions import VersionsService
 from core.deprecated.workflowai import WorkflowAI
 from core.domain.users import UserIdentifier
-from core.storage.azure.azure_blob_file_storage import AzureBlobFileStorage, FileStorage
+from core.storage.file_storage import FileStorage
 
 
 async def analytics_service_dependency(
@@ -57,12 +57,7 @@ AnalyticsServiceDep = Annotated[AnalyticsService, Depends(analytics_service_depe
 
 
 def file_storage_dependency() -> FileStorage:
-    # We return an empty blob storage if the env variables are not set
-    # Currently we instantiate the storage every time but it is rarely needed
-    return AzureBlobFileStorage(
-        os.getenv("WORKFLOWAI_STORAGE_CONNECTION_STRING", ""),
-        os.getenv("WORKFLOWAI_STORAGE_TASK_RUNS_CONTAINER", ""),
-    )
+    return file_storage.shared_file_storage
 
 
 FileStorageDep = Annotated[FileStorage, Depends(file_storage_dependency)]

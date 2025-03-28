@@ -95,7 +95,9 @@ StorageDep = Annotated[BackendStorage, TaskiqDepends(storage_dep)]
 
 
 def file_storage_dep() -> FileStorage:
-    return storage_service.file_storage_for_tenant()
+    from api.services import file_storage as file_storage_service
+
+    return file_storage_service.shared_file_storage
 
 
 FileStorageDep = Annotated[FileStorage, TaskiqDepends(file_storage_dep)]

@@ -23,7 +23,7 @@ from core.domain.version_reference import VersionReference
 from core.runners.abstract_runner import AbstractRunner, CacheFetcher
 from core.runners.workflowai.workflowai_runner import WorkflowAIRunner
 from core.storage.abstract_storage import AbstractStorage
-from core.storage.azure.azure_blob_file_storage import FileStorage
+from core.storage.file_storage import FileStorage
 from core.storage.noop_storage import NoopStorage
 from core.utils.no_op import NoopFileStorage
 
@@ -89,7 +89,7 @@ class WorkflowAI:
         self._run_service = run_service
         self.storage: AbstractStorage = storage or NoopStorage()
         self._logger = logging.getLogger(self.__class__.__name__)
-        self._file_storage = file_storage or NoopFileStorage()
+        self._file_storage: FileStorage = file_storage or NoopFileStorage()
         self._cache_fetcher = cache_fetcher
 
     @classmethod

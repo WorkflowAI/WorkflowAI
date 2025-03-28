@@ -36,6 +36,7 @@ from core.storage import ObjectNotFoundException, TaskTuple
 from core.storage.abstract_storage import AbstractStorage
 from core.storage.azure.azure_blob_file_storage import CouldNotStoreFileError, FileStorage
 from core.storage.backend_storage import BackendStorage
+from core.storage.file_storage import FileData
 from core.utils.dicts import InvalidKeyPathError, delete_at_keypath, set_at_keypath
 from core.utils.models.dumps import safe_dump_pydantic_model
 
@@ -226,12 +227,16 @@ class RunsService:
         files: list[FileWithKeyPath],
     ) -> list[FileWithKeyPath]:
         for file in files:
-            if not file.data:
+            bts = file.content_bytes()
+            if not bts:
                 # Skipping, only reason a file might not have data is if it's private
                 continue
 
             try:
-                file.storage_url = await file_storage.store_file(file, folder_path=folder_path)
+                file.storage_url = await file_storage.store_file(
+                    FileData(contents=bts, content_type=file.content_type),
+                    folder_path=folder_path,
+                )
             except CouldNotStoreFileError as e:
                 _logger.exception(
                     "Error storing file",

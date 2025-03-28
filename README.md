@@ -16,7 +16,7 @@ cp .env.sample .env
 docker-compose build
 # [Optional] Start the dependencies in the background, this way we can shut down the app while
 # keeping the dependencies running
-docker-compose up -d clickhouse azurite redis mongo
+docker-compose up -d clickhouse minio redis mongo
 # Start the docker images
 docker-compose up
 # The WorkflowAI api is also a WorkflowAI user
@@ -32,6 +32,18 @@ docker-compose up
 > Although it is configured for local development via hot reloads and volumes, Docker introduces significant
 > latencies for development. Detailed setup for both the [client](./client/README.md) and [api](./api/README.md)
 > are provided in their respective READMEs.
+
+> For now, we rely on public read access to the storage in the frontend. The URLs are not discoverable though so it should be ok until we implement temporary leases for files.
+> On minio that's possible with the following commands
+
+```sh
+# Run sh inside the running minio container
+docker-compose exec minio sh
+# Create an alias for the bucket
+mc anonymous set download myminio/workflowai-task-runs
+# Set download permissions
+mc alias set myminio http://minio:9000 minio miniosecret
+```
 
 ### Structure
 
@@ -53,9 +65,9 @@ The [client](./client/README.md) is a NextJS app that serves as a frontend
   and query duration.
 - **Redis**: We use Redis as a broker for messages for taskiq. TaskIQ supports a number
   of different message broker.
-- **Azure Blob Storage** is used to store files.
-
-<!-- TODO: switch to S3 when  -->
+- **Minio** is used to store files but any _S3 compatible storage_ will do. We also have a plugin for _Azure Blob Storage_.
+  The selected storage depends on the `WORKFLOWAI_STORAGE_CONNECTION_STRING` env variable. A variable starting with
+  `s3://` will result in the S3 storage being used.
 
 ### Setting up providers
 

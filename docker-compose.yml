@@ -26,7 +26,8 @@ services:
     image: clickhouse/clickhouse-server:latest
     ports:
       - 8123:8123
-      - 9000:9000
+      # No need for the 9000 port, it is also used by minio
+      # - 9000:9000
     environment:
       CLICKHOUSE_PASSWORD: admin
       CLICKHOUSE_USER: default
@@ -75,11 +76,13 @@ services:
       # Overriding environement to use hosts internal to the docker network
       - WORKFLOWAI_MONGO_CONNECTION_STRING=mongodb://admin:admin@mongo:27017/workflowai
       - JOBS_BROKER_URL=redis://redis:6379
-      - WORKFLOWAI_STORAGE_CONNECTION_STRING=DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;
+      # Use when connecting to Azure Storage Emulator
+      # - WORKFLOWAI_STORAGE_CONNECTION_STRING=DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;
+      - WORKFLOWAI_STORAGE_CONNECTION_STRING=s3://minio:miniosecret@minio:9000/workflowai-task-runs?secure=false
     depends_on:
       - mongo
       - redis
-      - azurite
+      - minio
       - clickhouse
   worker:
     <<: *api
@@ -146,6 +149,20 @@ services:
     #   - ./client:/app/client
     #   - ./yarn.lock:/app/yarn.lock
     #   - ./package.json:/app/package.json
+
+  minio:
+    image: minio/minio
+    entrypoint: sh
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    # Create the task_runs bucket before starting minio
+    command: -c 'mkdir -p /data/workflowai-task-runs && mkdir -p /data/workflowai-test-task-runs && minio server --address ":9000" --console-address ":9001" /data'
+    environment:
+      MINIO_ACCESS_KEY: minio
+      MINIO_SECRET_KEY: miniosecret
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: miniosecret
 
 networks:
   default:

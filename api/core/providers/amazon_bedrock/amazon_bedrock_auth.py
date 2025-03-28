@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import boto3  # pyright: ignore [reportMissingTypeStubs]
+import boto3
 import httpx
 from botocore.auth import SigV4Auth  # pyright: ignore [reportMissingTypeStubs]
 from botocore.awsrequest import AWSRequest  # pyright: ignore [reportMissingTypeStubs]
@@ -14,7 +14,7 @@ def _get_session(
     aws_secret_key: str | None,
     aws_session_token: str | None,
     region: str | None,
-) -> boto3.Session:
+):
     return boto3.Session(
         region_name=region,
         aws_access_key_id=aws_access_key,

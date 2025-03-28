@@ -1,11 +1,10 @@
-import base64
 import os
 from io import FileIO
 
 import pytest
 
-from core.domain.fields.file import DomainUploadFile, File
 from core.storage.azure.azure_blob_file_storage import AzureBlobFileStorage
+from core.storage.file_storage import FileData
 from tests.utils import fixture_bytes, fixture_path
 
 
@@ -41,13 +40,14 @@ async def test_store_file(azure_blob_storage: AzureBlobFileStorage):
     assert hasattr(blob_service_client, "url")
 
     file_data = fixture_bytes("files", "test.png")
-    base64_data = base64.b64encode(file_data).decode("utf-8")
-    file = File(content_type="image/png", data=base64_data)
 
     folder_path = "test/local"
-    content_hash = file.get_content_hash()
-    blob_name = f"{folder_path}/{content_hash}.png"
-    url = await azure_blob_storage.store_file(file, folder_path)
+
+    blob_name = f"{folder_path}/52bcf683da5693c81ce5d748bd2e158971dc0abbe5f8500440240c64569c0ca4.png"
+    url = await azure_blob_storage.store_file(
+        FileData(contents=file_data, content_type="image/png"),
+        folder_path,
+    )
 
     container_url = f"{blob_service_client.url}{azure_blob_storage.container_name}"  # type: ignore
     assert url == f"{container_url}/{blob_name}"
@@ -59,14 +59,13 @@ async def test_store_upload_file(azure_blob_storage: AzureBlobFileStorage):
     assert hasattr(blob_service_client, "url")
 
     _file = FileIO(file=fixture_path("files", "test.png"))
-    file = DomainUploadFile(
+    file = FileData(
         filename="test.png",
         contents=_file.read(),
         content_type="image/png",
     )
     folder_path = "test/local"
-    content_hash = file.get_content_hash()
-    blob_name = f"{folder_path}/{content_hash}.png"
+    blob_name = f"{folder_path}/52bcf683da5693c81ce5d748bd2e158971dc0abbe5f8500440240c64569c0ca4.png"
     url = await azure_blob_storage.store_file(file, folder_path)
 
     container_url = f"{blob_service_client.url}{azure_blob_storage.container_name}"  # type: ignore

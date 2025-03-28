@@ -1,5 +1,3 @@
-import hashlib
-
 from core.domain.fields.file import File
 
 
@@ -29,14 +27,3 @@ class TestFile:
     def test_validate_data_content_type_none(self):
         img = File(url="https://bla.com/file")
         assert img.content_type is None
-
-    def test_get_content_hash(self):
-        img = File(url="https://bla.com/file.png")
-        assert img.url is not None
-        assert img.get_content_hash() == hashlib.sha256(img.url.encode()).hexdigest()
-
-        img = File(data="iVBORw0KGgoAAAANSUhEUgAAAAUA")
-        assert img.get_content_hash() == hashlib.sha256(b"iVBORw0KGgoAAAANSUhEUgAAAAUA").hexdigest()
-
-        img2 = File(url="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUA")
-        assert img2.get_content_hash() == hashlib.sha256(b"iVBORw0KGgoAAAANSUhEUgAAAAUA").hexdigest()

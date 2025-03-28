@@ -1,23 +1,16 @@
-import base64
+import hashlib
 import logging
-from typing import Protocol
+import mimetypes
+from typing import override
 
 from azure.core.exceptions import ResourceExistsError
 from azure.core.pipeline.transport import AioHttpTransport
 from azure.storage.blob.aio import BlobClient, BlobServiceClient
 
-from core.domain.fields.file import DomainUploadFile, File
+from core.storage.file_storage import CouldNotStoreFileError, FileData, FileStorage
 
 
-class FileStorage(Protocol):
-    async def store_file(self, file: File | DomainUploadFile, folder_path: str) -> str: ...
-
-
-class CouldNotStoreFileError(Exception):
-    pass
-
-
-class AzureBlobFileStorage:
+class AzureBlobFileStorage(FileStorage):
     def __init__(self, connection_string: str, container_name: str):
         self.connection_string = connection_string
         self.container_name = container_name
@@ -36,19 +29,13 @@ class AzureBlobFileStorage:
             ),
         )
 
-    async def store_file(self, file: File | DomainUploadFile, folder_path: str) -> str:
+    @override
+    async def store_file(self, file: FileData, folder_path: str) -> str:
         # folder_path is like /{tenant}/{task_id}
 
-        if isinstance(file, DomainUploadFile):
-            contents = file.contents
-        elif file.data:
-            contents = base64.b64decode(file.data)
-        else:
-            raise ValueError("File contents cannot be None")
-
-        content_hash = file.get_content_hash()
-        extension = file.get_extension()
-        blob_name = f"{folder_path}/{content_hash}{extension}"
+        content_hash = hashlib.sha256(file.contents).hexdigest()
+        extension = mimetypes.guess_extension(file.content_type) if file.content_type else None
+        blob_name = f"{folder_path}/{content_hash}{extension or ''}"
 
         async with await self._get_blob_service_client() as blob_service_client:
             try:
@@ -56,11 +43,10 @@ class AzureBlobFileStorage:
                     container=self.container_name,
                     blob=blob_name,
                 )
-                # TODO: Update or add parameters to upload_blob based on performance.
-                # It supports chunking, compression, concurrency, and encryption
+
                 try:
                     await blob_client.upload_blob(
-                        contents,
+                        file.contents,
                         content_type=file.content_type,
                         overwrite=False,
                     )

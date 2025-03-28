@@ -1,7 +1,5 @@
 from typing import Any
 
-from core.domain.fields.file import DomainUploadFile, File
-
 
 def event_router(*args: Any, **kwargs: Any) -> None:  # type: ignore
     pass
@@ -29,5 +27,7 @@ class NoopMetricsService:
 
 
 class NoopFileStorage:
-    async def store_file(self, file: File | DomainUploadFile, folder_path: str) -> str:
+    from core.storage.file_storage import FileData
+
+    async def store_file(self, file: FileData, folder_path: str) -> str:
         return ""

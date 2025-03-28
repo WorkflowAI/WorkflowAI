@@ -1,4 +1,3 @@
-import hashlib
 import logging
 import mimetypes
 from base64 import b64decode
@@ -93,20 +92,15 @@ class File(BaseModel):
             return None
         return self.content_type in ["text/plain", "text/markdown", "text/csv", "text/json", "text/html"]
 
-    def get_content_hash(self) -> str:
-        if self.data:
-            return hashlib.sha256(self.data.encode()).hexdigest()
-        if self.url:
-            if self.url.startswith("data:"):
-                _, data = _parse_data_url(self.url[5:])
-                return hashlib.sha256(data.encode()).hexdigest()
-            return hashlib.sha256(self.url.encode()).hexdigest()
-        raise ValueError("No data or URL provided for file")
-
     def get_extension(self) -> str:
         if self.content_type:
             return mimetypes.guess_extension(self.content_type) or ""
         return ""
+
+    def content_bytes(self) -> bytes | None:
+        if self.data:
+            return b64decode(self.data)
+        return None
 
 
 def _parse_data_url(data_url: str) -> tuple[str, str]:
@@ -114,17 +108,3 @@ def _parse_data_url(data_url: str) -> tuple[str, str]:
     if len(splits) != 2:
         raise ValueError("Invalid base64 data URL")
     return splits[0], splits[1]
-
-
-class DomainUploadFile(BaseModel):
-    filename: str
-    contents: bytes
-    content_type: str
-
-    def get_content_hash(self) -> str:
-        return hashlib.sha256(self.contents).hexdigest()
-
-    def get_extension(self) -> str:
-        if self.filename:
-            return "." + self.filename.split(".")[-1]
-        return ""
