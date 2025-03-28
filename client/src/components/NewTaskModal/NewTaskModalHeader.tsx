@@ -76,7 +76,7 @@ export function NewTaskModalHeader(props: NewTaskModalHeaderProps) {
   const title = useMemo(() => {
     switch (mode) {
       case 'new':
-        return 'Create New AI Agent';
+        return 'New AI Feature';
       case 'editSchema':
         return 'Edit Schema';
       case 'editDescription':

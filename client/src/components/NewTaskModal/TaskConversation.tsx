@@ -5,18 +5,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Textarea } from '@/components/ui/Textarea';
 import { WORKFLOW_AI_USERNAME } from '@/lib/constants';
 import { cn } from '@/lib/utils';
-import { WorkflowAIGradientIcon } from '../Logos/WorkflowAIIcon';
 import { SimpleTooltip } from '../ui/Tooltip';
 import { GhostLoading } from './GhostLoading';
 import { ConversationMessage, TaskConversationMessage, TaskConversationRetryCell } from './TaskConversationMessage';
 
 dayjs.extend(relativeTime);
-
-const DEFAULT_MESSAGE_SUGGESTIONS = [
-  'Given a product review, extract the main sentiment.',
-  'Extract the city and country from the image.',
-  'Summarize a text.',
-];
 
 type ActionButtonProps = {
   sendDisabled: boolean;
@@ -178,67 +171,14 @@ export function TaskConversationMessages(props: TaskConversationMessagesProps) {
   );
 }
 
-type TaskConversationMessageSuggestionProps = {
-  suggestion: string;
-  onSendIteration: (suggestion?: string) => Promise<void>;
-};
-
-function TaskConversationMessageSuggestion(props: TaskConversationMessageSuggestionProps) {
-  const { suggestion, onSendIteration } = props;
-
-  const onClick = useCallback(() => {
-    onSendIteration(suggestion);
-  }, [onSendIteration, suggestion]);
-
-  return (
-    <div
-      className='w-[240px] border border-gray-300 bg-white font-normal text-base rounded-[2px] p-4 text-gray-600 hover:bg-gray-100 cursor-pointer transition-colors'
-      onClick={onClick}
-    >
-      {suggestion}
-    </div>
-  );
-}
-
-type TaskConverationGreetingProps = {
-  userFirstName?: string | undefined | null;
-  onSendIteration: (suggestion?: string) => Promise<void>;
-};
-
-function TaskConverationGreeting(props: TaskConverationGreetingProps) {
-  const { userFirstName, onSendIteration } = props;
-  const greetingMessage = useMemo(
-    () => `Hi${userFirstName ? ` ${userFirstName}` : ''}, what do you want to build today?`,
-    [userFirstName]
-  );
-  return (
-    <div className='flex-1 flex flex-col justify-center items-center font-lato'>
-      <WorkflowAIGradientIcon ratio={3.4} />
-      <div className='pt-8 text-center text-gray-700 text-lg font-medium'>{greetingMessage}</div>
-      <div className='pt-8 flex gap-3 items-center'>
-        {DEFAULT_MESSAGE_SUGGESTIONS.map((suggestion, index) => (
-          <TaskConversationMessageSuggestion key={index} suggestion={suggestion} onSendIteration={onSendIteration} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-type TaskConversationProps = TaskConversationMessagesProps &
-  TaskConversationInputProps & {
-    userFirstName?: string | undefined | null;
-  };
+type TaskConversationProps = TaskConversationMessagesProps & TaskConversationInputProps;
 
 export function TaskConversation(props: TaskConversationProps) {
-  const { userMessage, messages, loading, userFirstName, setUserMessage, onSendIteration, showRetry, retry } = props;
+  const { userMessage, messages, loading, setUserMessage, onSendIteration, showRetry, retry } = props;
 
   return (
     <div className='flex flex-col h-full'>
-      {messages.length === 0 ? (
-        <TaskConverationGreeting userFirstName={userFirstName} onSendIteration={onSendIteration} />
-      ) : (
-        <TaskConversationMessages messages={messages} loading={loading} showRetry={showRetry} retry={retry} />
-      )}
+      <TaskConversationMessages messages={messages} loading={loading} showRetry={showRetry} retry={retry} />
       <TaskConversationInput
         setUserMessage={setUserMessage}
         onSendIteration={onSendIteration}

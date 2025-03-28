@@ -16,10 +16,16 @@ import { SuggestedFeaturesThumbnail } from './SuggestedFeaturesThumbnail';
 type SuggestedFeaturesListEntryProps = {
   feature: BaseFeature;
   companyURL: string | undefined;
+  featureWasSelected?: (
+    title: string,
+    inputSchema: Record<string, unknown>,
+    outputSchema: Record<string, unknown>,
+    message: string | undefined
+  ) => void;
 };
 
 export function SuggestedFeaturesListEntry(props: SuggestedFeaturesListEntryProps) {
-  const { feature, companyURL } = props;
+  const { feature, companyURL, featureWasSelected } = props;
 
   const scopeKey = buildFeaturePreviewsScopeKey({ feature });
 
@@ -58,11 +64,23 @@ export function SuggestedFeaturesListEntry(props: SuggestedFeaturesListEntryProp
 
     setCreatingTaskInProgress(true);
 
+    const name = feature.name ?? `AI agent ${dayjs().format('YYYY-MM-DD-HH-mm-ss')}`;
+    const input_schema = schemas.input_schema as Record<string, unknown>;
+    const output_schema = schemas.output_schema as Record<string, unknown>;
+
+    if (!!featureWasSelected) {
+      featureWasSelected(name, input_schema, output_schema, feature.specifications ?? undefined);
+      setTimeout(() => {
+        setCreatingTaskInProgress(false);
+      }, 4000);
+      return;
+    }
+
     const payload: CreateAgentRequest = {
       chat_messages: [],
-      name: feature.name ?? `AI agent ${dayjs().format('YYYY-MM-DD-HH-mm-ss')}`,
-      input_schema: schemas.input_schema as Record<string, unknown>,
-      output_schema: schemas.output_schema as Record<string, unknown>,
+      name,
+      input_schema,
+      output_schema,
     };
 
     const task = await createTask(loggedInTenant, payload);
@@ -85,6 +103,7 @@ export function SuggestedFeaturesListEntry(props: SuggestedFeaturesListEntryProp
     schemasInitialized,
     feature,
     fetchFeatureSchemasIfNeeded,
+    featureWasSelected,
   ]);
 
   // If we are waiting for the schemas to be initialized, and they are, create the task

@@ -10,11 +10,17 @@ import { SuggestedFeaturesListEntry } from './SuggestedFeaturesListEntry';
 
 type SuggestedFeaturesListProps = {
   tag: TagPreview | undefined;
-  companyURL: string | undefined;
+  companyURL?: string;
+  featureWasSelected?: (
+    title: string,
+    inputSchema: Record<string, unknown>,
+    outputSchema: Record<string, unknown>,
+    message: string | undefined
+  ) => void;
 };
 
 export function SuggestedFeaturesList(props: SuggestedFeaturesListProps) {
-  const { tag, companyURL } = props;
+  const { tag, companyURL, featureWasSelected } = props;
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { token } = useOrFetchToken();
 
@@ -82,7 +88,12 @@ export function SuggestedFeaturesList(props: SuggestedFeaturesListProps) {
       </div>
       <div className={cx('grid grid-cols-1 sm:grid-cols-1 lg:grid-cols-2 gap-6')}>
         {features?.map((feature) => (
-          <SuggestedFeaturesListEntry key={feature.name} feature={feature} companyURL={companyURL} />
+          <SuggestedFeaturesListEntry
+            key={feature.name}
+            feature={feature}
+            companyURL={companyURL}
+            featureWasSelected={featureWasSelected}
+          />
         ))}
         {isLoading && !features?.length && (
           <>

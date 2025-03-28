@@ -7,6 +7,7 @@ import { TenantID } from '@/types/aliases';
 import { TaskSchemaID } from '@/types/aliases';
 import { JsonSchema } from '@/types/json_schema';
 import { SchemaSplattedEditor } from '../SchemaSplattedEditor/SchemaSplattedEditor';
+import { NewTaskSuggestedFeatures } from './NewTaskSuggestedFeatures';
 import { TaskModalDoublePreview } from './Preview/TaskModalDoublePreview';
 import { TaskConversation } from './TaskConversation';
 import { ConversationMessage } from './TaskConversationMessage';
@@ -33,6 +34,12 @@ type NewTaskModalContentProps = {
   noChangesDetected: boolean;
   showRetry: boolean;
   retry: () => void;
+  featureWasSelected: (
+    title: string,
+    inputSchema: Record<string, unknown>,
+    outputSchema: Record<string, unknown>,
+    message: string | undefined
+  ) => void;
 };
 
 export function NewTaskModalContent(props: NewTaskModalContentProps) {
@@ -46,7 +53,6 @@ export function NewTaskModalContent(props: NewTaskModalContentProps) {
     open,
     loading,
     userMessage,
-    userFirstName,
     messages,
     setUserMessage,
     onSendIteration,
@@ -58,6 +64,7 @@ export function NewTaskModalContent(props: NewTaskModalContentProps) {
     token,
     showRetry,
     retry,
+    featureWasSelected,
   } = props;
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -74,34 +81,28 @@ export function NewTaskModalContent(props: NewTaskModalContentProps) {
     return <Loader centered />;
   }
 
-  if (!isEditMode && !inputSplattedSchema && !outputSplattedSchema) {
+  if (!isEditMode && (!messages || messages.length === 0) && !inputSplattedSchema && !outputSplattedSchema) {
     return (
-      <div className='flex-1 overflow-hidden'>
-        <div
-          className={cx(
-            'h-full w-full',
-            // This fixes a visual glitch when we close the edit task modal and the conversation appear for a moment
-            !open && 'invisible'
-          )}
-        >
-          <TaskConversation
-            userMessage={userMessage}
-            messages={messages}
-            setUserMessage={setUserMessage}
-            onSendIteration={onSendIteration}
-            loading={loading}
-            userFirstName={userFirstName}
-            showRetry={showRetry}
-            retry={retry}
-          />
-        </div>
+      <div className={cx('flex flex-col h-full w-full overflow-hidden', !open && 'invisible')}>
+        <NewTaskSuggestedFeatures
+          userMessage={userMessage}
+          setUserMessage={setUserMessage}
+          onSendIteration={onSendIteration}
+          loading={loading}
+          featureWasSelected={featureWasSelected}
+        />
       </div>
     );
   }
 
   return (
     <div className='flex flex-row w-full h-[calc(100%-60px)]' ref={containerRef}>
-      <div className='flex flex-row w-[calc(100%-336px)] h-full overflow-y-auto overflow-x-hidden border-t border-gray-200 border-dashed'>
+      <div
+        className='flex flex-row w-[calc(100%-336px)] h-full overflow-y-auto overflow-x-hidden border-t border-gray-200 border-dashed'
+        style={{
+          opacity: `${!!inputSplattedSchema && !!outputSplattedSchema ? 100 : 0}%`,
+        }}
+      >
         <div className='flex flex-col w-[50%] h-max min-h-full border-r border-gray-200 border-dashed overflow-x-hidden'>
           <SchemaSplattedEditor
             title='Input Schema'
@@ -147,7 +148,6 @@ export function NewTaskModalContent(props: NewTaskModalContentProps) {
           setUserMessage={setUserMessage}
           onSendIteration={onSendIteration}
           loading={loading}
-          userFirstName={userFirstName}
           showRetry={showRetry}
           retry={retry}
         />

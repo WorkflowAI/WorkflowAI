@@ -571,6 +571,46 @@ export function NewTaskModal() {
     ]);
   }, [taskNameRef, inputSchemaForVariant, outputSchemaForVariant, isEditMode, open, firstMessageDisplay]);
 
+  const featureWasSelected = useCallback(
+    (
+      title: string,
+      inputSchema: Record<string, unknown>,
+      outputSchema: Record<string, unknown>,
+      message: string | undefined
+    ) => {
+      setPreviousIterations([
+        {
+          task_schema: {
+            task_name: title,
+            input_json_schema: inputSchema,
+            output_json_schema: outputSchema,
+          },
+          user_message: message ?? '',
+          assistant_answer: INITIAL_ASSISTANT_MESSAGE,
+        },
+      ]);
+
+      const messages: ConversationMessage[] = [];
+
+      if (message) {
+        messages.push({
+          message: message,
+          username: 'You',
+          date: new Date(),
+        });
+      }
+
+      messages.push({
+        message: INITIAL_ASSISTANT_MESSAGE,
+        username: WORKFLOW_AI_USERNAME,
+        date: new Date(),
+      });
+
+      setMessages(messages);
+    },
+    []
+  );
+
   const isFullMessageView = !isEditMode && !inputSplattedSchema && !outputSplattedSchema;
   const isSaveButtonHidden = isFullMessageView;
 
@@ -635,6 +675,7 @@ export function NewTaskModal() {
               token={token}
               showRetry={showRetry}
               retry={onRetry}
+              featureWasSelected={featureWasSelected}
             />
           )}
           <AlertDialog
