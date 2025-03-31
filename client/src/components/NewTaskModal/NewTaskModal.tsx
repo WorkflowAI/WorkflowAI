@@ -203,22 +203,22 @@ export function NewTaskModal() {
 
   const computedInputSchema = useMemo(() => {
     if (!inputSplattedSchema) return undefined;
-    const { schema, definitions } = fromSplattedEditorFieldsToSchema(inputSplattedSchema);
+    const { schema, definitions } = fromSplattedEditorFieldsToSchema(inputSplattedSchema, inputSchema?.$defs);
 
     return {
       ...schema,
       $defs: definitions,
     };
-  }, [inputSplattedSchema]);
+  }, [inputSplattedSchema, inputSchema?.$defs]);
 
   const computedOutputSchema = useMemo(() => {
     if (!outputSplattedSchema) return undefined;
-    const { schema, definitions } = fromSplattedEditorFieldsToSchema(outputSplattedSchema);
+    const { schema, definitions } = fromSplattedEditorFieldsToSchema(outputSplattedSchema, outputSchema?.$defs);
     return {
       ...schema,
       $defs: definitions,
     };
-  }, [outputSplattedSchema]);
+  }, [outputSplattedSchema, outputSchema?.$defs]);
 
   const [loading, setLoading] = useState(false);
 
