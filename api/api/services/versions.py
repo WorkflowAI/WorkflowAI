@@ -11,7 +11,7 @@ from core.domain.models import Model
 from core.domain.task_group import TaskGroup, TaskGroupIdentifier, TaskGroupQuery
 from core.domain.task_group_properties import TaskGroupProperties
 from core.domain.task_variant import SerializableTaskVariant
-from core.domain.version_major import VersionDeploymentMetadata
+from core.domain.version_major import VersionDeploymentMetadata, VersionMajor
 from core.storage import TaskTuple
 from core.storage.backend_storage import BackendStorage
 from core.utils.coroutines import sentry_wrap
@@ -56,7 +56,12 @@ class VersionsService:
             if not isinstance(calculator, BaseException)
         }
 
-    async def list_version_majors(self, task_id: TaskTuple, schema_id: int | None, models_service: ModelsService):
+    async def list_version_majors(
+        self,
+        task_id: TaskTuple,
+        schema_id: int | None,
+        models_service: ModelsService,
+    ) -> list[VersionMajor]:
         async with asyncio.TaskGroup() as tg:
             t1 = tg.create_task(self._list_version_majors(task_id[0], schema_id))
             t2 = tg.create_task(self._deployments_metadata_by_iteration(task_id[0], schema_id))

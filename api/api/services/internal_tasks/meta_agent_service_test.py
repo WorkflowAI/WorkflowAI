@@ -56,7 +56,7 @@ class TestMetaAgentService:
                         existing_agents_descriptions=["Agent 1", "Agent 2"],
                     ),
                     workflowai_sections=[],
-                    relevant_workflowai_documentation_sections=[
+                    workflowai_documentation_sections=[
                         DocumentationSection(title="Some title", content="Some content"),
                     ],
                     available_tools_description="Some tools description",
@@ -94,7 +94,7 @@ class TestMetaAgentService:
                         existing_agents_descriptions=[],
                     ),
                     workflowai_sections=[],
-                    relevant_workflowai_documentation_sections=[
+                    workflowai_documentation_sections=[
                         DocumentationSection(title="Some title", content="Some content"),
                     ],
                     available_tools_description="Some tools description",
@@ -147,6 +147,9 @@ class TestMetaAgentService:
             event_router=mock_event_router,
             runs_service=mock_runs_service,
             models_service=AsyncMock(),
+            feedback_service=AsyncMock(),
+            versions_service=AsyncMock(),
+            reviews_service=AsyncMock(),
         )
 
         # Mock the dependencies
@@ -215,10 +218,7 @@ class TestMetaAgentService:
                 result.company_context.existing_agents_descriptions
                 == expected_input.company_context.existing_agents_descriptions
             )
-            assert (
-                result.relevant_workflowai_documentation_sections
-                == expected_input.relevant_workflowai_documentation_sections
-            )
+            assert result.workflowai_documentation_sections == expected_input.workflowai_documentation_sections
 
             # If company products exist, verify them
             if result.company_context.company_products and expected_input.company_context.company_products:
@@ -306,6 +306,9 @@ class TestMetaAgentService:
             event_router=mock_event_router,
             runs_service=mock_runs_service,
             models_service=AsyncMock(),
+            feedback_service=AsyncMock(),
+            versions_service=AsyncMock(),
+            reviews_service=AsyncMock(),
         )
 
         # Create a mock for _build_meta_agent_input
@@ -313,7 +316,7 @@ class TestMetaAgentService:
             current_datetime=datetime.datetime(2025, 1, 1),
             messages=[message.to_domain() for message in messages],
             company_context=MetaAgentInput.CompanyContext(),
-            relevant_workflowai_documentation_sections=[
+            workflowai_documentation_sections=[
                 DocumentationSection(title="Some title", content="Some content"),
             ],
             workflowai_sections=[],
@@ -422,6 +425,9 @@ class TestMetaAgentService:
             event_router=mock_event_router,
             runs_service=mock_runs_service,
             models_service=AsyncMock(),
+            feedback_service=AsyncMock(),
+            versions_service=AsyncMock(),
+            reviews_service=AsyncMock(),
         )
 
         service.dispatch_new_user_messages_event(input_messages)
@@ -496,6 +502,9 @@ class TestMetaAgentService:
             event_router=Mock(),
             runs_service=Mock(),
             models_service=AsyncMock(),
+            feedback_service=AsyncMock(),
+            versions_service=AsyncMock(),
+            reviews_service=AsyncMock(),
         )
 
         # Patch the service logger to count warning calls.
@@ -620,7 +629,10 @@ class TestMetaAgentService:
             storage=Mock(),
             event_router=Mock(),
             runs_service=Mock(),
+            versions_service=AsyncMock(),
             models_service=AsyncMock(),
+            feedback_service=AsyncMock(),
+            reviews_service=AsyncMock(),
         )
 
         # Mock extract_and_fetch_urls to return our expected URLs

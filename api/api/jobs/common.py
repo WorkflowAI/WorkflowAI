@@ -6,6 +6,7 @@ from api.services import storage as storage_service
 from api.services.analytics import AnalyticsService
 from api.services.background_run import BackgroundRunService
 from api.services.features import FeatureService
+from api.services.feedback_svc import FeedbackService
 from api.services.groups import GroupService
 from api.services.internal_tasks.internal_tasks_service import InternalTasksService
 from api.services.internal_tasks.meta_agent_service import MetaAgentService
@@ -214,21 +215,11 @@ def models_service(storage: StorageDep):
 ModelsServiceDep = Annotated[ModelsService, TaskiqDepends(models_service)]
 
 
-def meta_agent_service_dep(
-    storage: StorageDep,
-    event_router: EventRouterDep,
-    runs_service: RunsServiceDep,
-    models_service: ModelsServiceDep,
-) -> MetaAgentService:
-    return MetaAgentService(
-        storage=storage,
-        event_router=event_router,
-        runs_service=runs_service,
-        models_service=models_service,
-    )
+def feedback_service_dep(storage: StorageDep) -> FeedbackService:
+    return FeedbackService(storage=storage.feedback)
 
 
-MetaAgentServiceDep = Annotated[MetaAgentService, TaskiqDepends(meta_agent_service_dep)]
+FeedbackServiceDep = Annotated[FeedbackService, TaskiqDepends(feedback_service_dep)]
 
 
 def versions_service_dep(storage: StorageDep, event_router: EventRouterDep) -> VersionsService:
@@ -236,6 +227,29 @@ def versions_service_dep(storage: StorageDep, event_router: EventRouterDep) -> V
 
 
 VersionsServiceDep = Annotated[VersionsService, TaskiqDepends(versions_service_dep)]
+
+
+def meta_agent_service_dep(
+    storage: StorageDep,
+    event_router: EventRouterDep,
+    runs_service: RunsServiceDep,
+    models_service: ModelsServiceDep,
+    feedback_service: FeedbackServiceDep,
+    versions_service: VersionsServiceDep,
+    reviews_service: ReviewsServiceDep,
+) -> MetaAgentService:
+    return MetaAgentService(
+        storage=storage,
+        event_router=event_router,
+        runs_service=runs_service,
+        models_service=models_service,
+        feedback_service=feedback_service,
+        versions_service=versions_service,
+        reviews_service=reviews_service,
+    )
+
+
+MetaAgentServiceDep = Annotated[MetaAgentService, TaskiqDepends(meta_agent_service_dep)]
 
 
 def payment_service_dep(

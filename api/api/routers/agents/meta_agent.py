@@ -1,14 +1,21 @@
-from typing import AsyncIterator
+from typing import Annotated, AsyncIterator
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from api.dependencies.analytics import UserPropertiesDep
 from api.dependencies.event_router import EventRouterDep
 from api.dependencies.path_params import TaskSchemaID
-from api.dependencies.services import ModelsServiceDep, RunsServiceDep, StorageDep
+from api.dependencies.services import (
+    ModelsServiceDep,
+    ReviewsServiceDep,
+    RunsServiceDep,
+    StorageDep,
+    VersionsServiceDep,
+)
 from api.dependencies.task_info import TaskTupleDep
+from api.routers.feedback_v1 import FeedbackServiceDep
 from api.services.internal_tasks.meta_agent_service import (
     MetaAgentChatMessage,
     MetaAgentService,
@@ -17,6 +24,29 @@ from api.services.internal_tasks.meta_agent_service import (
 from core.utils.stream_response_utils import safe_streaming_response
 
 router = APIRouter(prefix="/agents/{task_id}/prompt-engineer-agent")
+
+
+def meta_agent_service_dependency(
+    storage: StorageDep,
+    event_router: EventRouterDep,
+    runs_service: RunsServiceDep,
+    models_service: ModelsServiceDep,
+    feedback_service: FeedbackServiceDep,
+    versions_service: VersionsServiceDep,
+    reviews_service: ReviewsServiceDep,
+):
+    return MetaAgentService(
+        storage=storage,
+        event_router=event_router,
+        runs_service=runs_service,
+        models_service=models_service,
+        feedback_service=feedback_service,
+        versions_service=versions_service,
+        reviews_service=reviews_service,
+    )
+
+
+MetaAgentServiceDep = Annotated[MetaAgentService, Depends(meta_agent_service_dependency)]
 
 
 class MetaAgentChatRequest(BaseModel):
@@ -56,19 +86,9 @@ async def get_meta_agent_chat(
     task_tuple: TaskTupleDep,
     request: MetaAgentChatRequest,
     user_properties: UserPropertiesDep,
-    runs_service: RunsServiceDep,
-    storage: StorageDep,
-    event_router: EventRouterDep,
-    models_service: ModelsServiceDep,
+    meta_agent_service: MetaAgentServiceDep,
 ) -> StreamingResponse:
     async def _stream() -> AsyncIterator[BaseModel]:
-        meta_agent_service = MetaAgentService(
-            storage=storage,
-            event_router=event_router,
-            runs_service=runs_service,
-            models_service=models_service,
-        )
-
         async for messages in meta_agent_service.stream_meta_agent_response(
             task_tuple=task_tuple,
             agent_schema_id=request.schema_id,
