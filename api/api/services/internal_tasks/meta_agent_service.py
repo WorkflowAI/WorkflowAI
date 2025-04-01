@@ -393,6 +393,9 @@ class MetaAgentService:
                             deployed_at=deployment.deployed_at,
                             deployed_by_email=deployment.deployed_by.user_email if deployment.deployed_by else None,
                             model_used=minor.properties.model,
+                            last_active_at=minor.last_active_at,
+                            run_count=minor.run_count,
+                            notes=minor.notes,
                         )
                         for deployment in minor.deployments or []
                     ],

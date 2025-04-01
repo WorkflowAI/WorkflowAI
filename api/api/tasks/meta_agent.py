@@ -395,6 +395,18 @@ class MetaAgentInput(BaseModel):
                     default=None,
                     description="The model used to run the 'current_agent' deployment",
                 )
+                last_active_at: datetime.datetime | None = Field(
+                    default=None,
+                    description="The date of the last run of the 'current_agent' deployment",
+                )
+                run_count: int | None = Field(
+                    default=None,
+                    description="The number of runs of the 'current_agent' deployment",
+                )
+                notes: str | None = Field(
+                    default=None,
+                    description="The notes of the 'current_agent' deployment, added by the staff member who created the deployed version",
+                )
 
             deployments: list[Deployment] | None = Field(
                 default=None,
