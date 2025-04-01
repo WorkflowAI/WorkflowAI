@@ -391,6 +391,10 @@ class MetaAgentInput(BaseModel):
                     default=None,
                     description="The environment in which the 'current_agent' version is deployed ('dev', 'staging' or 'production')",
                 )
+                model_used: str | None = Field(
+                    default=None,
+                    description="The model used to run the 'current_agent' deployment",
+                )
 
             deployments: list[Deployment] | None = Field(
                 default=None,
