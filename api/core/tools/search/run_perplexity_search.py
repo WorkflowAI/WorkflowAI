@@ -9,6 +9,7 @@ from typing import Any
 import httpx
 from pydantic import BaseModel, ValidationError
 
+from core.utils.redis_cache import redis_cached_generator_last_chunk
 from core.utils.streams import standard_wrap_sse
 from core.utils.strings import remove_empty_lines
 
@@ -77,6 +78,7 @@ async def run_perplexity_search_sonar_pro(query: str) -> str:
 
 async def _run_perplexity_search(query: str, model: PerplexityModel) -> str:
     """Runs a Perplexity search and returns the results in JSON format."""
+
     PERPLEXITY_API_KEY = os.environ["PERPLEXITY_API_KEY"]
 
     async with httpx.AsyncClient() as client:
@@ -133,37 +135,45 @@ def remove_citations(text: str) -> str:
     return re.sub(r"  +", " ", text_without_citations)
 
 
-async def stream_perplexity_search(query: str) -> AsyncIterator[str]:
+@redis_cached_generator_last_chunk()
+async def stream_perplexity_search(query: str, max_tokens: int | None = None) -> AsyncIterator[str]:
     """Runs a Perplexity search and returns the results in JSON format.
 
     As it's a streaming version of the Perplexity search, it's fit for use as a tool in a run.
     """
+
     PERPLEXITY_API_KEY = os.environ["PERPLEXITY_API_KEY"]
 
+    body: dict[str, Any] = {
+        "model": PerplexityModel.SONAR_PRO.value,
+        "messages": [
+            {
+                "role": "system",
+                "content": "Be precise and concise.",  # Default system prompt from https://docs.perplexity.ai/guides/getting-started
+            },
+            {"role": "user", "content": query},
+        ],
+        "web_search_options": {
+            "search_context_size": "high",
+        },
+        "stream": True,
+    }
+
+    if max_tokens:
+        body["max_tokens"] = max_tokens
+
     async with httpx.AsyncClient() as client:
-        async with (
-            client.stream(
-                "POST",
-                "https://api.perplexity.ai/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {PERPLEXITY_API_KEY}",
-                    "accept": "application/json",
-                    "content-type": "application/json",
-                },
-                json={
-                    "model": PerplexityModel.SONAR_PRO.value,
-                    "messages": [
-                        {
-                            "role": "system",
-                            "content": "Be precise and concise.",  # Default system prompt from https://docs.perplexity.ai/guides/getting-started
-                        },
-                        {"role": "user", "content": query},
-                    ],
-                    "stream": True,
-                },
-                timeout=TIMEOUT_SECONDS,
-            ) as response
-        ):
+        async with client.stream(
+            "POST",
+            "https://api.perplexity.ai/chat/completions",
+            headers={
+                "Authorization": f"Bearer {PERPLEXITY_API_KEY}",
+                "accept": "application/json",
+                "content-type": "application/json",
+            },
+            json=body,
+            timeout=TIMEOUT_SECONDS,
+        ) as response:
             if response.status_code != 200:
                 raise Exception(f"Perplexity search failed with status code {response.status_code}")
 

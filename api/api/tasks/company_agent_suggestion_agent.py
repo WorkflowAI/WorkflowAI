@@ -57,6 +57,10 @@ class SuggestAgentForCompanyInput(BaseModel):
             default=None,
             description="The content of the 'company_url'",
         )
+        latest_news: str | None = Field(
+            default=None,
+            description="A description of the latest news for the company (ex: new product launch, new features, acquisitions, new regulations, industry trends, competitors news)",
+        )
         existing_agents: list[str] | None = Field(
             default=None,
             description="The list of existing agents for the company",
@@ -78,19 +82,21 @@ class SuggestAgentForCompanyOutput(BaseModel):
 INSTRUCTIONS = """Your role is to generate a comprehensive list of exactly 10 agents suggestions that can be used to power features for our clients, based on:
 
     - 'company_url' and 'company_url_content' (in order to understand the company and propose agents that make sense based on the company's context)
-    - their existing agents (in order to avoid duplicates, and propose new agents that make sense based on the agents the client is already using)
     - the 'supported_agent_input_types' and 'supported_agent_output_types' that explains the type of agents input and output that can be suggested.
     - consider the 'available_tools' that can give suggested agent more capabilities.
+    - use 'latest_news' to propose agents that are super relevant and impactful for the company based on the latest news. Offer features that works well with the latest product and features, and aligns with the company goals from 'latest_news'. Most of the proposed agents should be related to the latest news if enough news are provided.
+    - their existing agents (in order to avoid duplicates, and propose new agents that make sense based on the agents the client is already using)
 
 
     # Guidelines for choosing suggested agents
     - Propose features that are scalable and can be seamlessly integrated into the client's existing products.
     - Prioritize features that solve key problems or enhance user experience.
     - Avoid "one-off" agents that won't fit in the user's product on the long term.
-    - Avoid use cases that do not make sense with LLM technology and work perfectly well with deterministic code (ex: cost calculation, etc.)
-    - Prioritize typical LLM use cases like: classification, structured content generation, structured information extraction, text analysis, document analysis, image analysis, summarization.
-    - Avoid agent targeted at the internal functions (accounting, HR, etc.) or that don't have a direct impact on the client's products.
-    - Ensure that the agent represents one specific operation, avoiding multiple operations within a single agent.
+    - Avoid image generation and design use cases as we currently do not support images in the output (see 'supported_agent_output_types')
+    - Avoid use cases that do not make sense with LLM technology and work perfectly well with deterministic code (ex: arithmetic operation, calculators, deterministic data analysis, etc. basically nothing you can write code to do). Also avoid hardware optimization agents since they probably require human engineering skills that are beyong LLM capabilities. Focus on software oriented agents.
+    - Don't forget to proposed chat-based agents that the company can use to power its products (INPUT: messages with special payload based on the use case, domain specific, etc. OUTPUT: answer message with special payload based on the use case). For chat based agent, make sure to include 'Chat' in the 'suggested_agents.name'.
+    - Avoid agent targeted at the internal functions (software development, documentation, accounting, HR, etc.). Focus on CLIENT-FACING agents that DIRECTLY IMPACT the final user's experience.
+    - Ensure that the agent represents one specific operation that: takes a structured input of 'supported_agent_input_types', optionally uses 'available_tools' and LLM reasoning in order to output a structured output of 'supported_agent_output_types', avoiding multiple operations within a single agent.
     - Ensure that the suggested agents are relevant to the company's domain and can be realistically implemented using LLM technology.
     - Aim to provide a diverse set of agent suggestions that cover different aspects of the company's potential needs.
 
@@ -98,10 +104,8 @@ INSTRUCTIONS = """Your role is to generate a comprehensive list of exactly 10 ag
     - the 'suggested_agents.name' must follow the following convention: [subject that is acted upon] + [the action], in Title Case. Ex: 'Sentiment Analysis', 'Text Summarization', 'Location Detection'. Avoid using "Generation" in the agent name, as all agents perform generation anyway.
     - the 'suggested_agents.description' must be a description of the what the agent does (input, output, purpose) and how this agent would benefit the company. When relevant, talk in terms of product management metrics: activation, engagement, retention, monetization, growth (referral) and asking youself "what metric(s) might be positively impacted by this AI feature" ?  300 Chars max.
 
-
     # Examples of agents
     Below you will find a list of example agent ideas, both industry-specific and generalist, to inspire your suggestions:
-
     ## Section: Text / Content Generation
     - Given a topic and a tone of voice, generate an article about this topic, with title, sections (sub-title, text).
     - Rewrite a text with another tone.
@@ -125,27 +129,21 @@ INSTRUCTIONS = """Your role is to generate a comprehensive list of exactly 10 ag
     - Create quizzes based on educational content.
     - Generate story for genre.
     - Write a code, given a language and a description.
-
     ## Section: Code Generation
     - Explain code.
     - Using natural language to query SQL database.
-
     ## Section: Summarization
     - Summarize a text.
     - Extract frequently asked questions from a list of customer call transcripts.
     - From a list of NPS survey results, generate negative review insights and actionable items.
     - Summarize transcripts from daily news reports and output a summary of market trends.
     - From a call transcript, generate a follow-up email based on to-dos.
-
     Write title for chat conversation (inspired by ChatGPT).
     Relevant for: OpenAI, OpenAI's competitors.
-
     Generate SOAP notes from a text transcript.
     Relevant for: healthcare.
-
     Generate SOAP notes from an audio recording.
     Relevant for: healthcare.
-
     ## Section: Image
     - Extract a description of the meal from a photo, along with the total calories, and the different ingredients with calories for each.
     Relevant for: nutrition app.
@@ -156,15 +154,12 @@ INSTRUCTIONS = """Your role is to generate a comprehensive list of exactly 10 ag
     Relevant for: apps with User-Generated content.
     - Given a menu from a restaurant, and an allergy, identify what meals are OK for my food restrictions.
     - From a screenshot of a webpage, extract structured information.
-
     ## Section: Reasoning
     - Given a chess board state, generate the AI player's next move.
-
     ## Section: Audio
     - Transcribe a phone call.
     - Transcribe a podcast.
     - Translate a phone call into another language.
-
     ## Section: Classification
     - Given a product review, extract the main sentiment.
     - Given a new message, classify if the message is urgent, or not.
@@ -173,7 +168,6 @@ INSTRUCTIONS = """Your role is to generate a comprehensive list of exactly 10 ag
     - Moderation and content safety for AI-generated content.
     - Given a chat bot conversation between a user and an assistant — evaluate the quality of the chatbot responses.
     - Language style detection.
-
     ## Section: Information Extraction
     - Extract calendar event from an email.
     - Extract ICD10 codes for pre-existing conditions from a patient.
