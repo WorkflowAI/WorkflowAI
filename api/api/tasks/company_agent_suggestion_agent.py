@@ -103,6 +103,91 @@ INSTRUCTIONS = """Your role is to generate a comprehensive list of exactly 10 ag
     # Guidelines for writing the name and description of the suggested agents
     - the 'suggested_agents.name' must follow the following convention: [subject that is acted upon] + [the action], in Title Case. Ex: 'Sentiment Analysis', 'Text Summarization', 'Location Detection'. Avoid using "Generation" in the agent name, as all agents perform generation anyway.
     - the 'suggested_agents.description' must be a description of the what the agent does (input, output, purpose) and how this agent would benefit the company. When relevant, talk in terms of product management metrics: activation, engagement, retention, monetization, growth (referral) and asking youself "what metric(s) might be positively impacted by this AI feature" ?  300 Chars max.
+
+    # Examples of agents
+    Below you will find a list of example agent ideas, both industry-specific and generalist, to inspire your suggestions:
+    ## Section: Text / Content Generation
+    - Given a topic and a tone of voice, generate an article about this topic, with title, sections (sub-title, text).
+    - Rewrite a text with another tone.
+    - Write a summary of a PDF document.
+    - Translate text into another language.
+    - Given a company bio + value props to highlight, generate a hook, script, and CTA for a creative ad.
+    - Given a list of product reviews, highlight the pros and cons in two lists of bullet points.
+    - Generate a horoscope.
+    - Generate a 7 days menu plan.
+    - Generate matching pairs for a language exercise.
+    - Smart Reply from Gmail.
+    - Generate title for conversations (OpenAI's ChatGPT).
+    - Generate the next email in a conversation (Ana Luisa).
+    - Answer question with fact.
+    - Given a knowledge base, answer a question.
+    - Google Autocomplete Query.
+    - Fix grammar.
+    - Improve Prompt.
+    - SWOT analysis (e.g., strengths, weaknesses, opportunities, threats).
+    - Write job description.
+    - Create quizzes based on educational content.
+    - Generate story for genre.
+    - Write a code, given a language and a description.
+    ## Section: Code Generation
+    - Explain code.
+    - Using natural language to query SQL database.
+    ## Section: Summarization
+    - Summarize a text.
+    - Extract frequently asked questions from a list of customer call transcripts.
+    - From a list of NPS survey results, generate negative review insights and actionable items.
+    - Summarize transcripts from daily news reports and output a summary of market trends.
+    - From a call transcript, generate a follow-up email based on to-dos.
+    Write title for chat conversation (inspired by ChatGPT).
+    Relevant for: OpenAI, OpenAI's competitors.
+    Generate SOAP notes from a text transcript.
+    Relevant for: healthcare.
+    Generate SOAP notes from an audio recording.
+    Relevant for: healthcare.
+    ## Section: Image
+    - Extract a description of the meal from a photo, along with the total calories, and the different ingredients with calories for each.
+    Relevant for: nutrition app.
+    - From an image, write a description (ALT tag).
+    - Give recipes ideas from an image.
+    - Extract the city and country from an image.
+    - Classify a photo as either appropriate or inappropriate content.
+    Relevant for: apps with User-Generated content.
+    - Given a menu from a restaurant, and an allergy, identify what meals are OK for my food restrictions.
+    - From a screenshot of a webpage, extract structured information.
+    ## Section: Reasoning
+    - Given a chess board state, generate the AI player's next move.
+    ## Section: Audio
+    - Transcribe a phone call.
+    - Transcribe a podcast.
+    - Translate a phone call into another language.
+    ## Section: Classification
+    - Given a product review, extract the main sentiment.
+    - Given a new message, classify if the message is urgent, or not.
+    - Given a prompt, classify if the prompt is a prompt injection, along with a confidence score and a reason.
+    - Classify if a conversation is a SCAM or not.
+    - Moderation and content safety for AI-generated content.
+    - Given a chat bot conversation between a user and an assistant — evaluate the quality of the chatbot responses.
+    - Language style detection.
+    ## Section: Information Extraction
+    - Extract calendar event from an email.
+    - Extract ICD10 codes for pre-existing conditions from a patient.
+    - Extract receipt info in a structured way.
+    - Extract verification code and transaction from a text message (Apple).
+    - I want to create a way to extract data from PDF P&Ls so we can load it into our database.
+    - Extract information from KBIS.
+    - Document translation from PDF.
+    - Extract structured information from a text — leave open-ended, the assistant should ask the question about what to extract?
+    - Identify named entities in a text, such as people, organizations, dates, or locations.
+    - Extract PII from text.
+    - Generate a list of tags from a production description.
+    - Suggest a list of tags from an issue.
+    - Given a document, generate a FAQ.
+    - Given a contract (document), identify the key terms (structured: effective_date, termination_clause).
+    - Extract policy information from insurance policies.
+    - Given a PDF and a question, extract the answer.
+    - Given a product image, extract production information.
+    - Categorize product.
+    - Extract info from medical bills.
     """
 
 
