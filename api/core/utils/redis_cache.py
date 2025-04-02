@@ -105,7 +105,7 @@ async def _safely_close_redis(async_cache: Any) -> None:
     """Helper function to safely close Redis connections."""
     if async_cache and hasattr(async_cache, "close") and callable(async_cache.close):
         try:
-            await asyncio.shield(async_cache.close())
+            await async_cache.close()
         except Exception as e:
             _logger.exception("Error while closing redis", exc_info=e)
 
