@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from collections import defaultdict
 from collections.abc import AsyncIterator
@@ -141,7 +142,7 @@ class FeatureService:
     async def _stream_company_context(self, company_url: str) -> AsyncIterator[CompanyContext]:
         try:
             async for chunk in stream_perplexity_search(
-                f"What does this company do:{company_url} ? Provide a concise description of the company and its products. Do not add any markdown in the response.",
+                f"What does this company do:{company_url} ? Provide a concise description of the company and its products. Do not add any markdown or formatting (ex: bold, italic, underline, etc.) in the response, except line breaks, punctation and eventual bullet points.",
             ):
                 yield CompanyContext(public=chunk, private=chunk)
         except Exception as e:
@@ -179,6 +180,7 @@ class FeatureService:
         self,
         company_domain: str,
         company_context: str,
+        latest_news: str,
     ) -> SuggestAgentForCompanyInput:
         return SuggestAgentForCompanyInput(
             supported_agent_input_types=get_supported_task_input_types(),
@@ -193,6 +195,7 @@ class FeatureService:
                 existing_agents=[str(a) for a in await list_agent_summaries(self.storage, limit=10)]
                 if self.storage
                 else [],
+                latest_news=latest_news,
             ),
         )
 
@@ -224,12 +227,28 @@ class FeatureService:
                 features=features,
             )
 
+    async def _get_company_latest_news(self, company_domain: str) -> str:
+        try:
+            result = ""
+            async for chunk in stream_perplexity_search(
+                f"You are a world-class expert in software market intelligence with an emphasis on tech startups and artificial intelligence. You goal is to gather and summarize the latest news for {company_domain}, especially new product and new features. Any product or feature mentioned must also explain what the feature/product does. Focus on software oriented features and products. Stay concise and to the point.",
+                max_tokens=250,
+            ):
+                result = chunk
+            return result
+        except Exception as e:
+            _logger.exception("Error getting company latest news", exc_info=e)
+            return ""
+
     async def get_features_by_domain(
         self,
         company_domain: str,
         event_router: EventRouter,
     ) -> AsyncIterator[CompanyFeaturePreviewList]:
         event_router(FeaturesByDomainGenerationStarted(company_domain=company_domain))
+
+        # Start collecting AI features in the background
+        company_latest_news_task = asyncio.create_task(self._get_company_latest_news(company_domain))
 
         company_context: CompanyContext = CompanyContext(public="", private="")
         async for chunk in self._stream_company_context(company_domain):
@@ -239,7 +258,14 @@ class FeatureService:
                 features=[],
             )
 
-        agent_suggestion_input = await self._build_agent_suggestion_input(company_domain, company_context.private)
+        # Wait for AI features collection to complete
+        company_latest_news = await company_latest_news_task
+
+        agent_suggestion_input = await self._build_agent_suggestion_input(
+            company_domain,
+            company_context.private,
+            company_latest_news,
+        )
 
         async for chunk in self._stream_feature_suggestions(company_context.public, agent_suggestion_input):
             yield chunk
