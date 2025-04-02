@@ -1,14 +1,95 @@
 import datetime
 from enum import Enum
-from typing import Any, Literal
+from typing import Any, Literal, Self
 
 import workflowai
 from pydantic import BaseModel, Field
 
 from api.tasks.extract_company_info_from_domain_task import Product
 from core.domain.documentation_section import DocumentationSection
+from core.domain.feedback import Feedback
 from core.domain.fields.file import File
 from core.domain.url_content import URLContent
+from core.domain.version_environment import VersionEnvironment
+
+
+class WorkflowaiPage(BaseModel):
+    title: str
+    description: str
+
+
+class WorkflowaiSection(BaseModel):
+    name: str
+    pages: list[WorkflowaiPage]
+
+
+# MVP for the redirection feature, will be replaced by a dynamic feature in the future
+STATIC_WORKFLOWAI_PAGES = [
+    WorkflowaiSection(  # noqa: F821
+        name="Iterate",
+        pages=[
+            WorkflowaiPage(
+                title="Schemas",
+                description="Dedicated to the management of agent schemas, allow to see previous schema versions, etc.",
+            ),
+            WorkflowaiPage(
+                title="Playground",
+                description="The current page the user is on, allow to run agents, on different models, with different instructions, etc.",
+            ),
+            WorkflowaiPage(
+                title="Versions",
+                description="Allows to see an history of all previous instructions versions of the current agent, with changelogs between versions, etc.",
+            ),
+            WorkflowaiPage(
+                title="Settings",
+                description="Allow to rename the current agent, delete it, or make it public. Also allows to manage private keys that allow to run the agent via API / SDK.",
+            ),
+        ],
+    ),
+    WorkflowaiSection(
+        name="Compare",
+        pages=[
+            WorkflowaiPage(
+                title="Reviews",
+                description="Allows to visualize the annotated output for this agents (positive, negative, etc.)",
+            ),
+            WorkflowaiPage(
+                title="Benchmarks",
+                description="Allows to compare model correctness, cost, latency, based on a set of reviews.",
+            ),
+        ],
+    ),
+    WorkflowaiSection(
+        name="Integrate",
+        pages=[
+            WorkflowaiPage(
+                title="Code",
+                description="Get ready-to-use Python SDK code snippets, TypeScript SDK code snippets, and example REST requests to run the agent via API.",
+            ),
+            WorkflowaiPage(
+                title="Deployments",
+                description="Allows to deploy the current agent to fixed environments 'dev', 'staging', 'production'. This allows, for example,to quickly hotfix instructions in production, since the code point to a static 'production' deployment",
+            ),
+        ],
+    ),
+    WorkflowaiSection(
+        name="Monitor",
+        pages=[
+            WorkflowaiPage(
+                title="User Feedback",
+                description="Allows to see an history of all previous user feedbacks for the current agent.",
+            ),
+            WorkflowaiPage(
+                title="Runs",
+                description="Allows to see an history of all previous runs of the current agent. 'Run' refers to a single execution of the agent, with a given input, instructions and a given model.",
+            ),
+            WorkflowaiPage(
+                title="Costs",
+                description="Allows to visualize the cost incurred by the agent per day, for yesterday, last week, last month, last year, and all time.",
+            ),
+        ],
+    ),
+]
 
 
 class BaseResult(BaseModel):
@@ -242,16 +323,6 @@ class PlaygroundState(BaseModel):
     )
 
 
-class WorkflowaiPage(BaseModel):
-    title: str
-    description: str
-
-
-class WorkflowaiSection(BaseModel):
-    name: str
-    pages: list[WorkflowaiPage]
-
-
 class MetaAgentInput(BaseModel):
     current_datetime: datetime.datetime = Field(
         description="The current datetime",
@@ -282,10 +353,11 @@ class MetaAgentInput(BaseModel):
     )
 
     workflowai_sections: list[WorkflowaiSection] = Field(
+        default=STATIC_WORKFLOWAI_PAGES,
         description="Other sections pages of the WorkflowAI platform (outside of the playground page, which this agent is part of). You can use this information to answer questions about the WorkflowAI platform and direct the user to the relevant pages. All those page are clickable on the left panel from the WorkflowAI playground.",
     )
 
-    relevant_workflowai_documentation_sections: list[DocumentationSection] = Field(
+    workflowai_documentation_sections: list[DocumentationSection] = Field(
         description="The relevant documentation sections of the WorkflowAI platform, which this agent is part of",
     )
 
@@ -294,6 +366,102 @@ class MetaAgentInput(BaseModel):
     )
 
     playground_state: PlaygroundState
+
+    class AgentLifecycleInfo(BaseModel):
+        class DeploymentInfo(BaseModel):
+            has_api_or_sdk_runs: bool | None = Field(
+                default=None,
+                description="Whether the 'current_agent' has already been run via API / SDK",
+            )
+            latest_api_or_sdk_run_date: datetime.datetime | None = Field(
+                default=None,
+                description="The date of the latest API / SDK run",
+            )
+
+            class Deployment(BaseModel):
+                deployed_at: datetime.datetime | None = Field(
+                    default=None,
+                    description="The date of the deployment",
+                )
+                deployed_by_email: str | None = Field(
+                    default=None,
+                    description="The email of the staff member who deployed the 'current_agent' version",
+                )
+                environment: VersionEnvironment | None = Field(
+                    default=None,
+                    description="The environment in which the 'current_agent' version is deployed ('dev', 'staging' or 'production')",
+                )
+                model_used: str | None = Field(
+                    default=None,
+                    description="The model used to run the 'current_agent' deployment",
+                )
+                last_active_at: datetime.datetime | None = Field(
+                    default=None,
+                    description="The date of the last run of the 'current_agent' deployment",
+                )
+                run_count: int | None = Field(
+                    default=None,
+                    description="The number of runs of the 'current_agent' deployment",
+                )
+                notes: str | None = Field(
+                    default=None,
+                    description="The notes of the 'current_agent' deployment, added by the staff member who created the deployed version",
+                )
+
+            deployments: list[Deployment] | None = Field(
+                default=None,
+                description="The list of deployments of the 'current_agent'",
+            )
+
+        deployment_info: DeploymentInfo | None = Field(
+            default=None,
+            description="The deployment info of the agent",
+        )
+
+        class FeedbackInfo(BaseModel):
+            user_feedback_count: int | None = Field(
+                default=None,
+                description="The number of user feedbacks",
+            )
+
+            class AgentFeedback(BaseModel):
+                created_at: datetime.datetime | None = None
+                outcome: Literal["positive", "negative"] | None = None
+                comment: str | None = None
+
+                @classmethod
+                def from_domain(cls, feedback: Feedback) -> Self:
+                    return cls(
+                        created_at=feedback.created_at,
+                        outcome=feedback.outcome,
+                        comment=feedback.comment,
+                    )
+
+            latest_user_feedbacks: list[AgentFeedback] | None = Field(
+                default=None,
+                description="The 10 latest user feedbacks",
+            )
+
+        feedback_info: FeedbackInfo | None = Field(
+            default=None,
+            description="The info related to the user feedbacks of the agent.",
+        )
+
+        class InternalReviewInfo(BaseModel):
+            reviewed_input_count: int | None = Field(
+                default=None,
+                description="The number of reviewed inputs",
+            )
+
+        internal_review_info: InternalReviewInfo | None = Field(
+            default=None,
+            description="The info related to the internal reviews of the agent.",
+        )
+
+    agent_lifecycle_info: AgentLifecycleInfo | None = Field(
+        default=None,
+        description="The lifecycle info of the agent",
+    )
 
 
 class MetaAgentOutput(BaseModel):
@@ -364,7 +532,7 @@ def update_agent_schema(edition_request_message: str) -> str:
     ...
 
 
-META_AGENT_INSTRUCTIONS = """You are WorkflowAI's meta-agent. You are responsible for helping WorkflowAI's users enhance their agents, and trigger actions in the UI (named playground) based on the context ('playground_state', 'messages', 'company_context', 'relevant_workflowai_documentation_sections', 'available_tools_description', etc.).
+META_AGENT_INSTRUCTIONS = """You are WorkflowAI's meta-agent. You are responsible for helping WorkflowAI's users enhance their agents, and trigger actions in the UI (named playground) based on the context ('playground_state', 'messages', 'company_context', 'relevant_workflowai_documentation_sections', 'available_tools_description', 'agent_lifecycle_info', etc.).
 
     The discussion you are having with the user happens in the "Playground" section of the WorkflowAI platform, which is the main interface to build agents.
     The state of the playground is provided in the 'playground_state' field of the input.
@@ -416,14 +584,15 @@ META_AGENT_INSTRUCTIONS = """You are WorkflowAI's meta-agent. You are responsibl
     ## Model
     The model used to generate the agent output is specified in the 'model' field of the 'current_agent' object in input.
     Sometimes, the models are not smart enough to follow the instructions, or to provide a useful output.
-    In this case you can recommend the user to use a different model. Use the 'quality_index' field of the 'available_models' object in input to help the user choose the best model. The 'average_cost_per_run_usd' is also relevant if the user mentions they are concerned about the cost of the agent runs.
+    In this case you can recommend the user to use a different model. Use the 'quality_index' field of the 'available_models' object in input to help the user choose the best model. The 'estimate_cost_per_thousand_runs_usd' is also relevant if the user mentions they are concerned about the cost of the agent runs. Latency ('duration_seconds' in runs) might also be a factor.
     You can also use the 'run_current_agent_on_models_tool_call' tool to run the 'current_agent' on different models. Feed between 1 and 3 different models to the tool call, depending on context.
     After running the 'run_current_agent_on_models_tool_call' tool, the new agent runs will effectively replace the 'playground_state.agent_runs' object in the UI.
+
 
     # Other automations
 
     ## Input generation
-    In order to help the user generate a relevant agent input, based on their direct or indirect request, you can use the 'generate_agent_input_tool_call' tool call.
+    In order to help the user generate a relevant agent input, based on their direct or indirect request, you can use the 'generate_agent_input_tool_call' tool call[cite: 27].
     The 'generate_agent_input_tool_call' tool call is strictly to generate example agent input (that will replace the current 'playground_state.agent_input'), not to generate code snippets, or anything else.
     The 'instructions' field of the 'generate_agent_input_tool_call' object will be passed to an agent specialized in input generation, "instructions" must be succinct.
     After running the 'generate_agent_input_tool_call' tool, the new agent input will effectively replace the 'playground_state.agent_input' object in the UI.
@@ -456,6 +625,32 @@ META_AGENT_INSTRUCTIONS = """You are WorkflowAI's meta-agent. You are responsibl
     Be particularly mindful of the past tool calls that were made. Analyze the tool calls status ("assistant_proposed", "user_ignored", "completed", "failed") to assess the relevance of the tool calls.
     If the latest tool call in the message is "user_ignored", it means that the tool call is not relevant to the user's request, so you should probably offer something else as a next step.
     If the latest tool call in the message is "completed", you should most of the time ask the user if there is anything else you can do for them without proposing any tool call, unless you are sure that the improvement did not go well. Do not repeat several tool calls of the same type in a row, except if the user asks for it or if the original problem that was expressed by the user is not solved. Keep in mind that you won't be able to solve all problems on all models and sometimes you just have to accept that some models doesn't perform very well on the 'current_agent' so you must spot the models that work well and advise the user to use those instead (unless a user really want to use a specific model, for example for cost reasons). If you found at least one model that works well, you must offer the user to use this model for the 'current_agent'. Indeed, if none of the models among the three selected models works well, you can either make another round of improving the instructions / schema (with 'ask_user_confirmation=true'), or offer to try different models with higher 'quality_index'.
+
+    # Agent Lifecycle: From Playground to Production
+    Beyond just improving schema, instructions, and models in the playground, you can nudge the users to take additional actions to progress in their agent's lifecycle using the information provided in the 'agent_lifecycle_info' input field as context.
+    Your goal is to spot what is the right next step for the user and indicate them why this next step is important, then indicate them the right page to do that in the Workflowai platform (from the 'workflowai_sections' input field). Use 'user_feedback_count', 'has_api_or_sdk_runs', 'deployments', 'reviewed_input_count' as clues of whether the user has already started to use those features or not.
+
+    ## Saving Versions
+    When a model and its parameters (instructions, temperature) consistently produce good results, users should save this configuration as a 'version'. This allows the users to quickly reuse the configuration in the future and also deploy it to an environment ('dev', 'staging', 'production').
+
+    ## Evaluating and Benchmarking
+    Users need to evaluate if the agent works reliably. This often involves testing with diverse inputs (recommended 'reviewed_input_count' is approx. 10-20). Inputs can be generated (using the 'generate_agent_input_tool_call' tool), imported from the playground using the "arrow" button on the left of the "Generate Input" button, or gathered from early API/SDK runs (along with the corresponding outputs).
+    - **Runs Evaluation:** agents can be evaluated by the user using the "thumbs up" and "thumbs down" buttons in the runs details, visible in the playground, but also in the "Runs" page of WorkflowAI platform, referenced in the "workflowai_sections" input field). The 'internal_review_info.reviewed_input_count' in 'agent_lifecycle_info' indicates how many inputs have been formally reviewed. Evaluated inputs are visible in the "Reviews" page of WorkflowAI platform (referenced in the "workflowai_sections" input field).
+    - **Benchmarking:** Compare different saved versions based on accuracy, cost, and latency to identify the best performers. Benchmarks are visible in the "Benchmarks" page of WorkflowAI platform (referenced in the "workflowai_sections" input field).
+
+    ## Deployment
+    Once a suitable version is identified, it can be deployed to different environments (dev, staging, production). Deploying a version allows your product's codebase to reference the agent using an environment name ('dev', 'staging', 'production'), which simplifies updating the version later without needing engineering changes directly in the code. Note that schema changes usually require code updates.
+    The 'agent_lifecycle_info.deployment_info' shows the existing 'deployments'. Deployments are visible in the "Deployments" page of WorkflowAI platform (referenced in the "workflowai_sections" input field). But can also be directly done from the playground by pressing the circled arrow button below the run results.
+
+    ## Running via API/SDK
+    In a real-life application, the agent will be run via API/SDK once its behaviour has been validated in the playground.
+    Code snippets to do so are visible in the "Code" page of WorkflowAI platform (referenced in the "workflowai_sections" input field).
+    Also, the 'agent_lifecycle_info.deployment_info' shows whether the agent has been run via API/SDK ('has_api_or_sdk_runs'), and the last run date ('latest_api_or_sdk_run_date').
+
+    ## Monitoring and Feedback
+    After deployment, monitoring is key.
+    - **Run Monitoring:** All runs are logged and can be monitored for issues. Past runs are visible in the "Runs" page of WorkflowAI platform (referenced in the "workflowai_sections" input field).
+    - **User Feedback:** Integrating the 'user feedback' feature allows collecting direct feedback from your application’s end users (our user's users), including both positive and negative insights along with their comments right from the user's application. See the "User Feedback" page of WorkflowAI platform (referenced in the "workflowai_sections" input field). Please note that in this case the 'user' feedback refers to our users' users. Our users can build agent with WorkflowAI and they use the agent output in their application, for example in the chat interface and our users' users can give feedback about the agent's output. See 'feedback_info' in 'agent_lifecycle_info' for more details. This contains the 'user_feedback_count' and the 'latest_user_feedbacks'.
     """
 
 

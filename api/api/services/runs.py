@@ -138,6 +138,7 @@ class RunsService:
         task_uid: TaskTuple,
         schema_id: int | None,
         is_success: bool | None,
+        is_active: bool | None = None,
     ) -> SerializableTaskRun:
         """Returns the latest successful run for a task and optionally a schema"""
 
@@ -156,6 +157,7 @@ class RunsService:
             exclude_fields={"llm_completions"},
             limit=1,
             status=status,
+            is_active=is_active,
         )
         try:
             return await anext(self._storage.task_runs.fetch_task_run_resources(task_uid=task_uid[1], query=q))
