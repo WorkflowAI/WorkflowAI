@@ -7,6 +7,8 @@ import pickle
 from collections.abc import AsyncIterator
 from typing import Any, Callable, Optional, TypeVar
 
+import redis.asyncio as aioredis
+
 F = TypeVar("F", bound=Callable[..., Any])
 AG = TypeVar("AG", bound=Callable[..., AsyncIterator[Any]])
 
@@ -14,14 +16,15 @@ _logger = logging.getLogger(__name__)
 
 
 def get_redis_client() -> Any:
-    import redis.asyncio as aioredis
-
     try:
         async_cache: aioredis.Redis | None = aioredis.from_url(os.environ["JOBS_BROKER_URL"])  # pyright: ignore
     except (KeyError, ValueError):
         async_cache = None
 
     return async_cache
+
+
+shared_redis_client: aioredis.Redis | None = get_redis_client()
 
 
 def _generate_cache_key(
@@ -50,8 +53,7 @@ def _generate_cache_key(
 
 
 def redis_cached(expiration_seconds: int = 60 * 60 * 24) -> Callable[[F], F]:  # default ttl is 1 day
-    async_cache = get_redis_client()
-    if not async_cache:
+    if not shared_redis_client:
         _logger.warning("Redis cache is not available, skipping redis_cached")
 
         def decorator(func: F) -> F:
@@ -65,14 +67,14 @@ def redis_cached(expiration_seconds: int = 60 * 60 * 24) -> Callable[[F], F]:  #
             try:
                 cache_key = _generate_cache_key(func, args, kwargs)
 
-                cached_result: Optional[bytes] = await async_cache.get(cache_key)  # pyright: ignore
+                cached_result: Optional[bytes] = await shared_redis_client.get(cache_key)  # pyright: ignore
                 if cached_result:
                     return pickle.loads(cached_result)  # pyright: ignore
 
                 result: Any = (
                     await func(*args, **kwargs) if asyncio.iscoroutinefunction(func) else func(*args, **kwargs)
                 )
-                await async_cache.setex(cache_key, expiration_seconds, pickle.dumps(result))  # pyright: ignore
+                await shared_redis_client.setex(cache_key, expiration_seconds, pickle.dumps(result))  # pyright: ignore
                 return result
             except Exception:
                 return await func(*args, **kwargs)
@@ -101,15 +103,6 @@ async def _try_cache_result(async_cache: Any, cache_key: str, result: Any, expir
         _logger.exception("Failed to cache result for", exc_info=e, extra={"cache_key": cache_key})
 
 
-async def _safely_close_redis(async_cache: Any) -> None:
-    """Helper function to safely close Redis connections."""
-    if async_cache and hasattr(async_cache, "close") and callable(async_cache.close):
-        try:
-            await async_cache.close()
-        except Exception as e:
-            _logger.exception("Error while closing redis", exc_info=e)
-
-
 def redis_cached_generator_last_chunk(expiration_seconds: int = 60 * 60 * 24) -> Callable[[AG], AG]:
     """
     Decorator to cache the final chunk of an async generator function in Redis.
@@ -119,8 +112,8 @@ def redis_cached_generator_last_chunk(expiration_seconds: int = 60 * 60 * 24) ->
         - It assumes that the last item yielded by the generator represents the complete, cumulative result.
         - It does not cache the intermediate streamed items.
     """
-    async_cache = get_redis_client()
-    if not async_cache:
+
+    if not shared_redis_client:
         _logger.warning("Redis cache is not available, skipping redis_cached_generator")
         return lambda func: func  # type: ignore
 
@@ -131,7 +124,7 @@ def redis_cached_generator_last_chunk(expiration_seconds: int = 60 * 60 * 24) ->
 
             try:
                 # Check for cached result
-                cached_item = await _try_retrieve_cached_result(async_cache, cache_key)
+                cached_item = await _try_retrieve_cached_result(shared_redis_client, cache_key)
                 if cached_item is not None:
                     # Cache hit - yield the cached item
                     yield cached_item
@@ -146,7 +139,7 @@ def redis_cached_generator_last_chunk(expiration_seconds: int = 60 * 60 * 24) ->
 
                 # Cache the last yielded item if there is one
                 if last_yielded is not None:
-                    await _try_cache_result(async_cache, cache_key, last_yielded, expiration_seconds)
+                    await _try_cache_result(shared_redis_client, cache_key, last_yielded, expiration_seconds)
                 else:
                     _logger.warning(
                         "Generator yielded no items for nothing to cache.",
@@ -158,8 +151,6 @@ def redis_cached_generator_last_chunk(expiration_seconds: int = 60 * 60 * 24) ->
                 # Fallback to original function on error
                 async for item in func(*args, **kwargs):
                     yield item
-            finally:
-                await _safely_close_redis(async_cache)
 
         # the type checker can't verify that the wrapped function
         return async_generator_wrapper  # type: ignore

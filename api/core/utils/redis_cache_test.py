@@ -16,7 +16,7 @@ async def test_redis_cached_hit() -> None:
 
     mock_inner = AsyncMock(return_value="fresh_value")
 
-    with patch("core.utils.redis_cache.get_redis_client", return_value=mock_cache):
+    with patch("core.utils.redis_cache.shared_redis_client", mock_cache):
 
         @redis_cached()
         async def test_func(param: str) -> str:
@@ -37,7 +37,7 @@ async def test_redis_cached_miss() -> None:
 
     mock_inner = AsyncMock(return_value="fresh_value")
 
-    with patch("core.utils.redis_cache.get_redis_client", return_value=mock_cache):
+    with patch("core.utils.redis_cache.shared_redis_client", mock_cache):
 
         @redis_cached()
         async def test_func(param: str) -> str:
@@ -63,7 +63,7 @@ async def test_redis_cached_non_async_function() -> None:
 
     mock_inner = Mock(return_value="sync_value")
 
-    with patch("core.utils.redis_cache.get_redis_client", return_value=mock_cache):
+    with patch("core.utils.redis_cache.shared_redis_client", mock_cache):
 
         @redis_cached()
         def test_func(param: str) -> str:  # Note: non-async function
@@ -83,7 +83,7 @@ async def test_redis_cached_cache_error() -> None:
 
     mock_inner = AsyncMock(return_value="fallback_value")
 
-    with patch("core.utils.redis_cache.get_redis_client", return_value=mock_cache):
+    with patch("core.utils.redis_cache.shared_redis_client", mock_cache):
 
         @redis_cached()
         def test_func(param: str) -> str:  # Note: non-async function
@@ -104,7 +104,7 @@ async def test_redis_cached_with_complex_args() -> None:
 
     mock_inner = AsyncMock(return_value={"result": 30})
 
-    with patch("core.utils.redis_cache.get_redis_client", return_value=mock_cache):
+    with patch("core.utils.redis_cache.shared_redis_client", mock_cache):
 
         @redis_cached()
         async def test_func(a: int, b: dict[str, int], c: str = "default") -> dict[str, int]:
@@ -169,7 +169,7 @@ async def test_async_generator_cache_hit() -> None:
     # Create mock for tracking calls without actually calling
     call_tracker = Mock()
 
-    with patch("core.utils.redis_cache.get_redis_client", return_value=mock_cache):
+    with patch("core.utils.redis_cache.shared_redis_client", mock_cache):
 
         @redis_cached_generator_last_chunk()
         async def test_func(param: str) -> AsyncIterator[str]:
@@ -198,7 +198,7 @@ async def test_async_generator_cache_miss() -> None:
         for item in ["chunk1", "chunk2", "final_chunk"]:
             yield item
 
-    with patch("core.utils.redis_cache.get_redis_client", return_value=mock_cache):
+    with patch("core.utils.redis_cache.shared_redis_client", mock_cache):
 
         @redis_cached_generator_last_chunk()
         async def test_func(param: str) -> AsyncIterator[str]:
@@ -228,7 +228,7 @@ async def test_async_generator_cache_error() -> None:
         for item in ["chunk1", "chunk2", "final_chunk"]:
             yield item
 
-    with patch("core.utils.redis_cache.get_redis_client", return_value=mock_cache):
+    with patch("core.utils.redis_cache.shared_redis_client", mock_cache):
 
         @redis_cached_generator_last_chunk()
         async def test_func(param: str) -> AsyncIterator[str]:
@@ -255,7 +255,7 @@ async def test_async_generator_empty() -> None:
         if False:  # Never yield anything
             yield "this will never be yielded"
 
-    with patch("core.utils.redis_cache.get_redis_client", return_value=mock_cache):
+    with patch("core.utils.redis_cache.shared_redis_client", mock_cache):
 
         @redis_cached_generator_last_chunk()
         async def test_func(param: str) -> AsyncIterator[str]:
@@ -296,7 +296,7 @@ async def test_async_generator_cached_different_scenarios(input_chunks: list[str
         for item in input_chunks:
             yield item
 
-    with patch("core.utils.redis_cache.get_redis_client", return_value=mock_cache):
+    with patch("core.utils.redis_cache.shared_redis_client", mock_cache):
 
         @redis_cached_generator_last_chunk()
         async def test_func(param: str) -> AsyncIterator[str]:

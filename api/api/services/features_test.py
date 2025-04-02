@@ -482,7 +482,7 @@ async def test_build_agent_suggestion_input(
         service = FeatureService(storage=mock_storage)
 
         # Call the method
-        result = await service._build_agent_suggestion_input(company_domain, company_context)  # pyright: ignore[reportPrivateUsage]
+        result = await service._build_agent_suggestion_input(company_domain, company_context, "")  # pyright: ignore[reportPrivateUsage]
 
         # Verify the result
         assert result.supported_agent_input_types == expected_agent_types
