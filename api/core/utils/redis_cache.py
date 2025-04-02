@@ -84,10 +84,10 @@ def redis_cached(expiration_seconds: int = 60 * 60 * 24) -> Callable[[F], F]:  #
     return decorator
 
 
-async def _try_retrieve_cached_result(async_cache: Any, cache_key: str) -> Optional[Any]:
+async def _try_retrieve_cached_result(redis_cache: aioredis.Redis, cache_key: str) -> Optional[Any]:
     """Helper function to retrieve and deserialize a cached result."""
     try:
-        cached_bytes = await async_cache.get(cache_key)  # pyright: ignore
+        cached_bytes = await redis_cache.get(cache_key)  # pyright: ignore
         if cached_bytes:
             return pickle.loads(cached_bytes)  # pyright: ignore
     except Exception as e:
@@ -95,15 +95,15 @@ async def _try_retrieve_cached_result(async_cache: Any, cache_key: str) -> Optio
     return None
 
 
-async def _try_cache_result(async_cache: Any, cache_key: str, result: Any, expiration_seconds: int) -> None:
+async def _try_cache_result(redis_cache: aioredis.Redis, cache_key: str, result: Any, expiration_seconds: int) -> None:
     """Helper function to cache a result."""
     try:
-        await async_cache.setex(cache_key, expiration_seconds, pickle.dumps(result))  # pyright: ignore
+        await redis_cache.setex(cache_key, expiration_seconds, pickle.dumps(result))  # pyright: ignore
     except Exception as e:
         _logger.exception("Failed to cache result for", exc_info=e, extra={"cache_key": cache_key})
 
 
-def redis_cached_generator_last_chunk(expiration_seconds: int = 60 * 60 * 24) -> Callable[[AG], AG]:
+def redis_cached_generator_last_chunk(expiration_seconds: int = 60 * 60 * 24) -> Callable[[AG], AG]:  # noqa: C901
     """
     Decorator to cache the final chunk of an async generator function in Redis.
 
@@ -115,12 +115,22 @@ def redis_cached_generator_last_chunk(expiration_seconds: int = 60 * 60 * 24) ->
 
     if not shared_redis_client:
         _logger.warning("Redis cache is not available, skipping redis_cached_generator")
-        return lambda func: func  # type: ignore
+
+        def decorator(func: AG) -> AG:
+            return func
+
+        return decorator
 
     def decorator(func: AG) -> AG:
         @functools.wraps(func)
         async def async_generator_wrapper(*args: Any, **kwargs: Any) -> AsyncIterator[Any]:
             cache_key = _generate_cache_key(func, args, kwargs, suffix=".generator_result")
+
+            if shared_redis_client is None:
+                # This code should never be reached, it's here for typing reasons.
+                raise Exception(
+                    "'async_generator_wrapper' is used, but redis cache is not available, this should not happen",
+                )
 
             try:
                 # Check for cached result
