@@ -14,7 +14,6 @@ from core.utils.streams import standard_wrap_sse
 from core.utils.strings import remove_empty_lines
 
 TIMEOUT_SECONDS = 60
-PERPLEXITY_API_KEY = os.environ["PERPLEXITY_API_KEY"]
 
 _logger = logging.getLogger(__name__)
 
@@ -79,6 +78,9 @@ async def run_perplexity_search_sonar_pro(query: str) -> str:
 
 async def _run_perplexity_search(query: str, model: PerplexityModel) -> str:
     """Runs a Perplexity search and returns the results in JSON format."""
+
+    PERPLEXITY_API_KEY = os.environ["PERPLEXITY_API_KEY"]
+
     async with httpx.AsyncClient() as client:
         response = await client.post(
             "https://api.perplexity.ai/chat/completions",
@@ -139,6 +141,8 @@ async def stream_perplexity_search(query: str, max_tokens: int | None = None) ->
 
     As it's a streaming version of the Perplexity search, it's fit for use as a tool in a run.
     """
+
+    PERPLEXITY_API_KEY = os.environ["PERPLEXITY_API_KEY"]
 
     body: dict[str, Any] = {
         "model": PerplexityModel.SONAR_PRO.value,
