@@ -1,6 +1,6 @@
 // eslint-disable-next-line no-restricted-imports
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
-import { NextMiddleware, NextResponse } from 'next/server';
+import { NextMiddleware, NextRequest, NextResponse } from 'next/server';
 import { looksLikeURL } from './app/landing/sections/SuggestedFeatures/utils';
 import { cleanURL } from './app/landing/sections/SuggestedFeatures/utils';
 import { DISABLE_AUTHENTICATION } from './lib/constants';
@@ -11,7 +11,19 @@ function buildMiddleware(): NextMiddleware {
   }
 
   const isProtectedRoute = createRouteMatcher(['/api/clerk(.*)']);
-  return clerkMiddleware((auth, req) => {
+  return clerkMiddleware((auth, req: NextRequest) => {
+    // Set the x-request-url header
+    const requestHeaders = new Headers(req.headers);
+    requestHeaders.set('x-request-url', req.url);
+
+    // Clone the request with the new headers
+    // This response object will be returned unless a redirect happens later.
+    const response = NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    });
+
     //Check if the path starts with a domain-like string
 
     const path = req.nextUrl.pathname;
@@ -34,6 +46,9 @@ function buildMiddleware(): NextMiddleware {
     if (!auth().userId && isProtectedRoute(req)) {
       return auth().redirectToSignIn();
     }
+
+    // Return the response with the added header if no redirect occurred
+    return response;
   });
 }
 
