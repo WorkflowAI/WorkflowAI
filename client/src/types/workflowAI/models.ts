@@ -2007,6 +2007,11 @@ export type TenantData = {
   automatic_payment_enabled?: boolean;
   automatic_payment_threshold?: number | null;
   automatic_payment_balance_to_maintain?: number | null;
+  payment_failure?: {
+    failure_date: string;
+    failure_code: 'payment_failed' | 'internal';
+    failure_reason: string;
+  } | null;
 };
 
 export type TextContentDict = {

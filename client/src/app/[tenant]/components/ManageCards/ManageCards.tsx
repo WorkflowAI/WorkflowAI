@@ -4,8 +4,7 @@ import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/Dialog';
 import { SimpleTooltip } from '@/components/ui/Tooltip';
 import { useAuth } from '@/lib/AuthContext';
 import { STRIPE_PUBLISHABLE_KEY } from '@/lib/constants';
-import { useOrFetchPayments } from '@/store/fetchers';
-import { usePayments } from '@/store/payments';
+import { useOrFetchPayments, usePayments } from '@/store/payments';
 import { TenantID } from '@/types/aliases';
 import { TenantData } from '@/types/workflowAI';
 import { ManageCardsContent } from './ManageCardsContent';
@@ -22,7 +21,7 @@ function ManageCardsInner(props: ManageCardsProps) {
   const { tenant, children, organizationSettings } = props;
   const [isOpen, setIsOpen] = useState(false);
 
-  const { paymentMethod, isInitialized } = useOrFetchPayments(tenant);
+  const { paymentMethod, isInitialized } = useOrFetchPayments();
 
   const balance = organizationSettings?.current_credits_usd;
   const isPaymentMethodAvailable = !!paymentMethod?.payment_method_id;
@@ -94,18 +93,18 @@ function ManageCardsInner(props: ManageCardsProps) {
     if (!amountToAdd) {
       return;
     }
-    const result = await addCredits(tenant, amountToAdd);
+    const result = await addCredits(amountToAdd);
 
     if (result) {
       reset();
       setIsOpen(false);
     }
-  }, [addCredits, amountToAdd, reset, tenant, setIsOpen]);
+  }, [addCredits, amountToAdd, reset, setIsOpen]);
 
   const onDeletePaymentMethod = useCallback(async () => {
-    await deletePaymentMethod(tenant);
+    await deletePaymentMethod();
     reset();
-  }, [deletePaymentMethod, reset, tenant]);
+  }, [deletePaymentMethod, reset]);
 
   const onDismissForcedTooltip = useCallback(
     (event: React.MouseEvent) => {
