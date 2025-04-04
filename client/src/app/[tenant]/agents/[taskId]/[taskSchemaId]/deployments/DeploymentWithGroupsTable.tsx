@@ -1,4 +1,4 @@
-import { ArrowSync16Regular, Code16Regular, Key16Regular } from '@fluentui/react-icons';
+import { ArrowSync16Regular, Code16Regular } from '@fluentui/react-icons';
 import dayjs from 'dayjs';
 import { useRouter } from 'next/navigation';
 import { useCallback, useMemo } from 'react';
@@ -17,13 +17,12 @@ import { User } from '@/types/user';
 import { VersionEnvironment, VersionV1 } from '@/types/workflowAI';
 import { EditEnvSchemaIterationParams } from './DeployVersionModal';
 
-const rowClassNames = 'grid grid-cols-[60px_75px_210px_1fr_125px_130px]';
+const rowClassNames = 'grid grid-cols-[60px_75px_210px_1fr_125px]';
 
 type DeploymentGroupRowProps = {
   environment: VersionEnvironment;
   version: VersionV1;
   setEnvSchemaIteration: (envSchemaIteration: EditEnvSchemaIterationParams) => void;
-  setSelectedVersion: (version: VersionV1 | undefined) => void;
   tenant: TenantID;
   taskId: TaskID;
   isInDemoMode: boolean;
@@ -31,8 +30,7 @@ type DeploymentGroupRowProps = {
 };
 
 function DeploymentGroupRow(props: DeploymentGroupRowProps) {
-  const { environment, version, tenant, taskId, setEnvSchemaIteration, setSelectedVersion, isInDemoMode, usersByID } =
-    props;
+  const { environment, version, tenant, taskId, setEnvSchemaIteration, isInDemoMode, usersByID } = props;
   const router = useRouter();
   const taskSchemaId = `${version.schema_id}` as TaskSchemaID;
 
@@ -59,12 +57,7 @@ function DeploymentGroupRow(props: DeploymentGroupRowProps) {
     });
   }, [setEnvSchemaIteration, version.schema_id, environment, version.iteration]);
 
-  const onUpdateProvider = useCallback(() => {
-    setSelectedVersion(version);
-  }, [setSelectedVersion, version]);
-
   const deployment = version.deployments?.[0];
-  const providerConfigID = deployment?.provider_config_id;
 
   const deployedAt = useMemo(() => {
     if (!deployment?.deployed_at) {
@@ -106,12 +99,6 @@ function DeploymentGroupRow(props: DeploymentGroupRowProps) {
           text: 'View Code',
           onClick: onViewCode,
         },
-        {
-          icon: <Key16Regular />,
-          text: 'Update API Key',
-          onClick: onUpdateProvider,
-          disabled: isInDemoMode,
-        },
       ]}
     >
       <TableRow className={rowClassNames}>
@@ -133,7 +120,6 @@ function DeploymentGroupRow(props: DeploymentGroupRowProps) {
         <TableCell>
           <VersionRunCountContainer tenant={tenant} taskId={taskId} version_id={version.id} onClick={onViewRuns} />
         </TableCell>
-        <TableCell>{providerConfigID ? 'User Key' : 'WorkflowAI Key'}</TableCell>
       </TableRow>
     </TooltipButtonGroup>
   );
@@ -143,14 +129,14 @@ type DeploymentWithGroupsTableProps = {
   environment: VersionEnvironment;
   versions: VersionV1[] | undefined;
   setEnvSchemaIteration: (envSchemaIteration: EditEnvSchemaIterationParams) => void;
-  setSelectedVersion: (version: VersionV1 | undefined) => void;
+
   tenant: TenantID;
   taskId: TaskID;
   isInDemoMode: boolean;
 };
 
 export function DeploymentWithGroupsTable(props: DeploymentWithGroupsTableProps) {
-  const { environment, versions, tenant, taskId, setEnvSchemaIteration, setSelectedVersion, isInDemoMode } = props;
+  const { environment, versions, tenant, taskId, setEnvSchemaIteration, isInDemoMode } = props;
 
   const userIds = useMemo(() => {
     if (!versions) {
@@ -179,7 +165,6 @@ export function DeploymentWithGroupsTable(props: DeploymentWithGroupsTableProps)
             <TableHead>Model</TableHead>
             <TableHead>Deployed</TableHead>
             <TableHead>Runs in last 24h</TableHead>
-            <TableHead>Provider API Key</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -190,7 +175,6 @@ export function DeploymentWithGroupsTable(props: DeploymentWithGroupsTableProps)
               tenant={tenant}
               taskId={taskId}
               setEnvSchemaIteration={setEnvSchemaIteration}
-              setSelectedVersion={setSelectedVersion}
               environment={environment}
               isInDemoMode={isInDemoMode}
               usersByID={usersByID}

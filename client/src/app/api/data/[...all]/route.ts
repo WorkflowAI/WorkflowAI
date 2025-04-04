@@ -35,6 +35,7 @@ const proxyHandler = async (req: NextRequest) => {
       return new NextResponse(data, { status: apiResponse.status });
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
+      console.error('Error forwarding request', error);
       return new NextResponse(`An error occurred while forwarding the request: ${error?.message}`, {
         status: error?.status || 500,
       });

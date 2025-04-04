@@ -2,7 +2,6 @@
 
 import { ApiKeysModal } from '@/components/ApiKeysModal/ApiKeysModal';
 import { CommandK } from '@/components/CommandK';
-import { ManageProviderKeysModal } from '@/components/ProviderKeysModal/ManageProviderKeysModal';
 import { TaskSettingsModal } from '@/components/TaskSettingsModal/TaskSettingsModal';
 import { StripeWrapper } from '@/components/stripe/StripeWrapper';
 import { useAuth } from '@/lib/AuthContext';
@@ -38,7 +37,6 @@ export default function Layout({ children }: Readonly<{ children: React.ReactNod
     <RedirectForTenant>
       <StripeWrapper>
         <ApiKeysModal />
-        <ManageProviderKeysModal />
         <div className='flex flex-col h-full max-h-screen overflow-hidden bg-custom-gradient-1'>
           {showBanner && <LoggedOutBanner />}
           {showTaskBanner && <LoggedOutBannerForDemoTask name={task?.name ?? taskId} />}

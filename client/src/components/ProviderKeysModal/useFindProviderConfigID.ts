@@ -12,6 +12,7 @@ type UseFindProviderConfigIDProps = {
   taskSchemaId: TaskSchemaID;
 };
 
+// TODO: remove, likely unused
 export function useFindProviderConfigID(props: UseFindProviderConfigIDProps) {
   const { providerSettings, model, tenant, taskId, taskSchemaId } = props;
 

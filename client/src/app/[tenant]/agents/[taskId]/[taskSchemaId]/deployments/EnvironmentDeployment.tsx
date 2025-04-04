@@ -14,7 +14,6 @@ type EnvironmentDeploymentProps = {
   environment: VersionEnvironment;
   versions: VersionV1[] | undefined;
   setEnvSchemaIteration: (envSchemaIteration: EditEnvSchemaIterationParams) => void;
-  setSelectedVersion: (version: VersionV1 | undefined) => void;
   tenant: TenantID;
   taskId: TaskID;
   taskSchemaId: TaskSchemaID;
@@ -22,16 +21,7 @@ type EnvironmentDeploymentProps = {
 };
 
 export function EnvironmentDeployment(props: EnvironmentDeploymentProps) {
-  const {
-    environment,
-    versions,
-    tenant,
-    taskId,
-    setEnvSchemaIteration,
-    setSelectedVersion,
-    taskSchemaId,
-    isInDemoMode,
-  } = props;
+  const { environment, versions, tenant, taskId, setEnvSchemaIteration, taskSchemaId, isInDemoMode } = props;
   const deploymentsCount = versions?.length ?? 0;
 
   const onDeploy = useCallback(() => {
@@ -91,7 +81,6 @@ export function EnvironmentDeployment(props: EnvironmentDeploymentProps) {
           tenant={tenant}
           taskId={taskId}
           setEnvSchemaIteration={setEnvSchemaIteration}
-          setSelectedVersion={setSelectedVersion}
           isInDemoMode={isInDemoMode}
         />
       )}

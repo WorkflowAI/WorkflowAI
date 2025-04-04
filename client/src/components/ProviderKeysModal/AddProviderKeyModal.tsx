@@ -10,6 +10,8 @@ import { ProviderConfig } from '@/store/organization_settings';
 import { Provider, ProviderSettings } from '@/types/workflowAI';
 import { TenantData } from '@/types/workflowAI';
 import { AI_PROVIDERS_METADATA } from '../AIModelsCombobox/utils';
+import { Textarea } from '../ui/Textarea';
+import { GoogleConfigForm } from './GoogleConfigForm';
 
 type SetProviderConfigProps = {
   providerSettings: ProviderSettings[] | undefined;
@@ -18,100 +20,12 @@ type SetProviderConfigProps = {
   onClose: (keyWasCreated: boolean) => void;
 };
 
-type GoogleConfigFormProps = {
-  setConfig: Dispatch<SetStateAction<Record<string, unknown> | undefined>>;
-};
-
-function GoogleConfigForm(props: GoogleConfigFormProps) {
-  const { setConfig } = props;
-
-  const [projectId, setProjectId] = useState<string>();
-  const [location, setLocation] = useState<string>();
-  const [credentials, setCredentials] = useState<string>();
-
-  const onProjectIdChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setProjectId(e.target.value);
-  }, []);
-
-  const onLocationChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setLocation(e.target.value);
-  }, []);
-
-  const onCredentialsChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      const data = reader.result as string;
-      setCredentials(data);
-    };
-    reader.readAsDataURL(file);
-  }, []);
-
-  useEffect(() => {
-    if (!projectId || !location || !credentials) {
-      setConfig(undefined);
-      return;
-    }
-
-    setConfig({
-      vertex_project: projectId,
-      vertex_location: location,
-      vertex_credentials: credentials,
-    });
-  }, [projectId, location, credentials, setConfig]);
-
-  return (
-    <div className='flex flex-col items-start gap-6 w-full'>
-      <div className='flex flex-col items-start gap-3 w-full max-w-[600px]'>
-        <label htmlFor='project-id' className='text-[14px] text-slate-600 font-medium'>
-          Project ID
-        </label>
-        <Input
-          id='project-id'
-          placeholder='The ID of your Google Vertex Project'
-          onChange={onProjectIdChange}
-          value={projectId}
-          className='w-full rounded-[10px]'
-        />
-      </div>
-
-      <div className='flex flex-col items-start gap-3 w-full max-w-[600px]'>
-        <label htmlFor='location' className='text-[14px] text-slate-600 font-medium'>
-          Location
-        </label>
-        <Input
-          id='location'
-          placeholder='The region of the project, eg. us-central1'
-          onChange={onLocationChange}
-          value={location}
-          className='w-full rounded-[10px]'
-        />
-      </div>
-
-      <div className='flex flex-col items-start gap-3 w-full max-w-[600px]'>
-        <label htmlFor='credentials' className='text-[14px] text-slate-600 font-medium'>
-          Credentials
-        </label>
-        <Input
-          type='file'
-          id='Credentials'
-          placeholder='JSON file containing sign-in info'
-          onChange={onCredentialsChange}
-          className='w-full rounded-[10px]'
-        />
-      </div>
-    </div>
-  );
-}
-
 type ProviderConfigFormProps = {
   current_provider: Provider;
   setConfig: Dispatch<SetStateAction<Record<string, unknown> | undefined>>;
 };
 
-function ProviderConfigForm(props: ProviderConfigFormProps) {
+function APIKeyConfigForm(props: ProviderConfigFormProps) {
   const { current_provider, setConfig } = props;
 
   const [apiKey, setApiKey] = useState<string>();
@@ -166,6 +80,53 @@ function ProviderConfigForm(props: ProviderConfigFormProps) {
       />
     </div>
   );
+}
+
+function JSONProviderConfigForm(props: ProviderConfigFormProps) {
+  const { current_provider, setConfig } = props;
+
+  const name = AI_PROVIDERS_METADATA[current_provider as Provider].name;
+  const [code, setCode] = useState<string>('');
+  const [error, setError] = useState<string>();
+
+  useEffect(() => {
+    if (!code) {
+      setConfig(undefined);
+      setError(undefined);
+      return;
+    }
+
+    try {
+      const json = JSON.parse(code);
+      setConfig(json);
+      setError(undefined);
+    } catch (e) {
+      setConfig(undefined);
+      setError(`${e}`);
+    }
+  }, [code, setConfig]);
+
+  return (
+    <div className='w-full h-full flex flex-col gap-2'>
+      <div className='text-[14px] text-slate-600 font-medium'>{name} Credentials</div>
+      {error && <div className='text-red-500 text-[14px]'>{error}</div>}
+      <Textarea value={code} onChange={(e) => setCode(e.target.value)} className='min-h-48' />
+    </div>
+  );
+}
+
+function ProviderConfigForm(props: ProviderConfigFormProps) {
+  const { current_provider, setConfig } = props;
+
+  if (current_provider === 'google') {
+    return <GoogleConfigForm setConfig={setConfig} />;
+  }
+
+  if (current_provider === 'amazon_bedrock' || current_provider === 'azure_openai') {
+    return <JSONProviderConfigForm current_provider={current_provider} setConfig={setConfig} />;
+  }
+
+  return <APIKeyConfigForm current_provider={current_provider} setConfig={setConfig} />;
 }
 
 export function AddProviderKeyModalContent(props: SetProviderConfigProps) {

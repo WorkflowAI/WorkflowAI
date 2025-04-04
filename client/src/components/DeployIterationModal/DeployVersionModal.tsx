@@ -8,12 +8,11 @@ import { useTaskSchemaParams } from '@/lib/hooks/useTaskParams';
 import { useParsedSearchParams } from '@/lib/queryString';
 import { taskApiRoute } from '@/lib/routeFormatter';
 import { formatSemverVersion } from '@/lib/versionUtils';
-import { useOrFetchOrganizationSettings, useOrFetchVersions } from '@/store';
+import { useOrFetchVersions } from '@/store';
 import { useReviewBenchmark } from '@/store/task_review_benchmark';
 import { VersionsPerEnvironment, useVersions } from '@/store/versions';
 import { TaskID, TaskSchemaID, TenantID } from '@/types/aliases';
 import { VersionEnvironment } from '@/types/workflowAI';
-import { useFindProviderConfigID } from '../ProviderKeysModal/useFindProviderConfigID';
 import { DeployVersionConfirmModal } from './DeployVersionConfirmModal';
 import { DeployVersionContent } from './DeployVersionContent';
 
@@ -21,20 +20,13 @@ export function useEnvDeploy(tenant: TenantID, taskId: TaskID, taskSchemaId: Tas
   const deployVersion = useVersions((state) => state.deployVersion);
 
   const deployGroupToEnv = useCallback(
-    async (
-      environment: VersionEnvironment,
-      versionId: string,
-      versionText: string | undefined,
-      iteration: number | string | undefined | null,
-      providerConfigID: string | undefined | null
-    ) => {
-      if (!taskSchemaId || !iteration) {
+    async (environment: VersionEnvironment, versionId: string | undefined, versionText: string | undefined) => {
+      if (!taskSchemaId || !versionId) {
         return;
       }
       try {
-        await deployVersion(tenant, taskId, taskSchemaId, versionId, iteration, {
+        await deployVersion(tenant, taskId, versionId, {
           environment,
-          provider_config_id: providerConfigID,
         });
         displaySuccessToaster(
           <span>
@@ -146,21 +138,11 @@ export function DeployVersionModal() {
     setShowConfirmModal(false);
   }, [originalVersionsPerEnvironment]);
 
-  const { organizationSettings } = useOrFetchOrganizationSettings();
-
   useEffect(() => {
     if (!open) {
       setShowConfirmModal(false);
     }
   }, [open]);
-
-  const { providerConfigID: settingsProviderConfigID } = useFindProviderConfigID({
-    tenant,
-    taskId,
-    taskSchemaId,
-    providerSettings: organizationSettings?.providers,
-    model: currentVersion?.model,
-  });
 
   const deployVersionToEnv = useEnvDeploy(tenant, taskId, taskSchemaId);
 
@@ -168,8 +150,6 @@ export function DeployVersionModal() {
 
   const handleDeploy = useCallback(async () => {
     const promises: Promise<void>[] = [];
-
-    const providerConfigID = settingsProviderConfigID;
 
     const taskIterationsToAddToBenchmarks: Set<number> = new Set();
     const environmentValues: VersionEnvironment[] = ['dev', 'staging', 'production'];
@@ -184,9 +164,7 @@ export function DeployVersionModal() {
         !!currentTaskIteration &&
         currentTaskIteration !== originalTaskIteration
       ) {
-        promises.push(
-          deployVersionToEnv(environment, currentVersionId, versionText, currentIteration, providerConfigID)
-        );
+        promises.push(deployVersionToEnv(environment, currentVersionId, versionText));
         taskIterationsToAddToBenchmarks.add(currentIteration);
       }
     });
@@ -205,7 +183,6 @@ export function DeployVersionModal() {
     currentIteration,
     currentVersionId,
     onClose,
-    settingsProviderConfigID,
     updateBenchmark,
     tenant,
     taskId,

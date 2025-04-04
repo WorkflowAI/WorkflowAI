@@ -30,7 +30,6 @@ export type AIProviderMetadata = {
   name: string;
   icon: JSX.Element;
   documentationUrl: string;
-  providerSupported: boolean;
 };
 
 export const AI_PROVIDERS_METADATA: Record<Provider, AIProviderMetadata> = {
@@ -38,56 +37,47 @@ export const AI_PROVIDERS_METADATA: Record<Provider, AIProviderMetadata> = {
     name: 'OpenAI',
     icon: <OpenAIIcon />,
     documentationUrl: 'https://platform.openai.com/account/api-keys',
-    providerSupported: true,
   },
   amazon_bedrock: {
     name: 'Amazon Bedrock',
     icon: <AmazonBedrockIcon />,
     documentationUrl: 'https://docs.aws.amazon.com/bedrock/latest/userguide/getting-started-api.html',
-    providerSupported: false,
   },
   azure_openai: {
     name: 'Azure OpenAI',
     icon: <AzureIcon />,
     documentationUrl:
       'https://learn.microsoft.com/en-us/azure/api-management/api-management-authenticate-authorize-azure-openai',
-    providerSupported: false,
   },
   google: {
     name: 'Google',
     icon: <FaGoogle />,
     documentationUrl: 'https://console.cloud.google.com/apis/credentials',
-    providerSupported: true,
   },
   groq: {
     name: 'Groq',
     icon: <GroqIcon />,
     documentationUrl: 'https://console.groq.com/keys',
-    providerSupported: true,
   },
   anthropic: {
     name: 'Anthropic',
     icon: <SiAnthropic />,
     documentationUrl: 'https://console.anthropic.com/account/keys',
-    providerSupported: true,
   },
   mistral_ai: {
     name: 'Mistral AI',
     icon: <MistralAIIcon />,
     documentationUrl: 'https://console.mistral.ai/api-keys',
-    providerSupported: false,
   },
   google_gemini: {
     name: 'Gemini',
     icon: <FaGoogle />,
     documentationUrl: 'https://aistudio.google.com/app/apikey',
-    providerSupported: true,
   },
   fireworks: {
     name: 'Fireworks AI',
     icon: <FireworksIcon />,
     documentationUrl: 'https://fireworks.ai/docs/api-reference/introduction',
-    providerSupported: true,
   },
 };
 

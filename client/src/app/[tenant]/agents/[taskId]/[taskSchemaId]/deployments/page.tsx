@@ -6,6 +6,6 @@ export async function generateMetadata({ params }: { params: TaskSchemaParams })
   return generateMetadataWithTitle('Deployments', params);
 }
 
-export default function BenchmarksPage() {
+export default function DeploymentsPage() {
   return <DeploymentsContainer />;
 }

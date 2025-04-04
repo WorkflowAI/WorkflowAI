@@ -129,9 +129,7 @@ interface VersionsState {
   deployVersion: (
     tenant: TenantID | undefined,
     taskId: TaskID,
-    taskSchemaId: TaskSchemaID,
     versionId: string,
-    iteration: number | string,
     request: DeployVersionRequest
   ) => Promise<VersionV1 | undefined>;
 }
@@ -304,9 +302,9 @@ export const useVersions = create<VersionsState>((set, get) => ({
     get().fetchVersions(tenant, taskId, undefined);
   },
 
-  deployVersion: async (tenant, taskId, taskSchemaId, versionId, iteration, request) => {
+  deployVersion: async (tenant, taskId, versionId, request) => {
     await client.post<DeployVersionRequest, DeployVersionResponse>(
-      taskSchemaSubPath(tenant, taskId, taskSchemaId, `/versions/${iteration}/deploy`),
+      taskSubPath(tenant, taskId, `/versions/${versionId}/deploy`, true),
       request
     );
 

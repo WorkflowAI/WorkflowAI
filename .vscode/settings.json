@@ -41,7 +41,8 @@
     "app/logging/*.log.*": true,
     "poetry.lock": true,
     "yarn.lock": true,
-    "yarn-*.cjs": true
+    "yarn-*.cjs": true,
+    "client/.next": true
   },
   "files.exclude": {
     "**/.git": true,

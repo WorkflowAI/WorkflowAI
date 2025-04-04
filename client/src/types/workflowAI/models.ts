@@ -358,14 +358,12 @@ export type CustomerCreatedResponse = {
 
 export type DeployVersionRequest = {
   environment: VersionEnvironment;
-  provider_config_id?: string | null;
 };
 
 export type DeployVersionResponse = {
   task_schema_id: number;
-  version_id: number;
+  version_id: string;
   environment: VersionEnvironment;
-  provider_config_id?: string | null;
   deployed_at: string;
 };
 
@@ -445,7 +443,6 @@ export type DeployedVersionsResponse = {
 
 export type Deployment = {
   environment: VersionEnvironment;
-  provider_config_id?: string | null;
   deployed_at: string;
   deployed_by?: core__domain__users__UserIdentifier | null;
 };
@@ -2178,7 +2175,6 @@ export type VersionDeploymentMetadata = {
   environment: VersionEnvironment;
   deployed_at: string;
   deployed_by: api__schemas__user_identifier__UserIdentifier | null;
-  provider_config_id: string | null;
 };
 
 export type VersionEnvironment = 'dev' | 'staging' | 'production';
