@@ -96,6 +96,8 @@ ErrorCode = (
         "unsupported_json_schema",
         # The credit card is invalid
         "card_validation_error",
+        # The payment failed
+        "payment_failed",
     ]
 )
 

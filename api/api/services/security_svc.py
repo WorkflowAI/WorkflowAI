@@ -12,7 +12,7 @@ from core.domain.analytics_events.analytics_events import (
 )
 from core.domain.errors import DuplicateValueError
 from core.domain.events import EventRouter, SendAnalyticsEvent
-from core.domain.organization_settings import TenantData
+from core.domain.tenant_data import TenantData
 from core.domain.users import User
 from core.storage import ObjectNotFoundException
 from core.storage.organization_storage import OrganizationSystemStorage

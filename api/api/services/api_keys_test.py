@@ -5,7 +5,7 @@ import pytest
 
 from core.domain.errors import DuplicateValueError
 from core.domain.users import UserIdentifier
-from core.storage.mongo.models.organizations import APIKeyDocument
+from core.storage.mongo.models.organization_document import APIKeyDocument
 
 from .api_keys import APIKeyService, GeneratedAPIKey
 

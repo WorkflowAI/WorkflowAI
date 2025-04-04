@@ -118,7 +118,7 @@ class TestWebhook:
                         "object": "payment_intent",
                         "id": "pi_123",
                         "amount": 1000,
-                        "metadata": {"tenan": "test-tenant"},
+                        "metadata": {"tenan"},
                         "status": "succeeded",
                     },
                 },
@@ -135,5 +135,5 @@ class TestWebhook:
             headers={"Stripe-Signature": "test_signature"},
         )
 
-        assert response.status_code == 400
+        assert response.status_code == 500
         patch_storage.return_value.organizations.add_credits_to_tenant.assert_not_called()

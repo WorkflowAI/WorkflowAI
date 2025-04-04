@@ -1,11 +1,11 @@
 from datetime import datetime, timezone
-from typing import Any, List, override
+from typing import Any, List, Literal, override
 
 from pymongo.errors import DuplicateKeyError
 
 from core.domain.api_key import APIKey
 from core.domain.errors import DuplicateValueError
-from core.domain.organization_settings import (
+from core.domain.tenant_data import (
     ProviderSettings,
     PublicOrganizationData,
     TenantData,
@@ -13,9 +13,10 @@ from core.domain.organization_settings import (
 from core.domain.users import UserIdentifier
 from core.providers.base.config import ProviderConfig
 from core.storage import ObjectNotFoundException, TenantTuple
-from core.storage.mongo.models.organizations import (
+from core.storage.mongo.models.organization_document import (
     APIKeyDocument,
     OrganizationDocument,
+    PaymentFailureSchema,
     ProviderSettingsSchema,
 )
 from core.storage.mongo.mongo_types import AsyncCollection
@@ -23,6 +24,7 @@ from core.storage.mongo.partials.base_partial_storage import PartialStorage
 from core.storage.mongo.utils import dump_model
 from core.storage.organization_storage import OrganizationStorage
 from core.utils.encryption import Encryption
+from core.utils.fields import datetime_factory
 
 
 class MongoOrganizationStorage(PartialStorage[OrganizationDocument], OrganizationStorage):
@@ -50,6 +52,16 @@ class MongoOrganizationStorage(PartialStorage[OrganizationDocument], Organizatio
         doc = await self._find_one({}, projection=self._projection(None))
         return doc.to_domain(self.encryption)
 
+    async def get_public_org(self, filter: dict[str, Any]):
+        doc = await self._collection.find_one(
+            filter,
+            projection={"tenant": 1, "slug": 1, "display_name": 1, "uid": 1, "org_id": 1, "owner_id": 1},
+        )
+        if doc is None:
+            raise ObjectNotFoundException("Organization  not found", code="organization_not_found")
+
+        return OrganizationDocument.model_validate(doc).to_domain_public()
+
     @override
     async def get_public_organization(self, slug: str) -> PublicOrganizationData:
         # We should move the domain to "previous_slugs" once all data have been migrated
@@ -60,14 +72,12 @@ class MongoOrganizationStorage(PartialStorage[OrganizationDocument], Organizatio
         else:
             # New slugs are URL safe and do not contain dots
             filter = {"slug": slug}
-        doc = await self._collection.find_one(
-            filter,
-            projection={"tenant": 1, "slug": 1, "display_name": 1, "uid": 1},
-        )
-        if doc is None:
-            raise ObjectNotFoundException(f"Organization {slug} not found", code="organization_not_found")
 
-        return OrganizationDocument.model_validate(doc).to_domain_public()
+        return await self.get_public_org(filter)
+
+    @override
+    async def public_organization_by_tenant(self, tenant: str) -> PublicOrganizationData:
+        return await self.get_public_org({"tenant": tenant})
 
     @override
     async def update_slug(
@@ -92,11 +102,20 @@ class MongoOrganizationStorage(PartialStorage[OrganizationDocument], Organizatio
                 {"$set": update},
             )
 
-    async def _find_tenant(self, filter: dict[str, Any]) -> TenantData:
-        doc = await self._collection.find_one(filter, projection=self._projection(None))
+    async def _find_tenant(self, filter: dict[str, Any], projection: dict[str, Any] | None = None) -> TenantData:
+        doc = await self._collection.find_one(filter, projection=projection)
         if doc is None:
             raise ObjectNotFoundException("Organization  not found", code="organization_not_found")
         return OrganizationDocument.model_validate(doc).to_domain(self.encryption)
+
+    async def _update_tenant(self, tenant: str, filter: dict[str, Any], update: dict[str, Any]):
+        with self._wrap_errors():
+            res = await self._collection.update_one(
+                {"tenant": tenant, **filter},
+                update,
+            )
+        if res.matched_count != 1:
+            raise ObjectNotFoundException("Organization  not found", code="organization_not_found")
 
     async def _find_one_and_update_tenant(self, filter: dict[str, Any], update: dict[str, Any]) -> TenantData:
         doc = await self._collection.find_one_and_update(
@@ -147,9 +166,13 @@ class MongoOrganizationStorage(PartialStorage[OrganizationDocument], Organizatio
 
     @override
     async def add_credits_to_tenant(self, tenant: str, credits: float) -> None:
+        # Add credits and unset the payment failure status
         await self._collection.update_one(
             {"tenant": tenant},
-            {"$inc": {"current_credits_usd": credits, "added_credits_usd": credits}},
+            {
+                "$inc": {"current_credits_usd": credits, "added_credits_usd": credits},
+                "$unset": {"payment_failure": "", "low_credits_email_sent": ""},
+            },
         )
 
     @override
@@ -158,12 +181,15 @@ class MongoOrganizationStorage(PartialStorage[OrganizationDocument], Organizatio
             {"tenant": tenant},
             {"$inc": {"current_credits_usd": -credits}},
             projection={
+                "uid": 1,
                 "tenant": 1,
                 "current_credits_usd": 1,
                 "automatic_payment_enabled": 1,
                 "automatic_payment_threshold": 1,
                 "automatic_payment_balance_to_maintain": 1,
                 "locked_for_payment": 1,
+                "payment_failure": 1,
+                "low_credits_email_sent": 1,
             },
             return_document=True,
         )
@@ -259,15 +285,12 @@ class MongoOrganizationStorage(PartialStorage[OrganizationDocument], Organizatio
         )
 
     @override
-    async def attempt_lock_for_payment(self) -> TenantData | None:
+    async def attempt_lock_for_payment(self, tenant: str) -> TenantData | None:
         try:
-            res = await self._find_one_and_update(
-                {"locked_for_payment": {"$ne": True}},
+            return await self._find_one_and_update_tenant(
+                {"tenant": tenant, "locked_for_payment": {"$ne": True}},
                 {"$set": {"locked_for_payment": True}},
-                projection=self._projection(None),
-                return_document=True,
             )
-            return res.to_domain(self.encryption)
         except ObjectNotFoundException:
             return None
 
@@ -279,18 +302,6 @@ class MongoOrganizationStorage(PartialStorage[OrganizationDocument], Organizatio
                 update["$unset"]["last_payment_failed_at"] = ""
             else:
                 update["$unset"] = {"last_payment_failed_at": ""}
-
-    @override
-    async def unset_last_payment_failed_at(self):
-        update: dict[str, Any] = {}
-        self._last_payment_failed_at_set(False, update)
-        await self._update_one({"last_payment_failed_at": {"$exists": True}}, update)
-
-    @override
-    async def unlock_for_payment(self, is_failed: bool) -> None:
-        update: dict[str, Any] = {"$unset": {"locked_for_payment": ""}}
-        self._last_payment_failed_at_set(is_failed, update)
-        await self._update_one({"locked_for_payment": True}, update)
 
     @override
     async def update_automatic_payment(
@@ -362,3 +373,52 @@ class MongoOrganizationStorage(PartialStorage[OrganizationDocument], Organizatio
         if not doc:
             raise ObjectNotFoundException("Organization not found", code="organization_not_found")
         return doc.get("feedback_slack_hook")
+
+    @override
+    async def unlock_payment_for_failure(
+        self,
+        tenant: str,
+        now: datetime,
+        code: Literal["internal", "payment_failed"],
+        failure_reason: str,
+    ):
+        obj = PaymentFailureSchema(failure_code=code, failure_reason=failure_reason, failure_date=now)
+        await self._update_tenant(
+            tenant,
+            {"locked_for_payment": True},
+            {"$unset": {"locked_for_payment": ""}, "$set": {"payment_failure": dump_model(obj)}},
+        )
+
+    @override
+    async def unlock_payment_for_success(self, tenant: str, amount: float) -> None:
+        await self._update_tenant(
+            tenant,
+            {"locked_for_payment": True},
+            {"$unset": {"locked_for_payment": "", "payment_failure": ""}, "$inc": {"current_credits_usd": amount}},
+        )
+
+    @override
+    async def add_low_credits_email_sent(self, tenant: str, threshold: float) -> None:
+        threshold_cts = int(round(threshold * 100))
+        await self._update_tenant(
+            tenant,
+            {},
+            {
+                "$push": {
+                    "low_credits_email_sent": dump_model(
+                        OrganizationDocument.LowCreditsEmailSent(
+                            threshold_cts=threshold_cts,
+                            sent_at=datetime_factory(),
+                        ),
+                    ),
+                },
+            },
+        )
+
+    @override
+    async def check_unlocked_payment_failure(self, tenant: str) -> TenantData.PaymentFailure | None:
+        doc = await self._find_tenant(
+            {"tenant": tenant, "locked_for_payment": {"$ne": True}},
+            projection={"payment_failure": 1},
+        )
+        return doc.payment_failure

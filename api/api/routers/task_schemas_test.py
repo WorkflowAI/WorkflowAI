@@ -8,12 +8,12 @@ from httpx import AsyncClient
 
 from api.dependencies.security import final_tenant_data, url_public_organization, user_organization
 from api.routers.task_schemas import UpdateTaskInstructionsRequest
-from core.domain.organization_settings import PublicOrganizationData, TenantData
 from core.domain.page import Page
 from core.domain.task_info import TaskInfo
 from core.domain.task_preview import TaskPreview
 from core.domain.task_run import SerializableTaskRun
 from core.domain.task_run_query import SerializableTaskRunQuery
+from core.domain.tenant_data import PublicOrganizationData, TenantData
 from core.domain.users import User
 from core.storage.models import TaskUpdate
 from core.tools import ToolKind

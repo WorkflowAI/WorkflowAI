@@ -10,7 +10,7 @@ from api.services.groups import GroupService
 from api.services.internal_tasks.internal_tasks_service import InternalTasksService
 from api.services.internal_tasks.meta_agent_service import MetaAgentService
 from api.services.models import ModelsService
-from api.services.payments import PaymentService
+from api.services.payments_service import PaymentService, PaymentSystemService
 from api.services.providers_service import shared_provider_factory
 from api.services.reviews import ReviewsService
 from api.services.run import RunService
@@ -20,6 +20,8 @@ from core.deprecated.workflowai import WorkflowAI
 from core.domain.analytics_events.analytics_events import UserProperties
 from core.domain.events import Event, EventRouter
 from core.domain.users import UserIdentifier
+from core.services.emails.email_service import EmailService
+from core.services.users.user_service import UserService
 from core.storage.azure.azure_blob_file_storage import FileStorage
 from core.storage.backend_storage import BackendStorage, SystemBackendStorage
 from core.utils.encryption import Encryption
@@ -236,18 +238,10 @@ def versions_service_dep(storage: StorageDep, event_router: EventRouterDep) -> V
 VersionsServiceDep = Annotated[VersionsService, TaskiqDepends(versions_service_dep)]
 
 
-def payment_service_dep(
-    storage: StorageDep,
-    event_router: EventRouterDep,
-    analytics_service: AnalyticsServiceDep,
-) -> PaymentService:
-    from api.services.payments import PaymentService
+def payment_service_dep(storage: StorageDep) -> PaymentService:
+    from api.services.payments_service import PaymentService
 
-    return PaymentService(
-        storage=storage,
-        event_router=event_router,
-        analytics_service=analytics_service,
-    )
+    return PaymentService(storage.organizations)
 
 
 PaymentServiceDep = Annotated[PaymentService, TaskiqDepends(payment_service_dep)]
@@ -278,3 +272,28 @@ def feature_service_dep(storage: StorageDep, event_router: EventRouterDep) -> Fe
 
 
 FeatureServiceDep = Annotated[FeatureService, TaskiqDepends(feature_service_dep)]
+
+
+def user_service_dep() -> UserService:
+    from core.services.users import shared_user_service
+
+    return shared_user_service.shared_user_service
+
+
+UserServiceDep = Annotated[UserService, TaskiqDepends(user_service_dep)]
+
+
+def email_service_dep(storage: StorageDep, user_service: UserServiceDep) -> EmailService:
+    from core.services.emails import shared_email_service
+
+    return shared_email_service.email_service_builder(storage.organizations, user_service)
+
+
+EmailServiceDep = Annotated[EmailService, TaskiqDepends(email_service_dep)]
+
+
+def payment_system_service_dep(storage: SystemStorageDep, email_service: EmailServiceDep):
+    return PaymentSystemService(storage.organizations, email_service)
+
+
+PaymentSystemServiceDep = Annotated[PaymentSystemService, TaskiqDepends(payment_system_service_dep)]

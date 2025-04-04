@@ -14,10 +14,10 @@ from core.domain.errors import (
 from core.domain.events import EventRouter
 from core.domain.models import Model
 from core.domain.models import Provider as ProviderKind
-from core.domain.organization_settings import ProviderSettings
 from core.domain.task_group import TaskGroup, TaskGroupIdentifier
 from core.domain.task_group_properties import TaskGroupProperties
 from core.domain.task_variant import SerializableTaskVariant
+from core.domain.tenant_data import ProviderSettings
 from core.domain.tool import Tool
 from core.domain.users import UserIdentifier
 from core.domain.version_environment import VersionEnvironment

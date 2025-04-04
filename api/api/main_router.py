@@ -9,7 +9,7 @@ from api.routers import (
 )
 from api.routers.agents import home_agent, meta_agent, new_task_agent, new_tool_agent
 from api.tags import RouteTags
-from core.domain.organization_settings import PublicOrganizationData
+from core.domain.tenant_data import PublicOrganizationData
 
 main_router = APIRouter()
 main_router.include_router(clerk_webhooks.router)
@@ -50,21 +50,23 @@ def _tenant_router():
     tenant_router.include_router(task_groups.router, tags=[RouteTags.AGENT_GROUPS])
     tenant_router.include_router(task_schemas.router, tags=[RouteTags.AGENT_SCHEMAS])
     tenant_router.include_router(tasks.router, tags=[RouteTags.AGENTS])
-    tenant_router.include_router(organizations.router, tags=[RouteTags.ORGANIZATIONS])
+    # TODO: remove once the client has been updated
+    tenant_router.include_router(organizations.router, deprecated=True, include_in_schema=False)
     tenant_router.include_router(transcriptions.router, tags=[RouteTags.TRANSCRIPTIONS])
     tenant_router.include_router(examples_by_id.router, tags=[RouteTags.EXAMPLES])
     tenant_router.include_router(runs_by_id.router, tags=[RouteTags.RUNS])
     tenant_router.include_router(upload.router, tags=[RouteTags.UPLOAD])
     tenant_router.include_router(reviews.router, tags=[RouteTags.REVIEWS])
     tenant_router.include_router(new_task_agent.router, tags=[RouteTags.NEW_AGENT])
-    tenant_router.include_router(payments.router, tags=[RouteTags.PAYMENTS])
+    # TODO: remove once the client has been updated
+    tenant_router.include_router(payments.router, deprecated=True, include_in_schema=False)
     tenant_router.include_router(meta_agent.router, tags=[RouteTags.PROMPT_ENGINEER_AGENT])
     tenant_router.include_router(new_tool_agent.router, tags=[RouteTags.NEW_TOOL_AGENT])
     return tenant_router
 
 
 def _authenticated_router():
-    from api.routers import agents_v1, runs_v1, task_schemas_v1, versions_v1
+    from api.routers import agents_v1, organizations, payments, runs_v1, task_schemas_v1, versions_v1
 
     authenticated_router = APIRouter(
         dependencies=[
@@ -76,7 +78,9 @@ def _authenticated_router():
     authenticated_router.include_router(versions_v1.router)
     authenticated_router.include_router(runs_v1.router)
     authenticated_router.include_router(agents_v1.router)
+    authenticated_router.include_router(payments.router)
     authenticated_router.include_router(_tenant_router())
+    authenticated_router.include_router(organizations.router)
     authenticated_router.include_router(features.router, tags=[RouteTags.FEATURES])
     authenticated_router.include_router(feedback_v1.router)
     return authenticated_router

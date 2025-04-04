@@ -36,8 +36,8 @@ from core.storage.mongo.partials.changelogs import MongoChangeLogStorage
 from core.storage.mongo.partials.evaluators import MongoEvaluatorStorage
 from core.storage.mongo.partials.input_evaluations import MongoInputEvaluationStorage
 from core.storage.mongo.partials.mongo_feedback import MongoFeedbackStorage
+from core.storage.mongo.partials.mongo_organizations import MongoOrganizationStorage
 from core.storage.mongo.partials.mongo_tasks import MongoTaskStorage
-from core.storage.mongo.partials.organizations import MongoOrganizationStorage
 from core.storage.mongo.partials.reviews import MongoReviewsStorage
 from core.storage.mongo.partials.reviews_benchmark import MongoReviewsBenchmarkStorage
 from core.storage.mongo.partials.task_deployments import MongoTaskDeploymentsStorage

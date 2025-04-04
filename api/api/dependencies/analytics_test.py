@@ -1,5 +1,5 @@
 from api.dependencies.analytics import analytics_organization_properties
-from core.domain.organization_settings import TenantData
+from core.domain.tenant_data import TenantData
 
 
 class TestAnalyticsOrganizationProperties:

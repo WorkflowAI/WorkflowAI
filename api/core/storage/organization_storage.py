@@ -1,8 +1,8 @@
 from datetime import datetime
-from typing import List, Protocol
+from typing import List, Literal, Protocol
 
 from core.domain.api_key import APIKey
-from core.domain.organization_settings import (
+from core.domain.tenant_data import (
     ProviderSettings,
     PublicOrganizationData,
     TenantData,
@@ -11,9 +11,12 @@ from core.domain.users import UserIdentifier
 from core.providers.base.config import ProviderConfig
 
 
-class OrganizationSystemStorage(Protocol):
+class PublicOrganizationStorage(Protocol):
     async def get_public_organization(self, slug: str) -> PublicOrganizationData: ...
+    async def public_organization_by_tenant(self, tenant: str) -> PublicOrganizationData: ...
 
+
+class OrganizationSystemStorage(PublicOrganizationStorage, Protocol):
     async def find_tenant_for_api_key(self, hashed_key: str) -> TenantData: ...
 
     async def update_api_key_last_used_at(self, hashed_key: str, now: datetime): ...
@@ -36,17 +39,6 @@ class OrganizationSystemStorage(Protocol):
 
     async def add_credits_to_tenant(self, tenant: str, credits: float) -> None: ...
 
-    async def unlock_for_payment(self, is_failed: bool) -> None: ...
-
-    async def unset_last_payment_failed_at(self) -> None: ...
-
-    async def update_automatic_payment(
-        self,
-        opt_in: bool,
-        threshold: float | None,
-        balance_to_maintain: float | None,
-    ) -> None: ...
-
     async def decrement_credits(self, tenant: str, credits: float) -> TenantData: ...
 
     async def migrate_tenant_to_organization(
@@ -62,6 +54,24 @@ class OrganizationSystemStorage(Protocol):
     async def migrate_tenant_to_user(self, owner_id: str, org_slug: str | None, anon_id: str) -> TenantData:
         """Migrate an existing anonymous user to a user type tenant"""
         ...
+
+    async def attempt_lock_for_payment(self, tenant: str) -> TenantData | None: ...
+
+    async def unlock_payment_for_failure(
+        self,
+        tenant: str,
+        now: datetime,
+        code: Literal["internal", "payment_failed"],
+        failure_reason: str,
+    ): ...
+
+    async def unlock_payment_for_success(self, tenant: str, amount: float): ...
+
+    async def add_low_credits_email_sent(self, tenant: str, threshold: float): ...
+
+    # Returns either a payment failure or None
+    # or raise an error if the organization is locked
+    async def check_unlocked_payment_failure(self, tenant: str) -> TenantData.PaymentFailure | None: ...
 
 
 class OrganizationStorage(OrganizationSystemStorage, Protocol):
@@ -90,4 +100,9 @@ class OrganizationStorage(OrganizationSystemStorage, Protocol):
 
     async def delete_api_key_for_organization(self, key_id: str) -> bool: ...
 
-    async def attempt_lock_for_payment(self) -> TenantData | None: ...
+    async def update_automatic_payment(
+        self,
+        opt_in: bool,
+        threshold: float | None,
+        balance_to_maintain: float | None,
+    ) -> None: ...

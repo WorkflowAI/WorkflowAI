@@ -5,6 +5,7 @@ from contextlib import contextmanager
 from typing import Any
 
 import httpx
+import pytest
 from bson import json_util
 
 
@@ -99,3 +100,7 @@ def cut_json(j: dict[str, Any], cut_idxs: list[int]):
     """Cut a stringified json into chunks of json objects"""
     json_str = json.dumps(j)
     return cut_string(json_str, cut_idxs)
+
+
+def approx(value: float, abs: float | None = None, rel: float | None = None):
+    return pytest.approx(value, abs=abs, rel=rel)  # pyright: ignore reportUnknownArgumentType

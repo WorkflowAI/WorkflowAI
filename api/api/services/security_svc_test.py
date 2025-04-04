@@ -6,7 +6,7 @@ from fastapi import HTTPException
 from api.dependencies.security import UserClaims
 from api.services.security_svc import SecurityService
 from core.domain.events import EventRouter
-from core.domain.organization_settings import TenantData
+from core.domain.tenant_data import TenantData
 from core.domain.users import User
 from core.storage import ObjectNotFoundException
 from core.storage.organization_storage import OrganizationSystemStorage

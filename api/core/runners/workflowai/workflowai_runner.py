@@ -24,13 +24,13 @@ from core.domain.message import Message
 from core.domain.models.model_data import FinalModelData, ModelData
 from core.domain.models.model_datas_mapping import MODEL_DATAS
 from core.domain.models.utils import get_model_data, get_model_provider_data
-from core.domain.organization_settings import ProviderSettings
 from core.domain.reasoning_step import INTERNAL_REASONING_STEPS_SCHEMA_KEY
 from core.domain.run_output import RunOutput
 from core.domain.structured_output import StructuredOutput
 from core.domain.task_group_properties import FewShotConfiguration, FewShotExample, TaskGroupProperties
 from core.domain.task_run_reply import RunReply
 from core.domain.task_variant import SerializableTaskVariant
+from core.domain.tenant_data import ProviderSettings
 from core.domain.tool import Tool
 from core.domain.tool_call import ToolCall, ToolCallRequestWithID
 from core.domain.types import TaskInputDict

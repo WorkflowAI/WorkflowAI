@@ -56,6 +56,10 @@ def setup_environment():
             "SCRAPINGBEE_API_URL": "https://api.scrapingbee.com/scrape",
             "MODERATION_ENABLED": "false",
             "JOBS_BROKER_URL": "memory://",
+            "CLERK_SECRET_KEY": "sk_test_123",
+            "LOOPS_API_KEY": "loops-api-key",
+            "PAYMENT_FAILURE_EMAIL_ID": "123",
+            "LOW_CREDITS_EMAIL_ID": "123",
         },
     ):
         yield

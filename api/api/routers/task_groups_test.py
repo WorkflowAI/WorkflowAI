@@ -8,9 +8,9 @@ from httpx import AsyncClient
 import api.services.groups as groups_module
 from api.dependencies.provider_factory import _provider_factory  # pyright: ignore [reportPrivateUsage]
 from api.dependencies.services import group_service, models_service
-from core.domain.organization_settings import TenantData
 from core.domain.task_group import TaskGroup
 from core.domain.task_group_properties import TaskGroupProperties
+from core.domain.tenant_data import TenantData
 from core.domain.users import UserIdentifier
 from tests.models import task_variant
 

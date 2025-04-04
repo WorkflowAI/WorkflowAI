@@ -15,10 +15,15 @@ from taskiq import InMemoryBroker
 
 from core.domain.models import Model
 from core.domain.types import CacheUsage
+from core.utils.background import wait_for_background_tasks
 from tests.utils import fixtures_json, request_json_body
 
 # 03832ff71a03e47e372479593879ad2e is the input hash of `{"name": "John", "age": 30}`
 DEFAULT_INPUT_HASH = "03832ff71a03e47e372479593879ad2e"
+INT_TEST_TENANT = "chiefofstaff.ai"
+
+LOOPS_TRANSACTIONAL_URL = "https://app.loops.so/api/v1/transactional"
+CLERK_BASE_URL = "https://api.clerk.com/v1"
 
 
 async def create_task(
@@ -344,7 +349,7 @@ def result_or_raise(res: Response) -> Any:
         print(e.response.text)  # noqa: T201
         raise e
 
-    if res.status_code != 204:
+    if res.text:
         return res.json()
     return None
 
@@ -572,6 +577,8 @@ async def extract_stream_chunks(stream: AsyncIterator[str]):
 LEGACY_TEST_JWT = "eyJhbGciOiJFUzI1NiJ9.eyJ0ZW5hbnQiOiJjaGllZm9mc3RhZmYuYWkiLCJzdWIiOiJndWlsbGF1bWVAY2hpZWZvZnN0YWZmLmFpIiwiaWF0IjoxNzE1OTgyMzUxLCJleHAiOjE4MzIxNjYzNTF9.NbjBXv0fcfOUGpscJ9PzC5jHna2V6tBrSte2kvHYDJTKdFv6Zg3IzOVmSVOM_jIsOgTggmC4mYSK11IHhnP4ew"
 # Anon JWT with a tenant id that does not exist
 ANON_JWT = "eyJhbGciOiJFUzI1NiJ9.eyJ1bmtub3duVXNlcklkIjoiOGM5NGQ1MjMtZGE2YS00MDg5LWIxZDMtMzRhM2ZmYmNlNDg0IiwiaWF0IjoxNjI4NzA3ODQ2LCJleHAiOjE4OTEyNDM4NDZ9.n4DJt-4H_3-u_3KBRQvT_xwDQb2ogBtAFhByBDYeEtqblp4auz6okicNeJygfowgIJfNYAGDr7FH1e37qQkuDg"
+# {"userId":"user_1234","unknownUserId":"8c94d523-da6a-4089-b1d3-34a3ffbce484"}
+USER_JWT = "eyJhbGciOiJFUzI1NiJ9.eyJ1c2VySWQiOiJ1c2VyXzEyMzQiLCJ1bmtub3duVXNlcklkIjoiOGM5NGQ1MjMtZGE2YS00MDg5LWIxZDMtMzRhM2ZmYmNlNDg0IiwiaWF0IjoxNjI4NzA3ODQ2LCJleHAiOjE4OTEyNDM4NDZ9.D7V7ZWef_X8D2xPuX9g_3fhtuCy1ib_hP82CoX-ET_GWkjJsZkDV6DdD9_wR72ipds2Zfb3Yl88svihOBMkltA"
 
 
 def vertex_url_matcher(model: str | Model, region: str | None = None, publisher: str = "google", stream: bool = False):
@@ -911,6 +918,7 @@ class IntegrationTestClient:
 
     async def wait_for_completed_tasks(self):
         await wait_for_completed_tasks(self.patched_broker)
+        await wait_for_background_tasks()
 
     async def create_version(
         self,
@@ -1249,6 +1257,7 @@ class IntegrationTestClient:
 
     async def refresh_org_data(self):
         self.org = await self.get_org()
+        return self.org
 
     @property
     def tenant_uid(self):

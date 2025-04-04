@@ -8,7 +8,7 @@ from core.domain.errors import (
     MissingEnvVariablesError,
 )
 from core.domain.models import Provider
-from core.domain.organization_settings import ProviderConfig
+from core.domain.tenant_data import ProviderConfig
 from core.providers.amazon_bedrock.amazon_bedrock_provider import AmazonBedrockProvider
 from core.providers.anthropic.anthropic_provider import AnthropicProvider
 from core.providers.base.abstract_provider import AbstractProvider, ProviderConfigVar

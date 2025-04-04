@@ -14,7 +14,7 @@ from api.services import storage
 from api.services.api_keys import APIKeyService
 from api.services.event_handler import system_event_router
 from api.services.security_svc import SecurityService
-from core.domain.organization_settings import (
+from core.domain.tenant_data import (
     ProviderSettings,
     PublicOrganizationData,
     TenantData,

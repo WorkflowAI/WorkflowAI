@@ -10,10 +10,10 @@ from fastapi import FastAPI, Request
 from freezegun import freeze_time
 from httpx import ASGITransport, AsyncClient
 
-from core.domain.organization_settings import PublicOrganizationData
 from core.domain.task_info import TaskInfo
 from core.domain.task_io import SerializableTaskIO
 from core.domain.task_variant import SerializableTaskVariant
+from core.domain.tenant_data import PublicOrganizationData
 from core.domain.users import User
 from core.providers.factory.abstract_provider_factory import AbstractProviderFactory
 from core.utils.schemas import JsonSchema
@@ -251,7 +251,7 @@ def mock_user_org_dep() -> Mock:
     from api.dependencies.security import user_organization
 
     mock = AsyncMock(spec=user_organization)
-    from core.domain.organization_settings import TenantData
+    from core.domain.tenant_data import TenantData
 
     mock.return_value = TenantData(tenant="test", slug="test")
     return mock
@@ -262,7 +262,7 @@ def mock_url_public_org_dep() -> Mock:
     from api.dependencies.security import url_public_organization
 
     mock = AsyncMock(spec=url_public_organization)
-    from core.domain.organization_settings import PublicOrganizationData
+    from core.domain.tenant_data import PublicOrganizationData
 
     mock.return_value = PublicOrganizationData(tenant="test1", slug="test2")
     return mock
@@ -342,6 +342,13 @@ def mock_internal_tasks_service() -> Mock:
 @pytest.fixture()
 def mock_provider_factory():
     return Mock(spec=AbstractProviderFactory)
+
+
+@pytest.fixture(scope="function")
+def mock_email_service():
+    from core.services.emails.email_service import EmailService
+
+    return AsyncMock(spec=EmailService)
 
 
 # We make sure we have a test storage container for the tests
@@ -568,3 +575,10 @@ def hello_task():
 def patch_metric_send():
     with patch("core.domain.metrics.Metric.send", autospec=True) as m:
         yield m
+
+
+@pytest.fixture
+def mock_user_service() -> AsyncMock:
+    from core.services.users.user_service import UserService
+
+    return AsyncMock(spec=UserService)

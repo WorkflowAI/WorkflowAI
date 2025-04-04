@@ -1,10 +1,10 @@
 import pytest
 
-from core.domain.organization_settings import ProviderConfig
+from core.domain.tenant_data import ProviderConfig
 from core.providers.google.google_provider import GoogleProviderConfig
 from core.providers.groq.groq_provider import GroqConfig
 from core.providers.openai.openai_provider import OpenAIConfig
-from core.storage.mongo.models.organizations import (
+from core.storage.mongo.models.organization_document import (
     OrganizationDocument,
     ProviderSettingsSchema,
 )
@@ -50,3 +50,22 @@ class TestDeserializeOrganization:
         assert org.added_credits_usd == 0.2
         assert org.current_credits_usd == 0.2
         assert org.no_tasks_yet is True
+
+
+class TestToDomainPublic:
+    def test_success(self):
+        org = OrganizationDocument(
+            tenant="tenant",
+            slug="slug",
+            org_id="org_id",
+            owner_id="owner_id",
+            providers=[],
+            uid=1,
+        )
+        public_org = org.to_domain_public()
+        assert public_org.tenant == "tenant"
+        assert public_org.slug == "slug"
+        assert public_org.org_id == "org_id"
+
+        # Check that all fields are present. This ensures that we don't forget a field in PublicOrganizationData
+        assert public_org.model_dump(exclude_unset=True) == public_org.model_dump()

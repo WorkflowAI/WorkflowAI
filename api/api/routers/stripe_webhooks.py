@@ -1,12 +1,14 @@
 import logging
 import os
-from typing import Literal
+from typing import Any, Literal
 
 import stripe
 from fastapi import APIRouter, Header, Request, Response
 from pydantic import BaseModel
 
 from api.dependencies.security import OrgSystemStorageDep
+from api.dependencies.services import EmailServiceDep
+from api.services.payments_service import PaymentSystemService
 from core.domain.errors import DefaultError
 
 router = APIRouter(prefix="/webhooks/stripe", include_in_schema=False)
@@ -17,23 +19,17 @@ class PaymentIntentData(BaseModel):
     object: Literal["payment_intent"]
     id: str
     amount: int
-    metadata: dict[str, str]
+    metadata: dict[str, Any]
     status: str
 
+    class LastPaymentError(BaseModel):
+        message: str | None
 
-class StripeEventData(BaseModel):
-    object: PaymentIntentData
+    last_payment_error: LastPaymentError | None = None
 
-
-class StripeEvent(BaseModel):
-    id: str
-    type: Literal[
-        "charge.succeeded",
-        "payment_intent.succeeded",
-        "payment_intent.requires_action",
-        "payment_intent.requires_payment_method",
-    ]
-    data: StripeEventData
+    @property
+    def error_message(self) -> str | None:
+        return self.last_payment_error.message if self.last_payment_error else None
 
 
 async def verify_stripe_signature(
@@ -68,37 +64,30 @@ async def verify_stripe_signature(
 @router.post("")
 async def stripe_webhook(
     storage: OrgSystemStorageDep,
+    email_service: EmailServiceDep,
     request: Request,
     stripe_signature: str | None = Header(None, alias="Stripe-Signature"),
 ) -> Response:
     _logger.debug("Received Stripe webhook", extra={"request": request, "stripe_signature": stripe_signature})
     event = await verify_stripe_signature(request, stripe_signature)
+    payment_service = PaymentSystemService(storage, email_service)
 
     match event.type:
-        case "charge.succeeded":
-            _logger.info("Charge succeeded", extra={"event": event.data.object})
         case "payment_intent.succeeded":
-            validated_event = StripeEvent.model_validate(event)
-            payment_intent = validated_event.data.object
-            metadata = payment_intent.metadata
-            tenant = metadata.get("tenant")
-
-            amount_usd = payment_intent.amount / 100
-            if not tenant:
-                raise DefaultError(
-                    capture=True,
-                    status_code=400,
-                    detail="No tenant in payment intent metadata",
-                )
-            await storage.add_credits_to_tenant(tenant, amount_usd)
-            _logger.info("Added credits to organization", extra={"tenant": tenant, "amount_usd": amount_usd})
-
+            payment_intent = PaymentIntentData.model_validate(event.data.object)
+            await payment_service.handle_payment_success(payment_intent.metadata, payment_intent.amount / 100)
         case "payment_intent.requires_action":
-            _logger.info("Payment requires action", extra={"event": event.data.object})
-
+            # Not sure what to do here, it should not happen for automatic payments
+            payment_intent = PaymentIntentData.model_validate(event.data.object)
+            await payment_service.handle_payment_requires_action(payment_intent.metadata)
         case "payment_intent.payment_failed":
-            _logger.info("Payment failed", extra={"event": event.data.object})
+            payment_intent = PaymentIntentData.model_validate(event.data.object)
+            failure_reason = payment_intent.error_message
+            if not failure_reason:
+                _logger.error("Payment failed with an unknown error", extra={"event": event.data.object})
+                failure_reason = "Payment failed with an unknown error"
+            await payment_service.handle_payment_failure(payment_intent.metadata, failure_reason)
         case _:
-            _logger.info("Unhandled Stripe event", extra={"event": event.data.object})
+            _logger.warning("Unhandled Stripe event", extra={"event": event.data.object})
 
     return Response(status_code=200)

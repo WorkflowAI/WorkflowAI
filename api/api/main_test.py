@@ -14,7 +14,7 @@ from api.dependencies.security import (
 )
 from api.services.keys import InvalidToken
 from core.domain.models import Model
-from core.domain.organization_settings import PublicOrganizationData, TenantData
+from core.domain.tenant_data import PublicOrganizationData, TenantData
 from core.domain.users import User
 from core.utils import no_op
 

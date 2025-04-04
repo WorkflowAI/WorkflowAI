@@ -1,0 +1,39 @@
+{
+  "id": "user_1",
+  "object": "user",
+  "username": null,
+  "first_name": "John",
+  "last_name": "Doe",
+  "profile_image_url": "https://example.com/profile1.jpg",
+  "image_url": "https://example.com/profile1.jpg",
+  "has_image": true,
+  "primary_email_address_id": "ema_1234567890",
+  "email_addresses": [
+    {
+      "id": "ema_1234567890",
+      "object": "email_address",
+      "email_address": "john@example.com",
+      "verification": {
+        "status": "verified",
+        "strategy": "email_code",
+        "attempts": 0,
+        "expire_at": null,
+        "verified_at_client": null
+      },
+      "created_at": 1677649421,
+      "updated_at": 1677649421
+    }
+  ],
+  "public_metadata": {},
+  "private_metadata": {},
+  "unsafe_metadata": {},
+  "password_enabled": true,
+  "two_factor_enabled": false,
+  "totp_enabled": false,
+  "backup_code_enabled": false,
+  "banned": false,
+  "locked": false,
+  "created_at": 1677649421,
+  "updated_at": 1677649421,
+  "last_active_at": 1677649421
+}

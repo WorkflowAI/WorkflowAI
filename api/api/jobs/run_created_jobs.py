@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from api.broker import broker
 from api.jobs.common import (
     InternalTasksServiceDep,
-    PaymentServiceDep,
+    PaymentSystemServiceDep,
     ReviewsServiceDep,
     StorageDep,
 )
@@ -37,7 +37,7 @@ async def evaluate_run_review(event: RunCreatedEvent, reviews_service: ReviewsSe
 
 
 @broker.task(retry_on_error=False)
-async def decrement_credits(event: RunCreatedEvent, payment_service: PaymentServiceDep):
+async def decrement_credits(event: RunCreatedEvent, payment_service: PaymentSystemServiceDep):
     if cost := event.run.credits_used:
         await payment_service.decrement_credits(
             event.run.author_tenant or event.tenant,

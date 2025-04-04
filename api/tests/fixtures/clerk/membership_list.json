@@ -1,0 +1,77 @@
+{
+  "data": [
+    {
+      "id": "orgmem_1234567890",
+      "object": "organization_membership",
+      "role": "admin",
+      "role_name": "Administrator",
+      "permissions": ["org:members:manage", "org:settings:manage"],
+      "public_metadata": {},
+      "private_metadata": {},
+      "organization": {
+        "object": "organization",
+        "id": "org_123abc",
+        "name": "Acme Corp",
+        "slug": "acme-corp",
+        "members_count": 2,
+        "missing_member_with_elevated_permissions": false,
+        "pending_invitations_count": 0,
+        "max_allowed_memberships": 10,
+        "admin_delete_enabled": true,
+        "public_metadata": {},
+        "private_metadata": {},
+        "created_by": "user_1",
+        "created_at": 1677649421,
+        "updated_at": 1677649421
+      },
+      "public_user_data": {
+        "user_id": "user_1",
+        "first_name": "John",
+        "last_name": "Doe",
+        "profile_image_url": "https://example.com/profile1.jpg",
+        "image_url": "https://example.com/profile1.jpg",
+        "has_image": true,
+        "identifier": "john@example.com"
+      },
+      "created_at": 1677649421,
+      "updated_at": 1677649421
+    },
+    {
+      "id": "orgmem_0987654321",
+      "object": "organization_membership",
+      "role": "member",
+      "role_name": "Member",
+      "permissions": ["org:content:read"],
+      "public_metadata": {},
+      "private_metadata": {},
+      "organization": {
+        "object": "organization",
+        "id": "org_123abc",
+        "name": "Acme Corp",
+        "slug": "acme-corp",
+        "members_count": 2,
+        "missing_member_with_elevated_permissions": false,
+        "pending_invitations_count": 0,
+        "max_allowed_memberships": 10,
+        "admin_delete_enabled": true,
+        "public_metadata": {},
+        "private_metadata": {},
+        "created_by": "user_1",
+        "created_at": 1677649421,
+        "updated_at": 1677649421
+      },
+      "public_user_data": {
+        "user_id": "user_2",
+        "first_name": "Jane",
+        "last_name": "Smith",
+        "profile_image_url": "https://example.com/profile2.jpg",
+        "image_url": "https://example.com/profile2.jpg",
+        "has_image": true,
+        "identifier": "jane@example.com"
+      },
+      "created_at": 1677649422,
+      "updated_at": 1677649422
+    }
+  ],
+  "total_count": 2
+}

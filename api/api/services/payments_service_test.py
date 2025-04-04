@@ -1,20 +1,59 @@
-from unittest.mock import AsyncMock, Mock
+from unittest import mock
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 import stripe
 
-from api.services.payments import PaymentMethodResponse, PaymentService
+from api.services.payments_service import PaymentMethodResponse, PaymentService, PaymentSystemService
 from core.domain.errors import BadRequestError
-from core.domain.organization_settings import TenantData
+from core.domain.tenant_data import TenantData
+from core.utils.background import wait_for_background_tasks
 
 
 @pytest.fixture()
-def payment_service(mock_storage: Mock, mock_event_router: Mock, mock_analytics_service: Mock):
-    return PaymentService(
-        storage=mock_storage,
-        event_router=mock_event_router,
-        analytics_service=mock_analytics_service,
-    )
+def payment_service(mock_storage: Mock):
+    return PaymentService(org_storage=mock_storage.organizations)
+
+
+@pytest.fixture()
+def payment_system_service(mock_storage: Mock, mock_email_service: Mock):
+    return PaymentSystemService(org_storage=mock_storage.organizations, email_service=mock_email_service)
+
+
+@pytest.fixture()
+def mock_stripe():
+    with patch("api.services.payments_service.stripe") as mock:
+        mock.PaymentIntent = Mock(spec=stripe.PaymentIntent)
+        mock.Customer = Mock(spec=stripe.Customer)
+        mock.PaymentMethod = Mock(spec=stripe.PaymentMethod)
+
+        yield mock
+
+
+def _mock_customer(stripe_mock: Mock, payment_method: bool):
+    # It would be better to build customer objects but the inits are weird
+    customer = Mock()
+    customer.id = "cus_123"
+    customer.invoice_settings = Mock()
+    if payment_method:
+        customer.invoice_settings.default_payment_method = Mock()
+        customer.invoice_settings.default_payment_method.id = "pm_123"
+        customer.invoice_settings.default_payment_method.card = Mock()
+        customer.invoice_settings.default_payment_method.card.last4 = "4242"
+        customer.invoice_settings.default_payment_method.card.brand = "visa"
+        customer.invoice_settings.default_payment_method.card.exp_month = 12
+        customer.invoice_settings.default_payment_method.card.exp_year = 2025
+    else:
+        customer.invoice_settings.default_payment_method = None
+
+    stripe_mock.Customer.retrieve_async.return_value = customer
+
+
+def _payment_intent():
+    payment_intent = AsyncMock()
+    payment_intent.client_secret = "secret_123"
+    payment_intent.id = "pi_123"
+    return payment_intent
 
 
 class TestCreateCustomer:
@@ -32,6 +71,7 @@ class TestCreateCustomer:
             name="Test Org",
             slug="test-org",
             stripe_customer_id=None,
+            uid=1,
         )
         mock_create = AsyncMock(return_value=mock_customer)
         monkeypatch.setattr(stripe.Customer, "create_async", mock_create)
@@ -43,9 +83,9 @@ class TestCreateCustomer:
             name="Test Org",
             email="test@example.com",
             metadata={
-                "organization_id": "",
                 "tenant": "test-tenant",
                 "slug": "test-org",
+                "tenant_uid": "1",
             },
         )
         mock_storage.organizations.update_customer_id.assert_called_once_with(stripe_customer_id="cus_123")
@@ -84,6 +124,7 @@ class TestAddPaymentMethod:
         payment_method_id = await payment_service.add_payment_method(
             mock_storage.organizations.get_organization.return_value,
             "pm_123",
+            "test@example.com",
         )
 
         assert payment_method_id == "pm_123"
@@ -100,14 +141,28 @@ class TestAddPaymentMethod:
         self,
         payment_service: PaymentService,
         mock_storage: AsyncMock,
+        mock_stripe: Mock,
     ):
-        mock_storage.organizations.get_organization.return_value.stripe_customer_id = None
+        """Check that a customer is created if one does not exist"""
+        mock_storage.organizations.get_organization.return_value = TenantData(
+            tenant="test-tenant",
+            name="Test Org",
+            slug="test-org",
+            stripe_customer_id=None,
+            uid=1,
+        )
+        _mock_customer(mock_stripe, payment_method=False)
+        mock_stripe.PaymentMethod.attach_async = AsyncMock(
+            return_value=Mock(id="pm_id"),
+        )
 
-        with pytest.raises(BadRequestError, match="Organization has no Stripe customer ID"):
-            await payment_service.add_payment_method(
-                mock_storage.organizations.get_organization.return_value,
-                "pm_123",
-            )
+        await payment_service.add_payment_method(
+            mock_storage.organizations.get_organization.return_value,
+            "pm_123",
+            "test@example.com",
+        )
+        mock_stripe.PaymentMethod.attach_async.assert_called_once()
+        mock_stripe.Customer.modify_async.assert_called_once()
 
     async def test_add_payment_method_invalid_card(
         self,
@@ -130,6 +185,7 @@ class TestAddPaymentMethod:
             await payment_service.add_payment_method(
                 mock_storage.organizations.get_organization.return_value,
                 "pm_123",
+                "test@example.com",
             )
 
 
@@ -227,29 +283,22 @@ class TestCreatePaymentIntent:
         self,
         payment_service: PaymentService,
         mock_storage: AsyncMock,
-        monkeypatch: Mock,
+        mock_stripe: Mock,
     ):
         mock_storage.organizations.get_organization.return_value = TenantData(
             tenant="test-tenant",
             name="Test Org",
             slug="test-org",
             stripe_customer_id="cus_123",
+            uid=1,
         )
 
-        # Mock customer retrieval
-        mock_payment_method = Mock()
-        mock_payment_method.id = "pm_123"
-        mock_customer = Mock()
-        mock_customer.invoice_settings.default_payment_method = mock_payment_method
-        mock_customer_retrieve = AsyncMock(return_value=mock_customer)
-        monkeypatch.setattr(stripe.Customer, "retrieve_async", mock_customer_retrieve)
+        # Create a fake payment method
+        _mock_customer(mock_stripe, payment_method=True)
 
         # Mock payment intent creation
-        mock_payment_intent = Mock()
-        mock_payment_intent.client_secret = "secret_123"
-        mock_payment_intent.id = "pi_123"
-        mock_payment_intent_create = AsyncMock(return_value=mock_payment_intent)
-        monkeypatch.setattr(stripe.PaymentIntent, "create_async", mock_payment_intent_create)
+
+        mock_stripe.PaymentIntent.create_async.return_value = _payment_intent()
 
         payment_intent = await payment_service.create_payment_intent(
             mock_storage.organizations.get_organization.return_value,
@@ -258,9 +307,9 @@ class TestCreatePaymentIntent:
         )
 
         assert payment_intent.client_secret == "secret_123"
-        assert payment_intent.id == "pi_123"
+        assert payment_intent.payment_intent_id == "pi_123"
 
-        mock_payment_intent_create.assert_called_once_with(
+        mock_stripe.PaymentIntent.create_async.assert_called_once_with(
             amount=10000,  # $100.00 in cents
             currency="usd",
             customer="cus_123",
@@ -268,10 +317,10 @@ class TestCreatePaymentIntent:
             setup_future_usage="off_session",
             automatic_payment_methods={"enabled": True, "allow_redirects": "never"},
             metadata={
-                "organization_id": "",
                 "tenant": "test-tenant",
                 "slug": "test-org",
                 "trigger": "manual",
+                "tenant_uid": "1",
             },
         )
 
@@ -279,15 +328,13 @@ class TestCreatePaymentIntent:
         self,
         payment_service: PaymentService,
         mock_storage: AsyncMock,
-        monkeypatch: Mock,
+        mock_stripe: Mock,
     ):
         mock_storage.organizations.get_organization.return_value.stripe_customer_id = "cus_123"
 
-        mock_customer = Mock()
-        mock_customer.invoice_settings.default_payment_method = None
-        monkeypatch.setattr(stripe.Customer, "retrieve_async", AsyncMock(return_value=mock_customer))
+        _mock_customer(mock_stripe, payment_method=False)
 
-        with pytest.raises(ValueError, match="Organization has no default payment method"):
+        with pytest.raises(BadRequestError, match="Organization has no default payment method"):
             await payment_service.create_payment_intent(
                 mock_storage.organizations.get_organization.return_value,
                 100.0,
@@ -296,21 +343,33 @@ class TestCreatePaymentIntent:
 
 
 class TestDecrementCredits:
-    async def test_decrement_credits(
-        self,
-        payment_service: PaymentService,
-        mock_storage: AsyncMock,
-    ):
-        # Mock the organization document returned after decrementing credits
-        mock_org_doc = Mock()
-        mock_org_doc.current_credits_usd = 10.0  # Above threshold
-        mock_org_doc.locked_for_payment = False
-        mock_org_doc.automatic_payment_enabled = False
-        mock_org_doc.automatic_payment_threshold = None
-        mock_org_doc.automatic_payment_balance_to_maintain = None
-        mock_storage.organizations.decrement_credits.return_value = mock_org_doc
+    @pytest.fixture
+    def test_org(self, mock_storage: AsyncMock):
+        """Patch the org returned by decrement_credits"""
+        org = TenantData(
+            tenant="test-tenant",
+            name="Test Org",
+            slug="test-org",
+            current_credits_usd=4.0,  # Below threshold
+            stripe_customer_id="cus_123",
+            automatic_payment_enabled=True,
+            automatic_payment_threshold=5.0,
+            automatic_payment_balance_to_maintain=10.0,
+        )
 
-        await payment_service.decrement_credits("test-tenant", 100.0)
+        mock_storage.organizations.decrement_credits.return_value = org
+        return org
+
+    async def test_decrement_credits_no_automatic_payment(
+        self,
+        payment_system_service: PaymentSystemService,
+        mock_storage: AsyncMock,
+        test_org: TenantData,
+    ):
+        """Test when automatic payment is disabled"""
+        test_org.automatic_payment_enabled = False
+
+        await payment_system_service.decrement_credits("test-tenant", 100.0)
 
         mock_storage.organizations.decrement_credits.assert_called_once_with(tenant="test-tenant", credits=100.0)
         # No attempt to lock since credits are above threshold
@@ -318,100 +377,65 @@ class TestDecrementCredits:
 
     async def test_decrement_credits_triggers_automatic_payment(
         self,
-        payment_service: PaymentService,
+        payment_system_service: PaymentSystemService,
         mock_storage: AsyncMock,
-        monkeypatch: Mock,
+        mock_stripe: Mock,
+        test_org: TenantData,
     ):
         # Mock the organization document returned after decrementing credits
-        org = TenantData(
-            tenant="test-tenant",
-            name="Test Org",
-            slug="test-org",
-            current_credits_usd=4.0,  # Below threshold
-            automatic_payment_enabled=True,
-            automatic_payment_threshold=5.0,
-            automatic_payment_balance_to_maintain=10.0,
-        )
-
-        mock_storage.organizations.decrement_credits.return_value = org.model_copy()
 
         # Mock successful lock attempt
-        mock_storage.organizations.attempt_lock_for_payment.return_value = org.model_copy(
+        mock_storage.organizations.attempt_lock_for_payment.return_value = test_org.model_copy(
             update={"locked_for_payment": True},
         )
+        _mock_customer(mock_stripe, payment_method=True)
+        mock_stripe.PaymentIntent.create_async.return_value = _payment_intent()
+        # Not sure why just using a return_value does not work here
+        mock_stripe.PaymentIntent.confirm_async = AsyncMock(return_value=Mock(status="succeeded"))
 
-        # Mock payment method retrieval
-        mock_payment_method = Mock()
-        mock_payment_method.payment_method_id = "pm_123"
-        monkeypatch.setattr(
-            payment_service,
-            "get_payment_method",
-            AsyncMock(return_value=mock_payment_method),
-        )
-
-        # Mock payment intent creation and confirmation
-        mock_payment_intent = Mock()
-        mock_payment_intent.id = "pi_123"
-        mock_payment_intent.status = "succeeded"
-        monkeypatch.setattr(
-            payment_service,
-            "create_payment_intent",
-            AsyncMock(return_value=mock_payment_intent),
-        )
-        monkeypatch.setattr(
-            stripe.PaymentIntent,
-            "confirm_async",
-            AsyncMock(return_value=mock_payment_intent),
-        )
-
-        await payment_service.decrement_credits("test-tenant", 3.0)
+        await payment_system_service.decrement_credits("test-tenant", 3.0)
 
         # Verify all the expected calls
         mock_storage.organizations.decrement_credits.assert_called_once_with(tenant="test-tenant", credits=3.0)
         mock_storage.organizations.attempt_lock_for_payment.assert_called_once()
-        mock_storage.organizations.unlock_for_payment.assert_called_once_with(is_failed=False)
+        mock_storage.organizations.unlock_payment_for_failure.assert_not_called()
+        mock_storage.organizations.unlock_payment_for_success.assert_not_called()
 
     async def test_decrement_credits_automatic_payment_fails(
         self,
-        payment_service: PaymentService,
+        payment_system_service: PaymentSystemService,
         mock_storage: AsyncMock,
-        monkeypatch: Mock,
+        test_org: TenantData,
+        mock_stripe: Mock,
+        mock_email_service: Mock,
     ):
-        # Mock the organization document returned after decrementing credits
-        mock_org_doc = Mock()
-        mock_org_doc.current_credits_usd = 4.0  # Below threshold
-        mock_org_doc.locked_for_payment = False
-        mock_org_doc.automatic_payment_enabled = True  # Enable automatic payments
-        mock_org_doc.automatic_payment_threshold = 5.0
-        mock_org_doc.automatic_payment_balance_to_maintain = 10.0
-        mock_storage.organizations.decrement_credits.return_value = mock_org_doc
-
         # Mock successful lock attempt
         mock_lock_doc = Mock()
         mock_lock_doc.locked_for_payment = True
-        mock_storage.organizations.attempt_lock_for_payment.return_value = mock_lock_doc
+        mock_storage.organizations.attempt_lock_for_payment.return_value = test_org.model_copy(
+            update={"locked_for_payment": True},
+        )
 
         # Mock payment method retrieval
-        mock_payment_method = Mock()
-        mock_payment_method.payment_method_id = "pm_123"
-        # Mock payment method retrieval to return None
-        monkeypatch.setattr(
-            payment_service,
-            "get_payment_method",
-            AsyncMock(return_value=None),
-        )
+        _mock_customer(mock_stripe, payment_method=True)
+
         # Mock payment intent creation and confirmation
         mock_payment_intent = Mock()
         mock_payment_intent.id = "pi_123"
-        monkeypatch.setattr(
-            payment_service,
-            "create_payment_intent",
-            AsyncMock(return_value=mock_payment_intent),
-        )
+        mock_stripe.PaymentIntent.create_async.return_value = mock_payment_intent
+        mock_stripe.PaymentIntent.confirm_async.side_effect = Exception("Confirm payment failed")
 
-        await payment_service.decrement_credits("test-tenant", 100.0)
+        await payment_system_service.decrement_credits("test-tenant", 100.0)
 
         # Verify all the expected calls
         mock_storage.organizations.decrement_credits.assert_called_once_with(tenant="test-tenant", credits=100.0)
         mock_storage.organizations.attempt_lock_for_payment.assert_called_once()
-        mock_storage.organizations.unlock_for_payment.assert_called_once_with(is_failed=True)
+        mock_storage.organizations.unlock_payment_for_failure.assert_called_once_with(
+            tenant="test-tenant",
+            now=mock.ANY,
+            code="internal",
+            failure_reason=mock.ANY,
+        )
+
+        await wait_for_background_tasks()
+        mock_email_service.send_payment_failure_email.assert_called_once_with("test-tenant")

@@ -5,7 +5,7 @@ from typing import Any
 from sentry_sdk import new_scope
 
 from core.domain.errors import ScopeConfigurableError
-from core.domain.organization_settings import TenantData
+from core.domain.tenant_data import TenantData
 from core.domain.version_reference import VersionReference as DomainVersionReference
 from core.storage import ObjectNotFoundException
 

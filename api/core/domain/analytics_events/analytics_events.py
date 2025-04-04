@@ -6,9 +6,9 @@ from typing import Annotated, Literal, TypeAlias
 from pydantic import BaseModel, Field
 
 from core.domain.llm_completion import total_tokens_count
-from core.domain.organization_settings import PublicOrganizationData, TenantData
 from core.domain.task_group import TaskGroup
 from core.domain.task_run import SerializableTaskRun
+from core.domain.tenant_data import PublicOrganizationData, TenantData
 from core.domain.users import UserIdentifier
 from core.utils.fields import datetime_factory, id_factory
 

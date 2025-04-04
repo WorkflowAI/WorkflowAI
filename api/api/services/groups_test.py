@@ -9,16 +9,16 @@ from core.agents.detect_chain_of_thought_task import (
 )
 from core.domain.errors import InvalidRunOptionsError
 from core.domain.models import Provider
-from core.domain.organization_settings import ProviderSettings
 from core.domain.task_group_properties import TaskGroupProperties
 from core.domain.task_variant import SerializableTaskVariant
+from core.domain.tenant_data import ProviderSettings
 from core.domain.tool import Tool
 from core.domain.users import UserIdentifier
 from core.domain.version_environment import VersionEnvironment
 from core.domain.version_reference import VersionReference
 from core.runners.workflowai.workflowai_runner import WorkflowAIRunner
 from core.storage import ObjectNotFoundException
-from core.storage.mongo.models.organizations import DecryptableProviderSettings
+from core.storage.mongo.models.organization_document import DecryptableProviderSettings
 from core.tools import ToolKind
 from tests.models import task_deployment, task_variant
 

@@ -9,7 +9,7 @@ from core.domain.errors import InternalError, NoProviderSupportingModelError, Pr
 from core.domain.models.model_data import FinalModelData, ModelData
 from core.domain.models.providers import Provider
 from core.domain.models.utils import get_model_data
-from core.domain.organization_settings import ProviderSettings
+from core.domain.tenant_data import ProviderSettings
 from core.providers.base.abstract_provider import AbstractProvider
 from core.providers.base.provider_options import ProviderOptions
 from core.providers.factory.abstract_provider_factory import AbstractProviderFactory

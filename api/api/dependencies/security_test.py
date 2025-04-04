@@ -4,7 +4,7 @@ from unittest.mock import Mock, patch
 import pytest
 from fastapi import HTTPException, Request
 
-from core.domain.organization_settings import PublicOrganizationData, TenantData
+from core.domain.tenant_data import PublicOrganizationData, TenantData
 from core.domain.users import User
 from core.utils import no_op
 
