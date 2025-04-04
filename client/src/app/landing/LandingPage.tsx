@@ -1,138 +1,138 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
+import { Dialog } from '@/components/ui/Dialog';
+import { DialogContent } from '@/components/ui/Dialog';
 import { LandingPageContainer } from './container/LandingPageContainer';
-import { CompliantInformationSection } from './sections/CompliantInformationSection';
-import { HeaderSection } from './sections/HeaderSection';
-import { InvestorLogosSection } from './sections/InvestorLogosSection';
-import { PriceSection } from './sections/PriceSection';
-import { SectionSeparator } from './sections/SectionSeparator';
-import { StickyHeader } from './sections/SickyHeader';
-import { SuggestedFeaturesSection } from './sections/SuggestedFeatures/SuggestedFeaturesSection';
-import { VideoEntry, VideosSection } from './sections/VideosSection';
+import { GridComponent } from './sections/Components/GridComponent';
+import { HeaderComponent } from './sections/Components/HeaderComponent';
+import { ImageComponent } from './sections/Components/ImageComponent';
+import { InvestorLogosComponent } from './sections/Components/InvestorLogosComponent';
+import { PriceComponent } from './sections/Components/PriceComponent';
+import { QuoteComponent } from './sections/Components/QuoteComponent';
+import { RowsComponent } from './sections/Components/RowsComponent';
+import { SubheaderComponent } from './sections/Components/SubheaderComponent';
+import { VideoDemoComponent } from './sections/Components/VideoDemoComponent';
+import * as LandingStaticData from './sections/StaticData/LandingStaticData';
+import {
+  SuggestedFeaturesComponent,
+  SuggestedFeaturesComponentModal,
+} from './sections/SuggestedFeatures/SuggestedFeaturesComponent';
 
-const videos: VideoEntry[] = [
-  {
-    title: 'Build new AI features without writing code, in a few minutes',
-    description:
-      'WorkflowAI empowers product managers to create powerful AI features entirely through an intuitive web interface—no coding required.',
-    videoId: '88ea7f2de6647fa4e051378c218a4938',
-    quote:
-      '“I always have ideas for great AI features, but getting engineering resources used to be a huge bottleneck. WorkflowAI lets me build and ship new AI-driven features myself—no coding, no waiting.”',
-    authorImageSrc: 'https://workflowai.blob.core.windows.net/workflowai-public/landing/author1.jpg',
-    quoteAuthor: 'Perri Gould',
-    authorsPosition: 'Head of product',
-    authorsCompany: 'Berry Street',
-    companyURL: 'https://www.berrystreet.co',
-  },
-  {
-    title: 'Compare all models side-by-side',
-    description:
-      'Use the playground to compare between over 60 different models, all available without any setup. Pay the same price as using directly from the AI provider.',
-    videoId: '435cef8dd99a0174311e01ae4d343f18',
-    quote:
-      '“Before WorkflowAI, we were locked into OpenAI because integrating other models was too complex. Now, switching is effortless—we’ve easily tested alternatives and saved over 90% by using Google’s models.”',
-    authorImageSrc: 'https://workflowai.blob.core.windows.net/workflowai-public/landing/author2.jpg',
-    quoteAuthor: 'Maxime Germain',
-    authorsPosition: 'CEO',
-    authorsCompany: 'InterfaceAI',
-    companyURL: 'https://interfaceai.com',
-  },
-  {
-    title: 'Understand and improve your AI features in production.',
-    description:
-      'WorkflowAI automatically logs all outputs, making it easy to diagnose issues and refine prompts for better performance.',
-    videoId: 'c118e79228b019f3d95228bbf236b563',
-    quote:
-      '“AI is non-deterministic, so understanding what happens after deployment is crucial. WorkflowAI automatically logs all outputs, enabling rapid issue diagnosis and prompt improvements.”',
-    authorImageSrc: 'https://workflowai.blob.core.windows.net/workflowai-public/landing/author3.jpg',
-    quoteAuthor: 'Gabriela Garcia',
-    authorsPosition: 'Product Manager',
-    authorsCompany: 'Luni',
-    companyURL: 'https://www.luni.app',
-  },
-  {
-    title: 'Integration that makes your engineering team happy',
-    description:
-      'WorkflowAI provides your engineering team with a seamless, developer-friendly integration process, turning AI features built by PMs into production-ready experiences quickly.',
-    videoId: 'f3c737f08a3a0f5da10d90bffd3441a6',
-    quote:
-      '“When PMs build new AI features using WorkflowAI, integrating them is straightforward and stress-free. Our engineers appreciate how quickly these features fit into our existing backend—without surprises.”',
-    authorImageSrc: 'https://workflowai.blob.core.windows.net/workflowai-public/landing/author4.jpg',
-    quoteAuthor: 'Aymeric Beaumet',
-    authorsPosition: 'CTO',
-    authorsCompany: 'InterfaceAI',
-    companyURL: 'https://interfaceai.com',
-  },
-  {
-    title: 'Get the best prompt engineer in your team',
-    description: 'WorkflowAI can automatically re-write prompts based on your feedback.',
-    videoId: 'f0347bc39b9b0557006a0428538215d9',
-    quote:
-      '“Manually writing prompts feels outdated. With WorkflowAI’s Prompt Engineer, we’ve significantly improved prompt quality—delivering more accurate and reliable AI features”.',
-    authorImageSrc: 'https://workflowai.blob.core.windows.net/workflowai-public/landing/author5.jpg',
-    quoteAuthor: 'Antoine Martin',
-    authorsPosition: 'CEO',
-    authorsCompany: 'Amo',
-    companyURL: 'https://amo.co',
-  },
-];
+export function LandingPage() {
+  const [companyURL, setCompanyURL] = useState<string | undefined>(undefined);
+  const [showSuggestedFeaturesModal, setShowSuggestedFeaturesModal] = useState<boolean>(false);
 
-type LandingPageProps = {
-  companyURL?: string;
-};
-
-export function LandingPage(props: LandingPageProps) {
-  const { companyURL } = props;
-
-  const scrollToPricing = () => {
+  const scrollToPricing = useCallback(() => {
     const pricingSection = document.getElementById('pricing');
     if (pricingSection) {
       pricingSection.scrollIntoView({ behavior: 'smooth' });
     }
-  };
+  }, []);
 
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const secondStickyHeaderRef = useRef<HTMLDivElement>(null);
-
-  const [isSecondHeaderAboveViewport, setIsSecondHeaderAboveViewport] = useState(false);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      if (secondStickyHeaderRef.current && scrollRef.current) {
-        const rect = secondStickyHeaderRef.current.getBoundingClientRect();
-        const containerRect = scrollRef.current.getBoundingClientRect();
-        setIsSecondHeaderAboveViewport(rect.bottom < containerRect.top);
-      }
-    };
-
-    const element = scrollRef.current;
-    element?.addEventListener('scroll', handleScroll);
-    return () => element?.removeEventListener('scroll', handleScroll);
+  const scrollToSuggestedFeatures = useCallback(() => {
+    const suggestedFeaturesSection = document.getElementById('suggested-features');
+    if (suggestedFeaturesSection) {
+      suggestedFeaturesSection.scrollIntoView({ behavior: 'smooth' });
+    }
   }, []);
 
   return (
-    <LandingPageContainer scrollToPricing={scrollToPricing} scrollRef={scrollRef}>
-      <HeaderSection className='sm:mt-28 mt-24' scrollToPricing={scrollToPricing} />
-      <SuggestedFeaturesSection className='mt-16 mb-32' companyURL={companyURL} />
-      <div className='text-center text-gray-900 sm:text-[36px] text-[32px] sm:font-medium font-semibold'>
-        Explore WorkflowAI as a...
-      </div>
-      <div className='h-[1px] w-[1px]' ref={secondStickyHeaderRef} />
-      <div className='sticky top-0 z-10 w-full'>
-        <StickyHeader
-          firstOption='Product Manager'
-          secondOption='Software Engineer'
-          showBackground={isSecondHeaderAboveViewport}
-          makeTransparent={false}
-        />
-      </div>
-      <VideosSection videos={videos} className='mt-[80px] sm:mb-[144px] mb-[64px]' />
-      <SectionSeparator id='pricing' />
-      <PriceSection className='sm:mt-[104px] mt-[64px]' />
-      <CompliantInformationSection className='mt-10 mb-16' />
-      <SectionSeparator />
-      <InvestorLogosSection className='mt-16 mb-28 py-10' />
+    <LandingPageContainer scrollToPricing={scrollToPricing}>
+      <HeaderComponent
+        className='mt-20'
+        scrollToPricing={scrollToPricing}
+        showSuggestedFeaturesModal={() => setShowSuggestedFeaturesModal(true)}
+      />
+      <VideoDemoComponent className='sm:mt-20 mt-14' />
+      <InvestorLogosComponent className='mt-20' />
+
+      <SubheaderComponent entry={LandingStaticData.firstHeaderEntry} className='sm:mt-40 mt-28' />
+      <GridComponent
+        entries={LandingStaticData.firstFeaturesEntries}
+        className='mt-12'
+        scrollToSuggestedFeatures={scrollToSuggestedFeatures}
+      />
+      <QuoteComponent entry={LandingStaticData.firstQuoteEntry} className='mt-12' />
+
+      <RowsComponent entries={LandingStaticData.secondFeaturesEntries} className='sm:mt-40 mt-28' />
+      <QuoteComponent entry={LandingStaticData.secondQuoteEntry} className='mt-12' />
+
+      <SubheaderComponent entry={LandingStaticData.thirdHeaderEntry} className='sm:mt-40 mt-28' />
+      <ImageComponent entry={LandingStaticData.thirdImageEntry} className='mt-12' />
+      <QuoteComponent entry={LandingStaticData.thirdQuoteEntry} className='mt-12' />
+
+      <SubheaderComponent entry={LandingStaticData.fourthHeaderEntry} className='sm:mt-40 mt-28' />
+      <GridComponent
+        entries={LandingStaticData.fourthFeaturesEntries}
+        className='mt-12'
+        scrollToSuggestedFeatures={scrollToSuggestedFeatures}
+      />
+
+      <SubheaderComponent entry={LandingStaticData.fifthHeaderEntry} className='sm:mt-40 mt-28' id='pricing' />
+      <PriceComponent className='mt-12' />
+      <QuoteComponent entry={LandingStaticData.fifthQuoteEntry} className='mt-12' />
+
+      <SubheaderComponent entry={LandingStaticData.sixthHeaderEntry} className='sm:mt-40 mt-28' />
+      <ImageComponent entry={LandingStaticData.sixthImageEntry} className='mt-12' />
+      <QuoteComponent entry={LandingStaticData.sixthQuoteEntry} className='mt-12' />
+
+      <SubheaderComponent entry={LandingStaticData.seventhHeaderEntry} className='sm:mt-40 mt-28' />
+      <GridComponent
+        entries={LandingStaticData.seventhFeaturesEntries}
+        className='mt-12'
+        scrollToSuggestedFeatures={scrollToSuggestedFeatures}
+      />
+      <QuoteComponent entry={LandingStaticData.seventhQuoteEntry} className='mt-12' />
+
+      <SubheaderComponent entry={LandingStaticData.eighthHeaderEntry} className='sm:mt-40 mt-28' />
+      <ImageComponent entry={LandingStaticData.eighthImageEntry} className='mt-12' />
+      <QuoteComponent entry={LandingStaticData.eighthQuoteEntry} className='mt-12' />
+
+      <SubheaderComponent entry={LandingStaticData.ninthHeaderEntry} className='sm:mt-40 mt-28' />
+      <GridComponent
+        entries={LandingStaticData.ninthFeaturesEntries}
+        className='mt-12'
+        scrollToSuggestedFeatures={scrollToSuggestedFeatures}
+      />
+      <QuoteComponent entry={LandingStaticData.ninthQuoteEntry} className='mt-12' />
+
+      <GridComponent
+        entries={LandingStaticData.tenthFeaturesEntries}
+        className='sm:mt-40 mt-28'
+        scrollToSuggestedFeatures={scrollToSuggestedFeatures}
+      />
+
+      <SubheaderComponent entry={LandingStaticData.eleventhHeaderEntry} className='sm:mt-40 mt-28' />
+      <GridComponent
+        entries={LandingStaticData.eleventhFeaturesEntries}
+        className='mt-12'
+        scrollToSuggestedFeatures={scrollToSuggestedFeatures}
+      />
+      <QuoteComponent entry={LandingStaticData.eleventhQuoteEntry} className='mt-12' />
+
+      <GridComponent
+        entries={LandingStaticData.twelfthFeaturesEntries}
+        className='mt-12'
+        scrollToSuggestedFeatures={scrollToSuggestedFeatures}
+      />
+
+      <SubheaderComponent
+        entry={LandingStaticData.thirteenthHeaderEntry}
+        className='sm:mt-40 mt-28'
+        id='suggested-features'
+      />
+      <SuggestedFeaturesComponent className='mt-12 mb-28' companyURL={companyURL} setCompanyURL={setCompanyURL} />
+
+      <Dialog open={showSuggestedFeaturesModal} onOpenChange={() => setShowSuggestedFeaturesModal(false)}>
+        <DialogContent className='sm:min-w-[90vw] sm:h-[90vh] h-full min-w-full p-0'>
+          <SuggestedFeaturesComponentModal
+            companyURL={companyURL}
+            setCompanyURL={setCompanyURL}
+            onClose={() => setShowSuggestedFeaturesModal(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </LandingPageContainer>
   );
 }

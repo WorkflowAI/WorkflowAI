@@ -39,11 +39,11 @@ const investorLogos = [
   },
 ];
 
-type InvestorLogosSectionProps = {
+type Props = {
   className?: string;
 };
 
-export function InvestorLogosSection(props: InvestorLogosSectionProps) {
+export function InvestorLogosComponent(props: Props) {
   const { className } = props;
 
   return (
@@ -51,7 +51,7 @@ export function InvestorLogosSection(props: InvestorLogosSectionProps) {
       <div className='text-[16px] font-normal text-gray-700 text-center'>
         Backed by investors from leading brands and companies from across the globe.
       </div>
-      <div className='flex flex-wrap max-w-[1132px] gap-x-10 gap-y-7 items-start justify-center'>
+      <div className='flex flex-wrap max-w-[1132px] gap-x-11 gap-y-6 items-start justify-center'>
         {investorLogos.map((logo) => (
           <Image
             src={logo.src}

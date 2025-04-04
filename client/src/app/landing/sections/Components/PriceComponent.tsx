@@ -1,5 +1,4 @@
-import { Tag24Regular } from '@fluentui/react-icons';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { AIProviderIcon } from '@/components/icons/models/AIProviderIcon';
 import { cn } from '@/lib/utils';
 import { useOrFetchModels } from '@/store/fetchers';
@@ -52,7 +51,7 @@ function PriceSectionGraph(props: PriceSectionGraphProps) {
   const maxPrice = Math.max(pricePerInputToken, pricePerOutputToken);
 
   return (
-    <div className='flex flex-col w-full sm:gap-8 gap-4 bg-gray-100 rounded-[8px] sm:p-11 p-6'>
+    <div className='flex flex-col w-full sm:gap-8 gap-4 bg-white sm:p-11 p-6'>
       <PriceSectionBarGraph
         percentage={90 * (pricePerInputToken / maxPrice)}
         price={pricePerInputToken}
@@ -89,6 +88,7 @@ type PriceSectionModelSelectorItemProps = {
   model: ModelResponse;
   isSelected: boolean;
   onClick: () => void;
+  numberOfModels: number;
 };
 
 function PriceSectionModelSelectorItem(props: PriceSectionModelSelectorItemProps) {
@@ -97,10 +97,10 @@ function PriceSectionModelSelectorItem(props: PriceSectionModelSelectorItemProps
   return (
     <div
       className={cn(
-        'flex flex-col items-center justify-center sm:w-[188px] h-full w-[115px] py-3 cursor-pointer border-b-2 shrink-0',
+        'flex flex-col items-center justify-center h-full sm:py-3 py-2 cursor-pointer border-b-2 shrink-0 sm:w-[25%] w-[148px]',
         isSelected
           ? 'text-gray-700 border-gray-700'
-          : 'text-gray-500 border-gray-200 hover:border-gray-400 hover:text-gray-600'
+          : 'text-gray-500 border-gray-200 hover:border-gray-400 border-transparent hover:text-gray-600'
       )}
       onClick={onClick}
     >
@@ -122,56 +122,48 @@ type PriceSectionModelSelectorProps = {
 function PriceSectionModelSelector(props: PriceSectionModelSelectorProps) {
   const { models, selectedModelIndex, setSelectedModelIndex } = props;
 
+  const numberOfModels = models?.length ?? 0;
+
   return (
-    <div className='flex flex-row items-center justify-center overflow-x-auto w-full scrollbar-hide'>
+    <div className='flex flex-row items-center sm:justify-center justify-start overflow-x-auto w-full scrollbar-hide border-b border-gray-200'>
       {models?.map((model, index) => (
         <PriceSectionModelSelectorItem
           key={model.id}
           model={model}
           isSelected={selectedModelIndex === index}
           onClick={() => setSelectedModelIndex(index)}
+          numberOfModels={numberOfModels}
         />
       ))}
     </div>
   );
 }
 
-type PriceSectionProps = {
+type Props = {
   className?: string;
 };
 
-export function PriceSection(props: PriceSectionProps) {
+export function PriceComponent(props: Props) {
   const { className } = props;
 
   const { models } = useOrFetchModels();
-  const threeFirstModels = models?.slice(0, 3);
+
+  const filteredModels = useMemo(() => {
+    return models?.slice(0, 4);
+  }, [models]);
+
   const [selectedModelIndex, setSelectedModelIndex] = useState<number>(0);
 
   return (
-    <div className={cn('flex flex-col gap-6 items-center sm:px-16 px-4 w-full max-w-[1260px]', className)}>
-      <div className='flex flex-col gap-2 items-center justify-center'>
-        <div className='flex flex-row gap-2 items-center justify-center'>
-          <Tag24Regular className='text-gray-500' />
-          <div className='text-gray-900 text-[30px] font-semibold'>Price Match</div>
-        </div>
-        <div className='text-gray-500 text-[18px] max-w-[630px] text-center font-normal'>
-          Pay the same price per tokens than you would with OpenAI, Google, Anthropic. We make our margin on them, not
-          you.
-          <a
-            className='underline ml-1 cursor-pointer'
-            href='https://docs.workflowai.com/workflowai-cloud/pricing'
-            target='_blank'
-          >
-            Learn more about our business model.
-          </a>
-        </div>
+    <div className={cn('flex flex-col items-center sm:gap-8 gap-6 sm:px-16 px-4 w-full max-w-[1260px]', className)}>
+      <div className='flex flex-col border border-gray-200 rounded-[2px] w-full'>
+        <PriceSectionModelSelector
+          models={filteredModels}
+          selectedModelIndex={selectedModelIndex}
+          setSelectedModelIndex={setSelectedModelIndex}
+        />
+        <PriceSectionGraph model={filteredModels?.[selectedModelIndex]} />
       </div>
-      <PriceSectionModelSelector
-        models={threeFirstModels}
-        selectedModelIndex={selectedModelIndex}
-        setSelectedModelIndex={setSelectedModelIndex}
-      />
-      <PriceSectionGraph model={threeFirstModels?.[selectedModelIndex]} />
     </div>
   );
 }

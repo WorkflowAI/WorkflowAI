@@ -9,7 +9,6 @@ import { useAuth } from '@/lib/AuthContext';
 import { useTaskParams, useTenantID } from '@/lib/hooks/useTaskParams';
 import { TENANT_PLACEHOLDER } from '@/lib/routeFormatter';
 import { useOrFetchTask } from '@/store';
-import { LandingPage } from '../landing/LandingPage';
 import { looksLikeURL } from '../landing/sections/SuggestedFeatures/utils';
 import { LoggedOutBanner, LoggedOutBannerForDemoTask } from './components/LoggedOutBanner';
 import { RedirectForTenant } from './components/RedirectForTenant';
@@ -31,7 +30,7 @@ export default function Layout({ children }: Readonly<{ children: React.ReactNod
   const firstPart = parts[0];
 
   if (looksLikeURL(firstPart)) {
-    return <LandingPage companyURL={firstPart} />;
+    return children;
   }
 
   return (

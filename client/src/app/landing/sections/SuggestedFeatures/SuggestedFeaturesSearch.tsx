@@ -3,16 +3,17 @@ import { cx } from 'class-variance-authority';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { useCopyCurrentUrl } from '@/lib/hooks/useCopy';
+import { useCopy } from '@/lib/hooks/useCopy';
 import { useRedirectWithParams } from '@/lib/queryString';
 import { cleanURL, isValidURL } from './utils';
 
 type Props = {
   companyURL: string | undefined;
+  setCompanyURL?: (companyURL: string) => void;
 };
 
 export function SuggestedFeaturesSearch(props: Props) {
-  const { companyURL } = props;
+  const { companyURL, setCompanyURL } = props;
   const inputRef = useRef<HTMLInputElement>(null);
 
   const redirectWithParams = useRedirectWithParams();
@@ -56,18 +57,28 @@ export function SuggestedFeaturesSearch(props: Props) {
       setEntryField(cleanedURL);
       setErrorToShow(undefined);
 
-      redirectWithParams({
-        path: `/${cleanedURL}`,
-      });
+      if (setCompanyURL) {
+        setCompanyURL(cleanedURL);
+      } else {
+        redirectWithParams({
+          path: `/${cleanedURL}`,
+        });
+      }
 
       setTimeout(() => {
         setInProgress(false);
       }, 1000);
     },
-    [redirectWithParams]
+    [redirectWithParams, setCompanyURL]
   );
 
-  const copyUrl = useCopyCurrentUrl();
+  const copy = useCopy();
+  const copyUrl = useCallback(() => {
+    const baseUrl = window.location.origin;
+    copy(`${baseUrl}/${companyURL}`, {
+      successMessage: 'Page link copied to clipboard',
+    });
+  }, [copy, companyURL]);
 
   const errorMode = errorToShow !== undefined;
 

@@ -1,7 +1,7 @@
 import { cleanURL, looksLikeURL } from '@/app/landing/sections/SuggestedFeatures/utils';
 import { generateMetadataWithTitleForTenant } from '@/lib/metadata';
 import { TenantID } from '@/types/aliases';
-import { LandingPage } from '../landing/LandingPage';
+import { URLLandingPage } from '../landing/URLLandingPage';
 import { TasksContainer } from './agents/tasks/TasksContainer';
 
 export async function generateMetadata({ params }: { params: { tenant: string } }) {
@@ -20,7 +20,7 @@ export default function TasksPage({ params: { tenant } }: { params: { tenant: st
 
   if (looksLikeURL(firstPart)) {
     const companyURL = cleanURL(firstPart);
-    return <LandingPage companyURL={companyURL} />;
+    return <URLLandingPage companyURL={companyURL} />;
   }
 
   // Otherwise, use the tenant as is
