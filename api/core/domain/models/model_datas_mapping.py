@@ -1149,6 +1149,7 @@ def _build_model_datas():
             quality_index=738,  # MMLU=88.50, GPQA=59.10
             provider_name=DisplayedProvider.FIREWORKS.value,
             supports_tool_calling=True,
+            supports_structured_output=True,
             latest_model=Model.DEEPSEEK_V3_LATEST,
         ),
         # https://fireworks.ai/models/fireworks/deepseek-r1
@@ -1211,6 +1212,7 @@ def _build_model_datas():
             provider_name=DisplayedProvider.FIREWORKS.value,
             supports_tool_calling=True,
             latest_model=Model.DEEPSEEK_V3_LATEST,
+            supports_structured_output=True,
         ),
         Model.DEEPSEEK_V3_LATEST: LatestModel(
             model=Model.DEEPSEEK_V3_0324,

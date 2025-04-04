@@ -80,9 +80,16 @@ class FireworksConfig(BaseModel):
 class FireworksAIProvider(HTTPXProvider[FireworksConfig, CompletionResponse]):
     # A context var to track if we are in a thinking tag
     _thinking_tag_context = ContextVar[bool | None]("_thinking_tag_context", default=None)
-    _models_not_supporting_structured_gen = {Model.DEEPSEEK_R1_2501}
 
-    def _response_format(self, options: ProviderOptions, is_preview_model: bool):
+    def _response_format(self, options: ProviderOptions, model_data: ModelData):
+        if options.enabled_tools:
+            # We disable structured generation if tools are enabled
+            # TODO: check why
+            return None
+        if not model_data.supports_structured_output:
+            # Structured gen is deactivated for some models like R1
+            # Since it breaks the thinking part
+            return None
         schema = copy.deepcopy(options.output_schema)
         return JSONResponseFormat(json_schema=schema)
 
@@ -99,8 +106,6 @@ class FireworksAIProvider(HTTPXProvider[FireworksConfig, CompletionResponse]):
             else:
                 domain_messages.append(FireworksMessage.from_domain(m))
 
-        tool_call_activated = options.enabled_tools is not None and options.enabled_tools != []
-
         data = get_model_data(options.model)
 
         request = CompletionRequest(
@@ -116,13 +121,11 @@ class FireworksAIProvider(HTTPXProvider[FireworksConfig, CompletionResponse]):
             max_tokens=options.max_tokens or data.max_tokens_data.max_output_tokens or data.max_tokens_data.max_tokens,
             context_length_exceeded_behavior="truncate",
             stream=stream,
-            response_format=self._response_format(options, False)
-            if options.model not in self._models_not_supporting_structured_gen and not tool_call_activated
-            else None,
+            response_format=self._response_format(options, data),
         )
 
         # Add native tool calls if enabled
-        if tool_call_activated:
+        if options.enabled_tools:
             request.tools = [
                 FireworksTool(
                     type="function",
@@ -132,7 +135,7 @@ class FireworksAIProvider(HTTPXProvider[FireworksConfig, CompletionResponse]):
                         parameters=tool.input_schema,
                     ),
                 )
-                for tool in options.enabled_tools or []
+                for tool in options.enabled_tools
             ]
         return request
 

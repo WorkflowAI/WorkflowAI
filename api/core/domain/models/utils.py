@@ -1,5 +1,4 @@
 import datetime
-import logging
 
 from core.domain.models import Model, Provider
 from core.domain.models.model_provider_data import ModelProviderData
@@ -7,8 +6,6 @@ from core.domain.models.model_provider_datas_mapping import MODEL_PROVIDER_DATAS
 
 from .model_data import DeprecatedModel, FinalModelData, LatestModel
 from .model_datas_mapping import MODEL_DATAS
-
-_logger = logging.getLogger(__name__)
 
 
 def get_model_data(model: Model) -> FinalModelData:

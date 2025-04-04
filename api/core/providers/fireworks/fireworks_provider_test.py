@@ -235,6 +235,7 @@ class TestStream:
     async def test_stream(self, get_model_data_mock: Mock, httpx_mock: HTTPXMock):
         get_model_data_mock.return_value = FinalModelData.model_construct(
             max_tokens_data=MaxTokensData(max_output_tokens=1234, max_tokens=1235, source=""),
+            supports_structured_output=True,
         )
         httpx_mock.add_response(
             url="https://api.fireworks.ai/inference/v1/chat/completions",
@@ -249,7 +250,7 @@ class TestStream:
 
         streamer = provider.stream(
             [Message(role=Message.Role.USER, content="Hello")],
-            options=ProviderOptions(model=Model.LLAMA_3_3_70B, temperature=0),
+            options=ProviderOptions(model=Model.DEEPSEEK_V3_0324, temperature=0),
             output_factory=lambda x, _: StructuredOutput(json.loads(x)),
             partial_output_factory=lambda x: StructuredOutput(x),
         )
@@ -263,7 +264,7 @@ class TestStream:
         assert body == {
             "context_length_exceeded_behavior": "truncate",
             "max_tokens": 1234,
-            "model": "accounts/fireworks/models/llama-v3p3-70b-instruct",
+            "model": "accounts/fireworks/models/deepseek-v3-0324",
             "messages": [
                 {
                     "content": "Hello",
