@@ -15,6 +15,7 @@ import { APIKeyResponse, SerializableTask, VersionEnvironment, VersionV1 } from 
 import { APILanguageSelection } from './APILanguageSelection';
 import { ApiContentSectionItem } from './ApiContentSectionItem';
 import { ApiTabsContent } from './ApiTabsContent';
+import { DeployBanner } from './DeployBanner';
 import { ManageApiKeysButton } from './ManageApiKeyButton';
 import { VersionPopover } from './VersionPopover';
 
@@ -138,18 +139,21 @@ export function ApiContent(props: ApiContentProps) {
           </div>
         </div>
 
-        <ApiTabsContent
-          tenant={tenant}
-          taskId={taskId}
-          taskSchemaId={taskSchemaId}
-          taskSchema={taskSchema}
-          taskRun={taskRun}
-          version={selectedVersionForAPI}
-          environment={selectedEnvironment}
-          language={selectedLanguage}
-          apiUrl={apiUrl}
-          secondaryInput={secondaryInput}
-        />
+        <div className='flex flex-col h-full flex-1 overflow-hidden'>
+          <DeployBanner version={selectedVersionForAPI} />
+          <ApiTabsContent
+            tenant={tenant}
+            taskId={taskId}
+            taskSchemaId={taskSchemaId}
+            taskSchema={taskSchema}
+            taskRun={taskRun}
+            version={selectedVersionForAPI}
+            environment={selectedEnvironment}
+            language={selectedLanguage}
+            apiUrl={apiUrl}
+            secondaryInput={secondaryInput}
+          />
+        </div>
       </div>
     </PageContainer>
   );

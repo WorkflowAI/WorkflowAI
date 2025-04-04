@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/Dialog';
 import { displayErrorToaster, displaySuccessToaster } from '@/components/ui/Sonner';
@@ -20,13 +21,16 @@ import { DeployVersionContent } from './DeployVersionContent';
 export function useEnvDeploy(tenant: TenantID, taskId: TaskID, taskSchemaId: TaskSchemaID | undefined) {
   const deployVersion = useVersions((state) => state.deployVersion);
 
+  const router = useRouter();
+
   const deployGroupToEnv = useCallback(
     async (
       environment: VersionEnvironment,
       versionId: string,
       versionText: string | undefined,
       iteration: number | string | undefined | null,
-      providerConfigID: string | undefined | null
+      providerConfigID: string | undefined | null,
+      redirectToCodeAfterDeploy?: boolean
     ) => {
       if (!taskSchemaId || !iteration) {
         return;
@@ -36,6 +40,15 @@ export function useEnvDeploy(tenant: TenantID, taskId: TaskID, taskSchemaId: Tas
           environment,
           provider_config_id: providerConfigID,
         });
+
+        if (redirectToCodeAfterDeploy) {
+          router.push(
+            taskApiRoute(tenant, taskId, taskSchemaId, {
+              selectedVersionId: versionId,
+              selectedEnvironment: environment,
+            })
+          );
+        }
         displaySuccessToaster(
           <span>
             {`Version ${versionText} successfully deployed to ${environment}`}
@@ -56,7 +69,7 @@ export function useEnvDeploy(tenant: TenantID, taskId: TaskID, taskSchemaId: Tas
         displayErrorToaster('Failed to deploy');
       }
     },
-    [deployVersion, tenant, taskId, taskSchemaId]
+    [deployVersion, tenant, taskId, taskSchemaId, router]
   );
 
   return deployGroupToEnv;
@@ -64,9 +77,15 @@ export function useEnvDeploy(tenant: TenantID, taskId: TaskID, taskSchemaId: Tas
 
 type NewTaskModalQueryParams = {
   deployVersionId: string | undefined;
+  deploySchemaId: TaskSchemaID | undefined;
+  redirectToCodeAfterDeploy: 'true' | undefined;
 };
 
-const searchParams: (keyof NewTaskModalQueryParams)[] = ['deployVersionId'];
+const searchParams: (keyof NewTaskModalQueryParams)[] = [
+  'deployVersionId',
+  'deploySchemaId',
+  'redirectToCodeAfterDeploy',
+];
 
 export function useDeployVersionModal() {
   const { open, openModal, closeModal } = useQueryParamModal<NewTaskModalQueryParams>(
@@ -75,12 +94,14 @@ export function useDeployVersionModal() {
   );
 
   const onDeployToClick = useCallback(
-    (versionId: string | undefined) => {
+    (versionId: string | undefined, schemaId?: TaskSchemaID, redirectToCodeAfterDeploy?: boolean) => {
       if (versionId === undefined) {
         return;
       }
       openModal({
         deployVersionId: versionId,
+        deploySchemaId: schemaId,
+        redirectToCodeAfterDeploy: !!redirectToCodeAfterDeploy ? 'true' : undefined,
       });
     },
     [openModal]
@@ -90,10 +111,18 @@ export function useDeployVersionModal() {
 }
 
 export function DeployVersionModal() {
-  const { tenant, taskId, taskSchemaId } = useTaskSchemaParams();
+  const { tenant, taskId, taskSchemaId: paramsTaskSchemaId } = useTaskSchemaParams();
   const { open, closeModal: onClose } = useDeployVersionModal();
 
-  const { deployVersionId: currentVersionId } = useParsedSearchParams('deployVersionId');
+  const {
+    deployVersionId: currentVersionId,
+    deploySchemaId,
+    redirectToCodeAfterDeploy: useDeployVersionModalText,
+  } = useParsedSearchParams('deployVersionId', 'deploySchemaId', 'redirectToCodeAfterDeploy');
+
+  const redirectToCodeAfterDeploy = useDeployVersionModalText === 'true';
+
+  const taskSchemaId = (deploySchemaId as TaskSchemaID) ?? paramsTaskSchemaId;
 
   const {
     versions,
@@ -119,9 +148,7 @@ export function DeployVersionModal() {
   const [versionsPerEnvironment, setVersionsPerEnvironment] = useState<VersionsPerEnvironment>();
 
   useEffect(() => {
-    setVersionsPerEnvironment((prev) => {
-      return prev ?? originalVersionsPerEnvironment;
-    });
+    setVersionsPerEnvironment(originalVersionsPerEnvironment);
   }, [originalVersionsPerEnvironment, open]);
 
   const updateBenchmark = useReviewBenchmark((state) => state.updateBenchmark);
@@ -185,7 +212,14 @@ export function DeployVersionModal() {
         currentTaskIteration !== originalTaskIteration
       ) {
         promises.push(
-          deployVersionToEnv(environment, currentVersionId, versionText, currentIteration, providerConfigID)
+          deployVersionToEnv(
+            environment,
+            currentVersionId,
+            versionText,
+            currentIteration,
+            providerConfigID,
+            redirectToCodeAfterDeploy
+          )
         );
         taskIterationsToAddToBenchmarks.add(currentIteration);
       }
@@ -211,6 +245,7 @@ export function DeployVersionModal() {
     taskId,
     taskSchemaId,
     versionText,
+    redirectToCodeAfterDeploy,
   ]);
 
   return (
