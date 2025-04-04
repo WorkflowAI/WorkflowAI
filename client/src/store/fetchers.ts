@@ -8,7 +8,6 @@ import { USER_SLUG_PREFIX } from '@/lib/auth_utils';
 import { useDebounce } from '@/lib/hooks/useDebounce';
 import { TENANT_PLACEHOLDER } from '@/lib/routeFormatter';
 import { sortVersions } from '@/lib/versionUtils';
-import { isNullish } from '@/types';
 import { TaskID, TaskSchemaID, TenantID } from '@/types/aliases';
 import { CodeLanguage } from '@/types/snippets';
 import { ChatMessage, FieldQuery, PlaygroundState, VersionV1 } from '@/types/workflowAI';
@@ -19,7 +18,6 @@ import { useClerkUserStore } from './clerk_users';
 import { useFeaturesState } from './features';
 import { useMetaAgentChat } from './meta_agent_messages';
 import { useOrganizationSettings } from './organization_settings';
-import { usePayments } from './payments';
 import { usePlaygroundChatStore } from './playgroundChatStore';
 import { useRunCompletions } from './run_completions';
 import { useTasks } from './task';
@@ -976,41 +974,6 @@ export const useOrFetchEvaluation = (tenant: TenantID | undefined, taskId: TaskI
 
   return {
     evaluation,
-    isLoading,
-    isInitialized,
-  };
-};
-
-export const useOrFetchPayments = (tenant: TenantID | undefined) => {
-  const paymentMethod = usePayments((state) => state.paymentMethod);
-  const stripeCustomerId = usePayments((state) => state.stripeCustomerId);
-
-  const isLoading = usePayments((state) => state.isLoading);
-
-  const isCreateCustomerInitialized = usePayments((state) => state.isCreateCustomerInitialized);
-
-  const isPaymentMethodInitialized = usePayments((state) => state.isPaymentMethodInitialized);
-
-  const isInitialized = isCreateCustomerInitialized && isPaymentMethodInitialized;
-
-  const createCustomer = usePayments((state) => state.createCustomer);
-  const getPaymentMethod = usePayments((state) => state.getPaymentMethod);
-
-  useEffect(() => {
-    if (isNullish(stripeCustomerId)) {
-      createCustomer(tenant);
-    }
-  }, [tenant, stripeCustomerId, createCustomer]);
-
-  useEffect(() => {
-    if (!isNullish(stripeCustomerId)) {
-      getPaymentMethod(tenant);
-    }
-  }, [getPaymentMethod, tenant, stripeCustomerId]);
-
-  return {
-    paymentMethod,
-    stripeCustomerId,
     isLoading,
     isInitialized,
   };

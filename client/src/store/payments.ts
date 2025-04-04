@@ -1,7 +1,7 @@
 import { produce } from 'immer';
+import { useEffect } from 'react';
 import { create } from 'zustand';
 import { client } from '@/lib/api';
-import { TenantID } from '@/types/aliases';
 import {
   AutomaticPaymentRequest,
   CreatePaymentIntentRequest,
@@ -10,72 +10,33 @@ import {
   PaymentMethodResponse,
 } from '@/types/workflowAI';
 import { useOrganizationSettings } from './organization_settings';
-import { rootTenantPath } from './utils';
 
 interface PaymentsState {
   isLoading: boolean;
 
-  isCreateCustomerInitialized: boolean;
   isPaymentMethodInitialized: boolean;
 
-  stripeCustomerId: string | undefined;
   paymentMethod: PaymentMethodResponse | undefined;
 
-  createCustomer: (tenant: TenantID | undefined) => Promise<void>;
-  addPaymentMethod: (tenant: TenantID | undefined, paymentMethodId: string) => Promise<void>;
-  getPaymentMethod: (tenant: TenantID | undefined) => Promise<void>;
-  createPaymentIntent: (tenant: TenantID | undefined, amount: number) => Promise<PaymentIntentCreatedResponse>;
-  updateAutomaticPayment: (
-    tenant: TenantID | undefined,
-    optIn: boolean,
-    threshold: number | null,
-    balanceToMaintain: number | null
-  ) => Promise<void>;
-  deletePaymentMethod: (tenant: TenantID | undefined) => Promise<void>;
+  addPaymentMethod: (paymentMethodId: string) => Promise<void>;
+  getPaymentMethod: () => Promise<void>;
+  createPaymentIntent: (amount: number) => Promise<PaymentIntentCreatedResponse>;
+  updateAutomaticPayment: (optIn: boolean, threshold: number | null, balanceToMaintain: number | null) => Promise<void>;
+  deletePaymentMethod: () => Promise<void>;
 }
 
 export const usePayments = create<PaymentsState>((set) => ({
   isLoading: false,
 
-  isCreateCustomerInitialized: false,
   isPaymentMethodInitialized: false,
 
-  stripeCustomerId: undefined,
   paymentMethodId: undefined,
   paymentMethod: undefined,
 
-  createCustomer: async (tenant: TenantID | undefined) => {
-    set(
-      produce((state: PaymentsState) => {
-        state.isLoading = true;
-      })
-    );
-    try {
-      const response = await client.post<void, CustomerCreatedResponse>(
-        `${rootTenantPath(tenant)}/organization/payments/customers`,
-        undefined
-      );
-      set(
-        produce((state: PaymentsState) => {
-          state.stripeCustomerId = response.customer_id;
-        })
-      );
-    } catch (error) {
-      console.error(error);
-    } finally {
-      set(
-        produce((state: PaymentsState) => {
-          state.isLoading = false;
-          state.isCreateCustomerInitialized = true;
-        })
-      );
-    }
-  },
-
-  getPaymentMethod: async (tenant: TenantID | undefined) => {
+  getPaymentMethod: async () => {
     try {
       const response = await client.get<PaymentMethodResponse | null>(
-        `${rootTenantPath(tenant)}/organization/payments/payment-methods`
+        `/api/data/organization/payments/payment-methods`
       );
       set(
         produce((state: PaymentsState) => {
@@ -93,7 +54,7 @@ export const usePayments = create<PaymentsState>((set) => ({
     }
   },
 
-  addPaymentMethod: async (tenant: TenantID | undefined, paymentMethodId: string) => {
+  addPaymentMethod: async (paymentMethodId: string) => {
     set(
       produce((state: PaymentsState) => {
         state.isLoading = true;
@@ -101,7 +62,7 @@ export const usePayments = create<PaymentsState>((set) => ({
     );
     try {
       await client.post<{ payment_method_id: string }, PaymentMethodResponse>(
-        `${rootTenantPath(tenant)}/organization/payments/payment-methods`,
+        `/api/data/organization/payments/payment-methods`,
         {
           payment_method_id: paymentMethodId,
         }
@@ -112,17 +73,16 @@ export const usePayments = create<PaymentsState>((set) => ({
       set(
         produce((state: PaymentsState) => {
           state.isLoading = false;
-          state.isCreateCustomerInitialized = true;
         })
       );
     }
 
-    await usePayments.getState().getPaymentMethod(tenant);
+    await usePayments.getState().getPaymentMethod();
   },
 
-  createPaymentIntent: async (tenant: TenantID | undefined, amount: number) => {
+  createPaymentIntent: async (amount: number) => {
     const response = await client.post<CreatePaymentIntentRequest, PaymentIntentCreatedResponse>(
-      `${rootTenantPath(tenant)}/organization/payments/payment-intents`,
+      `/api/data/organization/payments/payment-intents`,
       {
         amount,
       }
@@ -131,14 +91,9 @@ export const usePayments = create<PaymentsState>((set) => ({
     return response;
   },
 
-  updateAutomaticPayment: async (
-    tenant: TenantID | undefined,
-    optIn: boolean,
-    threshold: number | null,
-    balanceToMaintain: number | null
-  ) => {
+  updateAutomaticPayment: async (optIn: boolean, threshold: number | null, balanceToMaintain: number | null) => {
     try {
-      await client.put<AutomaticPaymentRequest>(`${rootTenantPath(tenant)}/organization/payments/automatic-payments`, {
+      await client.put<AutomaticPaymentRequest>(`/api/data/organization/payments/automatic-payments`, {
         opt_in: optIn,
         threshold,
         balance_to_maintain: balanceToMaintain,
@@ -149,13 +104,37 @@ export const usePayments = create<PaymentsState>((set) => ({
     }
   },
 
-  deletePaymentMethod: async (tenant: TenantID | undefined) => {
+  deletePaymentMethod: async () => {
     try {
-      await client.del<void>(`${rootTenantPath(tenant)}/organization/payments/payment-methods`);
+      await client.del<void>(`/api/data/organization/payments/payment-methods`);
       await useOrganizationSettings.getState().fetchOrganizationSettings();
-      await usePayments.getState().getPaymentMethod(tenant);
+      await usePayments.getState().getPaymentMethod();
     } catch (error) {
       console.error(error);
     }
   },
+
+  retryAutomaticPayment: async () => {
+    await client.post(`/api/data/organization/payments/automatic-payments/retry`, undefined);
+    await useOrganizationSettings.getState().fetchOrganizationSettings();
+  },
 }));
+
+export const useOrFetchPayments = () => {
+  const paymentMethod = usePayments((state) => state.paymentMethod);
+  const isLoading = usePayments((state) => state.isLoading);
+  const isInitialized = usePayments((state) => state.isPaymentMethodInitialized);
+  const getPaymentMethod = usePayments((state) => state.getPaymentMethod);
+
+  useEffect(() => {
+    if (!isInitialized) {
+      getPaymentMethod();
+    }
+  }, [getPaymentMethod, isInitialized]);
+
+  return {
+    paymentMethod,
+    isLoading,
+    isInitialized,
+  };
+};

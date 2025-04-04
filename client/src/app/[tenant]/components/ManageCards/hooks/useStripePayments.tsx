@@ -5,7 +5,6 @@ import { displayErrorToaster, displaySuccessToaster } from '@/components/ui/Sonn
 import { RequestError } from '@/lib/api/client';
 import { useOrganizationSettings } from '@/store/organization_settings';
 import { usePayments } from '@/store/payments';
-import { TenantID } from '@/types/aliases';
 
 function errorMessage(error: unknown, defaultPrefix?: string): string {
   if (error instanceof RequestError && 'statusText' in error.response) {
@@ -71,13 +70,13 @@ export function useStripePayments() {
   );
 
   const addCredits = useCallback(
-    async (tenant: TenantID | undefined, amountToAdd: number) => {
+    async (amountToAdd: number) => {
       if (amountToAdd <= 0) {
         return false;
       }
 
       try {
-        const { client_secret } = await createPaymentIntent(tenant, amountToAdd);
+        const { client_secret } = await createPaymentIntent(amountToAdd);
         await handlePaymentStatus(client_secret, amountToAdd);
         await fetchOrganizationSettings();
         displaySuccessToaster(`$${amountToAdd} in Credits Added Successfully`);
@@ -91,7 +90,7 @@ export function useStripePayments() {
   );
 
   const createPaymentMethod = useCallback(
-    async (tenant: TenantID | undefined, elements: StripeElements | undefined) => {
+    async (elements: StripeElements | undefined) => {
       if (!stripe || !elements) return;
 
       try {
@@ -105,7 +104,7 @@ export function useStripePayments() {
         if (error) throw error;
         if (!paymentMethod) throw new Error('No payment method created');
 
-        await addPaymentMethod(tenant, paymentMethod.id);
+        await addPaymentMethod(paymentMethod.id);
         displaySuccessToaster('Payment Method Successfully Added');
       } catch (error) {
         displayErrorToaster(errorMessage(error));
