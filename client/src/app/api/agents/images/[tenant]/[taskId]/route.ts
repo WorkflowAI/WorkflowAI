@@ -77,7 +77,7 @@ export async function GET(request: Request, { params }: { params: { tenant: stri
             justifyContent: 'flex-start',
             backgroundImage:
               'url(https://workflowai.blob.core.windows.net/workflowai-public/MetaLinkPreviewBackground.jpg)',
-            backgroundSize: '100% 100%',
+            backgroundSize: 'cover',
             backgroundPosition: 'center',
             backgroundRepeat: 'no-repeat',
             paddingTop: '60px',
@@ -85,6 +85,8 @@ export async function GET(request: Request, { params }: { params: { tenant: stri
             paddingRight: '130px',
             overflow: 'hidden',
             fontFamily: 'Lato',
+            WebkitFontSmoothing: 'antialiased',
+            MozOsxFontSmoothing: 'grayscale',
           },
         },
         React.createElement(
@@ -98,13 +100,13 @@ export async function GET(request: Request, { params }: { params: { tenant: stri
               alignItems: 'flex-start',
               overflow: 'hidden',
               gap: '13px',
-              fontSize: '35px',
+              fontSize: '2.1875rem',
             },
           },
           // Entry 0
           React.createElement(
             'div',
-            { style: { color: '#6B7280', zIndex: 1, textAlign: 'left' } },
+            { style: { color: '#6B7280', zIndex: 1, textAlign: 'left', fontSize: '1rem' } },
             entries[0]?.key || ''
           ),
           React.createElement(
@@ -120,6 +122,7 @@ export async function GET(request: Request, { params }: { params: { tenant: stri
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 lineHeight: '1.5',
+                fontSize: '1.5rem',
               },
             },
             entries[0]?.value || ''
@@ -232,7 +235,7 @@ export async function GET(request: Request, { params }: { params: { tenant: stri
         ],
       }
     );
-  } catch (error) {
+  } catch {
     return new NextResponse('Error fetching agent run', {
       status: 500,
     });
