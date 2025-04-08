@@ -106,7 +106,7 @@ export async function GET(request: Request, { params }: { params: { tenant: stri
           // Entry 0
           React.createElement(
             'div',
-            { style: { color: '#6B7280', zIndex: 1, textAlign: 'left', fontSize: '1rem' } },
+            { style: { color: '#6B7280', zIndex: 1, textAlign: 'left', paddingTop: '30px' } },
             entries[0]?.key || ''
           ),
           React.createElement(
@@ -122,7 +122,6 @@ export async function GET(request: Request, { params }: { params: { tenant: stri
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 lineHeight: '1.5',
-                fontSize: '1.5rem',
               },
             },
             entries[0]?.value || ''
