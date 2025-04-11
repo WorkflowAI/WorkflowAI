@@ -293,6 +293,7 @@ class XAIProvider(HTTPXProvider[XAIConfig, CompletionResponse]):
             reasoning_steps=first_choice_delta.reasoning_content,
         )
 
+    @override
     def _compute_prompt_token_count(
         self,
         messages: list[dict[str, Any]],
@@ -300,6 +301,7 @@ class XAIProvider(HTTPXProvider[XAIConfig, CompletionResponse]):
     ) -> float:
         raise NotImplementedError("Token counting is not implemented for XAI")
 
+    @override
     def _compute_prompt_image_count(
         self,
         messages: list[dict[str, Any]],
@@ -327,21 +329,6 @@ class XAIProvider(HTTPXProvider[XAIConfig, CompletionResponse]):
             for tool_call in choice.message.tool_calls or []
         ]
         return tool_calls
-
-    @override
-    async def _extract_and_log_rate_limits(self, response: Response, options: ProviderOptions):
-        await self._log_rate_limit_remaining(
-            "requests",
-            remaining=response.headers.get("x-ratelimit-remaining-requests"),
-            total=response.headers.get("x-ratelimit-limit-requests"),
-            options=options,
-        )
-        await self._log_rate_limit_remaining(
-            "tokens",
-            remaining=response.headers.get("x-ratelimit-remaining-tokens"),
-            total=response.headers.get("x-ratelimit-limit-tokens"),
-            options=options,
-        )
 
     def _invalid_argument_error(self, payload: XAIError, response: Response) -> ProviderError:
         message = payload.error
