@@ -24,31 +24,58 @@ DEFAULT_DOC_SECTIONS: list[DocumentationSection] = [
 ]
 
 
-def _extract_doc_title(file_name: str) -> str:
-    base: str = file_name.rsplit(".", 1)[0]
-    prefix: str = "docs_workflowai_com_"
-    if base.startswith(prefix):
-        base = base[len(prefix) :]
-    return base.replace("_", " ").title()
-
-
 class DocumentationService:
+    _DOCS_DIR: str = "docs"
+
     def get_all_doc_sections(self) -> list[DocumentationSection]:
         doc_sections: list[DocumentationSection] = []
-        for file in os.listdir("docs"):
-            with open(os.path.join("docs", file), "r") as f:
-                doc_sections.append(
-                    DocumentationSection(title=_extract_doc_title(file), content=f.read()),
-                )
+        base_dir: str = self._DOCS_DIR
+        if not os.path.isdir(base_dir):
+            _logger.error("Documentation directory not found", extra={"base_dir": base_dir})
+            return []
+
+        for root, _, files in os.walk(base_dir):
+            for file in files:
+                if file.startswith("."):  # Ignore hidden files like .DS_Store
+                    continue
+                full_path: str = os.path.join(root, file)
+                relative_path: str = os.path.relpath(full_path, base_dir)
+                try:
+                    with open(full_path, "r") as f:
+                        doc_sections.append(
+                            DocumentationSection(title=relative_path, content=f.read()),
+                        )
+                except Exception as e:
+                    _logger.exception(
+                        "Error reading or processing documentation file",
+                        extra={"file_path": full_path},
+                        exc_info=e,
+                    )
         return doc_sections
 
     @classmethod
-    def build_api_docs_prompt(cls, folder_name: str = "docs") -> str:
+    def build_api_docs_prompt(cls, folder_name: str = _DOCS_DIR) -> str:
         api_docs: str = ""
+        if not os.path.isdir(folder_name):
+            _logger.error("Documentation directory not found for building prompt", extra={"folder_name": folder_name})
+            return ""
 
-        for file in os.listdir(folder_name):
-            with open(os.path.join(folder_name, file), "r") as f:
-                api_docs += f"{file}\n{f.read()}\n\n"
+        for root, _, files in os.walk(folder_name):
+            for file in files:
+                if file.startswith("."):
+                    continue
+                full_path: str = os.path.join(root, file)
+                relative_path: str = os.path.relpath(full_path, folder_name)
+                try:
+                    with open(full_path, "r") as f:
+                        content: str = f.read()
+                        api_docs += f"{relative_path}\n{content}\n\n"
+                except Exception as e:
+                    _logger.exception(
+                        "Error reading documentation file for prompt",
+                        extra={"file_path": full_path},
+                        exc_info=e,
+                    )
 
         return api_docs
 
