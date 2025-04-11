@@ -53,32 +53,6 @@ class DocumentationService:
                     )
         return doc_sections
 
-    @classmethod
-    def build_api_docs_prompt(cls, folder_name: str = _DOCS_DIR) -> str:
-        api_docs: str = ""
-        if not os.path.isdir(folder_name):
-            _logger.error("Documentation directory not found for building prompt", extra={"folder_name": folder_name})
-            return ""
-
-        for root, _, files in os.walk(folder_name):
-            for file in files:
-                if file.startswith("."):
-                    continue
-                full_path: str = os.path.join(root, file)
-                relative_path: str = os.path.relpath(full_path, folder_name)
-                try:
-                    with open(full_path, "r") as f:
-                        content: str = f.read()
-                        api_docs += f"{relative_path}\n{content}\n\n"
-                except Exception as e:
-                    _logger.exception(
-                        "Error reading documentation file for prompt",
-                        extra={"file_path": full_path},
-                        exc_info=e,
-                    )
-
-        return api_docs
-
     async def get_relevant_doc_sections(
         self,
         chat_messages: list[MetaAgentChatMessage],
