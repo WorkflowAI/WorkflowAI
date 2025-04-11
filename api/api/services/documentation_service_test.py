@@ -1,3 +1,5 @@
+# Removed the test for the private function _extract_doc_title as it's no longer used.
+import os
 from typing import NamedTuple
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -6,7 +8,35 @@ import pytest
 from api.services.documentation_service import DEFAULT_DOC_SECTIONS, DocumentationService
 from core.domain.documentation_section import DocumentationSection
 
-# Removed the test for the private function _extract_doc_title as it's no longer used.
+API_DOCS_DIR = "api/docs"
+EXPECTED_FILE_COUNT = 48
+
+
+@patch("api.services.documentation_service.DocumentationService._DOCS_DIR", API_DOCS_DIR)
+def test_get_all_doc_sections_uses_real_files() -> None:
+    """
+    Tests that get_all_doc_sections correctly counts files in the actual api/docs directory.
+    """
+    # Arrange
+    # Ensure the directory exists before running the test fully
+    # Note: This assumes the test environment has access to the api/docs directory
+    if not os.path.isdir(API_DOCS_DIR):
+        pytest.skip(f"Real documentation directory not found at {API_DOCS_DIR}")
+
+    service = DocumentationService()
+
+    # Act
+    doc_sections: list[DocumentationSection] = service.get_all_doc_sections()
+
+    # Assert
+    # Check that the correct number of sections were created based on the actual file count
+    assert len(doc_sections) == EXPECTED_FILE_COUNT
+    # Optionally, add basic checks like ensuring titles are non-empty strings
+    for section in doc_sections:
+        assert isinstance(section.title, str)
+        assert len(section.title) > 0
+        assert isinstance(section.content, str)
+        # We don't check content length as some files might be empty
 
 
 @pytest.fixture
