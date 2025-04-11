@@ -1,10 +1,107 @@
-# Workflow AI
+![header](/assets/readme-header.png)
 
-## Usage
+WorkflowAI is an open-source platform where product and engineering teams collaborate to build and iterate on AI features.
+
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+
+## Demo
+
+[![Demo](/assets/describe.gif)](https://workflowai.com/docs/agents/meeting-transcript-analysis/1?showDiffMode=false&show2ColumnLayout=false&taskRunId2=019626e2-fe11-710a-a615-294c9ca81af6&taskRunId1=019626e2-fe0b-73b0-113e-b0742bf20244&versionId=204602901276db01d774a469db3aeea9&taskRunId3=019626e3-399a-7312-81a7-b7ae664529c5)
+
+<div align="center">
+    <a href="https://workflowai.com/docs/agents/meeting-transcript-analysis/1?showDiffMode=false&show2ColumnLayout=false&taskRunId2=019626e2-fe11-710a-a615-294c9ca81af6&taskRunId1=019626e2-fe0b-73b0-113e-b0742bf20244&versionId=204602901276db01d774a469db3aeea9&taskRunId3=019626e3-399a-7312-81a7-b7ae664529c5" target="_blank">
+        <img alt="Static Badge" src="https://img.shields.io/badge/»%20Explore%20this%20demo%20and%20try%20different%20models-8A2BE2?&color=white">
+    </a>
+</div>
+
+## Key Features
+
+- **Faster Time to Market**: Build production-ready AI features in minutes through a web-app – no coding required.
+
+- **Interactive Playground**: Test and compare 70+ leading AI models side-by-side in our visual playground. See the difference in responses, costs, and latency. [Try it now](https://workflowai.com/docs/agents/flight-info-extractor/1?versionId=b9cf227a9a2e3c90f02ca98a59cd88cf&showDiffMode=false&show2ColumnLayout=false&taskRunId1=0195ee60-6fda-71c1-5f2f-5713168b43e6&taskRunId3=01961b95-8ac7-718c-e17d-2603af7f3708&taskRunId2=0195ee60-6eac-70cd-7bd5-25fddaf31309).
+
+https://github.com/user-attachments/assets/febf1047-ed85-4af0-b796-5242aef051b4
+
+- **Model-agnostic**: Works with all major AI models including OpenAI, Anthropic, Claude, Google/Gemini, Mistral, Deepseek, with a unified interface that makes switching between providers seamless. [View all 80+ supported models](https://workflowai.com/docs/agents/flight-info-extractor/1).
+
+![Model-agnostic](https://github.com/user-attachments/assets/fa9ba9bb-4eed-422a-93c0-ccfc02dcdc86)
+
+- **Open-source and flexible deployment**: WorkflowAI is fully open-source with flexible deployment options. Run it self-hosted on your own infrastructure for maximum data control, or use the managed [WorkflowAI Cloud](https://docs.workflowai.com/workflowai-cloud/introduction) service for hassle-free updates and automatic scaling.
+
+- **Observability integrated**: Built-in monitoring and logging capabilities that provide insights into your AI workflows, making debugging and optimization straightforward. Learn more about [observability features](https://docs.workflowai.com/concepts/runs).
+
+https://github.com/user-attachments/assets/ae260da3-06ed-4ba0-824b-a9cab4fadb6f
+
+- **Cost tracking**: Automatically calculates and tracks the cost of each AI model run, providing transparency and helping you manage your AI budget effectively. Learn more about [cost tracking](https://docs.workflowai.com/features/monitoring).
+
+![cost-tracking](https://github.com/user-attachments/assets/a5d2b3d5-5237-4d86-9536-b618e663bff9)
+
+- **Structured output**: WorkflowAI ensures your AI responses always match your defined structure, simplifying integrations, reducing parsing errors, and making your data reliable and ready for use. Learn more about [structured input and output](https://docs.workflowai.com/concepts/schemas).
+
+![structured-output](https://github.com/user-attachments/assets/9331e7d0-72f4-48e5-bd2f-10c6a5f5f5e1)
+
+- **Easy integration with SDKs for Python, Typescript and a REST API**. View code examples [here](https://workflowai.com/docs/agents/flight-info-extractor/1).
+
+https://github.com/user-attachments/assets/261c3a5a-16ac-4c29-bc30-5ec725a0619d
+
+- **Instant Prompt Updates**: Tired of creating tickets just to tweak a prompt? Update prompts and models with a single click - no code changes or engineering work required. Go from feedback to fix in seconds.
+
+https://github.com/user-attachments/assets/0c81d596-ec70-43bc-80a8-ceddcd26b9d9
+
+- **Automatic Provider Failover**: [OpenAI experiences 40+ minutes of downtime per month](https://status.openai.com). With WorkflowAI, traffic automatically reroutes to backup providers (like Azure OpenAI for OpenAI, or Amazon Bedrock for Anthropic) during outages - no configuration needed and at no extra cost. Your users won't even notice the switch.
+
+![provider-failover](https://github.com/user-attachments/assets/a9929043-70d8-4199-ac0d-ba5074f2b7cc)
+
+- **Streaming supported**: Enables real-time streaming of AI responses for low latency applications, with immediate validation of partial outputs. Learn more about [streaming capabilities](https://docs.workflowai.com/features/code#streaming).
+
+https://github.com/user-attachments/assets/4cf6e65a-a7b4-4b93-a30c-7d28b22e1553
+
+- **Built-in tools**: Comes with powerful built-in tools like web search and web browsing capabilities, allowing your agents to access real-time information from the internet. These tools enable your AI applications to retrieve up-to-date data, research topics, and interact with web content without requiring complex integrations. Learn more about [built-in tools](https://docs.workflowai.com/concepts/tools).
+
+https://github.com/user-attachments/assets/9329af26-1222-4d5d-a68d-2bb4675261e2
+
+- **Multimodality support**: Build agents that can handle multiple modalities, such as images, PDFs, documents, and audio. Try it [here](https://workflowai.com/docs/agents/pdf-answer-bot/1?versionId=db4cf825a65eaab3d3b7f6543a78ece1&showDiffMode=false&show2ColumnLayout=false&taskRunId2=0195d8b6-ed8b-7190-b71d-53bfc9782e6b&taskRunId3=0195d8b6-ed93-736f-c53d-50e284a1038a&taskRunId1=01961b9a-915a-7075-a353-2cebb452aeea).
+
+https://github.com/user-attachments/assets/0cd54e38-6e6d-42f2-aa7d-365970151375
+
+- **Developer-Friendly**: Need more control? Seamlessly extend functionality with our [Python SDK](https://github.com/workflowai/python-sdk) when you need custom logic.
+
+```python
+import workflowai
+from pydantic import BaseModel
+from workflowai import Model
+
+class MeetingInput(BaseModel):
+    meeting_transcript: str
+
+class MeetingOutput(BaseModel):
+    summary: str
+    key_items: list[str]
+    action_items: list[str]
+
+@workflowai.agent()
+async def extract_meeting_info(meeting_input: MeetingInput) -> MeetingOutput:
+    ...
+
+```
+
+## Deploy WorkflowAI
+
+### WorkflowAI Cloud
+
+<div align="center">
+    <a href="https://workflowai.com" target="_blank">
+        <img alt="Static Badge" src="https://img.shields.io/badge/»%20Sign%20up%20for%20WorkflowAI%20Cloud-8A2BE2?&color=orange">
+    </a>
+</div>
+
+Fully managed solution with zero infrastructure setup required. [Pay exactly what you'd pay the model providers](https://docs.workflowai.com/workflowai-cloud/pricing) — billed per token, with no minimums and no per-seat fees. No markups. We make our margin from provider discounts, not by charging you extra. Enterprise-ready with SOC2 compliance and [high-availability infrastructure](https://docs.workflowai.com/workflowai-cloud/reliability). We maintain strict data privacy - your data is never used for training.
+
+### Self-hosted
 
 ### Quick start
 
-The docker compose file is provided as a quick way to spin up a local instance of WorkflowAI.
+The Docker Compose file is provided as a quick way to spin up a local instance of WorkflowAI.
 It is configured to be self contained viable from the start.
 
 ```sh
@@ -67,7 +164,7 @@ mc alias set myminio http://minio:9000 minio miniosecret
 
 #### API
 
-The [api](./api/README.md) provides is the python backend for WorkflowAI. It is structured
+The [api](./api/README.md) provides is the Python backend for WorkflowAI. It is structured
 as a [FastAPI](https://fastapi.tiangolo.com/) server and
 a [TaskIQ](https://github.com/taskiq-python/taskiq) based worker.
 
@@ -89,8 +186,16 @@ The [client](./client/README.md) is a NextJS app that serves as a frontend
 
 ### Setting up providers
 
-This project supports a variety of LLM providers.
+WorkflowAI supports a variety of LLM providers.
 
 Each provider has a different set of credentials and configuration. Providers that have the required environment
-variables are loaded by default (see the [sample env](.env.sample) for the available variables). Providers can
-also be configured per tenant through the UI.
+variables are loaded by default (see the [sample env](.env.sample) for the available variables). Providers can also be configured per tenant through the UI.
+
+
+## Support
+
+To find answers to your questions, please refer to the [Documentation](https://docs.workflowai.com), or open a [GitHub issue](https://github.com/workflowai/workflowai/issues).
+
+## License
+
+WorkflowAI is licensed under the [Apache 2.0 License](./LICENSE).
