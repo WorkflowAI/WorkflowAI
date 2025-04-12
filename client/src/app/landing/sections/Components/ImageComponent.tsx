@@ -5,10 +5,15 @@ import { ImageEntry } from '../StaticData/LandingStaticData';
 type Props = {
   className?: string;
   entry: ImageEntry;
+  isMobile: boolean;
 };
 
 export function ImageComponent(props: Props) {
-  const { className, entry } = props;
+  const { className, entry, isMobile } = props;
+
+  const imageSrc = isMobile ? entry.mobileImageSrc ?? entry.imageSrc : entry.imageSrc;
+  const width = isMobile ? entry.mobileWidth ?? entry.width : entry.width;
+  const height = isMobile ? entry.mobileHeight ?? entry.height : entry.height;
 
   return (
     <div
@@ -23,7 +28,7 @@ export function ImageComponent(props: Props) {
         }
       }}
     >
-      <Image src={entry.imageSrc} alt='Image' width={entry.width} height={entry.height} className='flex w-full' />
+      <Image src={imageSrc} alt='Image' width={width} height={height} className='flex w-full' />
     </div>
   );
 }

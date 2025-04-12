@@ -1,3 +1,6 @@
+import { ClipboardTaskList16Regular } from '@fluentui/react-icons';
+import { ArrowTrendingRegular } from '@fluentui/react-icons';
+import { ChatRegular, CloudRegular, DataUsageRegular, ListBarTreeRegular } from '@fluentui/react-icons';
 import { StaticImageData } from 'next/image';
 import { ReactNode } from 'react';
 import GitHubSrc from '@/components/Images/GitHubIcon.png';
@@ -46,7 +49,18 @@ export type ImageEntry = {
   imageSrc: string | StaticImageData;
   width: number;
   height: number;
+  mobileImageSrc?: string | StaticImageData;
+  mobileWidth?: number;
+  mobileHeight?: number;
   url?: string;
+};
+
+export type VideoDemo = {
+  videoId: string;
+  width: number;
+  height: number;
+  name: string;
+  icon: React.ReactNode;
 };
 
 // Eighteenth new component data
@@ -72,6 +86,9 @@ export const eighteenthNewImageEntry: ImageEntry = {
   imageSrc: 'https://workflowai.blob.core.windows.net/workflowai-public/landing/LandingIllustration39.jpg',
   width: 1168,
   height: 592,
+  mobileImageSrc: 'https://workflowai.blob.core.windows.net/workflowai-public/landing/LandingIllustration39Mobile.jpg',
+  mobileWidth: 1168,
+  mobileHeight: 1307,
 };
 
 // Seventeenth new component data
@@ -89,6 +106,9 @@ export const seventeenthNewImageEntry: ImageEntry = {
   imageSrc: 'https://workflowai.blob.core.windows.net/workflowai-public/landing/LandingIllustration38.jpg',
   width: 1168,
   height: 390,
+  mobileImageSrc: 'https://workflowai.blob.core.windows.net/workflowai-public/landing/LandingIllustration38Mobile.jpg',
+  mobileWidth: 1168,
+  mobileHeight: 2376,
 };
 
 // Sixteenth new component data
@@ -106,6 +126,9 @@ export const sixteenthNewImageEntry: ImageEntry = {
   imageSrc: 'https://workflowai.blob.core.windows.net/workflowai-public/landing/LandingIllustration37.jpg',
   width: 1168,
   height: 337,
+  mobileImageSrc: 'https://workflowai.blob.core.windows.net/workflowai-public/landing/LandingIllustration37Mobile.jpg',
+  mobileWidth: 1168,
+  mobileHeight: 670,
 };
 
 // Fifteenth new component data
@@ -121,6 +144,9 @@ export const fifteenthNewImageEntry: ImageEntry = {
   imageSrc: 'https://workflowai.blob.core.windows.net/workflowai-public/landing/LandingIllustration36.jpg',
   width: 1168,
   height: 337,
+  mobileImageSrc: 'https://workflowai.blob.core.windows.net/workflowai-public/landing/LandingIllustration36Mobile.jpg',
+  mobileWidth: 1168,
+  mobileHeight: 716,
 };
 
 // Fourteenth new component data
@@ -136,6 +162,9 @@ export const fourteenthNewImageEntry: ImageEntry = {
   imageSrc: 'https://workflowai.blob.core.windows.net/workflowai-public/landing/LandingIllustration35.jpg',
   width: 1168,
   height: 496,
+  mobileImageSrc: 'https://workflowai.blob.core.windows.net/workflowai-public/landing/LandingIllustration35Mobile.jpg',
+  mobileWidth: 1168,
+  mobileHeight: 659,
 };
 
 // Thirteenth new component data
@@ -151,6 +180,9 @@ export const thirteenthNewImageEntry: ImageEntry = {
   imageSrc: 'https://workflowai.blob.core.windows.net/workflowai-public/landing/LandingIllustration34.jpg',
   width: 1168,
   height: 368,
+  mobileImageSrc: 'https://workflowai.blob.core.windows.net/workflowai-public/landing/LandingIllustration34Mobile.jpg',
+  mobileWidth: 1168,
+  mobileHeight: 1446,
 };
 
 // Twelfth new component data
@@ -521,3 +553,50 @@ export const comparisionHeaderEntry: HeaderEntry = {
   buttonText: 'See how our failover system works',
   url: 'https://docs.workflowai.com/workflowai-cloud/reliability',
 };
+
+// Video demos
+
+export const videoDemos: VideoDemo[] = [
+  {
+    videoId: '6dd8ba57257c1bbaa870f49a36d256ac',
+    width: 1280,
+    height: 720,
+    name: 'Describe',
+    icon: <ChatRegular className='w-4 h-4' />,
+  },
+  {
+    videoId: '28d15ef03f8069f31bc1aa12dd848208',
+    width: 1280,
+    height: 720,
+    name: 'Compare',
+    icon: <DataUsageRegular className='w-4 h-4' />,
+  },
+  {
+    videoId: 'd9b84a67c09a218f7f777459f5a7c355',
+    width: 1280,
+    height: 720,
+    name: 'Deploy',
+    icon: <CloudRegular className='w-4 h-4' />,
+  },
+  {
+    videoId: '7d8a1b00e3d10b657c3910330ae83953',
+    width: 1280,
+    height: 720,
+    name: 'Observe',
+    icon: <ListBarTreeRegular className='w-4 h-4' />,
+  },
+  {
+    videoId: '9983b7e0b7bca28ced765af6a74a5313',
+    width: 1280,
+    height: 720,
+    name: 'Improve',
+    icon: <ArrowTrendingRegular className='w-4 h-4' />,
+  },
+  {
+    videoId: '0fb363416b744eaf3a269780148fcc0f',
+    width: 1280,
+    height: 720,
+    name: 'Monitor',
+    icon: <ClipboardTaskList16Regular className='w-4 h-4' />,
+  },
+];
