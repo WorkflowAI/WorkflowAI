@@ -1,7 +1,6 @@
 import Image from 'next/image';
 import { useMemo } from 'react';
 import { BarChart } from '@/components/ui/BarChart';
-import { useIsMobile } from '@/lib/hooks/useIsMobile';
 import { cn } from '@/lib/utils';
 import { useOrFetchWeeklyRuns } from '@/store/fetchers';
 
@@ -35,19 +34,17 @@ export function GraphComponent(props: Props) {
     );
   }, [weeklyRuns, workflowUptime]);
 
-  const isMobile = useIsMobile();
-
   const costData = useMemo(() => {
     const data = weeklyRuns?.map((run) => {
       const date = new Date(run.start_of_week);
       return {
-        x: isMobile ? `${date.getMonth() + 1}/${date.getDate()}` : `${run.start_of_week}`,
+        x: `${date.getMonth() + 1}/${date.getDate()}`,
         y: run.run_count,
       };
     });
 
     return data;
-  }, [weeklyRuns, isMobile]);
+  }, [weeklyRuns]);
 
   return (
     <div className={cn('flex flex-col items-center sm:gap-12 gap-8 sm:px-16 px-4 w-full max-w-[1260px]', className)}>
@@ -74,19 +71,20 @@ export function GraphComponent(props: Props) {
         </div>
 
         <div className='flex w-full h-full z-10 sm:px-32 sm:py-16 px-0 py-0'>
-          <div className='flex w-full h-full bg-white sm:border-0 border border-gray-200 rounded-[2px] items-center justify-center overflow-hidden sm:px-1 sm:py-3 px-0'>
+          <div className='flex w-full h-full items-center justify-center overflow-hidden sm:px-1 sm:py-3 px-0'>
             <BarChart
               data={costData ?? []}
               fractionalPart={0}
               barColor='#818CF8'
-              textColor='#6B7280'
-              showValueAboveBar={true}
+              textColor='#808896'
+              showValueAboveBar={false}
               showTooltips={false}
               barRadius={2}
               tooltipLabel='Run Count'
               className='pr-3 flex w-full h-full overflow-hidden'
               hideFractionsOnYAxis={true}
               turnOffFocus={true}
+              turnOffHorizontalLines={true}
             />
           </div>
         </div>

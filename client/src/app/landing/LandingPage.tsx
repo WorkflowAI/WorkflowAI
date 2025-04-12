@@ -19,7 +19,7 @@ import { PriceComponent } from './sections/Components/PriceComponent';
 import { QuoteComponent } from './sections/Components/QuoteComponent';
 import { RowsComponent } from './sections/Components/RowsComponent';
 import { SubheaderComponent } from './sections/Components/SubheaderComponent';
-import { VideoDemoComponent } from './sections/Components/VideoDemoComponent';
+import { VideosComponent } from './sections/Components/Video/VideosComponent';
 import * as LandingStaticData from './sections/StaticData/LandingStaticData';
 
 export function LandingPage() {
@@ -64,27 +64,26 @@ export function LandingPage() {
   return (
     <LandingPageContainer scrollToPricing={scrollToPricing}>
       <HeaderComponent className='mt-10' showSuggestedFeaturesModal={onNewTask} routeForSignUp={routeForSignUp} />
-      <VideoDemoComponent className='sm:mt-10 mt-7' />
-
+      <VideosComponent className='sm:mt-10 mt-7' />
       <CompaniesMoneyComponent className='sm:mt-20 mt-14' />
 
       <SubheaderComponent entry={LandingStaticData.eighteenthNewHeaderEntry} className='sm:mt-20 mt-14' />
-      <ImageComponent entry={LandingStaticData.eighteenthNewImageEntry} className='mt-10' />
+      <ImageComponent entry={LandingStaticData.eighteenthNewImageEntry} className='mt-10' isMobile={isMobile} />
 
       <SubheaderComponent entry={LandingStaticData.seventeenthNewHeaderEntry} className='sm:mt-20 mt-14' />
-      <ImageComponent entry={LandingStaticData.seventeenthNewImageEntry} className='mt-10' />
+      <ImageComponent entry={LandingStaticData.seventeenthNewImageEntry} className='mt-10' isMobile={isMobile} />
 
       <SubheaderComponent entry={LandingStaticData.sixteenthNewHeaderEntry} className='sm:mt-20 mt-14' />
-      <ImageComponent entry={LandingStaticData.sixteenthNewImageEntry} className='mt-10' />
+      <ImageComponent entry={LandingStaticData.sixteenthNewImageEntry} className='mt-10' isMobile={isMobile} />
 
       <SubheaderComponent entry={LandingStaticData.fifteenthNewHeaderEntry} className='sm:mt-20 mt-14' />
-      <ImageComponent entry={LandingStaticData.fifteenthNewImageEntry} className='mt-10' />
+      <ImageComponent entry={LandingStaticData.fifteenthNewImageEntry} className='mt-10' isMobile={isMobile} />
 
       <SubheaderComponent entry={LandingStaticData.fourteenthNewHeaderEntry} className='sm:mt-20 mt-14' />
-      <ImageComponent entry={LandingStaticData.fourteenthNewImageEntry} className='mt-10' />
+      <ImageComponent entry={LandingStaticData.fourteenthNewImageEntry} className='mt-10' isMobile={isMobile} />
 
       <SubheaderComponent entry={LandingStaticData.thirteenthNewHeaderEntry} className='sm:mt-20 mt-14' />
-      <ImageComponent entry={LandingStaticData.thirteenthNewImageEntry} className='mt-10' />
+      <ImageComponent entry={LandingStaticData.thirteenthNewImageEntry} className='mt-10' isMobile={isMobile} />
 
       <SubheaderComponent entry={LandingStaticData.twelfthNewHeaderEntry} className='sm:mt-20 mt-14' />
       <GridComponent
@@ -110,7 +109,7 @@ export function LandingPage() {
       />
 
       <SubheaderComponent entry={LandingStaticData.eighthNewHeaderEntry} className='sm:mt-20 mt-14' />
-      <ImageComponent entry={LandingStaticData.eighthNewImageEntry} className='mt-10' />
+      <ImageComponent entry={LandingStaticData.eighthNewImageEntry} className='mt-10' isMobile={isMobile} />
 
       <SubheaderComponent entry={LandingStaticData.seventhNewHeaderEntry} className='sm:mt-20 mt-14' id='pricing' />
       <PriceComponent className='mt-10' />

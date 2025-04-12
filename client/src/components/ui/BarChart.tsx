@@ -20,10 +20,15 @@ function formatValue(value: number, fractionalPart?: number, hideWhenItsFraction
 
   if (hideWhenItsFraction && value % 1 !== 0) return '';
 
-  if (fractionalPart === undefined) return value.toString();
+  if (fractionalPart === undefined) return value.toLocaleString();
+
   const roundedValue = Number(value.toFixed(fractionalPart));
 
-  if (roundedValue !== 0) return roundedValue.toFixed(fractionalPart);
+  if (roundedValue !== 0)
+    return roundedValue.toLocaleString(undefined, {
+      minimumFractionDigits: fractionalPart,
+      maximumFractionDigits: fractionalPart,
+    });
 
   // Find the first non-zero digit
   let precision = fractionalPart;
@@ -32,7 +37,10 @@ function formatValue(value: number, fractionalPart?: number, hideWhenItsFraction
   }
 
   // Return the value with the precision that shows the first non-zero digit
-  return value.toFixed(precision);
+  return value.toLocaleString(undefined, {
+    minimumFractionDigits: precision,
+    maximumFractionDigits: precision,
+  });
 }
 
 type BarChartProps = {
@@ -51,6 +59,7 @@ type BarChartProps = {
   showXAxisLabels?: boolean;
   minimalWidthForLabels?: number;
   turnOffFocus?: boolean;
+  turnOffHorizontalLines?: boolean;
 };
 
 export function BarChart(props: BarChartProps) {
@@ -68,6 +77,7 @@ export function BarChart(props: BarChartProps) {
     hideFractionsOnYAxis = false,
     tooltipLabel,
     turnOffFocus = false,
+    turnOffHorizontalLines = false,
   } = props;
 
   const areAllTheValuesZero = useMemo(() => data.every((item) => item.y === 0), [data]);
@@ -83,6 +93,8 @@ export function BarChart(props: BarChartProps) {
     return sizePerLabel > 30;
   }, [containerWidth, data.length]);
 
+  const showAxisLine = areAllTheValuesZero || turnOffHorizontalLines;
+
   return (
     <ResponsiveContainer
       width='100%'
@@ -97,14 +109,14 @@ export function BarChart(props: BarChartProps) {
           top: 20,
         }}
       >
-        <CartesianGrid vertical={false} />
+        <CartesianGrid vertical={false} horizontal={!turnOffHorizontalLines} />
         <XAxis
           dataKey='x'
           stroke={textColor}
           fontSize={10}
           className='font-lato'
           tickLine={false}
-          axisLine={areAllTheValuesZero}
+          axisLine={showAxisLine}
           interval={0}
           tick={({ x, y, payload }) => {
             return (
