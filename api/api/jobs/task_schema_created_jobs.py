@@ -29,9 +29,9 @@ async def send_task_update_slack_notification(event: TaskSchemaCreatedEvent):
 
 
 @broker.task(retry_on_error=True)
-async def add_credits_for_first_task(event: TaskSchemaCreatedEvent, internal_service: InternalTasksServiceDep):
+async def add_credits_for_first_task(event: TaskSchemaCreatedEvent, storage: StorageDep):
     try:
-        await internal_service.storage.organizations.add_5_credits_for_first_task()
+        await storage.organizations.add_5_credits_for_first_task()
     except ObjectNotFoundException:
         logger.info("Organization not found, skipping credit addition")
 

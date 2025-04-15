@@ -62,7 +62,6 @@ class MongoOrganizationStorage(PartialStorage[OrganizationDocument], Organizatio
                 "uid": 1,
                 "org_id": 1,
                 "owner_id": 1,
-                "anonymous": 1,
             },
         )
         if doc is None:
@@ -208,8 +207,13 @@ class MongoOrganizationStorage(PartialStorage[OrganizationDocument], Organizatio
 
     @override
     async def add_5_credits_for_first_task(self) -> None:
+        # TODO: for now even anonymous users get 5 credits when creating their first task
+        # This is to avoid the logic of checking whether enough credits have been added
+        # when the user is migrated.
+        # see https://linear.app/workflowai/issue/WOR-4259/credits-and-anonymous-users
+        # for more details
         await self._update_one(
-            {"no_tasks_yet": True, "anonymous": {"$ne": True}},
+            {"no_tasks_yet": True},
             {
                 "$inc": {"current_credits_usd": 5, "added_credits_usd": 5},
                 "$unset": {"no_tasks_yet": ""},
