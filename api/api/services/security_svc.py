@@ -59,23 +59,23 @@ class SecurityService:
                 "At least one of org_id, org_slug, user_id, anon_id must be provided",
             )
 
-        is_anonymous = not org_id and not user_id
         uid = id_uint32()
 
+        data = TenantData(
+            tenant=f"orguid_{uid}",
+            uid=uid,
+            slug=org_slug or "",
+            org_id=org_id or None,
+            owner_id=user_id or None,
+            anonymous_user_id=anon_id,
+        )
+
+        credits = 0.2 if data.is_anonymous else 5
+        data.added_credits_usd = credits
+        data.current_credits_usd = credits
+
         try:
-            org = await self._org_storage.create_organization(
-                TenantData(
-                    tenant=f"orguid_{uid}",
-                    uid=uid,
-                    slug=org_slug or "",
-                    org_id=org_id,
-                    added_credits_usd=0.2 if is_anonymous else 5,
-                    current_credits_usd=0.2 if is_anonymous else 5,
-                    owner_id=user_id,
-                    anonymous_user_id=anon_id,
-                    anonymous=is_anonymous or None,
-                ),
-            )
+            org = await self._org_storage.create_organization(data)
             with capture_errors(_logger, "Error sending created org event"):
                 self._send_created_org(org)
             return org

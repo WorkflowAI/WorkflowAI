@@ -128,10 +128,10 @@ class TestUserOrganization:
             org_id=new_user.org_id,
             added_credits_usd=5,
             current_credits_usd=5,
-            anonymous=None,
             owner_id=new_user.user_id,
             anonymous_user_id=new_user.unknown_user_id,
         )
+        assert not expected_org.is_anonymous, "sanity, should not be anonymous"
         mock_org_storage.create_organization.return_value = expected_org
 
         result = await security_svc.find_tenant(new_user, None)
@@ -160,7 +160,6 @@ class TestUserOrganization:
             tenant="orguid_1",
             added_credits_usd=0.2,
             current_credits_usd=0.2,
-            anonymous=True,
             anonymous_user_id="1234",
             uid=1,
         )

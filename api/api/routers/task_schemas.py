@@ -585,7 +585,6 @@ class InstructionChunk(BaseModel):
 async def stream_task_instructions(
     task: TaskVariantDep,
     internal_tasks: InternalTasksServiceDep,
-    storage: StorageDep,
 ) -> Response:
     chat_messages = task.creation_chat_messages or []
 

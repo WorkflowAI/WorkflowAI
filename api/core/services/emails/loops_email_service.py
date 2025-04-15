@@ -129,7 +129,7 @@ class LoopsEmailService(EmailService):
 
     async def _send_emails_to_tenant(self, tenant: str, transaction_id: str, idempotency_key: str):
         org = await self._organization_storage.public_organization_by_tenant(tenant=tenant)
-        if org.anonymous:
+        if org.is_anonymous:
             # Skipping all anonymous organizations
             return
 

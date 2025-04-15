@@ -25,7 +25,10 @@ class PublicOrganizationData(BaseModel):
     name: str | None = None
     org_id: str | None = None
     owner_id: str | None = None
-    anonymous: bool | None = Field(default=None)
+
+    @property
+    def is_anonymous(self) -> bool:
+        return not self.org_id and not self.owner_id
 
 
 class TenantData(PublicOrganizationData):

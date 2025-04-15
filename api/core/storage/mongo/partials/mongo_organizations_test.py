@@ -1091,7 +1091,8 @@ class TestMigrateTenantToUser:
         doc = await org_col.find_one({"tenant": TENANT})
         assert doc is not None
         assert doc["owner_id"] == owner_id
-        assert doc["anonymous_user_id"] == anon_id
+        assert doc["previous_anonymous_user_id"] == anon_id
+        assert "anonymous_user_id" not in doc
         assert doc["slug"] == "bla"
         assert "org_id" not in doc
 
@@ -1160,6 +1161,43 @@ class TestMigrateTenantToUser:
         assert doc["anonymous_user_id"] == anon_id
         assert "owner_id" not in doc
 
+    async def test_unique_anonymous_user_id(
+        self,
+        organization_storage: MongoOrganizationStorage,
+    ) -> None:
+        # Insert two anonymous organizations with the same anonymous_user_id
+        anon_id = "user123"
+        await organization_storage.create_organization(
+            TenantData(
+                tenant="1",
+                anonymous_user_id=anon_id,
+            ),
+        )
+
+        # I should not be able to insert another organization with the same anonymous_user_id
+        with pytest.raises(DuplicateValueError):
+            await organization_storage.create_organization(
+                TenantData(
+                    tenant="2",
+                    anonymous_user_id=anon_id,
+                ),
+            )
+
+        # But if I migrate to a user
+        await organization_storage.migrate_tenant_to_user(
+            owner_id="owner123",
+            org_slug="bla",
+            anon_id=anon_id,
+        )
+
+        # I should be able to insert another organization with the same anonymous_user_id
+        await organization_storage.create_organization(
+            TenantData(
+                tenant="3",
+                anonymous_user_id=anon_id,
+            ),
+        )
+
 
 class TestMigrateTenantToOrganization:
     async def test_migrate_from_anonymous(
@@ -1199,7 +1237,8 @@ class TestMigrateTenantToOrganization:
         assert doc["org_id"] == "org123"
         assert doc["slug"] == "my-org"
         assert doc["owner_id"] == "owner123"
-        assert doc["anonymous_user_id"] == anon_id
+        assert doc["previous_anonymous_user_id"] == anon_id
+        assert "anonymous_user_id" not in doc
 
     async def test_migrate_from_user(
         self,
@@ -1319,6 +1358,44 @@ class TestMigrateTenantToOrganization:
                 owner_id=None,
                 anon_id=None,
             )
+
+    async def test_unique_anonymous_user_id(
+        self,
+        organization_storage: MongoOrganizationStorage,
+    ) -> None:
+        # Insert two anonymous organizations with the same anonymous_user_id
+        anon_id = "user123"
+        await organization_storage.create_organization(
+            TenantData(
+                tenant="1",
+                anonymous_user_id=anon_id,
+            ),
+        )
+
+        # I should not be able to insert another organization with the same anonymous_user_id
+        with pytest.raises(DuplicateValueError):
+            await organization_storage.create_organization(
+                TenantData(
+                    tenant="2",
+                    anonymous_user_id=anon_id,
+                ),
+            )
+
+        # But if I migrate to a user
+        await organization_storage.migrate_tenant_to_organization(
+            org_id="org123",
+            org_slug="bla",
+            owner_id=None,
+            anon_id=anon_id,
+        )
+
+        # I should be able to insert another organization with the same anonymous_user_id
+        await organization_storage.create_organization(
+            TenantData(
+                tenant="3",
+                anonymous_user_id=anon_id,
+            ),
+        )
 
 
 class TestFeedbackSlackHookForTenant:
@@ -1804,7 +1881,6 @@ class TestPublicOrganizationByTenant:
         org_settings = OrganizationDocument(
             tenant=TENANT,
             uid=3,
-            anonymous=True,
         )
         await org_col.insert_one(dump_model(org_settings))
 
@@ -1816,7 +1892,7 @@ class TestPublicOrganizationByTenant:
         assert org.uid == 3
         assert org.org_id is None
         assert org.owner_id is None
-        assert org.anonymous is True
+        assert org.is_anonymous is True
 
 
 class TestClearPaymentFailure:

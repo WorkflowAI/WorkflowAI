@@ -110,6 +110,7 @@ class PaymentFailureSchema(BaseModel):
 class OrganizationDocument(BaseDocumentWithID):
     uid: int = Field(default_factory=id_uint32)
     anonymous_user_id: str | None = None
+    previous_anonymous_user_id: str | None = None
     # Organization slug to be used in URLs
     slug: str | None = None
     # Old tenant field before migrating to clerk orgs
@@ -127,7 +128,6 @@ class OrganizationDocument(BaseDocumentWithID):
     # The current number of credits the organization has
     current_credits_usd: float = 0.0
     no_tasks_yet: bool | None = None
-    anonymous: bool | None = None
     api_keys: list[APIKeyDocument] | None = None
     stripe_customer_id: str | None = None
     locked_for_payment: bool | None = None
@@ -169,7 +169,6 @@ class OrganizationDocument(BaseDocumentWithID):
             automatic_payment_enabled=org_settings.automatic_payment_enabled,
             automatic_payment_threshold=org_settings.automatic_payment_threshold or None,
             automatic_payment_balance_to_maintain=org_settings.automatic_payment_balance_to_maintain or None,
-            anonymous=org_settings.anonymous,
             anonymous_user_id=org_settings.anonymous_user_id or None,
             owner_id=org_settings.owner_id or None,
             feedback_slack_hook=org_settings.feedback_slack_hook or None,
@@ -199,8 +198,7 @@ class OrganizationDocument(BaseDocumentWithID):
             automatic_payment_enabled=self.automatic_payment_enabled,
             automatic_payment_threshold=self.automatic_payment_threshold,
             automatic_payment_balance_to_maintain=self.automatic_payment_balance_to_maintain,
-            anonymous=self.anonymous,
-            anonymous_user_id=self.anonymous_user_id or None,
+            anonymous_user_id=self.anonymous_user_id or self.previous_anonymous_user_id or None,
             owner_id=self.owner_id or None,
             feedback_slack_hook=self.feedback_slack_hook or None,
             payment_failure=self.payment_failure.to_domain() if self.payment_failure else None,
@@ -222,5 +220,4 @@ class OrganizationDocument(BaseDocumentWithID):
             tenant=self.tenant or "",
             org_id=self.org_id,
             owner_id=self.owner_id,
-            anonymous=self.anonymous,
         )

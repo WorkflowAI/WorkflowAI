@@ -104,7 +104,7 @@ def get_tenant_slug(request: Request) -> str | None:
     if not request.path_params or "tenant" not in request.path_params:
         return None
     if not hasattr(request.state, "tenant_slug"):
-        logging.warning("Tenant slug not set")
+        # That can happen for example if the user is unauthenticated
         return request.path_params.get("tenant")
     return request.state.tenant_slug
 

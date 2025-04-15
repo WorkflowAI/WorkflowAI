@@ -188,7 +188,7 @@ RequiredUserOrganizationDep = Annotated[TenantData, Depends(required_user_organi
 
 
 async def non_anonymous_organization(user_org: RequiredUserOrganizationDep) -> TenantData:
-    if user_org.anonymous:
+    if user_org.is_anonymous:
         raise HTTPException(401, "Endpoint is only available for non-anonymous tenants")
     return user_org
 

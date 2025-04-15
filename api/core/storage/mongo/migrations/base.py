@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
 
+from pymongo.errors import OperationFailure
+
 from core.storage.mongo.mongo_storage import MongoStorage
 from core.storage.mongo.mongo_types import AsyncCollection
 
@@ -25,6 +27,15 @@ class AbstractMigration(ABC):
     async def rollback(self) -> None:
         """Rollback the migration"""
         pass
+
+    async def _drop_index_if_exists(self, collection: AsyncCollection, name: str):
+        try:
+            await collection.drop_index(name)
+        except OperationFailure as e:
+            if e.code == 27:  # IndexNotFound
+                pass
+            else:
+                raise e
 
     @property
     def _task_variants_collection(self) -> AsyncCollection:
