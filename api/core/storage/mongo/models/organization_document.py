@@ -113,9 +113,6 @@ class OrganizationDocument(BaseDocumentWithID):
     previous_anonymous_user_id: str | None = None
     # Organization slug to be used in URLs
     slug: str | None = None
-    # Old tenant field before migrating to clerk orgs
-    # We should remove once we are fully migrated
-    domain: str | None = None
     providers: list[ProviderSettingsSchema] | None = None
     display_name: str | None = None
     # org as set by clerk, once all data has been migrated org_id == tenant so we should remove the org_id field
@@ -155,7 +152,6 @@ class OrganizationDocument(BaseDocumentWithID):
         return cls(
             uid=org_settings.uid or id_uint32(),
             tenant=org_settings.tenant,
-            domain=org_settings.tenant or None,
             slug=org_settings.slug or None,
             display_name=org_settings.name or None,
             providers=None,

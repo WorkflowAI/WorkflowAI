@@ -1,7 +1,6 @@
 from unittest.mock import Mock, patch
 
 import pytest
-from fastapi import HTTPException
 
 from api.dependencies.security import UserClaims
 from api.services.security_svc import SecurityService
@@ -192,46 +191,6 @@ class TestUserOrganization:
         mock_org_storage.find_anonymous_tenant.assert_called_once_with("1234")
         mock_org_storage.create_organization.assert_not_called()
         assert result == org
-
-    # TODO[org]: remove
-    async def test_with_deprecated_user_token(
-        self,
-        mock_org_storage: Mock,
-        old_user: User,
-        security_svc: SecurityService,
-    ):
-        mock_org_storage.find_tenant_for_deprecated_user.return_value = TenantData(
-            tenant=old_user.tenant or "",
-            slug=old_user.slug or "",
-            org_id=old_user.org_id,
-        )
-        expected_org = TenantData(
-            tenant=old_user.tenant or "",
-            slug=old_user.slug or "",
-            org_id=old_user.org_id,
-        )
-        result = await security_svc.find_tenant(old_user, None)
-        assert result == expected_org
-
-        mock_org_storage.find_tenant_for_deprecated_user.assert_called_once_with(
-            domain=old_user.tenant,
-        )
-
-    # TODO[org]: remove
-    async def test_with_deprecated_user_token_not_found(
-        self,
-        mock_org_storage: Mock,
-        old_user: User,
-        security_svc: SecurityService,
-    ):
-        # Check that we do not autocreate an org if the user token is deprecated
-        mock_org_storage.find_tenant_for_deprecated_user.side_effect = ObjectNotFoundException()
-
-        with pytest.raises(HTTPException) as e:
-            await security_svc.find_tenant(old_user, None)
-
-        assert e.value.status_code == 401
-        assert e.value.detail == "Organization not found for deprecated token"
 
     async def test_no_user_no_api_key(self, mock_org_storage: Mock, security_svc: SecurityService):
         result = await security_svc.find_tenant(None, None)

@@ -46,7 +46,6 @@ class TestDeserializeOrganization:
         org = OrganizationDocument.model_validate(payload)
         assert org.tenant == "8c94d523-da6a-4089-b1d3-34a3ffbce484"
         assert org.anonymous_user_id == "8c94d523-da6a-4089-b1d3-34a3ffbce484"
-        assert org.domain == "8c94d523-da6a-4089-b1d3-34a3ffbce484"
         assert org.added_credits_usd == 0.2
         assert org.current_credits_usd == 0.2
         assert org.no_tasks_yet is True

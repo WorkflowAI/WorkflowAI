@@ -289,20 +289,6 @@ class TestFindTenantForOrgId:
             # Using a domain here to make sure
             await organization_storage.find_tenant_for_org_id(org_id="workflowai.com")
 
-    async def test_deprecated_user(
-        self,
-        organization_storage: MongoOrganizationStorage,
-    ) -> None:
-        org = await organization_storage.find_tenant_for_deprecated_user(domain="workflowai.com")
-        assert org.tenant == "t2"
-
-    async def test_deprecated_user_not_found(
-        self,
-        organization_storage: MongoOrganizationStorage,
-    ) -> None:
-        with pytest.raises(ObjectNotFoundException):
-            await organization_storage.find_tenant_for_deprecated_user(domain="blabla")
-
 
 class TestFindTenantForOwnerId:
     async def test_find_tenant_for_owner_id_success(

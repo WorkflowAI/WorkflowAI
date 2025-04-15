@@ -222,23 +222,6 @@ class SecurityService:
         if user.unknown_user_id:
             return await self._find_anonymous_tenant(unknown_user_id=user.unknown_user_id)
 
-        # TODO[org]: remove, we should just throw a 401 here
-        if user.tenant:
-            _logger.warning(
-                "Deprecated tenant was used",
-                extra={"user": safe_dump_pydantic_model(user)},
-            )
-
-            # Before the tenant was the domain
-            try:
-                return await self._org_storage.find_tenant_for_deprecated_user(domain=user.tenant)
-            except ObjectNotFoundException:
-                _logger.error(
-                    "Organization not found for deprecated token",
-                    extra={"user": safe_dump_pydantic_model(user)},
-                )
-                raise HTTPException(401, "Organization not found for deprecated token")
-
         # this would be very bad and mean that someone generated an invalid token
         # that has a valid signature
         _logger.error(

@@ -72,16 +72,7 @@ class MongoOrganizationStorage(PartialStorage[OrganizationDocument], Organizatio
 
     @override
     async def get_public_organization(self, slug: str) -> PublicOrganizationData:
-        # We should move the domain to "previous_slugs" once all data have been migrated
-        # and fetch from there
-        if "." in slug:
-            # Domain were previously used as slugs
-            filter = {"domain": slug}
-        else:
-            # New slugs are URL safe and do not contain dots
-            filter = {"slug": slug}
-
-        return await self._get_public_org(filter)
+        return await self._get_public_org({"slug": slug})
 
     @override
     async def public_organization_by_tenant(self, tenant: str) -> PublicOrganizationData:
@@ -144,10 +135,6 @@ class MongoOrganizationStorage(PartialStorage[OrganizationDocument], Organizatio
     @override
     async def find_tenant_for_org_id(self, org_id: str) -> TenantData:
         return await self._find_tenant({"org_id": org_id})
-
-    @override
-    async def find_tenant_for_deprecated_user(self, domain: str) -> TenantData:
-        return await self._find_tenant({"domain": domain})
 
     @classmethod
     def _owner_id_filter(cls, owner_id: str):
