@@ -118,7 +118,7 @@ class FeatureService:
     @staticmethod
     async def get_feature_sections_preview(user_domain: str | None = None) -> list[FeatureSectionPreview]:
         # Feature flag to show company specific section, see https://linear.app/workflowai/issue/WOR-4190/hide-email-domain-specific-feature-suggestions
-        SHOW_COMPANY_SECTION = False
+        SHOW_COMPANY_SECTION = True
 
         # We want to show company specific section for anonymous user because they must be able to enter any URL and get suggestion for this URL.
         show_company_section = SHOW_COMPANY_SECTION and (
