@@ -52,6 +52,7 @@ class TestFeatureService:
                 FeatureSectionPreview(
                     name="Categories",
                     tags=[
+                        FeatureSectionPreview.TagPreview(name="example.com", kind="company_specific"),
                         FeatureSectionPreview.TagPreview(name="Featured", kind="static"),
                         FeatureSectionPreview.TagPreview(name="E-Commerce", kind="static"),
                         FeatureSectionPreview.TagPreview(name="Healthcare", kind="static"),
@@ -87,6 +88,7 @@ class TestFeatureService:
             FeatureSectionPreview(
                 name="Categories",
                 tags=[
+                    FeatureSectionPreview.TagPreview(name="", kind="company_specific"),
                     FeatureSectionPreview.TagPreview(name="Featured", kind="static"),
                     FeatureSectionPreview.TagPreview(name="E-Commerce", kind="static"),
                     FeatureSectionPreview.TagPreview(name="Healthcare", kind="static"),
@@ -158,6 +160,7 @@ class TestFeatureService:
             FeatureSectionPreview(
                 name="Categories",
                 tags=[
+                    FeatureSectionPreview.TagPreview(name="example.com", kind="company_specific"),
                     FeatureSectionPreview.TagPreview(name="Featured", kind="static"),
                     FeatureSectionPreview.TagPreview(name="E-Commerce", kind="static"),
                     FeatureSectionPreview.TagPreview(name="Healthcare", kind="static"),
