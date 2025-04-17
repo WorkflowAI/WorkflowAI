@@ -225,9 +225,8 @@ export function NewTaskModal() {
     if (loading) return true;
     if (!isEditMode) return false;
 
-    const inputIsEqual = areSchemasEquivalent(computedInputSchema as JsonSchema, inputSchemaForVariant);
-
-    const outputIsEqual = areSchemasEquivalent(computedOutputSchema as JsonSchema, outputSchemaForVariant);
+    const inputIsEqual = areSchemasEquivalent(computedInputSchema as JsonSchema, inputSchemaForVariant, true);
+    const outputIsEqual = areSchemasEquivalent(computedOutputSchema as JsonSchema, outputSchemaForVariant, true);
 
     return inputIsEqual && outputIsEqual;
   }, [computedInputSchema, computedOutputSchema, inputSchemaForVariant, outputSchemaForVariant, loading, isEditMode]);
