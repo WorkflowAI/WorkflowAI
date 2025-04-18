@@ -108,12 +108,23 @@ class MongoTaskStorage(PartialStorage[TaskDocument], TaskStorage):
         await self._task_variants.update_task(task_id, update.is_public, update.name)
         return doc.to_domain()
 
+    def _public_task_projection(self):
+        return {"task_id": 1, "name": 1, "is_public": 1, "tenant": 1, "tenant_uid": 1, "uid": 1}
+
     @override
     async def get_public_task_info(self, task_uid: int):
         doc = await self._collection.find_one(
             filter={"uid": task_uid},
-            projection={"task_id": 1, "name": 1, "is_public": 1, "tenant": 1, "tenant_uid": 1, "uid": 1},
+            projection=self._public_task_projection(),
         )
         if doc is None:
             raise ObjectNotFoundException(f"Task with uid {task_uid} not found")
         return TaskDocument.model_validate(doc).to_public_domain()
+
+    @override
+    async def active_tasks(self, since: datetime):
+        async for doc in self._collection.find(
+            filter={"schema_details.last_active_at": {"$gte": since}},
+            projection=self._public_task_projection(),
+        ):
+            yield TaskDocument.model_validate(doc).to_public_domain()

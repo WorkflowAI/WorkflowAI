@@ -1,11 +1,12 @@
 import asyncio
 import pickle
 from collections.abc import AsyncIterator
+from datetime import datetime
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from core.utils.redis_cache import redis_cached, redis_cached_generator_last_chunk
+from .redis_cache import redis_cached, redis_cached_generator_last_chunk, shared_redis_client, should_run_today
 
 
 async def test_redis_cached_hit() -> None:
@@ -312,3 +313,15 @@ async def test_async_generator_cached_different_scenarios(input_chunks: list[str
     else:
         assert result == []
         mock_cache.get.assert_called_once()
+
+
+class TestShouldRunToday:
+    # TODO: This is pretty hard to test since
+    # the function relies on expiration time in the redis server
+    async def test_should_run_today(self):
+        if shared_redis_client:
+            await shared_redis_client.delete("test_key")
+
+        today = datetime.now().date()
+        assert await should_run_today("test_key", today)
+        assert not await should_run_today("test_key", today)

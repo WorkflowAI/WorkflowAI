@@ -1,3 +1,4 @@
+from collections.abc import AsyncIterator
 from datetime import datetime
 from typing import List, Literal, Protocol
 
@@ -72,6 +73,8 @@ class OrganizationSystemStorage(PublicOrganizationStorage, Protocol):
     # Returns either a payment failure or None
     # or raise an error if the organization is locked
     async def check_unlocked_payment_failure(self, tenant: str) -> TenantData.PaymentFailure | None: ...
+
+    def organizations_by_uid(self, uids: list[int]) -> AsyncIterator[PublicOrganizationData]: ...
 
 
 class OrganizationStorage(OrganizationSystemStorage, Protocol):

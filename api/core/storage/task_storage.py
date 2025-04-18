@@ -1,3 +1,5 @@
+from collections.abc import AsyncIterator
+from datetime import datetime
 from typing import Protocol
 
 from core.domain.task_info import PublicTaskInfo, TaskInfo
@@ -17,3 +19,5 @@ class TaskStorage(TaskSystemStorage):
     async def update_task(self, task_id: str, update: TaskUpdate, before: bool = False) -> TaskInfo:
         """Update a task. If before is True, the returned task info is from before the update."""
         ...
+
+    def active_tasks(self, since: datetime) -> AsyncIterator[PublicTaskInfo]: ...

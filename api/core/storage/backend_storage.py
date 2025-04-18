@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from datetime import datetime
 from typing import AsyncIterator, Optional, Protocol
 
 from core.domain.agent_run import AgentRun
@@ -9,8 +10,10 @@ from core.domain.task_example import SerializableTaskExample
 from core.domain.task_example_query import SerializableTaskExampleQuery
 from core.domain.task_group import TaskGroup
 from core.domain.task_group_properties import TaskGroupProperties
+from core.domain.task_info import PublicTaskInfo
 from core.domain.task_input import TaskInput, TaskInputFields
 from core.domain.task_variant import SerializableTaskVariant
+from core.domain.tenant_data import PublicOrganizationData
 from core.domain.users import UserIdentifier
 from core.storage.abstract_storage import AbstractStorage
 from core.storage.changelogs_storage import ChangeLogStorage
@@ -49,6 +52,8 @@ class SystemBackendStorage(Protocol):
     @abstractmethod
     def task_runs(self) -> TaskRunSystemStorage:
         pass
+
+    def active_tasks(self, since: datetime) -> AsyncIterator[tuple[PublicOrganizationData, list[PublicTaskInfo]]]: ...
 
 
 class BackendStorage(AbstractStorage):

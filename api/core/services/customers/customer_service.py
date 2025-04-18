@@ -3,7 +3,9 @@ import json
 import logging
 import os
 import re
+from collections.abc import AsyncIterator, Callable
 from contextlib import contextmanager
+from datetime import date, datetime, time, timedelta, timezone
 
 from api.services.customer_assessment_service import CustomerAssessmentService
 from core.domain.analytics_events.analytics_events import UserProperties
@@ -15,6 +17,8 @@ from core.domain.events import (
     MetaAgentChatMessagesSent,
     TaskSchemaCreatedEvent,
 )
+from core.domain.task_info import PublicTaskInfo
+from core.domain.tenant_data import PublicOrganizationData
 from core.services.users.user_service import OrganizationDetails, UserDetails, UserService
 from core.storage import ObjectNotFoundException
 from core.storage.backend_storage import BackendStorage
@@ -32,7 +36,8 @@ class CustomerService:
         self._storage = storage
         self._user_service = user_service
 
-    def _channel_name(self, slug: str, uid: int):
+    @classmethod
+    def _channel_name(cls, slug: str, uid: int):
         prefix = "customer" if ENV_NAME == "prod" else f"customer-{ENV_NAME}"
         if slug:
             # Remove any non-alphanumeric characters
@@ -118,8 +123,9 @@ class CustomerService:
                 assessment = await CustomerAssessmentService.run_customer_assessment(user.email)
                 await clt.send_message(channel_id, {"text": str(assessment)})
 
+    @classmethod
     @contextmanager
-    def _slack_client(self):
+    def _slack_client(cls):
         bot_token = os.environ.get("SLACK_BOT_TOKEN")
         if not bot_token:
             _logger.warning("SLACK_BOT_TOKEN is not set, skipping message sending")
@@ -197,6 +203,48 @@ class CustomerService:
     async def send_became_active(self, task_id: str):
         message = f"Task {task_id} became active"
         await self._send_message(message)
+
+    @classmethod
+    async def build_daily_report(
+        cls,
+        user_service: UserService,
+        today: date,
+        active_task_fetcher: Callable[[datetime], AsyncIterator[tuple[PublicOrganizationData, list[PublicTaskInfo]]]],
+    ):
+        yesterday = datetime.combine(today - timedelta(days=1), time(0, 0), tzinfo=timezone.utc)
+
+        count = await user_service.count_registrations(since=yesterday)
+        active_tasks = [a async for a in active_task_fetcher(yesterday)]
+
+        parts = [
+            f"Daily report for {today}",
+            f"Total registrations: {count}",
+            f"Active tasks: {len(active_tasks)}",
+            "",
+        ]
+
+        for org, tasks in active_tasks:
+            parts.append("-------")
+            parts.append(f"Organization: {org.name} ({org.slug})")
+            parts.extend(f"    Agent: {t.name} ({WORKFLOWAI_APP_URL}/{org.slug}/agents/{t.task_id})" for t in tasks)
+
+        return "\n".join(parts)
+
+    @classmethod
+    async def send_daily_report(
+        cls,
+        user_service: UserService,
+        today: date,
+        active_task_fetcher: Callable[[datetime], AsyncIterator[tuple[PublicOrganizationData, list[PublicTaskInfo]]]],
+    ):
+        customers_channel = os.environ.get("SLACK_CUSTOMERS_CHANNEL_ID")
+        if not customers_channel:
+            _logger.info("SLACK_CUSTOMERS_CHANNEL_ID is not set, skipping daily report")
+            return
+
+        with cls._slack_client() as clt:
+            report = await cls.build_daily_report(user_service, today, active_task_fetcher)
+            await clt.send_message(customers_channel, {"text": report})
 
 
 def _readable_name(user: UserProperties | None) -> str:

@@ -5,6 +5,7 @@ import logging
 import os
 import pickle
 from collections.abc import AsyncIterator
+from datetime import date, datetime, timedelta
 from typing import Any, Callable, Optional, TypeVar
 
 import redis.asyncio as aioredis
@@ -167,3 +168,17 @@ def redis_cached_generator_last_chunk(expiration_seconds: int = 60 * 60 * 24) ->
         return async_generator_wrapper  # type: ignore
 
     return decorator
+
+
+async def should_run_today(key: str, today: date) -> bool:
+    """Returns True exactly once per calendar day (00:00–23:59)."""
+    if not shared_redis_client:
+        raise RuntimeError("Redis cache is not available")
+
+    tomorrow = datetime(year=today.year, month=today.month, day=today.day) + timedelta(days=1)
+    secs = int((tomorrow - datetime.now()).total_seconds())
+
+    # Try to set the key with NX; expire it at the end of the day
+    # If this call returns True, key did not exist → first run today
+    value = await shared_redis_client.set(key, "1", nx=True, ex=secs)
+    return value is not None

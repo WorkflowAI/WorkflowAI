@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import NamedTuple, Protocol
 
 
@@ -20,3 +21,5 @@ class UserService(Protocol):
     async def get_org_admins(self, org_id: str) -> list[UserDetails]: ...
 
     async def get_organization(self, org_id: str) -> OrganizationDetails: ...
+
+    async def count_registrations(self, since: datetime) -> int: ...

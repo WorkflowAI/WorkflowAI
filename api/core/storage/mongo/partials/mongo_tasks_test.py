@@ -304,3 +304,111 @@ class TestUpdateTaskBefore:
         # Verify the document was created in the database
         doc = await tasks_col.find_one({"task_id": "non_existent"})
         assert doc is None
+
+
+class TestActiveTasks:
+    async def _setup_tasks(self, task_storage: MongoTaskStorage, tasks_col: AsyncCollection, now: datetime):
+        tasks = [
+            TaskDocument(
+                task_id="task1",
+                name="Task 1",
+                is_public=True,
+                tenant="test_tenant",
+                tenant_uid=1,
+                uid=101,
+                schema_details=[
+                    TaskDocument.SchemaDetails(
+                        schema_id=1,
+                        last_active_at=now - timedelta(days=1),
+                    ),
+                ],
+            ),
+            TaskDocument(
+                task_id="task2",
+                name="Task 2",
+                is_public=True,
+                tenant="test_tenant",
+                tenant_uid=1,
+                uid=102,
+                schema_details=[
+                    TaskDocument.SchemaDetails(
+                        schema_id=1,
+                        last_active_at=now - timedelta(hours=1),
+                    ),
+                ],
+            ),
+            TaskDocument(
+                task_id="task3",
+                name="Task 3",
+                is_public=True,
+                tenant="test_tenant",
+                tenant_uid=1,
+                uid=103,
+                schema_details=[
+                    TaskDocument.SchemaDetails(
+                        schema_id=1,
+                        last_active_at=now - timedelta(minutes=30),
+                    ),
+                ],
+            ),
+            TaskDocument(
+                task_id="task4",
+                name="Task 4",
+                is_public=False,  # Not public, should not be returned
+                tenant="test_tenant",
+                tenant_uid=1,
+                uid=104,
+                schema_details=[
+                    TaskDocument.SchemaDetails(
+                        schema_id=1,
+                        last_active_at=now - timedelta(minutes=15),
+                    ),
+                ],
+            ),
+        ]
+        await tasks_col.insert_many([dump_model(task) for task in tasks])
+
+    async def test_active_tasks_since(
+        self,
+        task_storage: MongoTaskStorage,
+        tasks_col: AsyncCollection,
+    ):
+        # Create some test tasks with different last_active_at timestamps
+        now = datetime.now(timezone.utc)
+        await self._setup_tasks(task_storage, tasks_col, now)
+
+        t2h_ago = {t.task_id async for t in task_storage.active_tasks(now - timedelta(hours=2))}
+        assert t2h_ago == {"task2", "task3", "task4"}, "2h ago, task2 and task3 should be active"
+
+        t1h_ago = {t.task_id async for t in task_storage.active_tasks(now - timedelta(minutes=59))}
+        assert t1h_ago == {"task3", "task4"}, "1h ago, task3 and task4 should be active"
+
+        t1d_ago = {t.task_id async for t in task_storage.active_tasks(now - timedelta(days=1))}
+        assert t1d_ago == {"task1", "task2", "task3", "task4"}, "1d ago, all tasks should be active"
+
+    async def test_active_tasks_with_multiple_schemas(self, task_storage: MongoTaskStorage, tasks_col: AsyncCollection):
+        now = datetime.now(timezone.utc)
+        # Create a task with multiple schema details
+        task = TaskDocument(
+            task_id="multi_schema_task",
+            name="Multi Schema Task",
+            is_public=True,
+            tenant="test_tenant",
+            tenant_uid=1,
+            uid=105,
+            schema_details=[
+                TaskDocument.SchemaDetails(
+                    schema_id=1,
+                    last_active_at=now - timedelta(days=2),
+                ),
+                TaskDocument.SchemaDetails(
+                    schema_id=2,
+                    last_active_at=now - timedelta(hours=1),
+                ),
+            ],
+        )
+        await tasks_col.insert_one(dump_model(task))
+
+        since = now - timedelta(days=1)
+        task_ids = {t.task_id async for t in task_storage.active_tasks(since)}
+        assert task_ids == {"multi_schema_task"}

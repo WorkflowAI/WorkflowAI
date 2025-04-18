@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import os
+from datetime import datetime
 from typing import Any, AsyncIterator, Optional
 
 from bson import CodecOptions
@@ -21,7 +22,7 @@ from core.domain.task_example import SerializableTaskExample
 from core.domain.task_example_query import SerializableTaskExampleQuery
 from core.domain.task_group import TaskGroup, TaskGroupIdentifier
 from core.domain.task_group_properties import TaskGroupProperties
-from core.domain.task_info import TaskInfo
+from core.domain.task_info import PublicTaskInfo, TaskInfo
 from core.domain.task_input import TaskInput, TaskInputFields
 from core.domain.task_variant import SerializableTaskVariant
 from core.domain.users import UserIdentifier
@@ -1001,3 +1002,12 @@ class MongoStorage(BackendStorage):
     ) -> AgentRun:
         run = await self.prepare_task_run(task, run, user, source)
         return await self.task_runs.store_task_run(run)
+
+    async def active_tasks(self, since: datetime):
+        tasks_by_tenant = dict[int, list[PublicTaskInfo]]()
+        async for t in self.tasks.active_tasks(since):
+            arr = tasks_by_tenant.setdefault(t.tenant_uid, [])
+            arr.append(t)
+
+        async for o in self.organizations.organizations_by_uid(list(tasks_by_tenant.keys())):
+            yield o, tasks_by_tenant[o.uid]

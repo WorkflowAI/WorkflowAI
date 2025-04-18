@@ -52,17 +52,21 @@ class MongoOrganizationStorage(PartialStorage[OrganizationDocument], Organizatio
         doc = await self._find_one({}, projection=self._projection(projection(include=include)))
         return doc.to_domain(self.encryption)
 
+    @classmethod
+    def _public_projection(cls):
+        return {
+            "tenant": 1,
+            "slug": 1,
+            "display_name": 1,
+            "uid": 1,
+            "org_id": 1,
+            "owner_id": 1,
+        }
+
     async def _get_public_org(self, filter: dict[str, Any]):
         doc = await self._collection.find_one(
             filter,
-            projection={
-                "tenant": 1,
-                "slug": 1,
-                "display_name": 1,
-                "uid": 1,
-                "org_id": 1,
-                "owner_id": 1,
-            },
+            projection=self._public_projection(),
         )
         if doc is None:
             raise ObjectNotFoundException("Organization  not found", code="organization_not_found")
@@ -460,3 +464,8 @@ class MongoOrganizationStorage(PartialStorage[OrganizationDocument], Organizatio
         else:
             filter = {"slack_channel_id": {"$exists": False}} if not force else {}
             await self._update_one(filter, {"$set": {"slack_channel_id": channel_id}})
+
+    @override
+    async def organizations_by_uid(self, uids: list[int]):
+        async for doc in self._collection.find({"uid": {"$in": uids}}, projection=self._public_projection()):
+            yield OrganizationDocument.model_validate(doc).to_domain_public()

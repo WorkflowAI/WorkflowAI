@@ -1,5 +1,6 @@
 import logging
 from collections.abc import Iterable
+from datetime import datetime
 from typing import Generic, List, TypedDict, TypeVar
 
 import httpx
@@ -70,6 +71,14 @@ class ClerkUserService(UserService):
             if not user_ids:
                 return []
             return await self._get_users_by_id(client, user_ids)
+
+    @override
+    async def count_registrations(self, since: datetime) -> int:
+        async with self._client() as client:
+            response = await client.get(f"/users/count?created_at_after={int(since.timestamp() * 1000)}")
+        response.raise_for_status()
+        data = response.json()
+        return data["total_count"]
 
 
 _TD = TypeVar("_TD")
