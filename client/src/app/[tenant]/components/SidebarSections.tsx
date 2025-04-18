@@ -38,6 +38,7 @@ import {
   taskRunsRoute,
   taskSchemaRoute,
   taskSchemasRoute,
+  taskSideBySideRoute,
   taskVersionsRoute,
 } from '@/lib/routeFormatter';
 import { TaskID, TaskSchemaID, TenantID } from '@/types/aliases';
@@ -136,6 +137,17 @@ export function generateSections(showActivityIndicator: boolean, isInDemoMode: b
       title: 'COMPARE',
       showActivityIndicator: false,
       items: [
+        {
+          title: 'Side by Side',
+          icon: <DataUsageRegular className={iconClassName} />,
+          iconSelected: <DataUsageFilled className={iconClassName} />,
+          routeBuilder: taskSideBySideRoute,
+          // Should match /tasks/:taskId/:taskSchemaId/sideBySide
+          matchRegex: pageRegexMap[Page.SideBySide],
+          isEnabled: true,
+          isHidden: false,
+          style: SectionItemStyle.Link,
+        },
         {
           title: 'Reviews',
           icon: <ThumbLikeDislikeRegular className={iconClassName} />,

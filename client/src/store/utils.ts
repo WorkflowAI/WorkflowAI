@@ -2,7 +2,46 @@ import { API_URL, RUN_URL } from '@/lib/constants';
 import { hashFile } from '@/lib/hash';
 import { TaskID, TaskSchemaID, TenantID } from '@/types/aliases';
 import { JsonSchema } from '@/types/json_schema';
-import { FieldQuery } from '@/types/workflowAI';
+import { GeneralizedTaskInput } from '@/types/task_run';
+import { CreateVersionRequest, FieldQuery } from '@/types/workflowAI';
+
+export function buildRunVersionScopeKey({
+  tenant,
+  taskId,
+  taskSchemaId,
+  versionId,
+  input,
+}: {
+  tenant: TenantID | undefined;
+  taskId: TaskID;
+  taskSchemaId: TaskSchemaID;
+  versionId: string | undefined;
+  input: GeneralizedTaskInput;
+}) {
+  if (!versionId) {
+    return undefined;
+  }
+  const inputKey = `input:${hashFile(JSON.stringify(input))}`;
+  return `${tenant}-${taskId}-${taskSchemaId}-${versionId}-${inputKey}`;
+}
+
+export function buildCreateVersionScopeKey({
+  tenant,
+  taskId,
+  taskSchemaId,
+  body,
+}: {
+  tenant: TenantID | undefined;
+  taskId: TaskID;
+  taskSchemaId?: string;
+  body: CreateVersionRequest | undefined;
+}) {
+  if (!body) {
+    return undefined;
+  }
+  const bodyKey = `props:${hashFile(JSON.stringify(body.properties))}`;
+  return `${tenant}-${taskId}-${taskSchemaId}-${bodyKey}`;
+}
 
 export function buildScopeKey({
   tenant,

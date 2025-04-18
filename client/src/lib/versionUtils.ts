@@ -1,3 +1,4 @@
+import { getVersionIdsAndEnvironmentsDict } from '@/store/versions';
 import { MajorVersion, VersionV1 } from '@/types/workflowAI';
 import { VersionEnvironment } from '@/types/workflowAI';
 
@@ -83,6 +84,11 @@ export function sortVersionsByEnvironment(
   nonEnviromentVersions = sortVersions(nonEnviromentVersions);
 
   return [...enviromentVersions, ...nonEnviromentVersions];
+}
+
+export function sortVersionsTakingIntoAccountEnvironments(versions: VersionV1[]): VersionV1[] {
+  const versionIdsAndEnvironmentsDict = getVersionIdsAndEnvironmentsDict(versions);
+  return sortVersionsByEnvironment(versions, versionIdsAndEnvironmentsDict);
 }
 
 export function sortEnvironmentsInOrderOfImportance(environments: VersionEnvironment[]): VersionEnvironment[] {

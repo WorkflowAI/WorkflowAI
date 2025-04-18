@@ -1,4 +1,4 @@
-import { memo, useMemo } from 'react';
+import { useMemo } from 'react';
 import { ObjectViewer } from '@/components/ObjectViewer/ObjectViewer';
 import { TaskOutputViewer } from '@/components/ObjectViewer/TaskOutputViewer';
 import { Loader } from '@/components/ui/Loader';

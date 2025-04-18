@@ -3,7 +3,7 @@ import { isEmpty } from 'lodash';
 import { useEffect } from 'react';
 import { create } from 'zustand';
 import { client } from '@/lib/api';
-import { formatSemverVersion } from '@/lib/versionUtils';
+import { formatSemverVersion, sortEnvironmentsInOrderOfImportance } from '@/lib/versionUtils';
 import { Page } from '@/types';
 import { TaskID, TaskSchemaID, TenantID } from '@/types/aliases';
 import {
@@ -18,7 +18,13 @@ import {
   VersionStat,
   VersionV1,
 } from '@/types/workflowAI';
-import { buildScopeKey, buildVersionScopeKey, taskSchemaSubPath, taskSubPath } from './utils';
+import {
+  buildCreateVersionScopeKey,
+  buildScopeKey,
+  buildVersionScopeKey,
+  taskSchemaSubPath,
+  taskSubPath,
+} from './utils';
 
 enableMapSet();
 
@@ -92,6 +98,37 @@ export function getVersionsPerEnvironment(versions: VersionV1[]): VersionsPerEnv
   return result;
 }
 
+export function getVersionIdsAndEnvironmentsDict(
+  versions: VersionV1[]
+): Record<string, VersionEnvironment[]> | undefined {
+  const versionsPerEnvironment = getVersionsPerEnvironment(versions);
+  if (!versionsPerEnvironment) {
+    return undefined;
+  }
+  const dict: Record<string, VersionEnvironment[]> = {};
+
+  Object.entries(versionsPerEnvironment).forEach(([environment, versions]) => {
+    if (!versions) {
+      return;
+    }
+    versions.forEach((version) => {
+      if (!version.id) {
+        return;
+      }
+      if (!dict[version.id]) {
+        dict[version.id] = [];
+      }
+      dict[version.id].push(environment as VersionEnvironment);
+    });
+  });
+
+  Object.keys(dict).forEach((key) => {
+    dict[key] = sortEnvironmentsInOrderOfImportance(dict[key]);
+  });
+
+  return dict;
+}
+
 interface VersionsState {
   versionsByScope: Map<string, MajorVersion[]>;
   isLoadingVersionsByScope: Map<string, boolean>;
@@ -103,12 +140,22 @@ interface VersionsState {
 
   isSavingVersion: Map<string, boolean>;
 
+  isCreatingVersion: Map<string, boolean>;
+  createdVersions: Map<string, CreateVersionResponse>;
+
   createVersion: (
     tenant: TenantID | undefined,
     taskId: TaskID,
     taskSchemaId: TaskSchemaID,
     body: CreateVersionRequest
   ) => Promise<CreateVersionResponse>;
+
+  createVersionInternally: (
+    tenant: TenantID | undefined,
+    taskId: TaskID,
+    taskSchemaId: TaskSchemaID,
+    body: CreateVersionRequest
+  ) => Promise<void>;
 
   saveVersion: (tenant: TenantID | undefined, taskId: TaskID, versionId: string) => Promise<CreateVersionResponse>;
 
@@ -145,6 +192,9 @@ export const useVersions = create<VersionsState>((set, get) => ({
 
   isSavingVersion: new Map(),
 
+  isCreatingVersion: new Map(),
+  createdVersions: new Map(),
+
   createVersion: async (
     tenant: TenantID | undefined,
     taskId: TaskID,
@@ -156,6 +206,38 @@ export const useVersions = create<VersionsState>((set, get) => ({
       body
     );
     return response;
+  },
+
+  createVersionInternally: async (
+    tenant: TenantID | undefined,
+    taskId: TaskID,
+    taskSchemaId: TaskSchemaID,
+    body: CreateVersionRequest
+  ) => {
+    const scopeKey = buildCreateVersionScopeKey({
+      tenant,
+      taskId,
+      taskSchemaId,
+      body,
+    });
+
+    set(
+      produce((state) => {
+        state.isCreatingVersion.set(scopeKey, true);
+      })
+    );
+
+    const response = await client.post<CreateVersionRequest, CreateVersionResponse>(
+      taskSchemaSubPath(tenant, taskId, taskSchemaId, `/versions`, true),
+      body
+    );
+
+    set(
+      produce((state) => {
+        state.isCreatingVersion.set(scopeKey, false);
+        state.createdVersions.set(scopeKey, response);
+      })
+    );
   },
 
   saveVersion: async (tenant, taskId, versionId) => {

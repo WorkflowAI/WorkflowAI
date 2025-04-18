@@ -6,7 +6,6 @@ import { useDemoMode } from '@/lib/hooks/useDemoMode';
 import { cn } from '@/lib/utils';
 import { useOrFetchTaskRunReviews } from '@/store/fetchers';
 import { useTaskRunReviews } from '@/store/task_run_reviews';
-import { TaskRun } from '@/types';
 import { TaskID, TenantID } from '@/types/aliases';
 import { combineReviewAspects } from '../../utils';
 import { AIDisagreeResponseBox } from './AIDisagreeResponseBox';
@@ -18,17 +17,18 @@ import {
 import { AIEvaluationReviewComment } from './AIEvaluationReviewComment';
 
 interface AIEvaluationReviewProps {
-  taskRun: TaskRun;
+  runId: string;
   tenant: TenantID | undefined;
   taskId: TaskID;
   showFullBorder?: boolean;
+  showOnlyButtons?: boolean;
   onImprovePrompt?: (evaluation: string) => Promise<void>;
 }
 
 export function AIEvaluationReview(props: AIEvaluationReviewProps) {
-  const { taskRun, tenant, taskId, showFullBorder = false, onImprovePrompt } = props;
+  const { runId, tenant, taskId, showFullBorder = false, showOnlyButtons = false, onImprovePrompt } = props;
 
-  const { reviews } = useOrFetchTaskRunReviews(tenant, taskId, taskRun.id);
+  const { reviews } = useOrFetchTaskRunReviews(tenant, taskId, runId);
   const { createReview } = useTaskRunReviews();
 
   const latestReviews = useMemo(() => {
@@ -80,7 +80,7 @@ export function AIEvaluationReview(props: AIEvaluationReviewProps) {
 
   const handleReview = useCallback(
     async (isPositive: boolean) => {
-      await createReview(tenant, taskId, taskRun.id, isPositive ? 'positive' : 'negative');
+      await createReview(tenant, taskId, runId, isPositive ? 'positive' : 'negative');
 
       const value = isPositive ? 'positive' : 'negative';
 
@@ -88,7 +88,7 @@ export function AIEvaluationReview(props: AIEvaluationReviewProps) {
         setDisagreeBoxReviewId(latestAIReview?.id);
       }
     },
-    [reviewScores.ai, createReview, tenant, taskId, taskRun.id, latestAIReview?.id]
+    [reviewScores.ai, createReview, tenant, taskId, runId, latestAIReview?.id]
   );
 
   const showAIEvaluation = {
@@ -130,6 +130,25 @@ export function AIEvaluationReview(props: AIEvaluationReviewProps) {
   }, [latestAIReview, onImprovePrompt]);
 
   const { isInDemoMode } = useDemoMode();
+
+  if (showOnlyButtons) {
+    return (
+      <div className='flex flex-row gap-1'>
+        <AIEvaluationReviewButton
+          mode={getButtonMode(true)}
+          thumb={AIEvaluationReviewButtonThumb.UP}
+          onClick={() => handleReview(true)}
+          disabled={isInDemoMode}
+        />
+        <AIEvaluationReviewButton
+          mode={getButtonMode(false)}
+          thumb={AIEvaluationReviewButtonThumb.DOWN}
+          onClick={() => handleReview(false)}
+          disabled={isInDemoMode}
+        />
+      </div>
+    );
+  }
 
   return (
     <div
@@ -184,7 +203,7 @@ export function AIEvaluationReview(props: AIEvaluationReviewProps) {
           reviewId={disagreeBoxReviewId}
           tenant={tenant}
           taskId={taskId}
-          taskRunId={taskRun.id}
+          taskRunId={runId}
           placeholder={disagreeBoxPlaceholder}
           onClose={onCloseDisagreeBox}
         />

@@ -12,6 +12,7 @@ export enum Page {
   Tasks = 'agents',
   Cost = 'cost',
   Feedback = 'feedback',
+  SideBySide = 'side-by-side',
 }
 
 export const pageRegexMap: Record<Page, RegExp> = {
@@ -28,6 +29,7 @@ export const pageRegexMap: Record<Page, RegExp> = {
   [Page.Tasks]: /\/agents$/,
   [Page.Cost]: /\/agents\/[^/]+\/[^/]+\/cost$/,
   [Page.Feedback]: /\/agents\/[^/]+\/[^/]+\/feedback$/,
+  [Page.SideBySide]: /\/agents\/[^/]+\/[^/]+\/sideBySide$/,
 };
 
 export function detectPage(pathname: string): Page | undefined {
@@ -46,6 +48,7 @@ export function detectPageIsUsingNewDesign(pathname: string): boolean {
     Page.Runs,
     Page.Schemas,
     Page.Feedback,
+    Page.SideBySide,
   ];
   return pagesUsingNewDesign.some((page) => pageRegexMap[page].test(pathname));
 }

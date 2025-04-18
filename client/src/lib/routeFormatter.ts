@@ -95,6 +95,9 @@ export const taskRunsRoute = (tenant: TenantID, taskId: TaskID, taskSchemaId: Ta
 export const taskReviewsRoute = (tenant: TenantID, taskId: TaskID, taskSchemaId: TaskSchemaID, params?: Params) =>
   `${taskSchemaRoute(tenant, taskId, taskSchemaId)}/reviews${stringifyQueryParams(params)}`;
 
+export const taskSideBySideRoute = (tenant: TenantID, taskId: TaskID, taskSchemaId: TaskSchemaID, params?: Params) =>
+  `${taskSchemaRoute(tenant, taskId, taskSchemaId)}/sideBySide${stringifyQueryParams(params)}`;
+
 export const taskFeedbackRoute = (tenant: TenantID, taskId: TaskID, taskSchemaId: TaskSchemaID, params?: Params) =>
   `${taskSchemaRoute(tenant, taskId, taskSchemaId)}/feedback${stringifyQueryParams(params)}`;
 

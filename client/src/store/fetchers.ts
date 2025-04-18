@@ -10,7 +10,8 @@ import { TENANT_PLACEHOLDER } from '@/lib/routeFormatter';
 import { sortVersions } from '@/lib/versionUtils';
 import { TaskID, TaskSchemaID, TenantID } from '@/types/aliases';
 import { CodeLanguage } from '@/types/snippets';
-import { ChatMessage, FieldQuery, PlaygroundState, VersionV1 } from '@/types/workflowAI';
+import { GeneralizedTaskInput } from '@/types/task_run';
+import { ChatMessage, CreateVersionRequest, FieldQuery, PlaygroundState, VersionV1 } from '@/types/workflowAI';
 import { useAIModels } from './ai_models';
 import { useApiKeys } from './api_keys';
 import { useClerkOrganizationStore } from './clerk_organisations';
@@ -41,6 +42,7 @@ import {
   buildVersionScopeKey,
   getOrUndef,
 } from './utils';
+import { buildCreateVersionScopeKey, buildRunVersionScopeKey } from './utils';
 import { getVersionsPerEnvironment, mapMajorVersionsToVersions, useVersions } from './versions';
 import { useWeeklyRuns } from './weekly_runs';
 
@@ -1270,5 +1272,77 @@ export const useOrFetchUptime = () => {
     isLoadingOpenaiUptime,
     isInitializedWorkflowaiUptime,
     isInitializedOpenaiUptime,
+  };
+};
+
+export const useOrCreateVersion = (
+  tenant: TenantID | undefined,
+  taskId: TaskID,
+  taskSchemaId: TaskSchemaID,
+  body: CreateVersionRequest | undefined
+) => {
+  const scopeKey = buildCreateVersionScopeKey({
+    tenant,
+    taskId,
+    taskSchemaId,
+    body,
+  });
+
+  const createVersionInternally = useVersions((state) => state.createVersionInternally);
+  const isCreatingVersion = useVersions((state) => (scopeKey ? state.isCreatingVersion.get(scopeKey) : false));
+  const createdVersion = useVersions((state) => (scopeKey ? state.createdVersions.get(scopeKey) : undefined));
+
+  const isCreatingVersionRef = useRef(isCreatingVersion);
+  isCreatingVersionRef.current = isCreatingVersion;
+
+  const wasVersionCreatedRef = useRef(false);
+  wasVersionCreatedRef.current = !!createdVersion;
+
+  useEffect(() => {
+    if (!wasVersionCreatedRef.current && !isCreatingVersionRef.current && !!body) {
+      createVersionInternally(tenant, taskId, taskSchemaId, body);
+    }
+  }, [createVersionInternally, isCreatingVersionRef, tenant, taskId, taskSchemaId, body]);
+
+  return {
+    isCreatingVersion,
+    createdVersion,
+  };
+};
+
+export const useOrRunVersion = (
+  tenant: TenantID | undefined,
+  taskId: TaskID,
+  taskSchemaId: TaskSchemaID,
+  versionId: string | undefined,
+  input: GeneralizedTaskInput
+) => {
+  const scopeKey = buildRunVersionScopeKey({
+    tenant,
+    taskId,
+    taskSchemaId,
+    versionId,
+    input,
+  });
+
+  const runVersionInternally = useTasks((state) => state.runVersionInternally);
+  const isRunningVersion = useTasks((state) => (scopeKey ? state.isRunningVersion.get(scopeKey) : false));
+  const runMessage = useTasks((state) => (scopeKey ? state.runMessages.get(scopeKey) : undefined));
+
+  const isRunningVersionRef = useRef(isRunningVersion);
+  isRunningVersionRef.current = isRunningVersion;
+
+  const wasRunRef = useRef(false);
+  wasRunRef.current = !!runMessage;
+
+  useEffect(() => {
+    if (!wasRunRef.current && !isRunningVersionRef.current && !!versionId) {
+      runVersionInternally(tenant, taskId, taskSchemaId, versionId, input);
+    }
+  }, [runVersionInternally, isRunningVersionRef, tenant, taskId, taskSchemaId, versionId, input]);
+
+  return {
+    isRunningVersion,
+    runMessage,
   };
 };

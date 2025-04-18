@@ -156,7 +156,7 @@ export function PlaygroundModelOutputContent(props: ModelOutputContentProps) {
           <div className='flex flex-col w-full overflow-hidden max-h-[400px]'>
             <ImprovePrompt onImprovePrompt={onImprovePrompt} />
 
-            <AIEvaluationReview tenant={tenant} taskId={taskId} taskRun={taskRun} onImprovePrompt={onImprovePrompt} />
+            <AIEvaluationReview tenant={tenant} taskId={taskId} runId={taskRun.id} onImprovePrompt={onImprovePrompt} />
           </div>
         )}
         <TaskRunOutputRows
