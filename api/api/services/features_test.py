@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 
 from api.services.features import (
+    URL_PICKING_INSTRUCTIONS,
     CompanyContext,
     CompanyFeaturePreviewList,
     FeatureOutputPreview,
@@ -31,15 +32,13 @@ from core.agents.chat_task_schema_generation.schema_generation_agent import (
     SchemaBuilderOutput,
 )
 from core.agents.company_agent_suggestion_agent import (
-    CompanyContext as CompanyContextInput,
-)
-from core.agents.company_agent_suggestion_agent import (
     SuggestAgentForCompanyInput,
     SuggestAgentForCompanyOutput,
     SuggestedAgent,
 )
 from core.domain.errors import ObjectNotFoundError
 from core.domain.features import BaseFeature, FeatureSection, FeatureTag, FeatureWithImage
+from core.domain.url_content import URLContent
 from core.tools.browser_text.browser_text_tool import FetchUrlContentResult
 from tests.utils import mock_aiter
 
@@ -399,9 +398,9 @@ async def test_get_features_by_domain_e2e(  # noqa: C901
     """
     service = FeatureService()
 
-    async def mock_stream_company_context(*args: Any, **kwargs: Any) -> AsyncIterator[CompanyContext]:
+    async def mock_stream_company_context(*args: Any, **kwargs: Any) -> AsyncIterator[str]:
         for chunk in company_context_chunks:
-            yield chunk
+            yield chunk.public
 
     async def mock_stream_feature_suggestions(
         *args: Any,
@@ -424,31 +423,26 @@ async def test_get_features_by_domain_e2e(  # noqa: C901
                 features=features,
             )
 
-    # Create a mock _build_agent_suggestion_input that returns a simple input
-    async def mock_build_agent_suggestion_input(*args: Any, **kwargs: Any) -> SuggestAgentForCompanyInput:
-        return SuggestAgentForCompanyInput(
-            supported_agent_input_types=[],
-            supported_agent_output_types=[],
-            available_tools=[],
-            company_context=CompanyContextInput(
-                company_url=company_domain,
-                company_url_content=company_context_chunks[0].private,
-                existing_agents=[],
-                latest_news="",
-            ),
-        )
-
     with (
         patch.object(service, "_stream_company_context", mock_stream_company_context),
-        patch.object(service, "_build_agent_suggestion_input", mock_build_agent_suggestion_input),
+        patch.object(
+            service,
+            "get_company_domain_content",
+            AsyncMock(return_value=URLContent(url=company_domain, content="some content")),
+        ),
+        # get_company_website_contents
+        patch.object(service, "get_company_website_contents", AsyncMock(return_value=[])),
         patch.object(service, "_stream_feature_suggestions", mock_stream_feature_suggestions),
         patch.object(service, "_get_company_latest_news", AsyncMock(return_value="")),
+        patch.object(service, "_stream_company_context", mock_stream_company_context),
         # Ensure validation passes for simplicity in this e2e test
         patch.object(service, "_is_agent_validated", AsyncMock(return_value=True)),
     ):
         # Collect all outputs from the generator
         mock_event_router = Mock()
-        actual_outputs = [output async for output in service.get_features_by_domain(company_domain, mock_event_router)]
+        actual_outputs = [
+            output async for output in service.stream_features_by_domain(company_domain, mock_event_router)
+        ]
 
         # Compare with expected outputs
         assert len(actual_outputs) == len(expected_outputs)
@@ -500,15 +494,13 @@ async def test_build_agent_suggestion_input(
         service = FeatureService(storage=mock_storage)
 
         # Call the method
-        result = await service._build_agent_suggestion_input(company_domain, company_context, latest_news)  # pyright: ignore[reportPrivateUsage]
+        result = await service._build_agent_suggestion_input(company_domain, company_context, [])  # pyright: ignore[reportPrivateUsage]
 
         # Verify the result
         assert result.supported_agent_input_types == expected_agent_types
         assert result.supported_agent_output_types == expected_agent_types
         assert result.company_context
         assert result.company_context.company_url == company_domain
-        assert result.company_context.company_url_content == company_context
-        assert result.company_context.latest_news == latest_news
 
         # Mocking storage directly, so existing_agents should always be empty based on current implementation
         assert result.company_context.existing_agents == []
@@ -980,7 +972,7 @@ async def test_stream_company_context_perplexity_success(
     ):
         feature_service = FeatureService()
         result = []
-        result = [context async for context in feature_service._stream_company_context(company_url)]  # pyright: ignore[reportPrivateUsage]
+        result = [context async for context in feature_service._stream_company_context_perplexity(company_url)]  # pyright: ignore[reportPrivateUsage]
 
         assert result == expected_contexts
 
@@ -1024,7 +1016,7 @@ async def test_stream_company_context_perplexity_failure_scrapingbee_success(
         ),
     ):
         feature_service = FeatureService()
-        result = [context async for context in feature_service._stream_company_context(company_url)]  # pyright: ignore[reportPrivateUsage]
+        result = [context async for context in feature_service._stream_company_context_perplexity(company_url)]  # pyright: ignore[reportPrivateUsage]
 
         assert result == expected_contexts
 
@@ -1065,8 +1057,12 @@ async def test_stream_company_context_both_services_fail(
         ),
     ):
         feature_service = FeatureService()
-        result = [context async for context in feature_service._stream_company_context(company_url)]  # pyright: ignore[reportPrivateUsage]
-
+        result = [
+            context
+            async for context in feature_service._stream_company_context_perplexity(  # pyright: ignore[reportPrivateUsage]
+                company_url,
+            )
+        ]
         assert result == [
             CompanyContext(
                 public=f"Could not get context from {company_url}, we'll fallback on generic features suggestions",
@@ -1119,3 +1115,86 @@ async def test_get_agent_schemas() -> None:
             input_schema={"type": "object", "properties": {"input_string_field": {"type": "string"}}},
             output_schema={"type": "object", "properties": {"output_string_field": {"type": "string"}}},
         )
+
+
+@pytest.fixture
+def feature_service() -> FeatureService:
+    return FeatureService()
+
+
+class TestGetCompanyWebsiteContents:
+    async def test_get_contents_integration(self, feature_service: FeatureService):
+        company_domain = "final.com"
+        sitemap = {"final.com", "final.com/page1", "final.com/page2"}
+        picked = {"final.com", "final.com/page1"}  # Assume agent picks these
+        fetched = [
+            URLContent(url="final.com", content="Final Content"),
+            URLContent(url="final.com/page1", content="Page 1 Content"),
+        ]
+
+        # Patch the extracted methods
+        with (
+            patch(
+                "api.services.features.ScrapingService.get_sitemap_links_cached",
+                new_callable=AsyncMock,
+                return_value=sitemap,
+            ) as mock_sitemap,
+            patch(
+                "api.services.features.ScrapingService.pick_relevant_links",
+                new_callable=AsyncMock,
+                return_value=picked,
+            ) as mock_picker,
+            patch(
+                "api.services.features.ScrapingService.fetch_url_contents_concurrently",
+                new_callable=AsyncMock,
+                return_value=fetched,
+            ) as mock_fetcher,
+            patch(
+                "api.services.features.ScrapingService.limit_url_content_size",
+                new_callable=AsyncMock,
+                return_value=fetched,
+            ),
+        ):
+            actual_contents = await feature_service.get_company_website_contents(company_domain)
+
+            assert actual_contents == fetched
+
+            mock_sitemap.assert_awaited_once_with(company_domain)
+            mock_picker.assert_awaited_once_with(list(sitemap), 10, URL_PICKING_INSTRUCTIONS)
+            mock_fetcher.assert_awaited_once_with(picked, 60.0, use_cache=True)
+
+    async def test_get_contents_ensures_domain_included(self, feature_service: FeatureService):
+        # Test case where the picker *doesn't* return the original domain
+        company_domain = "domain.com"
+        sitemap = {"domain.com", "other.com"}
+        picked = {"other.com"}  # Picker excludes the main domain
+        fetched = [URLContent(url="domain.com", content="D"), URLContent(url="other.com", content="O")]
+
+        with (
+            patch(
+                "api.services.features.ScrapingService.get_sitemap_links_cached",
+                new_callable=AsyncMock,
+                return_value=sitemap,
+            ),
+            patch(
+                "api.services.features.ScrapingService.pick_relevant_links",
+                new_callable=AsyncMock,
+                return_value=picked,
+            ),
+            patch(
+                "api.services.features.ScrapingService.fetch_url_contents_concurrently",
+                new_callable=AsyncMock,
+                return_value=fetched,
+            ) as mock_fetcher,
+            patch(
+                "api.services.features.ScrapingService.limit_url_content_size",
+                new_callable=AsyncMock,
+                return_value=fetched,
+            ),
+        ):
+            await feature_service.get_company_website_contents(company_domain)
+
+            args, _ = mock_fetcher.call_args
+            assert company_domain in args[0]
+            assert "other.com" in args[0]
+            assert len(args[0]) == 2

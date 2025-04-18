@@ -99,7 +99,7 @@ async def list_feature_by_domain(
     company_domain: str,
 ) -> StreamingResponse:
     async def _stream() -> AsyncIterator[BaseModel]:
-        async for item in FeatureService(storage).get_features_by_domain(company_domain, event_router):
+        async for item in FeatureService(storage).stream_features_by_domain(company_domain, event_router):
             yield item
 
     return safe_streaming_response(_stream)

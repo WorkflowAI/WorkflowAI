@@ -14,6 +14,12 @@ class BaseFeature(BaseModel):
         description="The specifications of the feature, used to generate the feature input and output schema, for internal use only, NOT displayed in the UI. To be provided for 'static' feature suggestions only, null otherwise",
     )
 
+    @property
+    def display_str(self) -> str:
+        return f"""*{self.name}*
+
+{self.description}"""
+
 
 class FeatureWithImage(BaseFeature):
     image_url: str

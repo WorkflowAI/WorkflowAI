@@ -4,6 +4,7 @@ from enum import Enum
 import workflowai
 from pydantic import BaseModel, Field
 
+from core.domain.url_content import URLContent
 from core.runners.workflowai.internal_tool import InternalTool
 
 
@@ -41,13 +42,13 @@ class CompanyContext(BaseModel):
         default=None,
         description="An URL provided by the client in order for they to get agent suggestions",
     )
-    company_url_content: str | None = Field(
+    company_context: str | None = Field(
         default=None,
-        description="The content of the 'company_url'",
+        description="A brief overview of what the company does",
     )
-    latest_news: str | None = Field(
+    company_website_contents: list[URLContent] | None = Field(
         default=None,
-        description="A description of the latest news for the company (ex: new product launch, new features, acquisitions, new regulations, industry trends, competitors news)",
+        description="The content of the company's website",
     )
     existing_agents: list[str] | None = Field(
         default=None,
@@ -104,9 +105,9 @@ NUMBER_OF_SUGGESTED_AGENTS = 20
 INSTRUCTIONS = f"""Your role is to generate a comprehensive list of exactly {NUMBER_OF_SUGGESTED_AGENTS} non overlapping agents suggestions that can be used to power features for our client based on:
 
     - 'company_context' (in order to understand the company and propose agents that make sense based on the company's context)
+    - 'company_website_contents' in order to get a fine knowledge of what product the company is proposing and which AI features could enhance the company's products, your proposed agents MUST be directly related of what you find in the 'company_website_contents'.
     - the 'supported_agent_input_types' and 'supported_agent_output_types' that explains the type of agents input and output that can be suggested.
     - consider the 'available_tools' that can give suggested agent more capabilities.
-    - use 'latest_news' to propose agents that are super relevant and impactful for the company based on the latest news. Offer features that works well with the latest product and features, and aligns with the company goals from 'latest_news'. Aim for 1 to 2 agents over {NUMBER_OF_SUGGESTED_AGENTS} to be related to the latest news, IF and only IF those agents do not contradict with the other criterias, and if the enforece all other criterias described in those instructions. For agents that are based on latest news, please make sure that the description makes it clear that the feature is related to the latest news.
     - the client's 'existing_agents' (in order to avoid duplicates, and propose new agents that make sense based on the agents the client is already using)
 
     ## Agents to propose

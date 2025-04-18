@@ -7,6 +7,7 @@ from typing import Any, NamedTuple
 from pydantic import BaseModel
 
 from api.services.internal_tasks._internal_tasks_utils import OFFICIALLY_SUGGESTED_TOOLS, officially_suggested_tools
+from api.services.scraping_service import ScrapingService
 from core.agents.agent_output_example import SuggestedAgentOutputExampleInput, stream_suggested_agent_output_example
 from core.agents.agent_suggestion_validator_agent import SuggestedAgentValidationInput, run_suggested_agent_validation
 from core.agents.chat_task_schema_generation.chat_task_schema_generation_task import (
@@ -29,6 +30,7 @@ from core.agents.company_agent_suggestion_agent import (
     SuggestedAgent,
     stream_suggest_agents_for_company,
 )
+from core.agents.company_context_agent import CompanyContextAgentInput, company_context_agent
 from core.agents.company_domain_from_email_agent import (
     ClassifyEmailDomainAgentInput,
     ClassifyEmailDomainAgentOutput,
@@ -38,11 +40,15 @@ from core.domain.errors import InternalError, ObjectNotFoundError
 from core.domain.events import EventRouter, FeaturesByDomainGenerationStarted
 from core.domain.features import BaseFeature, tag_kind
 from core.domain.features_mapping import FEATURES_MAPPING
+from core.domain.url_content import URLContent
 from core.runners.workflowai.workflowai_runner import WorkflowAIRunner
 from core.storage.backend_storage import BackendStorage
-from core.tools.browser_text.browser_text_tool import fetch_url_content_scrapingbee
+from core.tools.browser_text.browser_text_tool import (
+    fetch_url_content_scrapingbee,
+)
 from core.tools.search.run_perplexity_search import stream_perplexity_search
 from core.utils.iter_utils import safe_map
+from core.utils.redis_cache import redis_cached, redis_cached_generator_last_chunk
 from core.utils.schema_utils import json_schema_from_json
 
 
@@ -95,6 +101,10 @@ class CompanyContext(NamedTuple):
 
     public: str  # To be return to the frontend
     private: str  # To be used by the feature suggestion agent
+
+
+URL_FETCHING_TIMEOUT_SECONDS = 60.0
+URL_PICKING_INSTRUCTIONS = "pick the most relevant URLs in order to understand what product, feature and use case the company is addressing in order to propose AI features for the company's AI roadmap"
 
 
 class FeatureService:
@@ -162,7 +172,8 @@ class FeatureService:
 
         raise ObjectNotFoundError(msg=f"No feature tag found with tag: {tag}")
 
-    async def _stream_company_context(self, company_url: str) -> AsyncIterator[CompanyContext]:
+    async def _stream_company_context_perplexity(self, company_url: str) -> AsyncIterator[CompanyContext]:
+        # Unused for now in favor of 'get_company_website_contents'.
         try:
             async for chunk in stream_perplexity_search(
                 f"""What does this company do:{company_url}? Provide a concise description of the company and its products. Do not add any markdown or formatting (ex: bold, italic, underline, etc.) in the response, except line breaks, punctation and eventual bullet points.
@@ -204,7 +215,7 @@ class FeatureService:
         self,
         company_domain: str,
         company_context: str,
-        latest_news: str,
+        company_website_contents: list[URLContent],
     ) -> SuggestAgentForCompanyInput:
         return SuggestAgentForCompanyInput(
             supported_agent_input_types=get_supported_task_input_types(),
@@ -219,11 +230,11 @@ class FeatureService:
             ),
             company_context=CompanyContextInput(
                 company_url=company_domain,
-                company_url_content=company_context,
+                company_context=company_context,
+                company_website_contents=company_website_contents,
                 # Existing agent are deactivate for now as I felt they were perturbating generation pertinence in some cases.
                 # TODO: plug back existing agent for existing users and rework instructions based on that.
                 existing_agents=[],
-                latest_news=latest_news,
             ),
         )
 
@@ -294,7 +305,7 @@ class FeatureService:
                             name=safe_agent.tag_line,  # TODO: use name=safe_agent.tag_line when the frontend will display the tag line instead of the name
                             tag_line=safe_agent.tag_line,
                             description=safe_agent.description or "",
-                            specifications="",  # Specifications are not used for company-specific features
+                            specifications="",  # We do not generate specification for company specific features
                         ),
                     )
 
@@ -303,6 +314,8 @@ class FeatureService:
                 features=features,
             )
 
+    # TODO: This function is doing more harm than good as a context. So we need to rework our approach because perplexity hallucinates sometimes
+    @redis_cached(expiration_seconds=60 * 60 * 24)  # TTL=1 day
     async def _get_company_latest_news(self, company_domain: str) -> str:
         LATEST_NEWS_INSTRUCTIONS = f"""You are a world-class expert in software market intelligence with an emphasis on tech startups and artificial intelligence. You goal is to gather and summarize the latest news for {company_domain}, especially new product and new features. Any product or feature mentioned must also explain what the feature/product does. Focus on software oriented features and products. Stay concise and to the point."""
 
@@ -318,39 +331,105 @@ class FeatureService:
             _logger.exception("Error getting company latest news", exc_info=e)
             return ""
 
+    async def get_company_website_contents(self, company_domain: str) -> list[URLContent]:
+        MAX_LINKS = 10
+
+        # 1. Get potential links from sitemap (or fallback to domain)
+        site_map_links = await ScrapingService().get_sitemap_links_cached(company_domain)
+
+        # 2. Pick the most relevant links
+        picked_urls = await ScrapingService().pick_relevant_links(
+            list(site_map_links),
+            MAX_LINKS,
+            URL_PICKING_INSTRUCTIONS,
+        )
+
+        # 3. Ensure the original company domain is always included
+        picked_urls.add(company_domain)
+
+        # 4. Fetch content for these URLs concurrently
+        url_contents = await ScrapingService().fetch_url_contents_concurrently(
+            picked_urls,
+            URL_FETCHING_TIMEOUT_SECONDS,
+            use_cache=True,
+        )
+
+        return await ScrapingService().limit_url_content_size(url_contents, 150000)
+
+    async def get_company_domain_content(self, company_domain: str) -> URLContent:
+        return await ScrapingService().get_url_content_cached(company_domain, URL_FETCHING_TIMEOUT_SECONDS)
+
+    async def _stream_company_context(
+        self,
+        company_domain: str,
+        company_domain_content: str,
+    ) -> AsyncIterator[str]:
+        async for company_context_chunk in company_context_agent.stream(
+            agent_input=CompanyContextAgentInput(
+                company_name=company_domain,
+                company_website_content=company_domain_content,
+            ),
+        ):
+            if company_context_chunk.output.company_context:
+                yield company_context_chunk.output.company_context
+
+    async def stream_features_by_domain(
+        self,
+        company_domain: str,
+        event_router: EventRouter | None = None,
+    ) -> AsyncIterator[CompanyFeaturePreviewList]:
+        if event_router:
+            event_router(FeaturesByDomainGenerationStarted(company_domain=company_domain))
+
+        # Start collecting AI features in the background
+        company_domain_content_task = asyncio.create_task(self.get_company_domain_content(company_domain))
+        company_website_contents_task = asyncio.create_task(self.get_company_website_contents(company_domain))
+
+        company_domain_content = await company_domain_content_task
+
+        company_context = ""
+        if company_domain_content.content:
+            async for company_context_chunk in self._stream_company_context(
+                company_domain,
+                company_domain_content.content,
+            ):
+                company_context = company_context_chunk
+                yield CompanyFeaturePreviewList(
+                    company_context=company_context,
+                    features=[],
+                )
+
+        # Wait for AI features collection to complete
+        company_website_contents = await company_website_contents_task
+
+        agent_suggestion_input = await self._build_agent_suggestion_input(
+            company_domain=company_domain,
+            company_context=company_context,
+            company_website_contents=company_website_contents,
+        )
+
+        async for chunk in self._stream_feature_suggestions(company_context, agent_suggestion_input):
+            yield chunk
+
     async def get_features_by_domain(
         self,
         company_domain: str,
-        event_router: EventRouter,
-    ) -> AsyncIterator[CompanyFeaturePreviewList]:
-        event_router(FeaturesByDomainGenerationStarted(company_domain=company_domain))
+    ) -> CompanyFeaturePreviewList | None:
+        # TODO: Ideally we should not use the stream here, but we do for the sake of simplicity and to avoid code duplication.
 
-        # Start collecting AI features in the background
-        company_latest_news_task = asyncio.create_task(self._get_company_latest_news(company_domain))
+        try:
+            feature_list: CompanyFeaturePreviewList | None = None
+            async for chunk in self.stream_features_by_domain(company_domain):
+                feature_list = chunk
 
-        company_context: CompanyContext = CompanyContext(public="", private="")
-        async for chunk in self._stream_company_context(company_domain):
-            company_context = chunk
-            yield CompanyFeaturePreviewList(
-                company_context=company_context.public,
-                features=[],
-            )
+            return feature_list
+        except Exception as e:
+            _logger.exception("Error getting features by domain", exc_info=e)
+            return None
 
-        # Wait for AI features collection to complete
-        company_latest_news = await company_latest_news_task
-
-        agent_suggestion_input = await self._build_agent_suggestion_input(
-            company_domain,
-            company_context.private,
-            company_latest_news,
-        )
-
-        async for chunk in self._stream_feature_suggestions(company_context.public, agent_suggestion_input):
-            yield chunk
-
-    @classmethod
+    @staticmethod
+    @redis_cached_generator_last_chunk(expiration_seconds=60 * 60)  # TTL=1 hour
     async def get_agent_preview(
-        cls,
         agent_name: str,
         agent_description: str,
         agent_specifications: str | None = None,

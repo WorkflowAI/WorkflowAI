@@ -479,12 +479,20 @@ class ClickhouseClient(TaskRunStorage):
             )
 
     @override
-    async def run_count_by_agent_uid(self, from_date: datetime) -> AsyncIterator[TaskRunStorage.AgentRunCount]:
+    async def run_count_by_agent_uid(
+        self,
+        from_date: datetime,
+        is_active: bool | None = None,
+    ) -> AsyncIterator[TaskRunStorage.AgentRunCount]:
         w = (
             W("tenant_uid", type="UInt32", value=self.tenant_uid)
             & W("created_at_date", type="Date", value=from_date.strftime("%Y-%m-%d"), operator=">=")
             & W("run_uuid", type="UInt128", value=id_lower_bound(from_date), operator=">=")
         )
+
+        if is_active:
+            w &= W("is_active", type="Boolean", value=is_active)
+
         raw, parameters = w.to_sql_req()
         sql = f"""
         SELECT

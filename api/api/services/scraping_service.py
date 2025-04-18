@@ -11,6 +11,7 @@ from core.tools.browser_text.browser_text_tool import (
     browser_text_with_proxy_setting,
     get_sitemap,
 )
+from core.utils.redis_cache import redis_cached
 from core.utils.token_utils import tokens_from_string
 
 _logger = logging.getLogger(__name__)
@@ -20,7 +21,7 @@ class ScrapingService:
     """Wrapper for scraping related functions."""
 
     @staticmethod
-    async def _get_url_content(url: str, request_timeout: float | None = None) -> URLContent:
+    async def get_url_content(url: str, request_timeout: float | None = None) -> URLContent:
         try:
             content = await asyncio.wait_for(browser_text_with_proxy_setting(url, "stealth"), timeout=request_timeout)
             return URLContent(url=url, content=content)
@@ -32,12 +33,25 @@ class ScrapingService:
             return URLContent(url=url, content="")
 
     @staticmethod
+    @redis_cached(expiration_seconds=60 * 60)  # TTL=1 hour
+    async def get_url_content_cached(url: str, request_timeout: float | None = None) -> URLContent:
+        return await ScrapingService.get_url_content(url, request_timeout)
+
+    @staticmethod
     async def fetch_url_contents_concurrently(
         urls_to_fetch: set[str],
         request_timeout: float,
+        use_cache: bool,
     ) -> list[URLContent]:
         scraping_service = ScrapingService()
-        tasks = [scraping_service._get_url_content(link, request_timeout=request_timeout) for link in urls_to_fetch]
+
+        # Selectivelly use cache or not
+        if use_cache:
+            fetching_function = scraping_service.get_url_content_cached
+        else:
+            fetching_function = scraping_service.get_url_content
+
+        tasks = [fetching_function(link, request_timeout) for link in urls_to_fetch]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         successful_contents: list[URLContent] = []
@@ -125,7 +139,8 @@ class ScrapingService:
         return limited_contents
 
     @staticmethod
-    async def _get_sitemap_links(company_domain: str) -> set[str]:
+    @redis_cached(expiration_seconds=60 * 60)  # TTL=1 hour
+    async def get_sitemap_links_cached(company_domain: str) -> set[str]:
         try:
             return await get_sitemap(company_domain)
         except Exception as e:

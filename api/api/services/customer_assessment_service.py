@@ -34,6 +34,9 @@ class ExtendedCustomerAssessementAgentOutput(CustomerAssessementAgentOutput):
     def __str__(self) -> str:  # noqa: C901
         """A cool presentation of the company with emojis and all"""
         parts: list[str] = []
+
+        parts.append("*Day 0 Customer Assessment:*\n\n")  # bold
+
         if self.base_user_name:
             parts.append(self.base_user_name)
         if self.base_user_title:
@@ -154,6 +157,7 @@ async def _get_company_urls_content(company_domain: str, enriched_contents: List
     relevant_url_content = await scraping_service.fetch_url_contents_concurrently(
         relevant_urls,
         request_timeout=60.0,
+        use_cache=True,
     )
 
     limited_url_content = await scraping_service.limit_url_content_size(
