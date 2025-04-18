@@ -20,7 +20,7 @@ import { VersionEnvironment, VersionV1 } from '@/types/workflowAI';
 import { ApiContent } from './ApiContent';
 import { useTaskRunWithSecondaryInput } from './utils';
 
-const languages: CodeLanguage[] = [CodeLanguage.TYPESCRIPT, CodeLanguage.PYTHON, CodeLanguage.REST];
+const languages: CodeLanguage[] = [CodeLanguage.TYPESCRIPT, CodeLanguage.PYTHON, CodeLanguage.REST, CodeLanguage.GO];
 
 export function ApiContainer() {
   const { tenant, taskId } = useTaskSchemaParams();

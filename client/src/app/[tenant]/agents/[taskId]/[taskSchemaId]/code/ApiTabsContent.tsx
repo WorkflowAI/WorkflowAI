@@ -3,6 +3,7 @@ import { TaskSchemaParams } from '@/lib/routeFormatter';
 import { TaskRun, TaskSchemaResponseWithSchema } from '@/types';
 import { CodeLanguage } from '@/types/snippets';
 import { VersionEnvironment, VersionV1 } from '@/types/workflowAI';
+import { GoApiTab } from './GoApiTab';
 import { PythonApiTab } from './PythonApiTab';
 import { RestApiTab } from './RestApiTab';
 import { TypeScriptApiTab } from './TypeScriptApiTab';
@@ -54,6 +55,18 @@ export function ApiTabsContent(props: ApiTabsContentProps) {
     case CodeLanguage.REST:
       return (
         <RestApiTab
+          tenant={tenant}
+          taskId={taskId}
+          taskSchemaId={taskSchemaId}
+          environment={environment}
+          taskRun={taskRun}
+          version={version}
+          apiUrl={apiUrl}
+        />
+      );
+    case CodeLanguage.GO:
+      return (
+        <GoApiTab
           tenant={tenant}
           taskId={taskId}
           taskSchemaId={taskSchemaId}

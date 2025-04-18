@@ -1,6 +1,6 @@
 import { Code16Regular } from '@fluentui/react-icons';
 import { useCallback } from 'react';
-import { SiPython, SiTypescript } from 'react-icons/si';
+import { SiGo, SiPython, SiTypescript } from 'react-icons/si';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/RadioGroup';
 import { CodeLanguage, displayName } from '@/types/snippets';
 
@@ -21,6 +21,8 @@ function LanguageIcon(props: LanguageIconProps) {
       return <SiPython size={16} className='text-gray-400' />;
     case CodeLanguage.REST:
       return <Code16Regular className='text-gray-400' />;
+    case CodeLanguage.GO:
+      return <SiGo size={16} className='text-gray-400' />;
   }
 }
 
