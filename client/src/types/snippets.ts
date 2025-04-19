@@ -3,6 +3,7 @@ export enum CodeLanguage {
   TYPESCRIPT = 'TypeScript',
   PYTHON = 'Python',
   REST = 'Rest',
+  GO = 'Go',
 }
 
 export function displayName(language: CodeLanguage) {
@@ -15,6 +16,8 @@ export function displayName(language: CodeLanguage) {
       return 'Python';
     case CodeLanguage.REST:
       return 'RESTful API';
+    case CodeLanguage.GO:
+      return 'Go';
   }
 }
 

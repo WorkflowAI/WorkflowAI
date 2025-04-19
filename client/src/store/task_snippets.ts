@@ -69,8 +69,14 @@ export const useTaskSnippets = create<TaskSnippetsState>((set, get) => ({
         separate_run_and_stream: true,
       };
 
+      // Map the CodeLanguage to the appropriate API endpoint
+      let endpointPath = '/python'; // Default to Python
+      if (language === CodeLanguage.GO) {
+        endpointPath = '/go';
+      }
+
       const snippet = await client.post<GenerateCodeBlockRequest, GenerateCodeBlockResponse>(
-        taskSchemaSubPath(tenant, taskId, taskSchemaId, `/python`),
+        taskSchemaSubPath(tenant, taskId, taskSchemaId, endpointPath),
         requestBody
       );
       set(
