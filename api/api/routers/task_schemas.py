@@ -27,6 +27,7 @@ from api.dependencies.task_info import TaskTupleDep
 from api.errors import prettify_errors
 from api.routers._common import DeprecatedVersionReference
 from api.services.python_gen import RunCode, generate_full_run_code
+from api.services.go_gen import GoCode, generate_go_code
 from api.utils import error_json_response
 from core.agents.task_instruction_tool_update_task import (
     TaskInstructionsToolUpdateTaskOutput,
@@ -324,7 +325,7 @@ async def add_example(
 
 class GenerateCodeBlockResponse(BaseModel):
     class Snippet(BaseModel):
-        language: Literal["python", "bash"]
+        language: Literal["python", "bash", "go"]
         code: str
 
     sdk: Snippet
@@ -385,6 +386,27 @@ async def generate_python_code_block(
         run=GenerateCodeBlockResponse.Snippet(
             language="python",
             code=f"{run_code.run.imports}\n\n{run_code.common}\n\n{run_code.run.code}",
+        ),
+    )
+
+
+@router.post("/go")
+async def generate_go_code_block(
+    task_variant: TaskVariantDep,
+    request: GenerateCodeBlockRequest,
+) -> GenerateCodeBlockResponse:
+    go_code = generate_go_code(
+        task_variant,
+        request.example_task_run_input,
+        version=request.group_environment or request.group_iteration,
+        url=request.url,
+    )
+
+    return GenerateCodeBlockResponse(
+        sdk=GenerateCodeBlockResponse.Snippet(language="bash", code=go_code.client_setup),
+        run=GenerateCodeBlockResponse.Snippet(
+            language="go",
+            code=go_code.code,
         ),
     )
 
