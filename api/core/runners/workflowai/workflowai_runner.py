@@ -6,7 +6,7 @@ from collections.abc import Sequence
 from copy import deepcopy
 from typing import Any, Callable, Iterable, NamedTuple, Optional
 
-from pydantic import TypeAdapter, ValidationError
+from pydantic import TypeAdapter
 from typing_extensions import override
 
 from api.services.providers_service import shared_provider_factory
@@ -347,7 +347,11 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
             # a bit hacky but we templates that have structured generation enabled do
             # not show the output schema
             is_structured_generation_enabled=is_structured_generation_enabled
-            or not self._prepared_output_schema.prepared_schema.get("properties"),
+            or (
+                not self._prepared_output_schema.prepared_schema.get("properties")
+                and self._prepared_output_schema.min_file_count == 0
+                and self._prepared_output_schema.max_file_count == 0
+            ),
             supports_input_schema=data.support_input_schema,
         )
         return provider.sanitize_template(sanitized)
@@ -418,27 +422,13 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
     ) -> ImageOptions | None:
         """Extract the image options from the input and remove it from the input if possible"""
         base = self.properties.image_options
-        if self._prepared_output_schema.min_file_count:
-            if not base:
-                base = ImageOptions()
-            if not base.image_count:
-                base.image_count = self._prepared_output_schema.min_file_count
 
-        # We consider that input can contain the same fields as ImageOptions
-        try:
-            extracted_options = ImageOptions.model_validate(input)
-        except ValidationError:
-            return base
+        if base is None:
+            base = ImageOptions()
+        if self._prepared_output_schema.min_file_count and not base.image_count:
+            base.image_count = self._prepared_output_schema.min_file_count
 
-        # In case of validation, we can check which key was actually extracted
-        extracted_keys = extracted_options.model_dump(exclude_unset=True)
-
-        if delete_keys:
-            # We can remove the corresponding fields from the input since they are already used
-            for key in extracted_keys:
-                input.pop(key, None)
-
-        return extracted_options
+        return base
 
     async def _build_messages(
         self,
