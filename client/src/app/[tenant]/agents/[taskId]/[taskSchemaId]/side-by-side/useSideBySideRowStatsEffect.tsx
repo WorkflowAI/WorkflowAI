@@ -6,8 +6,8 @@ import { buildScopeKey } from '@/store/utils';
 import { TaskID, TaskSchemaID, TenantID } from '@/types/aliases';
 import { TaskRun } from '@/types/task_run';
 import { ModelResponse } from '@/types/workflowAI';
-import { useMinimumCostTaskRun } from '../playground/hooks/useMinimumCostTaskRun';
-import { useMinimumLatencyTaskRun } from '../playground/hooks/useMinimumLatencyTaskRun';
+import { useMinimumCostTaskRun } from '../old-playground/hooks/useMinimumCostTaskRun';
+import { useMinimumLatencyTaskRun } from '../old-playground/hooks/useMinimumLatencyTaskRun';
 
 function findEntry(
   runs: Set<SideBySideEntry> | undefined,

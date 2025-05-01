@@ -5,7 +5,7 @@ import { useCallback, useMemo } from 'react';
 import { TemperatureSelector } from '@/components/TemperatureSelector/TemperatureSelector';
 import { Textarea } from '@/components/ui/Textarea';
 import { MajorVersion, ToolKind } from '@/types/workflowAI';
-import { InstructionsDiffViewer } from './components/InstructionsDiffViewer';
+import { InstructionsDiffViewer } from '../../playground/components/Tab/Parameters/InstructionsDiffViewer';
 import { MajorVersionCombobox } from './components/MajorVersionSelector/MajorVersionSelector';
 import { PlagroundParametersToolbox } from './components/Toolbox/playgroundParametersToolbox';
 import { RunTaskOptions } from './hooks/usePlaygroundPersistedState';

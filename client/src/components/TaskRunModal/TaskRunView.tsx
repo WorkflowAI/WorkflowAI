@@ -1,7 +1,7 @@
 import { Open16Regular } from '@fluentui/react-icons';
 import { useMemo } from 'react';
 import { useToggle } from 'usehooks-ts';
-import { ModelOutputErrorInformation } from '@/app/[tenant]/agents/[taskId]/[taskSchemaId]/playground/components/ModelOutputErrorInformation';
+import { ModelOutputErrorInformation } from '@/app/[tenant]/agents/[taskId]/[taskSchemaId]/old-playground/components/ModelOutputErrorInformation';
 import { ObjectViewer } from '@/components';
 import { PersistantAllotment } from '@/components/PersistantAllotment';
 import { Loader } from '@/components/ui/Loader';

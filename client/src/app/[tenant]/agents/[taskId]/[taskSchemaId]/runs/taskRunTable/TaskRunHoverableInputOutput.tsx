@@ -3,11 +3,11 @@ import { ObjectViewer } from '@/components/ObjectViewer/ObjectViewer';
 import { TaskOutputViewer } from '@/components/ObjectViewer/TaskOutputViewer';
 import { Loader } from '@/components/ui/Loader';
 import { SimpleTooltip } from '@/components/ui/Tooltip';
-import { useOrFetchCurrentTaskSchema, useOrFetchRunV1 } from '@/store/fetchers';
+import { useOrFetchRunV1, useOrFetchTaskSchema } from '@/store/fetchers';
 import { TaskID } from '@/types/aliases';
 import { TaskSchemaID } from '@/types/aliases';
 import { RunItemV1 } from '@/types/workflowAI';
-import { ModelOutputErrorInformation } from '../../playground/components/ModelOutputErrorInformation';
+import { ModelOutputErrorInformation } from '../../old-playground/components/ModelOutputErrorInformation';
 import { PreviewBox } from './PreviewBox';
 
 type TaskRunHoverableInputOutputContentProps = {
@@ -17,7 +17,7 @@ type TaskRunHoverableInputOutputContentProps = {
 function TaskRunHoverableInputOutputContent(props: TaskRunHoverableInputOutputContentProps) {
   const { runItem } = props;
 
-  const { taskSchema, isInitialized: isTaskSchemaInitialized } = useOrFetchCurrentTaskSchema(
+  const { taskSchema, isInitialized: isTaskSchemaInitialized } = useOrFetchTaskSchema(
     undefined,
     runItem.task_id as TaskID,
     `${runItem.task_schema_id}` as TaskSchemaID

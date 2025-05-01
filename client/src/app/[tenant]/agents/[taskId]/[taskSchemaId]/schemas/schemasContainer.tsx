@@ -14,14 +14,14 @@ import { useIsAllowed } from '@/lib/hooks/useIsAllowed';
 import { useTaskSchemaParams } from '@/lib/hooks/useTaskParams';
 import { replaceTaskSchemaId, taskSchemaRoute } from '@/lib/routeFormatter';
 import { getActiveSchemaIds, getHiddenSchemaIds, getVisibleSchemaIds } from '@/lib/taskUtils';
-import { useOrFetchCurrentTaskSchema, useOrFetchTask } from '@/store';
+import { useOrFetchTask, useOrFetchTaskSchema } from '@/store';
 import { useTaskSchemas } from '@/store/task_schemas';
 import { TaskSchemaID } from '@/types/aliases';
 import { SchemasContent } from './schemasContent';
 
 export function SchemasContainer() {
   const { tenant, taskId, taskSchemaId } = useTaskSchemaParams();
-  const { taskSchema, isInitialized } = useOrFetchCurrentTaskSchema(tenant, taskId, taskSchemaId);
+  const { taskSchema, isInitialized } = useOrFetchTaskSchema(tenant, taskId, taskSchemaId);
   const { task } = useOrFetchTask(tenant, taskId, true);
   const { openModal: openEditTaskModal } = useNewTaskModal();
   const { checkIfAllowed } = useIsAllowed();

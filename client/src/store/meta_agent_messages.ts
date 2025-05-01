@@ -1,7 +1,7 @@
 import { produce } from 'immer';
 import { create } from 'zustand';
 import { Method, SSEClient } from '@/lib/api/client';
-import { TaskID, TaskSchemaID, TenantID } from '@/types/aliases';
+import { TaskID, TenantID } from '@/types/aliases';
 import { MetaAgentChatMessage, MetaAgentChatRequest, PlaygroundState, Provider } from '../types/workflowAI/models';
 import { rootTaskPathNoProxy } from './utils';
 
@@ -39,17 +39,11 @@ interface MetaAgentChatState {
 
   remove: (taskId: TaskID) => void;
 
-  reset: (
-    tenant: TenantID | undefined,
-    taskId: TaskID,
-    schemaId: TaskSchemaID,
-    playgroundState: PlaygroundState
-  ) => void;
+  reset: (tenant: TenantID | undefined, taskId: TaskID, playgroundState: PlaygroundState) => void;
 
   sendMessage: (
     tenant: TenantID | undefined,
     taskId: TaskID,
-    schemaId: TaskSchemaID,
     text: string | undefined,
     role: 'USER' | 'PLAYGROUND',
     playgroundState: PlaygroundState,
@@ -107,15 +101,14 @@ export const useMetaAgentChat = create<MetaAgentChatState>((set, get) => ({
     );
   },
 
-  reset: (tenant: TenantID | undefined, taskId: TaskID, schemaId: TaskSchemaID, playgroundState: PlaygroundState) => {
+  reset: (tenant: TenantID | undefined, taskId: TaskID, playgroundState: PlaygroundState) => {
     get().remove(taskId);
-    get().sendMessage(tenant, taskId, schemaId, undefined, 'USER', playgroundState);
+    get().sendMessage(tenant, taskId, undefined, 'USER', playgroundState);
   },
 
   sendMessage: async (
     tenant: TenantID | undefined,
     taskId: TaskID,
-    schemaId: TaskSchemaID,
     text: string | undefined,
     role: 'USER' | 'PLAYGROUND',
     playgroundState: PlaygroundState,
@@ -153,7 +146,6 @@ export const useMetaAgentChat = create<MetaAgentChatState>((set, get) => ({
     const request: MetaAgentChatRequest = {
       messages: messages ?? [],
       playground_state: playgroundState,
-      schema_id: parseInt(schemaId),
     };
 
     const updateMessages = (response: MetaAgentChatResponse) => {

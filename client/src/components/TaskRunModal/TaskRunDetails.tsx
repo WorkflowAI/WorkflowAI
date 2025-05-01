@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import { AIEvaluationReview } from '@/app/[tenant]/agents/[taskId]/[taskSchemaId]/playground/components/AIEvaluation/AIEvaluationReview';
-import { TaskRunOutputRows } from '@/app/[tenant]/agents/[taskId]/[taskSchemaId]/playground/components/TaskRunOutputRows/TaskRunOutputRows';
+import { AIEvaluationReview } from '@/app/[tenant]/agents/[taskId]/[taskSchemaId]/old-playground/components/AIEvaluation/AIEvaluationReview';
+import { TaskRunOutputRows } from '@/app/[tenant]/agents/[taskId]/[taskSchemaId]/old-playground/components/TaskRunOutputRows/TaskRunOutputRows';
 import { getContextWindowInformation } from '@/lib/taskRunUtils';
 import { TaskRun } from '@/types';
 import { TaskID, TenantID } from '@/types/aliases';

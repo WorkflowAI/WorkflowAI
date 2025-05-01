@@ -920,7 +920,6 @@ export type MetaAgentChatMessage = {
 };
 
 export type MetaAgentChatRequest = {
-  schema_id: number;
   /**
    * The state of the playground
    */

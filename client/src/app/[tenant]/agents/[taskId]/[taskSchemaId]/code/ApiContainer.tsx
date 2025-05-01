@@ -9,9 +9,9 @@ import { useTaskSchemaParams } from '@/lib/hooks/useTaskParams';
 import { useParsedSearchParams, useRedirectWithParams } from '@/lib/queryString';
 import {
   useOrFetchApiKeys,
-  useOrFetchCurrentTaskSchema,
   useOrFetchTask,
   useOrFetchTaskRuns,
+  useOrFetchTaskSchema,
   useOrFetchVersions,
 } from '@/store';
 import { TaskID, TaskSchemaID } from '@/types/aliases';
@@ -108,11 +108,7 @@ export function ApiContainer() {
 
   const taskSchemaId = selectedVersion?.schema_id as TaskSchemaID | undefined;
 
-  const { taskSchema, isInitialized: isTaskSchemaInitialized } = useOrFetchCurrentTaskSchema(
-    tenant,
-    taskId,
-    taskSchemaId
-  );
+  const { taskSchema, isInitialized: isTaskSchemaInitialized } = useOrFetchTaskSchema(tenant, taskId, taskSchemaId);
 
   const { taskRuns, isInitialized: isTaskRunsInitialized } = useOrFetchTaskRuns(
     tenant,

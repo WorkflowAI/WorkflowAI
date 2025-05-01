@@ -1,7 +1,7 @@
 import { Settings20Filled, Settings20Regular } from '@fluentui/react-icons';
 import { cx } from 'class-variance-authority';
 import { useEffect, useState } from 'react';
-import { RunTaskOptions } from '@/app/[tenant]/agents/[taskId]/[taskSchemaId]/playground/hooks/usePlaygroundPersistedState';
+import { RunTaskOptions } from '@/app/[tenant]/agents/[taskId]/[taskSchemaId]/old-playground/hooks/usePlaygroundPersistedState';
 import { SimpleTooltip } from '@/components/ui/Tooltip';
 import { TemperatureSliderSelector } from './TemperatureSliderSelector';
 

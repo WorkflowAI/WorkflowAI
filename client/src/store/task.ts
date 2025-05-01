@@ -82,7 +82,8 @@ interface TasksState {
     tenant: TenantID | undefined,
     taskId: TaskID,
     taskSchemaId: TaskSchemaID,
-    onMessage: (message: string) => void
+    onMessage: (message: string) => void,
+    signal?: AbortSignal
   ): Promise<string>;
   updateTaskInstructions(
     tenant: TenantID | undefined,
@@ -253,7 +254,8 @@ export const useTasks = create<TasksState>((set, get) => ({
     tenant: TenantID | undefined,
     taskId: TaskID,
     taskSchemaId: TaskSchemaID,
-    onMessage: (message: string) => void
+    onMessage: (message: string) => void,
+    signal?: AbortSignal
   ): Promise<string> => {
     const handleOnMessage = (message: SuggestedInstructionsResponse) => {
       onMessage(message.suggested_instructions);
@@ -262,7 +264,8 @@ export const useTasks = create<TasksState>((set, get) => ({
       `${rootTaskPathNoProxy(tenant)}/${taskId}/schemas/${taskSchemaId}/suggested-instructions`,
       Method.GET,
       '',
-      handleOnMessage
+      handleOnMessage,
+      signal
     );
     return lastMessage.suggested_instructions;
   },

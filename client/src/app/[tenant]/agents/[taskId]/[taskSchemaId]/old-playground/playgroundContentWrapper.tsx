@@ -4,13 +4,13 @@ import { useRef } from 'react';
 import { Loader } from '@/components/ui/Loader';
 import { useCompatibleAIModels } from '@/lib/hooks/useCompatibleAIModels';
 import { useOrFetchLatestTaskRun, useOrFetchTask, useOrFetchVersions } from '@/store';
-import { useOrFetchCurrentTaskSchema } from '@/store';
+import { useOrFetchTaskSchema } from '@/store';
 import { PlaygroundContent, PlaygroundContentProps } from './playgroundContent';
 
 export function PlaygroundContentWrapper(props: PlaygroundContentProps) {
   const { taskId, taskSchemaId, tenant } = props;
 
-  const { taskSchema } = useOrFetchCurrentTaskSchema(tenant, taskId, taskSchemaId);
+  const { taskSchema } = useOrFetchTaskSchema(tenant, taskId, taskSchemaId);
 
   const {
     compatibleModels,

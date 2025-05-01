@@ -7,7 +7,7 @@ import { cloneDeep } from 'lodash';
 import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useIsMounted, useToggle } from 'usehooks-ts';
-import { useVariants } from '@/app/[tenant]/agents/[taskId]/[taskSchemaId]/playground/hooks/useVariants';
+import { useVariants } from '@/app/[tenant]/agents/[taskId]/[taskSchemaId]/old-playground/hooks/useVariants';
 import { AlertDialog } from '@/components/ui/AlertDialog';
 import { Dialog, DialogContent } from '@/components/ui/Dialog';
 import { WORKFLOW_AI_USERNAME } from '@/lib/constants';
@@ -23,7 +23,7 @@ import {
   fromSplattedEditorFieldsToSchema,
 } from '@/lib/schemaEditorUtils';
 import { mergeSchemas } from '@/lib/schemaUtils';
-import { useOrFetchCurrentTaskSchema, useOrFetchVersions, useTasks } from '@/store';
+import { useOrFetchTaskSchema, useOrFetchVersions, useTasks } from '@/store';
 import { ToolCallName, usePlaygroundChatStore } from '@/store/playgroundChatStore';
 import { useTaskSchemas } from '@/store/task_schemas';
 import { JsonSchema } from '@/types';
@@ -83,7 +83,7 @@ export function NewTaskModal() {
   const { tenant, taskId, taskSchemaId } = useTaskSchemaParams();
   const loggedInTenant = useLoggedInTenantID();
 
-  const { taskSchema: currentTaskSchema, isInitialized: taskSchemaInitialized } = useOrFetchCurrentTaskSchema(
+  const { taskSchema: currentTaskSchema, isInitialized: taskSchemaInitialized } = useOrFetchTaskSchema(
     tenant,
     taskId,
     taskSchemaId
