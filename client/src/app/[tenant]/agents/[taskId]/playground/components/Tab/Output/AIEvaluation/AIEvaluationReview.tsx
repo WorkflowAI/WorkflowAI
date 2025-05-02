@@ -7,7 +7,6 @@ import { cn } from '@/lib/utils';
 import { useOrFetchTaskRunReviews } from '@/store/fetchers';
 import { useTaskRunReviews } from '@/store/task_run_reviews';
 import { TaskID, TenantID } from '@/types/aliases';
-import { combineReviewAspects } from '../../utils';
 import { AIDisagreeResponseBox } from './AIDisagreeResponseBox';
 import {
   AIEvaluationReviewButton,
@@ -15,6 +14,7 @@ import {
   AIEvaluationReviewButtonThumb,
 } from './AIEvaluationReviewButton';
 import { AIEvaluationReviewComment } from './AIEvaluationReviewComment';
+import { combineReviewAspects } from './utils';
 
 interface AIEvaluationReviewProps {
   runId: string;

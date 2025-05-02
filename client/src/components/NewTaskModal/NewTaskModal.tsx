@@ -7,7 +7,7 @@ import { cloneDeep } from 'lodash';
 import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useIsMounted, useToggle } from 'usehooks-ts';
-import { useVariants } from '@/app/[tenant]/agents/[taskId]/[taskSchemaId]/old-playground/hooks/useVariants';
+import { useVariants } from '@/app/[tenant]/agents/[taskId]/playground/components/Tab/hooks/useVariants';
 import { AlertDialog } from '@/components/ui/AlertDialog';
 import { Dialog, DialogContent } from '@/components/ui/Dialog';
 import { WORKFLOW_AI_USERNAME } from '@/lib/constants';

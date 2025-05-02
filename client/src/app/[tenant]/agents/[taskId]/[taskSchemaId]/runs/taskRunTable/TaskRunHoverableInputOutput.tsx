@@ -7,7 +7,7 @@ import { useOrFetchRunV1, useOrFetchTaskSchema } from '@/store/fetchers';
 import { TaskID } from '@/types/aliases';
 import { TaskSchemaID } from '@/types/aliases';
 import { RunItemV1 } from '@/types/workflowAI';
-import { ModelOutputErrorInformation } from '../../old-playground/components/ModelOutputErrorInformation';
+import { ModelOutputErrorInformation } from '../../../playground/components/Tab/Output/ModelOutputErrorInformation';
 import { PreviewBox } from './PreviewBox';
 
 type TaskRunHoverableInputOutputContentProps = {

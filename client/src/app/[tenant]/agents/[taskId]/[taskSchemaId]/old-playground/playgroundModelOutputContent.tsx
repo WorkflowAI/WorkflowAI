@@ -17,9 +17,9 @@ import { useVersions } from '@/store/versions';
 import { JsonSchema, TaskOutput, TaskRun, ToolCallPreview } from '@/types';
 import { TaskID, TaskSchemaID, TenantID } from '@/types/aliases';
 import { ModelResponse, ReasoningStep, VersionV1 } from '@/types/workflowAI';
+import { AIEvaluationReview } from '../../playground/components/Tab/Output/AIEvaluation/AIEvaluationReview';
+import { TaskRunOutputRows } from '../../playground/components/Tab/Output/TaskRunOutputRows/TaskRunOutputRows';
 import { ImprovePrompt } from './ImprovePrompt';
-import { AIEvaluationReview } from './components/AIEvaluation/AIEvaluationReview';
-import { TaskRunOutputRows } from './components/TaskRunOutputRows/TaskRunOutputRows';
 
 type ModelOutputContentProps = {
   currentAIModel: ModelResponse | undefined;

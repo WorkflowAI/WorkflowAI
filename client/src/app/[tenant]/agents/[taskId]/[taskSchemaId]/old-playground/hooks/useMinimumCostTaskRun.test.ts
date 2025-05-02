@@ -1,6 +1,6 @@
 import { renderHook } from '@testing-library/react';
 import { TaskRun } from '@/types';
-import { useMinimumCostTaskRun } from './useMinimumCostTaskRun';
+import { useMinimumCostTaskRun } from '../../../playground/components/Tab/hooks/useMinimumCostTaskRun';
 
 describe('useMinimumCostTaskRun', () => {
   const MINIMUM_TASK_RUN = {

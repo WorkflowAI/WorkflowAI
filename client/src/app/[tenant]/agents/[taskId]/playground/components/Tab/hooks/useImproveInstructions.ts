@@ -1,10 +1,10 @@
 import { captureException } from '@sentry/nextjs';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { displayErrorToaster, displaySuccessToaster } from '@/components/ui/Sonner';
 import { ToolCallName, usePlaygroundChatStore } from '@/store/playgroundChatStore';
 import { ImproveVersionResponse, useTasks } from '@/store/task';
 import { TaskID, TaskSchemaID, TenantID } from '@/types/aliases';
-import { ToolKind } from '@/types/workflowAI';
+import { ImproveVersionRequest, ToolKind } from '@/types/workflowAI';
 
 export function useImproveInstructions(
   tenant: TenantID | undefined,
@@ -24,10 +24,7 @@ export function useImproveInstructions(
   }, []);
 
   const instructionsRef = useRef(instructions);
-
-  useEffect(() => {
-    instructionsRef.current = instructions;
-  }, [instructions]);
+  instructionsRef.current = instructions;
 
   const [isLoading, setIsLoading] = useState(false);
   const { markToolCallAsDone, cancelToolCall } = usePlaygroundChatStore();
@@ -36,6 +33,10 @@ export function useImproveInstructions(
 
   const improveInstructions = useCallback(
     async (text: string, runId: string | undefined) => {
+      if (!instructionsRef.current) {
+        return;
+      }
+
       abortControllerRef.current?.abort();
       const abortController = new AbortController();
       abortControllerRef.current = abortController;
@@ -55,15 +56,17 @@ export function useImproveInstructions(
         setOldInstructions(instructionsRef.current);
         setIsLoading(true);
 
+        const payload: ImproveVersionRequest = {
+          run_id: runId,
+          user_evaluation: text,
+          variant_id: variantId,
+          instructions: instructionsRef.current,
+        };
+
         const { improved_properties, changelog } = await improveVersion(
           tenant,
           taskId,
-          {
-            run_id: runId,
-            user_evaluation: text,
-            variant_id: variantId,
-            instructions: instructionsRef.current,
-          },
+          payload,
           onMessage,
           abortController.signal
         );
@@ -80,9 +83,9 @@ export function useImproveInstructions(
         setIsLoading(false);
         captureException(error);
         if (!abortController.signal.aborted) {
-          displayErrorToaster('Failed to improve AI agent run version - Please try again');
+          return;
         }
-        throw new Error('Failed to improve AI agent run version');
+        displayErrorToaster('Failed to improve AI agent run version - Please try again');
       }
     },
     [improveVersion, taskId, tenant, setInstructions, setChangelog, variantId, cancelToolCall, markToolCallAsDone]
@@ -90,13 +93,11 @@ export function useImproveInstructions(
 
   const updateTaskInstructions = useTasks((state) => state.updateTaskInstructions);
 
-  const abortControllerForUpdateTaskInstructionsRef = useRef<AbortController | undefined>(undefined);
-
   const onToolsChange = useCallback(
     async (tools: ToolKind[]) => {
-      abortControllerForUpdateTaskInstructionsRef.current?.abort();
+      abortControllerRef.current?.abort();
       const abortController = new AbortController();
-      abortControllerForUpdateTaskInstructionsRef.current = abortController;
+      abortControllerRef.current = abortController;
 
       setOldInstructions(instructionsRef.current);
       setIsLoading(true);
@@ -111,14 +112,15 @@ export function useImproveInstructions(
           setInstructions,
           abortController.signal
         );
+
         setInstructions(data);
       } catch (error) {
         setIsLoading(false);
         captureException(error);
         if (!abortController.signal.aborted) {
-          displayErrorToaster('Failed to improve AI agent run version - Please try again');
+          return;
         }
-        throw new Error('Failed to update AI Agent instructions');
+        displayErrorToaster('Failed to improve AI agent run version - Please try again');
       }
 
       setIsLoading(false);
@@ -144,9 +146,9 @@ export function useImproveInstructions(
   const generateSuggestedInstructions = useTasks((state) => state.generateSuggestedInstructions);
 
   const generateInstructions = useCallback(async () => {
-    abortControllerForUpdateTaskInstructionsRef.current?.abort();
+    abortControllerRef.current?.abort();
     const abortController = new AbortController();
-    abortControllerForUpdateTaskInstructionsRef.current = abortController;
+    abortControllerRef.current = abortController;
 
     setIsLoading(true);
 

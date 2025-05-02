@@ -1,6 +1,6 @@
 import { renderHook } from '@testing-library/react';
 import { TaskRun } from '@/types';
-import { useMinimumLatencyTaskRun } from './useMinimumLatencyTaskRun';
+import { useMinimumLatencyTaskRun } from '../../../playground/components/Tab/hooks/useMinimumLatencyTaskRun';
 
 describe('useMinimumLatencyTaskRun', () => {
   const MINIMUM_TASK_RUN = {

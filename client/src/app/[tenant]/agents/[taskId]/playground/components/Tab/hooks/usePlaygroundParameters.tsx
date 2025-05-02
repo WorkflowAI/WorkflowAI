@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocalStorage } from 'usehooks-ts';
 import { TaskID, TaskSchemaID, TenantID } from '@/types/aliases';
-import { TaskSchemaResponseWithSchema } from '@/types/task';
 import { MajorVersion } from '@/types/workflowAI';
 import { useImproveInstructions } from './useImproveInstructions';
 
@@ -10,14 +9,9 @@ export function usePlaygroundParameters(
   taskId: TaskID,
   tabId: string,
   majorVersion: MajorVersion | undefined,
-  newestSchema: TaskSchemaResponseWithSchema | undefined
+  schemaId: TaskSchemaID,
+  variantId: string | undefined
 ) {
-  const majorSchemaId = majorVersion ? (`${majorVersion?.schema_id}` as TaskSchemaID) : undefined;
-  const newestSchemaId = `${newestSchema?.schema_id}` as TaskSchemaID;
-
-  const schemaId = majorSchemaId ?? newestSchemaId;
-  const variantId = majorVersion?.properties.task_variant_id ?? newestSchema?.latest_variant_id ?? undefined;
-
   const [showCustomParameters, setShowCustomParameters] = useLocalStorage<boolean>(
     `playground-show-custom-parameters-${tabId}-${majorVersion?.major}`,
     false
@@ -30,6 +24,7 @@ export function usePlaygroundParameters(
     `playground-instructions-${tabId}-${majorVersion?.major}`,
     undefined
   );
+
   const [customTemperature, setCustomTemperature] = useLocalStorage<number | undefined>(
     `playground-temperature-${tabId}-${majorVersion?.major}`,
     undefined
@@ -77,8 +72,8 @@ export function usePlaygroundParameters(
 
   const {
     onToolsChange,
-    improveInstructions,
-    generateInstructions,
+    improveInstructions: onImproveInstructions,
+    generateInstructions: onGenerateInstructions,
     oldInstructions,
     resetOldInstructions,
     isLoading,
@@ -157,6 +152,18 @@ export function usePlaygroundParameters(
     return !showCustomParameters && areThereCustomParameters;
   }, [showCustomParameters, areThereCustomParameters, baseInstructions, baseTemperature]);
 
+  const selectedMajorVersion = useMemo(() => {
+    if (!majorVersion) {
+      return undefined;
+    }
+
+    if (majorVersion.properties.instructions === instructions && majorVersion.properties.temperature === temperature) {
+      return majorVersion;
+    }
+
+    return undefined;
+  }, [majorVersion, instructions, temperature]);
+
   return {
     instructions,
     temperature,
@@ -167,16 +174,18 @@ export function usePlaygroundParameters(
     onMoveToNextParameters: showNext ? onMoveToNext : undefined,
 
     oldInstructions,
-    changelog,
+    changelog: showCustomParameters ? changelog : undefined,
     isLoading,
     resetImprovedInstructions,
     approveImprovedInstructions,
     onToolsChange,
 
-    improveInstructions,
-    generateInstructions,
+    onImproveInstructions,
+    onGenerateInstructions,
     cancelImproveInstructions,
 
     resetHistoryIndex,
+
+    selectedMajorVersion,
   };
 }

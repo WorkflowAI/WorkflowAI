@@ -13,7 +13,8 @@ export function fixInvalidTabs(tabs: Tab[] | undefined): Tab[] | undefined {
     return undefined;
   }
 
-  const result = tabs.map((tab) => {
+  // First fix invalid IDs
+  const fixedTabs = tabs.map((tab) => {
     const tabId = tab.id === 'undefined' || tab.id === '' || !tab.id ? nanoid(10) : tab.id;
 
     return {
@@ -22,11 +23,14 @@ export function fixInvalidTabs(tabs: Tab[] | undefined): Tab[] | undefined {
     };
   });
 
-  if (result.length === 0) {
+  // Then filter to keep only first occurrence of each ID
+  const uniqueTabs = fixedTabs.filter((tab, index, self) => index === self.findIndex((t) => t.id === tab.id));
+
+  if (uniqueTabs.length === 0) {
     return undefined;
   }
 
-  return result;
+  return uniqueTabs;
 }
 
 export function getTabsFromParams(

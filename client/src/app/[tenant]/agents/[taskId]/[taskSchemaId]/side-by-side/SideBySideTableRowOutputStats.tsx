@@ -1,5 +1,5 @@
-import { LatencyOutputValueRow } from '../old-playground/components/TaskRunOutputRows/LatencyOutputValueRow';
-import { PriceOutputValueRow } from '../old-playground/components/TaskRunOutputRows/PriceOutputValueRow';
+import { LatencyOutputValueRow } from '../../playground/components/Tab/Output/TaskRunOutputRows/LatencyOutputValueRow';
+import { PriceOutputValueRow } from '../../playground/components/Tab/Output/TaskRunOutputRows/PriceOutputValueRow';
 import { SideBySideRowStats } from './useSideBySideRowStatsEffect';
 
 type SideBySideTableRowOutputStatsProps = {

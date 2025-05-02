@@ -27,11 +27,17 @@ export function Playground(props: Props) {
 
   const { task, isInitialized: isTaskInitialized } = useOrFetchTask(tenant, taskId);
 
-  const { tabs, onCloseTab, onAddTab, majorVersions, versions, onSelectMajorVersion, newestSchema } = useTabs(
-    tenant,
-    taskId,
-    task
-  );
+  const {
+    tabs,
+    onCloseTab,
+    onAddTab,
+    majorVersions,
+    versions,
+    onSelectMajorVersion,
+    onSelectModel,
+    onSelectRun,
+    newestSchema,
+  } = useTabs(tenant, taskId, task);
 
   const isMobile = useIsMobile();
   const { isInDemoMode, onDifferentTenant } = useDemoMode();
@@ -144,6 +150,8 @@ export function Playground(props: Props) {
                 versions={versions}
                 majorVersions={majorVersions}
                 onSelectMajorVersion={(majorVersion) => onSelectMajorVersion(tab.id, majorVersion)}
+                onSelectModel={(model) => onSelectModel(tab.id, model)}
+                onSelectRun={(runId) => onSelectRun(tab.id, runId)}
               />
             ))}
             <PlaygroundAddTab onAddTab={onAddAndScrollToNewTab} />

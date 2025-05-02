@@ -11,7 +11,7 @@ import { MajorVersion } from '@/types/workflowAI';
 import { useInputGenerator } from './useInputGenerator';
 import { usePlaygroundInputHistory } from './usePlaygroundInputHistory';
 
-export function usePlaygroundInputOutput(
+export function usePlaygroundInput(
   tenant: TenantID | undefined,
   taskId: TaskID,
   tabId: string | undefined,
@@ -25,6 +25,7 @@ export function usePlaygroundInputOutput(
 
   const schema = majorSchema ?? newestSchema;
   const schemaId = majorSchemaId ?? newestSchemaId;
+  const variantId = majorVersion?.properties.task_variant_id ?? newestSchema?.latest_variant_id ?? undefined;
 
   const inputSchema = schema?.input_schema.json_schema;
   const outputSchema = schema?.output_schema.json_schema;
@@ -64,6 +65,7 @@ export function usePlaygroundInputOutput(
 
   return {
     schemaId,
+    variantId,
     inputSchema,
     outputSchema,
     isInputGenerationSupported,

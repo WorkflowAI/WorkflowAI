@@ -1,13 +1,9 @@
-import { useEffect, useMemo, useRef } from 'react';
-import { TenantID } from '@/types/aliases';
-import { TaskID } from '@/types/aliases';
+import { useEffect, useMemo, useState } from 'react';
 import { TaskSchemaID } from '@/types/aliases';
 import { GeneralizedTaskInput } from '@/types/task_run';
 import { MajorVersion } from '@/types/workflowAI';
 
 export function usePlaygroundFirstGenerationFlow(
-  tenant: TenantID | undefined,
-  taskId: TaskID,
   schemaId: TaskSchemaID,
   majorVersion: MajorVersion | undefined,
   instructions: string,
@@ -16,38 +12,38 @@ export function usePlaygroundFirstGenerationFlow(
   generateInstructions: () => Promise<void>
 ) {
   // Generating first instructions
-  const startedGeneratingInstructions = useRef(false);
+  const [startedGeneratingInstructions, setStartedGeneratingInstructions] = useState(false);
 
   const shouldGenerateInstructions = useMemo(() => {
-    if (!!majorVersion || (!!instructions && instructions !== '') || startedGeneratingInstructions.current) {
+    if (!!majorVersion || (!!instructions && instructions !== '') || startedGeneratingInstructions) {
       return false;
     }
     return true;
-  }, [majorVersion, instructions]);
+  }, [majorVersion, instructions, startedGeneratingInstructions]);
 
   useEffect(() => {
-    if (shouldGenerateInstructions && !startedGeneratingInstructions.current) {
-      startedGeneratingInstructions.current = true;
+    if (shouldGenerateInstructions && !startedGeneratingInstructions) {
+      setStartedGeneratingInstructions(true);
       generateInstructions();
     }
-  }, [shouldGenerateInstructions, generateInstructions]);
+  }, [shouldGenerateInstructions, generateInstructions, startedGeneratingInstructions]);
 
   // Generating first input
-  const startedGeneratingInput = useRef(false);
+  const [startedGeneratingInput, setStartedGeneratingInput] = useState(false);
 
   const shouldGenerateInput = useMemo(() => {
-    if (!instructions || instructions === '' || input !== undefined || startedGeneratingInput.current) {
+    if (!instructions || instructions === '' || input !== undefined || startedGeneratingInput) {
       return false;
     }
     return true;
-  }, [instructions, input]);
+  }, [instructions, input, startedGeneratingInput]);
 
   useEffect(() => {
-    if (shouldGenerateInput && !startedGeneratingInput.current) {
-      startedGeneratingInput.current = true;
+    if (shouldGenerateInput && !startedGeneratingInput) {
+      setStartedGeneratingInput(true);
       generateInput();
     }
-  }, [shouldGenerateInput, generateInput]);
+  }, [shouldGenerateInput, generateInput, startedGeneratingInput]);
 
   return;
 }

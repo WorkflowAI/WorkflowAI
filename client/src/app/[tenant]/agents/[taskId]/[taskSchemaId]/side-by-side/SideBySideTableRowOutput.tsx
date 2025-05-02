@@ -10,8 +10,8 @@ import { TaskID } from '@/types/aliases';
 import { SerializableTaskIOWithSchema } from '@/types/task';
 import { TaskOutput } from '@/types/task_run';
 import { CreateVersionRequest, TaskInputDict } from '@/types/workflowAI';
-import { AIEvaluationReview } from '../old-playground/components/AIEvaluation/AIEvaluationReview';
-import { useFetchTaskRunUntilCreated } from '../old-playground/hooks/useFetchTaskRunUntilCreated';
+import { AIEvaluationReview } from '../../playground/components/Tab/Output/AIEvaluation/AIEvaluationReview';
+import { useFetchTaskRunUntilCreated } from '../../playground/components/Tab/hooks/useFetchTaskRunUntilCreated';
 import { SideBySideTableRowOutputStats } from './SideBySideTableRowOutputStats';
 import { SideBySideRowStats } from './useSideBySideRowStatsEffect';
 

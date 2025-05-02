@@ -65,7 +65,7 @@ export function PlaygroundInstructions(props: Props) {
         />
       ) : (
         <Textarea
-          className='flex text-gray-900 placeholder:text-gray-500 font-normal text-[13px] rounded-[2px] min-h-[60px] border-gray-300 overflow-y-auto focus-within:ring-inset'
+          className='flex text-gray-900 placeholder:text-gray-500 font-normal text-[13px] rounded-[2px] min-h-[60px] max-h-[400px] border-gray-300 overflow-y-auto focus-within:ring-inset'
           placeholder='Add any instructions regarding how you want AI agents to be run on this version...'
           value={instructionsToDisplay}
           onChange={onInstructionsChange}

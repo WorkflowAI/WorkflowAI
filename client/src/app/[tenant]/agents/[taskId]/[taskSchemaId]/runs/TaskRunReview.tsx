@@ -3,7 +3,7 @@ import {
   AIEvaluationReviewButton,
   AIEvaluationReviewButtonMode,
   AIEvaluationReviewButtonThumb,
-} from '@/app/[tenant]/agents/[taskId]/[taskSchemaId]/old-playground/components/AIEvaluation/AIEvaluationReviewButton';
+} from '@/app/[tenant]/agents/[taskId]/playground/components/Tab/Output/AIEvaluation/AIEvaluationReviewButton';
 import { SimpleTooltip } from '@/components/ui/Tooltip';
 import { TaskRun } from '@/types/task_run';
 

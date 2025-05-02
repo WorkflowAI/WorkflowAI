@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useLocalStorage } from 'usehooks-ts';
 import { getNewestSchemaId } from '@/lib/taskUtils';
 import { useOrFetchTaskSchema, useOrFetchVersions } from '@/store';
@@ -24,6 +24,8 @@ export function useTabs(tenant: TenantID | undefined, taskId: TaskID, task: Seri
   const { tabs: tabsFromParams, setTabs: setTabsFromParams } = useBufferedParamsForTabs(
     majorVersions.length > 0 ? majorVersions : undefined
   );
+  const tabsFromParamsRef = useRef(tabsFromParams);
+  tabsFromParamsRef.current = tabsFromParams;
 
   // We will need those models for default tabs
   const { defaultTabs, findNewTab } = useDefaultTabs(tenant, taskId, majorVersions, isInitialized, newestSchemaId);
@@ -61,32 +63,38 @@ export function useTabs(tenant: TenantID | undefined, taskId: TaskID, task: Seri
 
   const onCloseTab = useCallback(
     (id: string) => {
-      if (!tabsFromParams) {
+      const tabs = tabsFromParamsRef.current;
+
+      if (!tabs) {
         return;
       }
 
-      const newTabs = tabsFromParams.filter((tab) => tab.id !== id);
+      const newTabs = tabs.filter((tab) => tab.id !== id);
       setTabsFromParams(newTabs?.length > 0 ? newTabs : undefined);
     },
-    [tabsFromParams, setTabsFromParams]
+    [setTabsFromParams]
   );
 
   const onAddTab = useCallback(() => {
-    const newTab = findNewTab(tabsFromParams);
+    const tabs = tabsFromParamsRef.current;
+
+    const newTab = findNewTab(tabs);
     if (!newTab) {
       return;
     }
 
-    setTabsFromParams([...(tabsFromParams || []), newTab]);
-  }, [tabsFromParams, findNewTab, setTabsFromParams]);
+    setTabsFromParams([...(tabs || []), newTab]);
+  }, [findNewTab, setTabsFromParams]);
 
   const onSelectMajorVersion = useCallback(
     (id: string, majorVersion: MajorVersion) => {
-      if (!tabsFromParams) {
+      const tabs = tabsFromParamsRef.current;
+
+      if (!tabs) {
         return;
       }
 
-      const newTabs = [...tabsFromParams];
+      const newTabs = [...tabs];
 
       const index = newTabs.findIndex((tab) => tab.id === id);
       if (index === -1) {
@@ -96,10 +104,60 @@ export function useTabs(tenant: TenantID | undefined, taskId: TaskID, task: Seri
       newTabs[index] = {
         ...newTabs[index],
         majorVersion,
+        runId: undefined,
       };
       setTabsFromParams(newTabs);
     },
-    [tabsFromParams, setTabsFromParams]
+    [setTabsFromParams]
+  );
+
+  const onSelectModel = useCallback(
+    (id: string, model: string) => {
+      const tabs = tabsFromParamsRef.current;
+
+      if (!tabs) {
+        return;
+      }
+
+      const newTabs = [...tabs];
+
+      const index = newTabs.findIndex((tab) => tab.id === id);
+      if (index === -1) {
+        return;
+      }
+
+      newTabs[index] = {
+        ...newTabs[index],
+        modelId: model,
+        runId: undefined,
+      };
+      setTabsFromParams(newTabs);
+    },
+    [setTabsFromParams]
+  );
+
+  const onSelectRun = useCallback(
+    (id: string, runId: string | undefined) => {
+      const tabs = tabsFromParamsRef.current;
+
+      if (!tabs) {
+        return;
+      }
+
+      const newTabs = [...tabs];
+
+      const index = newTabs.findIndex((tab) => tab.id === id);
+      if (index === -1) {
+        return;
+      }
+
+      newTabs[index] = {
+        ...newTabs[index],
+        runId,
+      };
+      setTabsFromParams(newTabs);
+    },
+    [setTabsFromParams]
   );
 
   return {
@@ -110,5 +168,7 @@ export function useTabs(tenant: TenantID | undefined, taskId: TaskID, task: Seri
     onCloseTab,
     onAddTab,
     onSelectMajorVersion,
+    onSelectModel,
+    onSelectRun,
   };
 }

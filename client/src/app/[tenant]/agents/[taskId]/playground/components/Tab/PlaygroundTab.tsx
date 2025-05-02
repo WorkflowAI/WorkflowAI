@@ -1,16 +1,19 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useOrFetchRunV1 } from '@/store';
 import { TenantID } from '@/types/aliases';
 import { TaskID } from '@/types/aliases';
 import { TaskSchemaResponseWithSchema } from '@/types/task';
 import { VersionV1 } from '@/types/workflowAI';
 import { MajorVersion } from '@/types/workflowAI';
-import { usePlaygroundFirstGenerationFlow } from '../../hooks/usePlaygroundFirstGenerationFlow';
+// import { usePlaygroundFirstGenerationFlow } from '../../hooks/usePlaygroundFirstGenerationFlow';
 import { Tab } from '../../hooks/utils';
 import { PlaygroundInput } from './Input/PlaygroundInput';
+import { PlaygroundOutput } from './Output/PlaygroundOutput';
 import { PlaygroundParameters } from './Parameters/PlaygroundParameters';
 import { PlaygroundTabHeader } from './PlaygroundTabHeader';
-import { usePlaygroundInputOutput } from './hooks/usePlaygroundInputOutput';
+import { usePlaygroundInput } from './hooks/usePlaygroundInput';
 import { usePlaygroundParameters } from './hooks/usePlaygroundParameters';
+import { usePlaygroundRuns } from './hooks/usePlaygroundRuns';
 
 type Props = {
   tenant: TenantID | undefined;
@@ -22,22 +25,35 @@ type Props = {
   versions: VersionV1[];
   majorVersions: MajorVersion[];
   onSelectMajorVersion: (version: MajorVersion) => void;
+  onSelectModel: (model: string) => void;
+  onSelectRun: (runId: string | undefined) => void;
 };
 
 export function PlaygroundTab(props: Props) {
-  const { tenant, taskId, tab, onClose, numberOfTabs, majorVersions, onSelectMajorVersion, newestSchema } = props;
-  const { majorVersion, modelId, runId } = tab;
+  const {
+    tenant,
+    taskId,
+    tab,
+    onClose,
+    numberOfTabs,
+    majorVersions,
+    onSelectMajorVersion,
+    onSelectModel,
+    onSelectRun,
+    newestSchema,
+  } = props;
 
+  const { majorVersion, modelId, runId } = tab;
   const [isHovering, setIsHovering] = useState(false);
 
-  const onRun = useCallback(async () => {}, []);
-  const onStopRun = useCallback(() => {}, []);
-
-  const isRunning = false;
+  const { run } = useOrFetchRunV1(tenant, taskId, runId);
 
   const {
     schemaId,
+    variantId,
+
     inputSchema,
+    outputSchema,
     input,
     setInput,
 
@@ -50,7 +66,7 @@ export function PlaygroundTab(props: Props) {
 
     voidInput,
     isInputGenerationSupported,
-  } = usePlaygroundInputOutput(tenant, taskId, tab.id, majorVersion, newestSchema);
+  } = usePlaygroundInput(tenant, taskId, tab.id, majorVersion, newestSchema);
 
   const {
     instructions,
@@ -70,19 +86,45 @@ export function PlaygroundTab(props: Props) {
     approveImprovedInstructions,
 
     onToolsChange,
-    generateInstructions,
-  } = usePlaygroundParameters(tenant, taskId, tab.id, majorVersion, newestSchema);
+    // onGenerateInstructions,
+    onImproveInstructions,
 
-  usePlaygroundFirstGenerationFlow(
+    selectedMajorVersion,
+  } = usePlaygroundParameters(tenant, taskId, tab.id, majorVersion, schemaId, variantId);
+
+  const {
+    compatibleModels,
+    onRun,
+    onStopRun,
+    isRunning,
+    errorMessage,
+    wasRunSuccessfull,
+    toolCalls,
+    reasoningSteps,
+    output,
+  } = usePlaygroundRuns(
     tenant,
     taskId,
     schemaId,
-    majorVersion,
+    variantId,
+    runId,
+    modelId,
     instructions,
+    temperature,
     input,
-    onGenerateInput,
-    generateInstructions
+    onSelectRun,
+    run,
+    majorVersion
   );
+
+  // usePlaygroundFirstGenerationFlow(
+  //   schemaId,
+  //   majorVersion,
+  //   instructions,
+  //   input,
+  //   onGenerateInput,
+  //   onGenerateInstructions
+  // );
 
   const handleOnSelectMajorVersion = useCallback(
     (version: MajorVersion) => {
@@ -91,18 +133,6 @@ export function PlaygroundTab(props: Props) {
     },
     [onSelectMajorVersion, resetHistoryIndex]
   );
-
-  const selectedMajorVersion = useMemo(() => {
-    if (!majorVersion) {
-      return undefined;
-    }
-
-    if (majorVersion.properties.instructions === instructions && majorVersion.properties.temperature === temperature) {
-      return majorVersion;
-    }
-
-    return undefined;
-  }, [majorVersion, instructions, temperature]);
 
   return (
     <div
@@ -147,11 +177,25 @@ export function PlaygroundTab(props: Props) {
           onStopGeneratingInput={onStopGeneratingInput}
           onGenerateInput={onGenerateInput}
         />
-        <div className='flex flex-col gap-2 w-full p-4'>
-          <div>Major: {majorVersion?.major}</div>
-          <div>ModelId: {modelId}</div>
-          <div>RunId: {runId}</div>
-        </div>
+        <PlaygroundOutput
+          tenant={tenant}
+          taskId={taskId}
+          modelId={modelId}
+          compatibleModels={compatibleModels}
+          onSelectModel={onSelectModel}
+          onRun={onRun}
+          onStopRun={onStopRun}
+          isRunning={isRunning}
+          isGenerating={isGeneratingInput || isLoadingInstructions}
+          errorMessage={errorMessage}
+          wasRunSuccessfull={wasRunSuccessfull}
+          outputSchema={outputSchema}
+          toolCalls={toolCalls}
+          reasoningSteps={reasoningSteps}
+          output={output}
+          run={run}
+          onImproveInstructions={onImproveInstructions}
+        />
       </div>
     </div>
   );

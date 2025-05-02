@@ -1,7 +1,6 @@
 import { Settings20Filled, Settings20Regular } from '@fluentui/react-icons';
 import { cx } from 'class-variance-authority';
 import { useEffect, useState } from 'react';
-import { RunTaskOptions } from '@/app/[tenant]/agents/[taskId]/[taskSchemaId]/old-playground/hooks/usePlaygroundPersistedState';
 import { SimpleTooltip } from '@/components/ui/Tooltip';
 import { TemperatureSliderSelector } from './TemperatureSliderSelector';
 
@@ -51,7 +50,7 @@ export function TemperatureSelectorButton(props: TemperatureSelectorButtonProps)
 type TemperatureSelectorProps = {
   temperature: number;
   setTemperature: (temperature: number) => void;
-  handleRunTasks?: (options?: RunTaskOptions) => void;
+  handleRunTasks?: () => void;
 };
 
 export function TemperatureSelector(props: TemperatureSelectorProps) {
@@ -61,7 +60,7 @@ export function TemperatureSelector(props: TemperatureSelectorProps) {
   const setTemperatureByButton = (value: number) => {
     setTemperature(value);
     setShowSettings(false);
-    handleRunTasks?.({ externalTemperature: value });
+    handleRunTasks?.();
   };
 
   useEffect(() => {

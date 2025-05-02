@@ -149,7 +149,7 @@ export function PlaygroundInput(props: Props) {
         // onShowEditDescriptionModal={onShowEditDescriptionModal}
         fetchAudioTranscription={fetchAudioTranscription}
         handleUploadFile={handleUploadFile}
-        className='h-max'
+        className='max-h-[400px]'
       />
     </div>
   );
