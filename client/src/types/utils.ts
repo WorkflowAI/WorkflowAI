@@ -2,6 +2,7 @@ import { TaskRun, ToolCallPreview } from './task_run';
 import {
   InternalReasoningStep,
   ReasoningStep,
+  RunV1,
   ToolCall,
   ToolKind,
   api__routers__run__RunResponseStreamChunk__ToolCall,
@@ -57,6 +58,23 @@ export function toolCallsFromRun(run: TaskRun | undefined): ToolCallPreview[] | 
         input_preview: JSON.stringify(toolCall.tool_input_dict),
         output_preview: undefined,
       });
+    });
+  });
+
+  return result.length > 0 ? result : undefined;
+}
+
+export function toolCallsFromRunV1(run: RunV1 | undefined): ToolCallPreview[] | undefined {
+  if (!run) return undefined;
+
+  const result: ToolCallPreview[] = [];
+
+  run.tool_call_requests?.forEach((toolCall) => {
+    result.push({
+      id: toolCall.id ?? '',
+      name: toolCall.name,
+      input_preview: JSON.stringify(toolCall.input),
+      output_preview: undefined,
     });
   });
 

@@ -7,12 +7,7 @@ import { TASK_RUN_ID_PARAM } from '@/lib/constants';
 import { useFavoriteToggle } from '@/lib/hooks/useFavoriteToggle';
 import { useRedirectWithParams } from '@/lib/queryString';
 import { taskSchemaRoute } from '@/lib/routeFormatter';
-import {
-  useOrFetchCurrentTaskSchema,
-  useOrFetchTaskRun,
-  useOrFetchTaskRunTranscriptions,
-  useOrFetchVersion,
-} from '@/store';
+import { useOrFetchTaskRun, useOrFetchTaskRunTranscriptions, useOrFetchTaskSchema, useOrFetchVersion } from '@/store';
 import { TaskID, TaskSchemaID, TenantID } from '@/types/aliases';
 import { TaskRunView } from './TaskRunView';
 
@@ -33,7 +28,7 @@ export default function TaskRunModal(props: TaskRunModalProps) {
 
   const taskSchemaId = (taskRun?.task_schema_id ?? taskSchemaIdFromParams) as TaskSchemaID;
 
-  const { taskSchema: currentTaskSchema } = useOrFetchCurrentTaskSchema(tenant, taskId, taskSchemaId);
+  const { taskSchema: currentTaskSchema } = useOrFetchTaskSchema(tenant, taskId, taskSchemaId);
 
   const taskRunIndex = useMemo(() => taskRunIds?.findIndex((id) => id === taskRunId) || 0, [taskRunId, taskRunIds]);
   const runsLength = taskRunIds?.length ?? 0;

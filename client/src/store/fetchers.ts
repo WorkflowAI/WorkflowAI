@@ -10,8 +10,7 @@ import { TENANT_PLACEHOLDER } from '@/lib/routeFormatter';
 import { sortVersions } from '@/lib/versionUtils';
 import { TaskID, TaskSchemaID, TenantID } from '@/types/aliases';
 import { CodeLanguage } from '@/types/snippets';
-import { GeneralizedTaskInput } from '@/types/task_run';
-import { ChatMessage, CreateVersionRequest, FieldQuery, PlaygroundState, VersionV1 } from '@/types/workflowAI';
+import { ChatMessage, FieldQuery, PlaygroundState, VersionV1 } from '@/types/workflowAI';
 import { useAIModels } from './ai_models';
 import { useApiKeys } from './api_keys';
 import { useClerkOrganizationStore } from './clerk_organisations';
@@ -42,14 +41,13 @@ import {
   buildVersionScopeKey,
   getOrUndef,
 } from './utils';
-import { buildCreateVersionScopeKey, buildRunVersionScopeKey } from './utils';
 import { getVersionsPerEnvironment, mapMajorVersionsToVersions, useVersions } from './versions';
 import { useWeeklyRuns } from './weekly_runs';
 
 type TUseOrFetchAllAiModelsProps = {
   tenant: TenantID | undefined;
   taskId: TaskID;
-  taskSchemaId: TaskSchemaID;
+  taskSchemaId: TaskSchemaID | undefined;
 };
 
 export function useOrFetchAllAiModels(props: TUseOrFetchAllAiModelsProps) {
@@ -61,7 +59,7 @@ export function useOrFetchAllAiModels(props: TUseOrFetchAllAiModelsProps) {
   const fetchModels = useAIModels((state) => state.fetchModels);
 
   useEffect(() => {
-    if (!isInitialized) {
+    if (!isInitialized && !!taskSchemaId) {
       fetchModels(tenant, taskId, taskSchemaId);
     }
   }, [isInitialized, fetchModels, tenant, taskId, taskSchemaId]);
@@ -366,7 +364,7 @@ export const useOrFetchTaskRunReviews = (
   };
 };
 
-export const useOrFetchCurrentTaskSchema = (
+export const useOrFetchTaskSchema = (
   tenant: TenantID | undefined,
   taskId: TaskID,
   taskSchemaId: TaskSchemaID | undefined
@@ -1072,7 +1070,6 @@ export const useOrFetchFeaturesByDomain = (domain: string | undefined) => {
 export const useOrFetchMetaAgentMessagesIfNeeded = (
   tenant: TenantID | undefined,
   taskId: TaskID,
-  schemaId: TaskSchemaID,
   playgroundState: PlaygroundState
 ) => {
   const messages = useMetaAgentChat((state) => state.messagesByTaskId[taskId]);
@@ -1083,9 +1080,6 @@ export const useOrFetchMetaAgentMessagesIfNeeded = (
 
   const playgroundStateRef = useRef<PlaygroundState>(playgroundState);
   playgroundStateRef.current = playgroundState;
-
-  const schemaIdRef = useRef<TaskSchemaID>(schemaId);
-  schemaIdRef.current = schemaId;
 
   const abortController = useRef<AbortController | null>(null);
 
@@ -1099,7 +1093,6 @@ export const useOrFetchMetaAgentMessagesIfNeeded = (
         await sendMessageMetaAgentChat(
           tenant,
           taskId,
-          schemaIdRef.current,
           text,
           'USER',
           playgroundStateRef.current,
@@ -1116,7 +1109,7 @@ export const useOrFetchMetaAgentMessagesIfNeeded = (
   const updateStateForToolCallIdAgentChat = useMetaAgentChat((state) => state.updateStateForToolCallId);
 
   const reset = useCallback(() => {
-    resetMetaAgentChat(tenant, taskId, schemaIdRef.current, playgroundStateRef.current);
+    resetMetaAgentChat(tenant, taskId, playgroundStateRef.current);
   }, [resetMetaAgentChat, tenant, taskId]);
 
   const updateStateForToolCallId = useCallback(
@@ -1127,7 +1120,7 @@ export const useOrFetchMetaAgentMessagesIfNeeded = (
   );
 
   useEffect(() => {
-    sendMessageMetaAgentChat(tenant, taskId, schemaIdRef.current, undefined, 'USER', playgroundStateRef.current);
+    sendMessageMetaAgentChat(tenant, taskId, undefined, 'USER', playgroundStateRef.current);
   }, [sendMessageMetaAgentChat, tenant, taskId]);
 
   const onStop = useCallback(() => {
@@ -1148,7 +1141,6 @@ export const useOrFetchMetaAgentMessagesIfNeeded = (
 export const useScheduledMetaAgentMessages = (
   tenant: TenantID | undefined,
   taskId: TaskID,
-  schemaId: TaskSchemaID,
   playgroundState: PlaygroundState,
   scheduledPlaygroundStateMessage: string | undefined,
   setScheduledPlaygroundStateMessage: (message: string | undefined) => void,
@@ -1162,9 +1154,6 @@ export const useScheduledMetaAgentMessages = (
 
   const playgroundStateRef = useRef<PlaygroundState>(playgroundState);
   playgroundStateRef.current = playgroundState;
-
-  const schemaIdRef = useRef<TaskSchemaID>(schemaId);
-  schemaIdRef.current = schemaId;
 
   const abortController = useRef<AbortController | null>(null);
 
@@ -1180,7 +1169,6 @@ export const useScheduledMetaAgentMessages = (
         await sendMessageMetaAgentChat(
           tenant,
           taskId,
-          schemaIdRef.current,
           text,
           'PLAYGROUND',
           playgroundStateRef.current,

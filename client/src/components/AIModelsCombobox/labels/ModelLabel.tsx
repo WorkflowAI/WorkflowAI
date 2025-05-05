@@ -86,9 +86,13 @@ export function ModelLabel(props: ModelLabelProps) {
 }
 
 export function formatAIModels(
-  aiModels: ModelResponse[],
+  aiModels: ModelResponse[] | undefined,
   information: 'price' | 'intelligence' | 'latest'
 ): AIModelComboboxOption[] {
+  if (!aiModels) {
+    return [];
+  }
+
   const allIntelligenceScores: number[] = [];
 
   aiModels.forEach((model) => {
@@ -119,12 +123,12 @@ export function formatAIModels(
 
 export function formatAIModel(
   model: ModelResponse,
-  allModels: ModelResponse[],
+  allModels: ModelResponse[] | undefined,
   information: 'price' | 'intelligence' | 'latest'
 ): AIModelComboboxOption {
   const allIntelligenceScores: number[] = [];
 
-  allModels.forEach((model) => {
+  allModels?.forEach((model) => {
     const intelligence = model.metadata?.quality_index;
     if (intelligence !== null && intelligence !== undefined) {
       allIntelligenceScores.push(intelligence);

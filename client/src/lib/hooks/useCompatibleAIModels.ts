@@ -6,7 +6,7 @@ import { ModelResponse } from '@/types/workflowAI';
 type TModeAiModelsProps = {
   tenant: TenantID | undefined;
   taskId: TaskID;
-  taskSchemaId: TaskSchemaID;
+  taskSchemaId: TaskSchemaID | undefined;
 };
 
 export function filterSupportedModels(models: ModelResponse[]) {

@@ -17979,6 +17979,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"nanoid@npm:^5.1.5":
+  version: 5.1.5
+  resolution: "nanoid@npm:5.1.5"
+  bin:
+    nanoid: bin/nanoid.js
+  checksum: 10c0/e6004f1ad6c7123eeb037062c4441d44982037dc043aabb162457ef6986e99964ba98c63c975f96c547403beb0bf95bc537bd7bf9a09baf381656acdc2975c3c
+  languageName: node
+  linkType: hard
+
 "napi-build-utils@npm:^1.0.1":
   version: 1.0.2
   resolution: "napi-build-utils@npm:1.0.2"
@@ -23759,6 +23768,7 @@ __metadata:
     lodash: "npm:^4.17.21"
     lru-cache: "npm:^7.14.1"
     lucide-react: "npm:^0.334.0"
+    nanoid: "npm:^5.1.5"
     next: "npm:14.2.25"
     next-themes: "npm:^0.3.0"
     postcss: "npm:^8.4.35"

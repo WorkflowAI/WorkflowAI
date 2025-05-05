@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo } from 'react';
 import { useLocalStorage } from 'usehooks-ts';
 import { useRedirectWithParams } from '@/lib/queryString';
 import { useParsedSearchParams } from '@/lib/queryString';
-import { useOrFetchCurrentTaskSchema } from '@/store/fetchers';
+import { useOrFetchTaskSchema } from '@/store/fetchers';
 import { TaskID, TenantID } from '@/types/aliases';
 import { TaskSchemaID } from '@/types/aliases';
 import { ModelResponse, VersionV1 } from '@/types/workflowAI';
@@ -80,7 +80,7 @@ export function SideBySideTable(props: SideBySideTableProps) {
   const selectedRightVersion = versions.find((version) => version.id === selectedRightVersionId);
   const selectedRightModel = models?.find((model) => model.id === selectedRightModelId);
 
-  const { taskSchema } = useOrFetchCurrentTaskSchema(undefined, taskId, taskSchemaId);
+  const { taskSchema } = useOrFetchTaskSchema(undefined, taskId, taskSchemaId);
 
   const deployedVersion = useMemo(() => {
     if (versions.length === 0) {

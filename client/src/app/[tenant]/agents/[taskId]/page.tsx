@@ -1,33 +1,15 @@
-'use client';
+import { generateMetadataWithTitle } from '@/lib/metadata';
+import { TaskSchemaParams } from '@/lib/routeFormatter';
+import { Playground } from './playground/playground';
 
-import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
-import { Loader } from '@/components/ui/Loader';
-import { taskSchemaRoute } from '@/lib/routeFormatter';
-import { getNewestSchemaId } from '@/lib/taskUtils';
-import { useOrFetchTask } from '@/store';
-import { TaskID, TaskSchemaID, TenantID } from '@/types/aliases';
-
-type TaskPageProps = {
-  taskId: TaskID;
-  tenant: TenantID;
-};
-
-function TaskPage(props: TaskPageProps) {
-  const { taskId, tenant } = props;
-  const { task: currentTask } = useOrFetchTask(tenant, taskId);
-  const newestTaskSchemaId = getNewestSchemaId(currentTask);
-  const router = useRouter();
-
-  useEffect(() => {
-    if (newestTaskSchemaId) {
-      router.push(taskSchemaRoute(tenant, taskId, `${newestTaskSchemaId}` as TaskSchemaID));
-    }
-  }, [newestTaskSchemaId, router, tenant, taskId]);
-
-  return <Loader centered />;
+export async function generateMetadata({ params }: { params: TaskSchemaParams }) {
+  return generateMetadataWithTitle('Playground', params);
 }
 
-export default function TaskNamePage({ params: { taskId, tenant } }: { params: { taskId: TaskID; tenant: TenantID } }) {
-  return <TaskPage taskId={taskId} tenant={tenant} />;
+type PlaygroundPageProps = {
+  params: TaskSchemaParams;
+};
+
+export default function PlaygroundPage(props: PlaygroundPageProps) {
+  return <Playground {...props.params} />;
 }

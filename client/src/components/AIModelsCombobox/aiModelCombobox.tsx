@@ -49,7 +49,7 @@ export type AIModelComboboxProps = {
   emptyMessage?: string;
   noOptionsMessage?: string;
   onModelChange: (value: Model) => void;
-  models: ModelResponse[];
+  models: ModelResponse[] | undefined;
   placeholder?: string;
   value: string;
   fitToContent?: boolean;
