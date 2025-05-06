@@ -1,10 +1,11 @@
 'use client';
 
 import { Loader2 } from 'lucide-react';
-import { useCallback, useMemo } from 'react';
+import { useMemo } from 'react';
 import { TemperatureSelector } from '@/components/TemperatureSelector/TemperatureSelector';
-import { Textarea } from '@/components/ui/Textarea';
+import { JsonSchema } from '@/types/json_schema';
 import { MajorVersion, ToolKind } from '@/types/workflowAI';
+import { InstructionTextarea } from './components/Instructions/InstructionTextarea';
 import { InstructionsDiffViewer } from './components/InstructionsDiffViewer';
 import { MajorVersionCombobox } from './components/MajorVersionSelector/MajorVersionSelector';
 import { PlagroundParametersToolbox } from './components/Toolbox/playgroundParametersToolbox';
@@ -31,6 +32,7 @@ type PlaygroundParametersSelectorProps = {
   majorVersions: MajorVersion[];
   useInstructionsAndTemperatureFromMajorVersion: (version: MajorVersion) => void;
   onToolsChange: (tools: ToolKind[]) => Promise<void>;
+  inputSchema: JsonSchema | undefined;
 };
 
 export function PlagroundParametersSelector(props: PlaygroundParametersSelectorProps) {
@@ -53,20 +55,19 @@ export function PlagroundParametersSelector(props: PlaygroundParametersSelectorP
     majorVersions,
     useInstructionsAndTemperatureFromMajorVersion,
     onToolsChange,
+    inputSchema,
   } = props;
-
-  const onInstructionsChange = useCallback(
-    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      setInstructions(e.target.value);
-    },
-    [setInstructions]
-  );
 
   const instructionsToDisplay = useMemo(() => {
     if (!isImproveVersionLoading || !oldInstructions) return instructions;
     const diff = calculateTextDiff(oldInstructions, instructions);
     return diff;
   }, [isImproveVersionLoading, oldInstructions, instructions]);
+
+  const inputKeys = useMemo(() => {
+    if (!inputSchema) return undefined;
+    return Object.keys(inputSchema.properties);
+  }, [inputSchema]);
 
   return (
     <div className='flex flex-col overflow-hidden w-full h-full'>
@@ -108,12 +109,7 @@ export function PlagroundParametersSelector(props: PlaygroundParametersSelectorP
               approveImprovedInstructions={approveImprovedInstructions}
             />
           ) : (
-            <Textarea
-              className='flex text-gray-900 placeholder:text-gray-500 font-normal text-[13px] rounded-[2px] min-h-[60px] border-gray-300 overflow-y-auto focus-within:ring-inset'
-              placeholder='Add any instructions regarding how you want AI agents to be run on this version...'
-              value={instructionsToDisplay}
-              onChange={onInstructionsChange}
-            />
+            <InstructionTextarea text={instructionsToDisplay} onTextChange={setInstructions} inputKeys={inputKeys} />
           )}
           <PlagroundParametersToolbox
             instructions={instructions}

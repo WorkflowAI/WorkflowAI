@@ -143,6 +143,7 @@ export function PlaygroundInputContainer(props: PlaygroundInputContainerProps) {
           majorVersions={majorVersions}
           useInstructionsAndTemperatureFromMajorVersion={useInstructionsAndTemperatureFromMajorVersion}
           onToolsChange={onToolsChange}
+          inputSchema={inputSchema}
         />
       </div>
     </div>
