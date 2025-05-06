@@ -1,0 +1,99 @@
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, Field
+
+from api.dependencies.security import UserDep
+
+router = APIRouter(prefix="/integrations")
+
+
+class Integration(BaseModel):
+    slug: str = Field(description="The slug of the integration", examples=["openai-sdk", "instructor"])
+    display_name: str = Field(description="The name of the integration", examples=["OpenAI SDK", "Instructor"])
+    language: str = Field(description="The language of the integration", examples=["Python", "TypeScript"])
+    logo_url: str = Field(
+        description="The URL of the logo of the integration",
+        examples=["https://openai.com/images/logo.png", "https://instructor.com/logo.png"],
+    )
+    code_snippet: str = Field(
+        description="A code snippet that shows how to use the integration",
+        examples=["import openai", "import instructor"],
+    )
+
+
+class IntegrationListResponse(BaseModel):
+    integrations: list[Integration] | None = None
+
+
+STATIC_INTEGRATIONS = [
+    Integration(
+        slug="openai-sdk",
+        display_name="OpenAI SDK",
+        language="Python",
+        logo_url="",
+        code_snippet="""from openai import OpenAI
+
+# After (WorkflowAI Proxy)
+client = OpenAI(
+    api_key="wfai-your-key...",  # ← 1. Use your WorkflowAI key
+    base_url="https://run.workflowai.com/v1"
+)
+
+# Everything else (model calls, parameters) stays the same
+response = client.chat.completions.create(
+    model="gpt-4o",  # Or claude-3.5-sonnet-large
+    messages=[{"role": "user", "content": "Hello!"}]
+)""",
+    ),
+    Integration(
+        slug="instructor-python",
+        display_name="Instructor",
+        language="Python",
+        logo_url="",
+        code_snippet="""import os
+
+import instructor
+from openai import OpenAI
+from pydantic import BaseModel
+
+
+class UserInfo(BaseModel):
+    name: str
+    age: int
+
+def extract_user_info(user_message: str) -> UserInfo:
+    client = instructor.from_openai(
+        OpenAI(base_url="https://run.workflowai.com/v1", api_key="<your-workflowai-key>"),
+        mode=instructor.Mode.OPENROUTER_STRUCTURED_OUTPUTS,
+    )
+
+    return client.chat.completions.create(
+        model="user-info-extraction-agent/claude-3-7-sonnet-latest", # Agent now runs Claude 3.7 Sonnet
+        response_model=UserInfo,
+        messages=[{"role": "user", "content": user_message}],
+    )
+
+if __name__ == "__main__":
+    user_info = extract_user_info("John Black is 33 years old.")
+    print("Basic example result:", user_info)  # UserInfo(name='John Black', age=33)
+""",
+    ),
+]
+
+
+@router.get(
+    "",
+    description="Get the list of WorkflowAI official integrations",
+)
+async def list_integrations(user: UserDep) -> IntegrationListResponse:
+    return IntegrationListResponse(integrations=STATIC_INTEGRATIONS)
+
+
+@router.get(
+    "/{slug}",
+    description="Get one of the WorkflowAI official integrations, by slug",
+)
+async def get_integration(slug: str) -> Integration:
+    for integration in STATIC_INTEGRATIONS:
+        if integration.slug == slug:
+            return integration
+    raise HTTPException(status_code=404, detail="Integration not found")
