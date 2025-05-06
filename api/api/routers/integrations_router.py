@@ -7,7 +7,7 @@ router = APIRouter(prefix="/integrations")
 
 
 class Integration(BaseModel):
-    slug: str = Field(description="The slug of the integration", examples=["openai-sdk", "instructor"])
+    slug: str = Field(description="The slug of the integration", examples=["openai-sdk-python", "instructor-python"])
     display_name: str = Field(description="The name of the integration", examples=["OpenAI SDK", "Instructor"])
     language: str = Field(description="The language of the integration", examples=["Python", "TypeScript"])
     logo_url: str = Field(
@@ -26,7 +26,7 @@ class IntegrationListResponse(BaseModel):
 
 STATIC_INTEGRATIONS = [
     Integration(
-        slug="openai-sdk",
+        slug="openai-sdk-python",
         display_name="OpenAI SDK",
         language="Python",
         logo_url="",
