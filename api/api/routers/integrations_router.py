@@ -101,7 +101,7 @@ async def get_integration(slug: str) -> Integration:
 
 @router.get(
     "/language/{language}",
-    description="Get the code snippet of a specific integration, by language",
+    description="Get the list of WorkflowAI official integrations, for a specific language",
 )
 async def get_integration_code(language: str) -> IntegrationListResponse:
     integrations = [integration for integration in STATIC_INTEGRATIONS if integration.language == language]
