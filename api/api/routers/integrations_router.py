@@ -89,11 +89,20 @@ async def list_integrations(user: UserDep) -> IntegrationListResponse:
 
 
 @router.get(
-    "/{slug}",
+    "/slug/{slug}",
     description="Get one of the WorkflowAI official integrations, by slug",
 )
 async def get_integration(slug: str) -> Integration:
-    for integration in STATIC_INTEGRATIONS:
-        if integration.slug == slug:
-            return integration
-    raise HTTPException(status_code=404, detail="Integration not found")
+    integration = next((integration for integration in STATIC_INTEGRATIONS if integration.slug == slug), None)
+    if not integration:
+        raise HTTPException(status_code=404, detail="Integration not found")
+    return integration
+
+
+@router.get(
+    "/language/{language}",
+    description="Get the code snippet of a specific integration, by language",
+)
+async def get_integration_code(language: str) -> IntegrationListResponse:
+    integrations = [integration for integration in STATIC_INTEGRATIONS if integration.language == language]
+    return IntegrationListResponse(integrations=integrations)
