@@ -16,7 +16,9 @@ class Integration(BaseModel):
     )
     code_snippet: str = Field(
         description="A code snippet that shows how to use the integration",
-        examples=["import openai", "import instructor"],
+    )
+    structured_output_snippet: str = Field(
+        description="A code snippet that shows how to use the integration with structured outputs",
     )
 
 
@@ -43,6 +45,26 @@ response = client.chat.completions.create(
     model="gpt-4o",  # Or claude-3.5-sonnet-large
     messages=[{"role": "user", "content": "Hello!"}]
 )""",
+        structured_output_snippet="""from pydantic import BaseModel
+
+class UserInfo(BaseModel):
+    name: str
+    age: int
+)
+
+# After (WorkflowAI Proxy)
+client = OpenAI(
+    api_key="wfai-your-key...",  # ← 1. Use your WorkflowAI key
+    base_url="https://run.workflowai.com/v1"
+)
+
+# Everything else (model calls, parameters) stays the same
+response = client.beta.chat.completions.parse(
+    model="gpt-4o",  # Or claude-3.5-sonnet-large
+    messages=[{"role": "user", "content": "Hello!"}]
+    response_format=UserInfo
+)
+""",
     ),
     Integration(
         slug="instructor-python",
@@ -50,6 +72,33 @@ response = client.chat.completions.create(
         language="Python",
         logo_url="",
         code_snippet="""import os
+
+import instructor
+from openai import OpenAI
+from pydantic import BaseModel
+
+
+class UserInfo(BaseModel):
+    name: str
+    age: int
+
+def extract_user_info(user_message: str) -> UserInfo:
+    client = instructor.from_openai(
+        OpenAI(base_url="https://run.workflowai.com/v1", api_key="<your-workflowai-key>"),
+        mode=instructor.Mode.OPENROUTER_STRUCTURED_OUTPUTS,
+    )
+
+    return client.chat.completions.create(
+        model="user-info-extraction-agent/claude-3-7-sonnet-latest", # Agent now runs Claude 3.7 Sonnet
+        response_model=UserInfo,
+        messages=[{"role": "user", "content": user_message}],
+    )
+
+if __name__ == "__main__":
+    user_info = extract_user_info("John Black is 33 years old.")
+    print("Basic example result:", user_info)  # UserInfo(name='John Black', age=33)
+""",
+        structured_output_snippet="""import os
 
 import instructor
 from openai import OpenAI
