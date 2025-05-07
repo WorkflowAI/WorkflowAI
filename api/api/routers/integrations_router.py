@@ -29,7 +29,7 @@ class IntegrationListResponse(BaseModel):
 STATIC_INTEGRATIONS = [
     Integration(
         slug="openai-sdk-python",
-        display_name="OpenAI SDK",
+        display_name="OpenAI SDK (Python)",
         language="Python",
         logo_url="",
         code_snippet="""from openai import OpenAI
@@ -68,7 +68,7 @@ response = client.beta.chat.completions.parse(
     ),
     Integration(
         slug="instructor-python",
-        display_name="Instructor",
+        display_name="Instructor (Python)",
         language="Python",
         logo_url="",
         code_snippet="""import os
