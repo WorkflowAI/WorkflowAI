@@ -5,10 +5,11 @@ from api.routers import (
     clerk_webhooks,
     features,
     feedback_v1,
+    helpscout_webhooks,
     integrations_router,
+    slack_webhooks,
     stripe_webhooks,
 )
-from api.routers import clerk_webhooks, features, feedback_v1, helpscout_webhooks, slack_webhooks, stripe_webhooks
 from api.routers.agents import meta_agent, new_tool_agent
 from api.tags import RouteTags
 from core.domain.tenant_data import PublicOrganizationData
@@ -48,7 +49,6 @@ def _tenant_router():
         transcriptions,
         upload,
     )
-    from api.routers.agents import meta_agent, new_tool_agent
 
     tenant_router = APIRouter(prefix="/{tenant}")
     tenant_router.include_router(stats.router, tags=[RouteTags.MONITORING])
