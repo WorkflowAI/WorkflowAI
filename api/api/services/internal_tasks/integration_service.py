@@ -206,16 +206,11 @@ well organized (by agent) on WorkflowAI (trust me, makes everything easier).
         The goals of this functions is to spot a run / agent that was (very likely) created by the user currently doing the onboarding flow.
         """
 
-        # We only fetch runs that occurred after the discussion started
-        agent_runs = [
-            _
-            async for _ in self.storage.task_runs.list_runs_since(
-                since_date=discussion_started_at,
-                is_active=True,  # TODO: filter on proxy runs
-                limit=2,  # TODO: pick a better limit
-            )
-        ]
-        for run in agent_runs:
+        async for run in self.storage.task_runs.list_runs_since(
+            since_date=discussion_started_at,
+            is_active=True,  # TODO: filter on proxy runs
+            limit=2,  # TODO: pick a better limit
+        ):
             agent = await self._get_agent_by_uid(run.task_uid)
 
             # There is a change we are capturing a pre-existing, unnamed agent run here, but this is pretty rare, and low impact
