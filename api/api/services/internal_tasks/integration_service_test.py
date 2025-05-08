@@ -5,9 +5,9 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 import workflowai
 
-from api.routers.openai_proxy_router import DEFAULT_AGENT_ID
 from api.services.api_keys import APIKeyService
 from api.services.internal_tasks.integration_service import (
+    DEFAULT_AGENT_ID,
     ApiKeyResult,
     IntegrationAgentInput,
     IntegrationChatMessage,
