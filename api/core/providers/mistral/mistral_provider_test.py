@@ -173,7 +173,12 @@ class TestSingleStream:
             output_factory=lambda x, _: StructuredOutput(json.loads(x)),
             partial_output_factory=lambda x: StructuredOutput(x),
             raw_completion=raw,
-            options=ProviderOptions(model=Model.PIXTRAL_12B_2409, max_tokens=10, temperature=0),
+            options=ProviderOptions(
+                model=Model.PIXTRAL_12B_2409,
+                max_tokens=10,
+                temperature=0,
+                output_schema={},
+            ),
         )
 
         parsed_chunks = [o async for o in raw_chunks]

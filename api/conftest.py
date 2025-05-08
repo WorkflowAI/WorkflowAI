@@ -142,6 +142,12 @@ if "CLICKHOUSE_TEST_CONNECTION_STRING" not in os.environ:
 if "XAI_API_KEY" not in os.environ:
     os.environ["XAI_API_KEY"] = "xai-123"
 
+if "HELPSCOUT_CLIENT_ID" not in os.environ:
+    os.environ["HELPSCOUT_CLIENT_ID"] = "test-helpscout-client-id"
+
+if "HELPSCOUT_CLIENT_SECRET" not in os.environ:
+    os.environ["HELPSCOUT_CLIENT_SECRET"] = "test-helpscout-client-secret"
+
 os.environ["JOBS_BROKER_URL"] = "memory://"
 
 

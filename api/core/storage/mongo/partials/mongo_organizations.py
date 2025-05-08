@@ -63,7 +63,7 @@ class MongoOrganizationStorage(PartialStorage[OrganizationDocument], Organizatio
             "owner_id": 1,
         }
 
-    async def _get_public_org(self, filter: dict[str, Any]):
+    async def _get_public_org(self, filter: dict[str, Any]) -> PublicOrganizationData:
         doc = await self._collection.find_one(
             filter,
             projection=self._public_projection(),
@@ -406,6 +406,13 @@ class MongoOrganizationStorage(PartialStorage[OrganizationDocument], Organizatio
         if not doc:
             raise ObjectNotFoundException("Organization not found", code="organization_not_found")
         return doc.get("feedback_slack_hook")
+
+    @override
+    async def get_organization_by_slack_channel_id(self, slack_channel_id: str) -> PublicOrganizationData | None:
+        try:
+            return await self._get_public_org({"slack_channel_id": slack_channel_id})
+        except ObjectNotFoundException:
+            return None
 
     @override
     async def unlock_payment_for_failure(

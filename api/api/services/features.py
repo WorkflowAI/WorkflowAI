@@ -211,11 +211,13 @@ class FeatureService:
             # and will be able to provide some decent feature suggestions
             yield CompanyContext(public=fallback_message, private=fallback_message)
 
+    @classmethod
     async def _build_agent_suggestion_input(
-        self,
+        cls,
         company_domain: str,
         company_context: str,
         company_website_contents: list[URLContent],
+        additional_instructions: str | None = None,
     ) -> SuggestAgentForCompanyInput:
         return SuggestAgentForCompanyInput(
             supported_agent_input_types=get_supported_task_input_types(),
@@ -236,10 +238,12 @@ class FeatureService:
                 # TODO: plug back existing agent for existing users and rework instructions based on that.
                 existing_agents=[],
             ),
+            additional_instructions=additional_instructions,
         )
 
+    @classmethod
     async def _is_agent_validated(
-        self,
+        cls,
         agent_name: str,
         instructions: str,
         validation_decisions: dict[str, bool],
@@ -273,8 +277,9 @@ class FeatureService:
 
         return validation_decisions[agent_name]
 
+    @classmethod
     async def _stream_feature_suggestions(
-        self,
+        cls,
         company_context: str,
         input: SuggestAgentForCompanyInput,
     ) -> AsyncIterator[CompanyFeaturePreviewList]:
@@ -294,7 +299,7 @@ class FeatureService:
                 if (
                     safe_agent.name
                     and safe_agent.tag_line  # That means the name is done streaming.
-                    and await self._is_agent_validated(
+                    and await cls._is_agent_validated(
                         safe_agent.name,
                         AGENT_SUGGESTION_INSTRUCTIONS,
                         validation_decisions,
@@ -331,7 +336,8 @@ class FeatureService:
             _logger.exception("Error getting company latest news", exc_info=e)
             return ""
 
-    async def get_company_website_contents(self, company_domain: str) -> list[URLContent]:
+    @classmethod
+    async def get_company_website_contents(cls, company_domain: str) -> list[URLContent]:
         MAX_LINKS = 10
 
         # 1. Get potential links from sitemap (or fallback to domain)
@@ -356,11 +362,13 @@ class FeatureService:
 
         return await ScrapingService().limit_url_content_size(url_contents, 150000)
 
-    async def get_company_domain_content(self, company_domain: str) -> URLContent:
+    @classmethod
+    async def get_company_domain_content(cls, company_domain: str) -> URLContent:
         return await ScrapingService().get_url_content_cached(company_domain, URL_FETCHING_TIMEOUT_SECONDS)
 
+    @classmethod
     async def _stream_company_context(
-        self,
+        cls,
         company_domain: str,
         company_domain_content: str,
     ) -> AsyncIterator[str]:
@@ -373,23 +381,25 @@ class FeatureService:
             if company_context_chunk.output.company_context:
                 yield company_context_chunk.output.company_context
 
+    @classmethod
     async def stream_features_by_domain(
-        self,
+        cls,
         company_domain: str,
         event_router: EventRouter | None = None,
+        additional_instructions: str | None = None,
     ) -> AsyncIterator[CompanyFeaturePreviewList]:
         if event_router:
             event_router(FeaturesByDomainGenerationStarted(company_domain=company_domain))
 
         # Start collecting AI features in the background
-        company_domain_content_task = asyncio.create_task(self.get_company_domain_content(company_domain))
-        company_website_contents_task = asyncio.create_task(self.get_company_website_contents(company_domain))
+        company_domain_content_task = asyncio.create_task(cls.get_company_domain_content(company_domain))
+        company_website_contents_task = asyncio.create_task(cls.get_company_website_contents(company_domain))
 
         company_domain_content = await company_domain_content_task
 
         company_context = ""
         if company_domain_content.content:
-            async for company_context_chunk in self._stream_company_context(
+            async for company_context_chunk in cls._stream_company_context(
                 company_domain,
                 company_domain_content.content,
             ):
@@ -402,13 +412,14 @@ class FeatureService:
         # Wait for AI features collection to complete
         company_website_contents = await company_website_contents_task
 
-        agent_suggestion_input = await self._build_agent_suggestion_input(
+        agent_suggestion_input = await cls._build_agent_suggestion_input(
             company_domain=company_domain,
             company_context=company_context,
             company_website_contents=company_website_contents,
+            additional_instructions=additional_instructions,
         )
 
-        async for chunk in self._stream_feature_suggestions(company_context, agent_suggestion_input):
+        async for chunk in cls._stream_feature_suggestions(company_context, agent_suggestion_input):
             yield chunk
 
     async def get_features_by_domain(

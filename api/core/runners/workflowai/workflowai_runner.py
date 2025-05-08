@@ -33,7 +33,7 @@ from core.domain.reasoning_step import INTERNAL_REASONING_STEPS_SCHEMA_KEY
 from core.domain.run_output import RunOutput
 from core.domain.structured_output import StructuredOutput
 from core.domain.task_group_properties import FewShotConfiguration, FewShotExample, TaskGroupProperties
-from core.domain.task_io import RawMessagesSchema, RawStringMessageSchema, SerializableTaskIO
+from core.domain.task_io import RawJSONMessageSchema, RawMessagesSchema, RawStringMessageSchema, SerializableTaskIO
 from core.domain.task_run_reply import RunReply
 from core.domain.task_typology import TaskTypology
 from core.domain.task_variant import SerializableTaskVariant
@@ -130,6 +130,7 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
         cache_fetcher: Optional[CacheFetcher] = None,
         metadata: dict[str, Any] | None = None,
         disable_fallback: bool = False,
+        stream_deltas: bool = False,
     ):
         super().__init__(
             task=task,
@@ -142,6 +143,7 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
         if self._options.provider:
             # This will throw a ProviderDoesNotSupportModelError if the provider does not support the model
             get_model_provider_data(self._options.provider, self._options.model)
+        self._stream_deltas = stream_deltas
 
         self._custom_configs = custom_configs
 
@@ -749,9 +751,9 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
             json_dict = parse_tolerant_json(json_str)
         json_dict = cleanup_provider_json(json_dict)
 
-        return self.validate_output_dict(json_dict, partial=partial)
+        return self.build_structured_output(json_dict, partial=partial)
 
-    def validate_output_dict(self, output: Any, partial: bool):
+    def build_structured_output(self, output: Any, partial: bool):
         agent_run_result, reasoning_steps = self._extract_all_internal_keys(output)
 
         if agent_run_result and agent_run_result.status == "failure":
@@ -760,8 +762,13 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
                 partial_output=self.task.validate_output(output, partial=True),
             )
 
+        if self._stream_deltas and partial:
+            final_output = output
+        else:
+            final_output = self.task.validate_output(output, partial=partial)
+
         return StructuredOutput(
-            self.task.validate_output(output, partial=partial),
+            final_output,
             None,
             agent_run_result,
             reasoning_steps,
@@ -966,6 +973,8 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
     ) -> PreparedOutputSchema:
         if output_schema.version == RawStringMessageSchema.version:
             return PreparedOutputSchema(prepared_schema=None)
+        if output_schema.version == RawJSONMessageSchema.version:
+            return PreparedOutputSchema(prepared_schema={})
 
         output_json_schema = deepcopy(output_schema.json_schema)
         if is_chain_of_thought_enabled:
@@ -1009,6 +1018,7 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
             task_name=self.task.name,
             structured_generation=is_structured_generation_enabled,
             tenant=self.task.tenant,
+            stream_deltas=self._stream_deltas,
         )
 
         model_data_copy = model_data.model_copy()
@@ -1059,7 +1069,7 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
                 messages,
                 options,
                 output_factory=self.output_factory,
-                partial_output_factory=lambda p: self.validate_output_dict(p, True),
+                partial_output_factory=lambda p: self.build_structured_output(p, True),
             ):
                 if completion_has_tool_calls or output.tool_calls:
                     completion_has_tool_calls = True
@@ -1068,7 +1078,7 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
                     continue
 
                 # TODO[tools]: add tool calls and tool call requests
-                yield RunOutput(task_output=output.output, reasoning_steps=output.reasoning_steps)
+                yield RunOutput(task_output=output.output, reasoning_steps=output.reasoning_steps, delta=output.delta)
 
             if not output:
                 # We never had any output, we can stop the stream

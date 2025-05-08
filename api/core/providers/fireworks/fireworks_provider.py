@@ -23,10 +23,10 @@ from core.domain.models.model_data import ModelData
 from core.domain.models.utils import get_model_data
 from core.domain.structured_output import StructuredOutput
 from core.domain.tool_call import ToolCallRequestWithID
-from core.providers.base.httpx_provider import HTTPXProvider, ParsedResponse
+from core.providers.base.httpx_provider import HTTPXProvider
 from core.providers.base.models import RawCompletion, StandardMessage
 from core.providers.base.provider_options import ProviderOptions
-from core.providers.base.streaming_context import ToolCallRequestBuffer
+from core.providers.base.streaming_context import ParsedResponse, ToolCallRequestBuffer
 from core.providers.base.utils import get_provider_config_env
 from core.providers.fireworks.fireworks_domain import (
     CompletionRequest,

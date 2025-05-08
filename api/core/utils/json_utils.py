@@ -10,9 +10,10 @@ def parse_tolerant_json(json_str: str) -> dict[str, Any]:
     raw: dict[str, Any] = {}
     parser = JSONStreamParser(is_tolerant=True)
     try:
-        for update in parser.process_chunk(json_str):
-            set_at_keypath_str(raw, *update)
-    except (JSONStreamError, InvalidKeyPathError, KeyError) as e:
+        if updates := parser.process_chunk(json_str):
+            for update in updates:
+                set_at_keypath_str(raw, *update)
+    except (JSONStreamError, InvalidKeyPathError, KeyError, json.JSONDecodeError) as e:
         raise JSONSchemaValidationError("JSON was not reparable", json_str=json_str) from e
 
     # Sometimes the tolerant mode can ignore the entire JSON string

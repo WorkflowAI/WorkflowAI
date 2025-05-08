@@ -2,7 +2,7 @@ import json
 from abc import abstractmethod
 from collections.abc import Callable
 from contextlib import asynccontextmanager, contextmanager
-from typing import NamedTuple, TypeVar
+from typing import TypeVar
 
 import httpx
 from httpx import Response
@@ -28,7 +28,6 @@ from core.domain.errors import (
 from core.domain.llm_usage import LLMUsage
 from core.domain.message import MessageDeprecated
 from core.domain.structured_output import StructuredOutput
-from core.domain.tool_call import ToolCallRequestWithID
 from core.providers.base.abstract_provider import AbstractProvider, ProviderConfigVar, ProviderRequestVar, RawCompletion
 from core.providers.base.client_pool import ClientPool
 from core.providers.base.provider_options import ProviderOptions
@@ -40,13 +39,6 @@ from core.utils.streams import JSONStreamError
 ResponseModel = TypeVar("ResponseModel", bound=BaseModel)
 
 shared_client_pool = ClientPool()
-
-
-class ParsedResponse(NamedTuple):
-    content: str
-    reasoning_steps: str | None = None
-    # TODO: switch to tool call request
-    tool_calls: list[ToolCallRequestWithID] | None = None
 
 
 # TODO: The fact that the HTTPXProvider class uses a plain dict as a request is blocking for OpenAIImageProvider
@@ -166,7 +158,7 @@ class HTTPXProviderBase(AbstractProvider[ProviderConfigVar, ProviderRequestVar])
             raise e
         except (JSONSchemaValidationError, JSONStreamError) as e:
             raise InvalidGenerationError(
-                msg=f"Received invalid JSON: {e}",
+                msg=f"Model failed to generate a valid json: {e}",
                 provider_status_code=200,
             ) from e
         except httpx.ReadTimeout:

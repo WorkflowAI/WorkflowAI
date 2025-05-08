@@ -2341,7 +2341,7 @@ class TestInlineTextFiles:
         }
 
 
-class TestValidateOutputDict:
+class TestBuildStructuredOutput:
     def test_raises_on_agent_failure_status(self, patched_runner: WorkflowAIRunner):
         output = {
             "internal_agent_run_result": {
@@ -2351,7 +2351,7 @@ class TestValidateOutputDict:
         }
 
         with pytest.raises(AgentRunFailedError, match="Agent run failed"):
-            patched_runner.validate_output_dict(output, partial=False)
+            patched_runner.build_structured_output(output, partial=False)
 
     def test_no_raise_on_success_status(self, patched_runner: WorkflowAIRunner):
         """Test that it doesn't raise when status is success"""
@@ -2362,13 +2362,13 @@ class TestValidateOutputDict:
             },
             "bla": "bla",
         }
-        result = patched_runner.validate_output_dict(output, partial=False)
+        result = patched_runner.build_structured_output(output, partial=False)
         assert result.output == {"bla": "bla"}
 
     def test_no_raise_on_missing_result(self, patched_runner: WorkflowAIRunner):
         """Test that it doesn't raise when internal_agent_run_result is None"""
         output = {"bla": "bla"}
-        result = patched_runner.validate_output_dict(output, partial=False)
+        result = patched_runner.build_structured_output(output, partial=False)
         assert result.output == {"bla": "bla"}
 
     def test_validate_output_with_null_reasoning_steps(self, patched_runner: WorkflowAIRunner):
@@ -2377,7 +2377,7 @@ class TestValidateOutputDict:
             "internal_reasoning_steps": [None, {"explaination": "valid_step"}],
         }
 
-        output = patched_runner.validate_output_dict(output_dict, partial=False)
+        output = patched_runner.build_structured_output(output_dict, partial=False)
 
         assert output.output == {"meal_plan": "Plan with null reasoning steps"}
         assert output.reasoning_steps and len(output.reasoning_steps) == 1
@@ -2404,7 +2404,7 @@ class TestValidateOutputDict:
             },
         }
 
-        output = patched_runner.validate_output_dict(json_dict, partial=False)
+        output = patched_runner.build_structured_output(json_dict, partial=False)
 
         assert output.output == {"meal_plan": "Sample meal plan"}
         assert output.reasoning_steps and len(output.reasoning_steps) == 2
@@ -2414,6 +2414,17 @@ class TestValidateOutputDict:
         assert output.agent_run_result is not None
         assert output.agent_run_result.status == "success"
         assert output.agent_run_result.error is None
+        assert output.tool_calls is None
+
+    def test_partial_deltas(self, patched_runner: WorkflowAIRunner):
+        patched_runner._stream_deltas = True  # pyright: ignore[reportPrivateUsage]
+        output = patched_runner.build_structured_output(
+            "hello",
+            partial=True,
+        )
+        assert output.output == "hello"
+        assert output.reasoning_steps is None
+        assert output.agent_run_result is None
         assert output.tool_calls is None
 
 

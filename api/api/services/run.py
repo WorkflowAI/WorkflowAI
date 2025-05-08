@@ -66,7 +66,7 @@ class RunService:
         runner: AbstractRunner[Any],
         cache: CacheUsage,
         trigger: RunTrigger,
-        chunk_serializer: Callable[[str, RunOutput], BaseModel],
+        chunk_serializer: Callable[[str, RunOutput], BaseModel | None],
         serializer: Callable[[AgentRun], BaseModel] | None,
         store_inline: bool,
         source: SourceType | None,
@@ -84,8 +84,8 @@ class RunService:
                 source=source,
                 file_storage=file_storage,
             ):
-                if chunk:
-                    yield _format_model(chunk_serializer(builder.id, chunk))
+                if chunk and (serialized := chunk_serializer(builder.id, chunk)):
+                    yield _format_model(serialized)
             if serializer:
                 if run := builder.task_run:
                     yield _format_model(serializer(run))
@@ -109,7 +109,7 @@ class RunService:
         task_input: dict[str, Any] | Messages,
         runner: AbstractRunner[Any],
         task_run_id: Optional[str],
-        stream_serializer: Callable[[str, RunOutput], BaseModel] | None,
+        stream_serializer: Callable[[str, RunOutput], BaseModel | None] | None,
         cache: CacheUsage,
         metadata: Optional[dict[str, Any]],
         trigger: RunTrigger,

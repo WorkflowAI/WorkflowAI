@@ -1213,6 +1213,47 @@ class TestRunCountByAgentUid:
             4: (2, pytest.approx(110.0)),  # pyright: ignore [reportUnknownMemberType]
         }
 
+    async def test_run_count_by_agent_uid_with_from_and_to_date(self, clickhouse_client: ClickhouseClient):
+        # Test with both from_date and to_date parameters
+        base_date = datetime.datetime(2024, 1, 15, 12, 0)  # Noon on Jan 15th
+
+        # Create dates spanning 30 days
+        dates = [
+            base_date - datetime.timedelta(days=25),  # Jan 21 - outside range
+            base_date - datetime.timedelta(days=20),  # Jan 26 - inside range
+            base_date - datetime.timedelta(days=15),  # Jan 31 - inside range
+            base_date - datetime.timedelta(days=10),  # Feb 5 - inside range
+            base_date - datetime.timedelta(days=5),  # Feb 10 - outside range
+        ]
+
+        # Create runs on these dates
+        runs = [
+            _ck_run(task_uid=1, created_at=dates[0], cost_usd=10.0),  # Too early, should not be counted
+            _ck_run(task_uid=2, created_at=dates[1], cost_usd=20.0),  # Should be counted
+            _ck_run(task_uid=3, created_at=dates[2], cost_usd=30.0),  # Should be counted
+            _ck_run(task_uid=3, created_at=dates[3], cost_usd=40.0),  # Should be counted
+            _ck_run(task_uid=4, created_at=dates[4], cost_usd=50.0),  # Too late, should not be counted
+        ]
+        await clickhouse_client.insert_models("runs", runs, {"async_insert": 0, "wait_for_async_insert": 0})
+
+        # Define date range for 20 days ago to 6 days ago
+        from_date = base_date - datetime.timedelta(days=21)  # Just before the earliest run we want to include
+        to_date = base_date - datetime.timedelta(days=6)  # Just after the latest run we want to include
+
+        # Count runs within the date range
+        results = {
+            r.agent_uid: (r.run_count, r.total_cost_usd)
+            async for r in clickhouse_client.run_count_by_agent_uid(from_date, to_date)
+        }
+
+        # Should include agent UIDs 2 and 3, but not 1 or 4
+        assert results == {
+            2: (1, pytest.approx(20.0)),  # pyright: ignore [reportUnknownMemberType]
+            3: (2, pytest.approx(70.0)),  # pyright: ignore [reportUnknownMemberType]
+        }
+        assert 1 not in results
+        assert 4 not in results
+
 
 class TestWeeklyRunAggregate:
     def _start_of_week(self):

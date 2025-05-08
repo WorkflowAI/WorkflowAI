@@ -1,0 +1,8 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+
+# Typing
+- Use the latest typing fetures of Python ('dict' instead of 'Dict', 'list' instead of 'List', ' | None' instead of 'Optional', etc.) 

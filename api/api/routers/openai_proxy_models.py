@@ -1,11 +1,13 @@
 import json
 import logging
-from collections.abc import Callable
+import time
+from collections.abc import Callable, Mapping
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from core.domain.agent_run import AgentRun
+from core.domain.consts import METADATA_KEY_INTEGRATION
 from core.domain.errors import BadRequestError
 from core.domain.fields.file import File
 from core.domain.message import (
@@ -13,10 +15,12 @@ from core.domain.message import (
     MessageContent,
 )
 from core.domain.models.providers import Provider
+from core.domain.run_output import RunOutput
 from core.domain.tool import Tool
-from core.domain.tool_call import ToolCallRequestWithID
+from core.domain.tool_call import ToolCall, ToolCallRequestWithID
 from core.domain.types import AgentOutput
 from core.tools import ToolKind
+from core.utils.models.dumps import safe_dump_pydantic_model
 
 # Goal of these models is to be as flexible as possible
 # We definitely do not want to reject calls without being sure
@@ -30,6 +34,12 @@ _logger = logging.getLogger(__name__)
 class OpenAIAudioInput(BaseModel):
     data: str
     format: str
+
+    def to_domain(self) -> File:
+        content_type = self.format
+        if "/" not in content_type:
+            content_type = f"audio/{content_type}"
+        return File(data=self.data, content_type=content_type)
 
 
 class OpenAIProxyImageURL(BaseModel):
@@ -58,7 +68,8 @@ class OpenAIProxyContent(BaseModel):
             case "input_audio":
                 if not self.input_audio:
                     raise BadRequestError("Input audio content is required")
-                return MessageContent(file=File(data=self.input_audio.data, content_type=self.input_audio.format))
+
+                return MessageContent(file=self.input_audio.to_domain())
             case _:
                 raise BadRequestError(f"Unknown content type: {self.type}", capture=True)
 
@@ -76,6 +87,22 @@ class OpenAIProxyFunctionCall(BaseModel):
         return cls(
             name=tool_call.tool_name,
             arguments=json.dumps(tool_call.tool_input_dict) if tool_call.tool_input_dict else None,
+        )
+
+    def safely_parsed_argument(self) -> dict[str, Any]:
+        if not self.arguments:
+            return {}
+        try:
+            return json.loads(self.arguments)
+        except json.JSONDecodeError:
+            _logger.warning("Failed to parse arguments", extra={"arguments": self.arguments})
+            return {"arguments": self.arguments}
+
+    def to_domain(self, id: str):
+        return ToolCallRequestWithID(
+            id=id,
+            tool_name=self.name,
+            tool_input_dict=self.safely_parsed_argument(),
         )
 
 
@@ -130,6 +157,9 @@ class OpenAIProxyToolCall(BaseModel):
             function=OpenAIProxyFunctionCall.from_domain(tool_call),
         )
 
+    def to_domain(self) -> ToolCallRequestWithID:
+        return self.function.to_domain(self.id)
+
     model_config = ConfigDict(extra="allow")
 
 
@@ -157,8 +187,21 @@ class OpenAIProxyMessage(BaseModel):
 
     def to_domain(self) -> Message:
         if not self.content:
-            # TODO: handle tool calls
-            raise BadRequestError("Content is required", capture=True)
+            if self.function_call:
+                return Message(
+                    content=[MessageContent(tool_call_request=self.function_call.to_domain(""))],
+                    role="assistant",
+                )
+            if self.tool_calls:
+                return Message(
+                    content=[MessageContent(tool_call_request=t.to_domain()) for t in self.tool_calls],
+                    role="assistant",
+                )
+            raise BadRequestError(
+                "Content is required",
+                capture=True,
+                extras={"messages": safe_dump_pydantic_model(self)},
+            )
 
         if isinstance(self.content, str):
             content = [MessageContent(text=self.content)]
@@ -168,13 +211,27 @@ class OpenAIProxyMessage(BaseModel):
         match self.role:
             case "user":
                 return Message(content=content, role="user")
+            case "tool":
+                return Message(
+                    content=[
+                        MessageContent(
+                            tool_call_result=ToolCall(
+                                id=self.tool_call_id or "",
+                                # TODO: this information is not available
+                                # In the message but we could grab it from the previous messages
+                                tool_name="",
+                                tool_input_dict={},
+                                result=self.content,
+                            ),
+                        ),
+                    ],
+                    role="user",
+                )
             case "assistant":
                 return Message(content=content, role="assistant")
             case "system" | "developer":
                 # TODO: raising a validation error would mean that the system message is not supported
-                return Message(content=content, role=self.role)
-            case "tool":
-                raise BadRequestError("Tool messages are not yet supported", capture=True)
+                return Message(content=content, role="system")
             case _:
                 raise BadRequestError(f"Unknown role: {self.role}", capture=True)
 
@@ -241,6 +298,7 @@ _IGNORED_FIELDS = {
     "user",
     "store",
     "parallel_tool_calls",
+    "stream_options",
 }
 
 
@@ -306,12 +364,13 @@ class OpenAIProxyChatCompletionRequest(BaseModel):
             return [t.to_domain() for t in self.functions], True
         return None, False
 
-    def full_metadata(self) -> dict[str, Any] | None:
-        base = self.metadata
+    def full_metadata(self, headers: Mapping[str, Any]) -> dict[str, Any] | None:
+        base = self.metadata or {}
+        base[METADATA_KEY_INTEGRATION] = "openai_chat_completions"
         if self.user:
-            if not base:
-                base = {}
             base["user"] = self.user
+        if browser_agent := headers.get("user-agent"):
+            base["user-agent"] = browser_agent
         return base
 
     def _check_fields(self):
@@ -387,12 +446,33 @@ class OpenAIProxyChatCompletionResponse(BaseModel):
             model=model,
         )
 
+    @classmethod
+    def serializer(cls, model: str, deprecated_function: bool, output_mapper: Callable[[Any], str]):
+        def _serializer(run: AgentRun):
+            return cls.from_domain(run, output_mapper, model, deprecated_function)
+
+        return _serializer
+
 
 class OpenAIProxyChatCompletionChunkDelta(BaseModel):
     content: str | None = None
     function_call: OpenAIProxyFunctionCall | None = None  # Deprecated
     tool_calls: list[OpenAIProxyToolCall] | None = None
     role: Literal["user", "assistant", "system", "tool"] | None = None
+
+    @classmethod
+    def from_domain(cls, output: RunOutput, deprecated_function: bool):
+        if not output.delta and not output.tool_call_requests:
+            return None
+        return cls(
+            content=output.delta,
+            function_call=OpenAIProxyFunctionCall.from_domain(output.tool_call_requests[0])
+            if deprecated_function and output.tool_call_requests
+            else None,
+            tool_calls=[OpenAIProxyToolCall.from_domain(t) for t in output.tool_call_requests]
+            if output.tool_call_requests and not deprecated_function
+            else None,
+        )
 
 
 class OpenAIProxyChatCompletionChunkChoice(BaseModel):
@@ -409,3 +489,22 @@ class OpenAIProxyChatCompletionChunk(BaseModel):
     system_fingerprint: str | None = None
     object: Literal["chat.completion.chunk"] = "chat.completion.chunk"
     usage: OpenAIProxyCompletionUsage | None = None
+
+    @classmethod
+    def from_domain(cls, id: str, output: RunOutput, model: str, deprecated_function: bool):
+        chunk_delta = OpenAIProxyChatCompletionChunkDelta.from_domain(output, deprecated_function)
+        if not chunk_delta:
+            return None
+        return cls(
+            id=id,
+            created=int(time.time()),
+            model=model,
+            choices=[OpenAIProxyChatCompletionChunkChoice(delta=chunk_delta, finish_reason="stop", index=0)],
+        )
+
+    @classmethod
+    def stream_serializer(cls, model: str, deprecated_function: bool):
+        def _serializer(id: str, output: RunOutput):
+            return cls.from_domain(id, output, model=model, deprecated_function=deprecated_function)
+
+        return _serializer

@@ -170,7 +170,7 @@ async def test_failed_run_invalid_output_is_stored_for_openai_stream(
     assert decoded.get("task_run_id")
     # assert run_res.status_code == 400
     # run_error_json = run_res.json()
-    # assert run_error_json["error"]["message"] == "Received invalid JSON: at [greeting], 1 is not of type 'string'"
+    # assert run_error_json["error"]["message"] == "Model failed to generate a valid json: at [greeting], 1 is not of type 'string'"
     # assert run_error_json.get("id")
 
     # fetch run

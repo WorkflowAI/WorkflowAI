@@ -36,10 +36,10 @@ from core.providers.amazon_bedrock.amazon_bedrock_domain import (
     message_or_system,
 )
 from core.providers.base.abstract_provider import RawCompletion
-from core.providers.base.httpx_provider import HTTPXProvider, ParsedResponse
+from core.providers.base.httpx_provider import HTTPXProvider
 from core.providers.base.models import StandardMessage
 from core.providers.base.provider_options import ProviderOptions
-from core.providers.base.streaming_context import ToolCallRequestBuffer
+from core.providers.base.streaming_context import ParsedResponse, ToolCallRequestBuffer
 from core.providers.google.google_provider_domain import (
     internal_tool_name_to_native_tool_call,
     native_tool_name_to_internal,

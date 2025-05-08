@@ -1,8 +1,9 @@
+from typing import Any
+
 from api.broker import broker
 from api.jobs.common import SystemStorageDep
 from core.domain import consts
 from core.domain.events import FeedbackCreatedEvent
-from core.storage.slack.slack_types import SlackBlock
 from core.storage.slack.webhook_client import SlackWebhookClient
 
 
@@ -20,7 +21,7 @@ async def send_slack_message(event: FeedbackCreatedEvent, storage: SystemStorage
 
     # f"New feedback for run {event.run_id}:\nOutcome: {event.outcome}\nComment: {event.comment}\nUser ID: {event.user_id}",
 
-    blocks: list[SlackBlock] = [
+    blocks: list[dict[str, Any]] = [
         {
             "type": "section",
             "text": {

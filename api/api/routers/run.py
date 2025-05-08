@@ -41,7 +41,7 @@ from core.domain.task_group import TaskGroupIdentifier
 from core.domain.task_group_properties import TaskGroupProperties
 from core.domain.tenant_data import TenantData
 from core.domain.tool_call import ToolCall, ToolCallOutput
-from core.domain.types import CacheUsage
+from core.domain.types import AgentOutput, CacheUsage
 from core.domain.version_environment import VersionEnvironment
 from core.domain.version_reference import VersionReference as DomainVersionReference
 from core.storage import TenantTuple
@@ -127,7 +127,7 @@ class RunRequest(BaseModel):
 
 class _RunResponseCommon(BaseModel):
     id: str
-    task_output: dict[str, Any]
+    task_output: AgentOutput
 
     tool_call_requests: list[APIToolCallRequest] | None = Field(
         description="Tool calls that should be executed client side.",

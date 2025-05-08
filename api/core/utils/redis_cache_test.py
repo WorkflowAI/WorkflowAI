@@ -9,6 +9,32 @@ import pytest
 from .redis_cache import redis_cached, redis_cached_generator_last_chunk, shared_redis_client, should_run_today
 
 
+# Define test classes at module level for proper pickling
+class TestClassForCache:
+    # Class variable to track call count
+    class_method_call_count: int = 0
+
+    def __init__(self, instance_id: str):
+        self.instance_id = instance_id
+        self.call_count = 0
+
+    @redis_cached()
+    async def cached_instance_method(self, param: str) -> str:
+        self.call_count += 1
+        return f"instance_{param}_{self.call_count}"
+
+    @classmethod
+    @redis_cached()
+    async def cached_class_method(cls, param: str) -> str:
+        # Use properly defined class variable
+        TestClassForCache.class_method_call_count += 1
+        return f"class_{param}_{TestClassForCache.class_method_call_count}"
+
+
+class SubTestClassForCache(TestClassForCache):
+    pass
+
+
 async def test_redis_cached_hit() -> None:
     # Setup mock cache with existing data
     mock_cache = AsyncMock()
@@ -76,6 +102,63 @@ async def test_redis_cached_non_async_function() -> None:
     assert result == "sync_value"
     mock_cache.setex.assert_called_once()
     mock_inner.assert_called_once_with("test_param")  # Function should be called
+
+
+async def test_redis_cached_class_methods() -> None:
+    """
+    Test that redis_cached works with class methods and instance methods,
+    properly ignoring self/cls parameters when generating cache keys.
+    """
+    mock_cache = AsyncMock()
+    mock_cache.get.return_value = None
+
+    # Set up class counter for tracking calls
+    TestClassForCache.class_method_call_count = 0
+
+    with patch("core.utils.redis_cache.shared_redis_client", mock_cache):
+        # Test instance method cache ignores 'self'
+        instance1 = TestClassForCache("instance1")
+        instance2 = TestClassForCache("instance2")
+
+        # First call from instance1
+        result1 = await instance1.cached_instance_method("param")
+        assert result1 == "instance_param_1"
+        assert instance1.call_count == 1
+
+        # Capture the cache key used for the first call
+        instance1_cache_key = mock_cache.get.call_args[0][0]
+        # Reset mock between calls to verify separate cache lookups
+        mock_cache.get.reset_mock()
+        mock_cache.get.return_value = pickle.dumps(result1)
+
+        # Second call from instance2 should use same cache (if self is ignored)
+        result2 = await instance2.cached_instance_method("param")
+
+        # Capture the cache key used for the second call
+        instance2_cache_key = mock_cache.get.call_args[0][0]
+        assert result2 == "instance_param_1"  # Should get cached value from first call
+        assert instance2.call_count == 0  # Should not increment if cache hit
+
+        # Test class method cache ignores 'cls'
+        mock_cache.get.return_value = None
+        result3 = await TestClassForCache.cached_class_method("param")
+        assert result3 == "class_param_1"
+        assert TestClassForCache.class_method_call_count == 1
+
+        # Capture the cache key used for the parent class
+        parent_cache_key = mock_cache.get.call_args[0][0]
+        # Create subclass and verify cache is shared when using same parameters
+        mock_cache.get.reset_mock()
+        mock_cache.get.return_value = pickle.dumps(result3)
+
+        result4 = await SubTestClassForCache.cached_class_method("param")
+
+        # Capture the cache key used for the subclass
+        subclass_cache_key = mock_cache.get.call_args[0][0]
+        assert instance1_cache_key == instance2_cache_key
+        assert parent_cache_key == subclass_cache_key
+        assert result4 == "class_param_1"  # Should get cached value
+        assert TestClassForCache.class_method_call_count == 1  # Should not increment
 
 
 async def test_redis_cached_cache_error() -> None:

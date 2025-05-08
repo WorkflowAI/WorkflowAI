@@ -8,6 +8,8 @@ from api.routers import (
     integrations_router,
     stripe_webhooks,
 )
+from api.routers import clerk_webhooks, features, feedback_v1, helpscout_webhooks, slack_webhooks, stripe_webhooks
+from api.routers.agents import meta_agent, new_tool_agent
 from api.tags import RouteTags
 from core.domain.tenant_data import PublicOrganizationData
 
@@ -15,6 +17,8 @@ main_router = APIRouter()
 main_router.include_router(clerk_webhooks.router)
 main_router.include_router(stripe_webhooks.router)
 main_router.include_router(feedback_v1.feedback_router)
+main_router.include_router(slack_webhooks.router)
+main_router.include_router(helpscout_webhooks.router)
 
 
 # Route for public organization data

@@ -442,7 +442,7 @@ class TestStream:
             c
             async for c in gemini_provider.stream(
                 messages=[MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello")],
-                options=ProviderOptions(model=Model.GEMINI_1_5_PRO_001, max_tokens=10, temperature=0),
+                options=ProviderOptions(model=Model.GEMINI_1_5_PRO_001, max_tokens=10, temperature=0, output_schema={}),
                 output_factory=lambda x, _: StructuredOutput(json.loads(x)),
                 partial_output_factory=lambda x: StructuredOutput(x),
             )

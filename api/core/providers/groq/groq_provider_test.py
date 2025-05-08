@@ -11,6 +11,7 @@ from httpx import Response
 from pytest_httpx import HTTPXMock, IteratorStream
 
 from core.domain.errors import (
+    ContentModerationError,
     FailedGenerationError,
     MaxTokensExceededError,
     ProviderBadRequestError,
@@ -29,6 +30,7 @@ from core.providers.base.models import RawCompletion
 from core.providers.base.provider_options import ProviderOptions
 from core.providers.groq.groq_domain import Choice, CompletionResponse, GroqMessage, Usage
 from core.providers.groq.groq_provider import GroqConfig, GroqProvider
+from core.utils.json_utils import extract_json_str
 from tests.utils import fixture_bytes, fixtures_json
 
 
@@ -89,8 +91,8 @@ class TestStream:
                     content="Hello",
                 ),
             ],
-            options=ProviderOptions(model=Model.LLAMA_3_1_70B, max_tokens=1000, temperature=0),
-            output_factory=lambda x, _: StructuredOutput(json.loads(x)),
+            options=ProviderOptions(model=Model.LLAMA_3_1_70B, max_tokens=1000, temperature=0, output_schema={}),
+            output_factory=lambda x, _: StructuredOutput(json.loads(extract_json_str(x))),
             partial_output_factory=lambda x: StructuredOutput(x),
         )
         chunks = [o async for o in streamer]
@@ -297,6 +299,20 @@ class TestComplete:
                 output_factory=lambda x, _: StructuredOutput(json.loads(x) if x else {}),
             )
 
+    async def test_complete_content_moderation(self, httpx_mock: HTTPXMock, groq_provider: GroqProvider):
+        httpx_mock.add_response(
+            url="https://api.groq.com/openai/v1/chat/completions",
+            json=fixtures_json("groq", "content_moderation.json"),
+            status_code=200,
+        )
+
+        with pytest.raises(ContentModerationError):
+            await groq_provider.complete(
+                [MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello")],
+                options=ProviderOptions(model=Model.LLAMA_4_MAVERICK_BASIC, output_schema={}),
+                output_factory=lambda x, _: StructuredOutput(json.loads(x)),
+            )
+
 
 class TestStandardizeMessages:
     def test_standardize_messages(self) -> None:
@@ -493,3 +509,17 @@ class TestUnknownError:
         e = unknown_error_fn("Unparseable error message")
         assert isinstance(e, UnknownProviderError)
         assert e.capture is True
+
+
+@pytest.mark.parametrize(
+    "message, expected_result",
+    [
+        ("I can't help with that", True),
+        ("I can help with that", False),
+        ("I can't assist with that", True),
+        ("I'm not going to help with that. Is there something else I can assist you with?", True),
+        ("I can't help with that. Is there something else I can assist you with?", True),
+    ],
+)
+def test_is_content_moderation_completion(message: str, expected_result: bool):
+    assert GroqProvider.is_content_moderation_completion(message) == expected_result  # pyright: ignore [reportPrivateUsage]

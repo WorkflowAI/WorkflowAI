@@ -160,21 +160,26 @@ async def chat_completions(
         reference=VersionReference(properties=properties),
         provider_settings=None,
         variant=variant,
+        stream_deltas=body.stream is True,
     )
 
     return await run_service.run(
         runner=runner,
         task_input=Messages(messages=[m.to_domain() for m in body.messages]),
         task_run_id=None,
-        stream_serializer=None,
         cache="auto",
-        metadata=body.full_metadata(),
+        metadata=body.full_metadata(request.headers),
         trigger="user",
-        serializer=lambda run: OpenAIProxyChatCompletionResponse.from_domain(
-            run,
-            output_mapper,
-            body.model,
-            deprecated_function,
+        serializer=OpenAIProxyChatCompletionResponse.serializer(
+            model=body.model,
+            deprecated_function=deprecated_function,
+            output_mapper=output_mapper,
         ),
         start_time=request_start_time,
+        stream_serializer=OpenAIProxyChatCompletionChunk.stream_serializer(
+            model=body.model,
+            deprecated_function=deprecated_function,
+        )
+        if body.stream is True
+        else None,
     )

@@ -1,6 +1,12 @@
-from api.routers.openai_proxy_models import OpenAIProxyChatCompletionRequest, OpenAIProxyContent, OpenAIProxyImageURL
+from api.routers.openai_proxy_models import (
+    OpenAIProxyChatCompletionRequest,
+    OpenAIProxyContent,
+    OpenAIProxyImageURL,
+    OpenAIProxyMessage,
+)
 from core.domain.fields.file import File
-from core.domain.message import MessageContent
+from core.domain.message import Message, MessageContent
+from core.domain.tool_call import ToolCall
 
 
 class TestOpenAIProxyChatCompletionRequest:
@@ -24,3 +30,25 @@ class TestOpenAIProxyContent:
             ),
         )
         assert payload.to_domain() == MessageContent(file=File(url="https://hello.com/image.png"))
+
+
+class TestOpenAIProxyMessageToDomain:
+    def test_with_tool_calls(self):
+        payload = OpenAIProxyMessage(
+            role="tool",
+            content="Hello, world!",
+            tool_call_id="1",
+        )
+        assert payload.to_domain() == Message(
+            role="user",
+            content=[
+                MessageContent(
+                    tool_call_result=ToolCall(
+                        id="1",
+                        tool_name="",
+                        tool_input_dict={},
+                        result="Hello, world!",
+                    ),
+                ),
+            ],
+        )

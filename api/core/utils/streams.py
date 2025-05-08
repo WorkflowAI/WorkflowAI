@@ -1,6 +1,6 @@
 import logging
 import re
-from typing import Any, AsyncIterator, Optional, Union
+from typing import Any, AsyncIterator, Optional, Protocol, Union
 
 from pydantic import BaseModel
 
@@ -52,6 +52,16 @@ def should_ignore_outside_quotes(c: str) -> bool:
 
 def is_space(c: str) -> bool:
     return c.isspace()
+
+
+class StreamParser(Protocol):
+    @property
+    def aggregate(self) -> list[str]: ...
+
+    @property
+    def raw_completion(self) -> str: ...
+
+    def process_chunk(self, chunk: str) -> list[tuple[str, Any]] | None: ...
 
 
 class JSONStreamParser:
@@ -298,18 +308,18 @@ class JSONStreamParser:
     def raw_completion(self) -> str:
         return "".join(self.aggregate)
 
-    def process_chunk(self, chunk: str) -> list[tuple[str, Any]]:
+    def process_chunk(self, chunk: str) -> list[tuple[str, Any]] | None:
         self.aggregate.append(chunk)
 
         if self.is_done:
             # JSON already parsed, exiting
-            return []
+            return None
 
         if not self.in_json:
             first_idx = self._first_json_index(chunk)
             if first_idx is None:
                 # Still not in json, skipping
-                return []
+                return None
             chunk = chunk[first_idx:]
             self.in_json = True
 
@@ -328,7 +338,7 @@ class JSONStreamParser:
                 # We need to wait for more data so we break here
                 # The current character was not processed, so we add it back to the buffer
                 self._leftover_buffer = f"{c}{self._leftover_buffer}"
-                return res
+                return res or None
             except _JsonEnd:
                 self.is_done = True
                 break
@@ -341,7 +351,7 @@ class JSONStreamParser:
             chain = self._send_current_chain()
             if chain:
                 res.append(chain)
-        return res
+        return res or None
 
 
 def format_model_for_sse(data: BaseModel):
@@ -382,3 +392,16 @@ async def standard_wrap_sse(
 
     if data:
         logger.warning("Data left after processing", extra={"data": data})
+
+
+class RawStreamParser:
+    def __init__(self) -> None:
+        self.aggregate: list[str] = []
+
+    def process_chunk(self, chunk: str) -> list[tuple[str, Any]]:
+        self.aggregate.append(chunk)
+        return []
+
+    @property
+    def raw_completion(self) -> str:
+        return "".join(self.aggregate)

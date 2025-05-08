@@ -16,3 +16,4 @@ class ProviderOptions(BaseModel):
     timeout: Optional[float] = 180
     enabled_tools: list[Tool] | None = None
     tenant: str | None = None
+    stream_deltas: bool = False

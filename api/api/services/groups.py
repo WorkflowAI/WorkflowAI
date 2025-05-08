@@ -256,6 +256,7 @@ class GroupService:
         sanitized_version: SanitizedVersion,
         custom_configs: list[ProviderSettings] | None,
         disable_fallback: bool,
+        stream_deltas: bool,
     ) -> AbstractRunner[Any]:
         metadata: dict[str, Any] = {}
         if sanitized_version.environment:
@@ -270,6 +271,7 @@ class GroupService:
             metadata=metadata or None,
             custom_configs=custom_configs,
             disable_fallback=disable_fallback,
+            stream_deltas=stream_deltas,
         )
         await runner.validate_run_options()
         return runner
@@ -324,6 +326,7 @@ class GroupService:
         detect_image_options: bool = False,
         provider_settings: list[ProviderSettings] | None = None,
         disable_fallback: bool = False,
+        stream_deltas: bool = False,
     ) -> tuple[AbstractRunner[Any], bool]:
         """
         The internal runner uses the full schema of a task (i-e not only the types that are described
@@ -375,6 +378,7 @@ class GroupService:
             version,
             custom_configs=provider_settings,
             disable_fallback=disable_fallback,
+            stream_deltas=stream_deltas,
         )
         is_different_version = version.properties.model_dump(exclude_none=True) != runner.properties.model_dump(
             exclude_none=True,

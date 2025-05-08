@@ -11,6 +11,7 @@ class RunOutput(NamedTuple):
     tool_calls: Sequence[ToolCall] | None = None
     tool_call_requests: Sequence[ToolCallRequestWithID] | None = None
     reasoning_steps: list[InternalReasoningStep] | None = None
+    delta: str | None = None
 
     @classmethod
     def from_run(cls, run: AgentRun):

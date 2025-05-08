@@ -1,0 +1,8 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+
+# Logging
+- G004: you should not use f-strings for logging. Since the event may not be captured, based on log level. Always use "extra" to pass variables.

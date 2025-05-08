@@ -20,6 +20,8 @@ class StructuredOutput(NamedTuple):
 
     files: list[File] | None = None
 
+    delta: str | None = None
+
     @property
     def number_of_images(self) -> int:
         if not self.files:

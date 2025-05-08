@@ -175,7 +175,12 @@ class TestSingleStream:
             output_factory=_output_factory,
             partial_output_factory=lambda x: StructuredOutput(x),
             raw_completion=raw,
-            options=ProviderOptions(model=Model.CLAUDE_3_5_SONNET_20241022, max_tokens=10, temperature=0),
+            options=ProviderOptions(
+                model=Model.CLAUDE_3_5_SONNET_20241022,
+                max_tokens=10,
+                temperature=0,
+                output_schema={},
+            ),
         )
 
         parsed_chunks = [o async for o in raw_chunks]
@@ -209,7 +214,12 @@ class TestSingleStream:
             output_factory=_output_factory,
             partial_output_factory=lambda x: StructuredOutput(x),
             raw_completion=raw,
-            options=ProviderOptions(model=Model.CLAUDE_3_5_SONNET_20241022, max_tokens=10, temperature=0),
+            options=ProviderOptions(
+                model=Model.CLAUDE_3_5_SONNET_20241022,
+                max_tokens=10,
+                temperature=0,
+                output_schema={},
+            ),
         )
 
         parsed_chunks = [o async for o in raw_chunks]

@@ -104,27 +104,29 @@ broker = _broker().with_middlewares(
 )
 
 
-def _build_scheduler() -> TaskiqScheduler | None:
+def _build_scheduler() -> tuple[TaskiqScheduler | None, ScheduleSource | None]:
     if os.environ.get("SCHEDULER_ENABLED") != "true":
-        return None
+        return None, None
 
     sources: list[ScheduleSource] = [
         LabelScheduleSource(broker=broker),
     ]
 
     broker_url = os.environ["JOBS_BROKER_URL"]
+    dynamic_source: ScheduleSource | None = None
     if broker_url.startswith("redis"):
-        sources.append(RedisScheduleSource(broker_url))
+        dynamic_source = RedisScheduleSource(broker_url)
+        sources.append(dynamic_source)
 
-    return TaskiqScheduler(broker, sources=sources)
+    return TaskiqScheduler(broker, sources=sources), dynamic_source
 
 
-scheduler = _build_scheduler()
+scheduler, dynamic_source = _build_scheduler()
 
 
 async def schedule_job(job: AsyncTaskiqDecoratedTask[[Any], Coroutine[Any, Any, None]], at: datetime, *args: Any):
-    if scheduler:
-        await job.schedule_by_time(scheduler.sources[0], at, *args)
+    if dynamic_source:
+        await job.schedule_by_time(dynamic_source, at, *args)
         return
 
     await asyncio.sleep((at - datetime.now()).total_seconds())

@@ -15,7 +15,8 @@ def _agg_stream(splits: list[str], is_tolerant: bool = False) -> list[tuple[str,
     streamer = JSONStreamParser(is_tolerant=is_tolerant)
 
     for chunk in splits:
-        agg.extend(streamer.process_chunk(chunk))
+        if c := streamer.process_chunk(chunk):
+            agg.extend(c)
 
     return agg
 

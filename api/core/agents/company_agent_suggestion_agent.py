@@ -92,6 +92,11 @@ class SuggestAgentForCompanyInput(BaseModel):
         description="The context of the company",
     )
 
+    additional_instructions: str | None = Field(
+        default=None,
+        description="Additional instructions for the agent to follow to inform its suggestions",
+    )
+
 
 class SuggestAgentForCompanyOutput(BaseModel):
     suggested_agents: list[SuggestedAgent] | None = Field(

@@ -414,7 +414,7 @@ def test_extract_stream_delta_consecutive_fragments() -> None:
         '"}',
     ]
 
-    stream_context = StreamingContext(RawCompletion(response="", usage=LLMUsage()))
+    stream_context = StreamingContext(RawCompletion(response="", usage=LLMUsage()), json=True)
 
     # Process all fragments except the last one; these should not yield a complete tool call
     for fragment in fragments[:-1]:
@@ -507,7 +507,7 @@ def test_extract_stream_delta_from_fixture() -> None:
 
     tool_calls: list[ToolCallRequestWithID] = []
 
-    stream_context = StreamingContext(RawCompletion(response="", usage=LLMUsage()))
+    stream_context = StreamingContext(RawCompletion(response="", usage=LLMUsage()), json=True)
 
     for event in data["events"]:
         event_bytes = json.dumps(event).encode("utf-8")

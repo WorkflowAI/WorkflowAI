@@ -1,12 +1,14 @@
 import logging
 from collections.abc import Iterable
 from datetime import datetime
-from typing import Generic, List, TypedDict, TypeVar
+from typing import Any, Generic, List, TypedDict, TypeVar
 
 import httpx
 from typing_extensions import NotRequired, override
 
+from core.domain.errors import InternalError, ObjectNotFoundError
 from core.services.users.user_service import OrganizationDetails, UserDetails, UserService
+from core.utils.redis_cache import redis_cached
 
 _logger = logging.getLogger(__name__)
 
@@ -71,6 +73,28 @@ class ClerkUserService(UserService):
             if not user_ids:
                 return []
             return await self._get_users_by_id(client, user_ids)
+
+    @redis_cached(expiration_seconds=60 * 60 * 24)  # TTL=1 day
+    async def get_user_id_by_email(self, email: str) -> str:
+        async with self._client() as client:
+            response = await client.get("/users", params={"email_address": [email]})
+        response.raise_for_status()
+        data: list[dict[str, Any]] = response.json()
+
+        if len(data) == 0:
+            raise ObjectNotFoundError(f"No user found for email {email}")
+        if len(data) > 1:
+            raise InternalError(f"Several users found for email {email}")
+
+        return data[0]["id"]
+
+    @redis_cached(expiration_seconds=60 * 60 * 24)  # TTL=1 day
+    async def get_user_organization_ids(self, user_id: str) -> list[str]:
+        async with self._client() as client:
+            response = await client.get(f"/users/{user_id}/organization_memberships")
+        response.raise_for_status()
+        data: DataDict[dict[str, Any]] = response.json()
+        return [payload["organization"]["id"] for payload in data["data"]]
 
     @override
     async def count_registrations(self, since: datetime) -> int:

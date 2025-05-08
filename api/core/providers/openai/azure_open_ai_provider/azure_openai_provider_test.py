@@ -247,7 +247,7 @@ class TestSingleStream:
             output_factory=_output_factory,
             partial_output_factory=StructuredOutput,
             raw_completion=raw,
-            options=ProviderOptions(model=Model.GPT_4O_2024_11_20, max_tokens=10, temperature=0),
+            options=ProviderOptions(model=Model.GPT_4O_2024_11_20, max_tokens=10, temperature=0, output_schema={}),
         )
 
         parsed_chunks = [(chunk.output, chunk.tool_calls) async for chunk in raw_chunks]

@@ -142,7 +142,12 @@ class TestBuildRequest:
             CompletionRequest,
             openai_provider._build_request(  # pyright: ignore [reportPrivateUsage]
                 messages=[MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello")],
-                options=ProviderOptions(model=Model.O1_2024_12_17_HIGH_REASONING_EFFORT, max_tokens=10, temperature=0),
+                options=ProviderOptions(
+                    model=Model.O1_2024_12_17_HIGH_REASONING_EFFORT,
+                    max_tokens=10,
+                    temperature=0,
+                    output_schema={},
+                ),
                 stream=False,
             ),
         )
@@ -238,7 +243,7 @@ class TestSingleStream:
             output_factory=lambda x, _: StructuredOutput(json.loads(x)),
             partial_output_factory=lambda x: StructuredOutput(x),
             raw_completion=raw,
-            options=ProviderOptions(model=Model.GPT_3_5_TURBO_1106, max_tokens=10, temperature=0),
+            options=ProviderOptions(model=Model.GPT_3_5_TURBO_1106, max_tokens=10, temperature=0, output_schema={}),
         )
 
         parsed_chunks = [o async for o in raw_chunks]
@@ -282,7 +287,12 @@ class TestSingleStream:
             output_factory=lambda x, _: StructuredOutput(json.loads(x)),
             partial_output_factory=lambda x: StructuredOutput(x),
             raw_completion=raw,
-            options=ProviderOptions(model=Model.GPT_40_AUDIO_PREVIEW_2024_10_01, max_tokens=10, temperature=0),
+            options=ProviderOptions(
+                model=Model.GPT_40_AUDIO_PREVIEW_2024_10_01,
+                max_tokens=10,
+                temperature=0,
+                output_schema={},
+            ),
         )
 
         parsed_chunks = [o async for o in raw_chunks]
@@ -394,7 +404,7 @@ class TestStream:
 
         streamer = provider.stream(
             [MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello")],
-            options=ProviderOptions(model=Model.GPT_3_5_TURBO_1106, max_tokens=10, temperature=0),
+            options=ProviderOptions(model=Model.GPT_3_5_TURBO_1106, max_tokens=10, temperature=0, output_schema={}),
             output_factory=lambda x, _: StructuredOutput(json.loads(x)),
             partial_output_factory=lambda x: StructuredOutput(x),
         )
@@ -411,7 +421,7 @@ class TestStream:
         # Just checking that the o1 model actually stream
         streamer = openai_provider.stream(
             [MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello")],
-            options=ProviderOptions(model=Model.O1_PREVIEW_2024_09_12, max_tokens=10, temperature=0),
+            options=ProviderOptions(model=Model.O1_PREVIEW_2024_09_12, max_tokens=10, temperature=0, output_schema={}),
             output_factory=lambda x, _: StructuredOutput(json.loads(x)),
             partial_output_factory=lambda x: StructuredOutput(x),
         )
@@ -545,7 +555,7 @@ class TestComplete:
         with pytest.raises(ProviderInternalError) as e:
             await provider.complete(
                 [MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello")],
-                options=ProviderOptions(model=Model.GPT_3_5_TURBO_1106, max_tokens=10, temperature=0),
+                options=ProviderOptions(model=Model.GPT_3_5_TURBO_1106, max_tokens=10, temperature=0, output_schema={}),
                 output_factory=lambda x, _: StructuredOutput(json.loads(x)),
             )
 
@@ -627,7 +637,7 @@ class TestComplete:
         with pytest.raises(ContentModerationError) as e:
             await provider.complete(
                 [MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello")],
-                options=ProviderOptions(model=Model.GPT_4O_2024_08_06, max_tokens=10, temperature=0),
+                options=ProviderOptions(model=Model.GPT_4O_2024_08_06, max_tokens=10, temperature=0, output_schema={}),
                 output_factory=lambda x, _: StructuredOutput(json.loads(x)),
             )
 

@@ -29,10 +29,10 @@ from core.domain.structured_output import StructuredOutput
 from core.domain.tool_call import ToolCallRequestWithID
 from core.providers.anthropic.anthropic_domain import CompletionResponse
 from core.providers.base.abstract_provider import RawCompletion
-from core.providers.base.httpx_provider import HTTPXProvider, ParsedResponse
+from core.providers.base.httpx_provider import HTTPXProvider
 from core.providers.base.models import StandardMessage
 from core.providers.base.provider_options import ProviderOptions
-from core.providers.base.streaming_context import ToolCallRequestBuffer
+from core.providers.base.streaming_context import ParsedResponse, ToolCallRequestBuffer
 from core.providers.openai.openai_provider import OpenAIProvider
 from tests.utils import mock_aiter
 
@@ -584,15 +584,15 @@ class TestFailedGenerationError:
         with pytest.raises(FailedGenerationError) as e:
             async for _ in provider._single_stream(  # pyright: ignore[reportPrivateUsage]
                 request={},
-                output_factory=_output_factory,
+                output_factory=Mock(side_effect=JSONDecodeError(doc="", pos=1, msg="hello")),
                 partial_output_factory=lambda x: StructuredOutput(x),
                 raw_completion=RawCompletion(response="", usage=LLMUsage()),
-                options=ProviderOptions(model=Model.GPT_4O_2024_05_13),
+                options=ProviderOptions(model=Model.GPT_4O_2024_05_13, output_schema={}),
             ):
                 pass
 
         assert e.value.retry is True
-        assert "Generation does not contain a valid JSON" in str(e.value)
+        assert "Model failed to generate a valid json" in str(e.value)
 
 
 class DummyNativeToolProvider(MockedProvider):
@@ -661,7 +661,7 @@ class TestNativeToolCalls:
                 output_factory=lambda x, _: StructuredOutput(output=json.loads(x)),
                 partial_output_factory=lambda data: StructuredOutput(output=data),
                 raw_completion=raw_completion,
-                options=ProviderOptions(model=Model.GPT_4O_2024_05_13),
+                options=ProviderOptions(model=Model.GPT_4O_2024_05_13, output_schema={}),
             )
         ]
 
@@ -679,10 +679,10 @@ class TestStreamingHandlers:
         from core.providers.base.abstract_provider import RawCompletion
         from core.providers.base.streaming_context import StreamingContext
 
-        context = StreamingContext(RawCompletion(response="", usage=LLMUsage()))
+        context = StreamingContext(RawCompletion(response="", usage=LLMUsage()), json=True)
 
         # Test no updates
-        context.streamer.process_chunk = Mock(return_value=[])
+        context.streamer.process_chunk = Mock(return_value=None)
         assert mocked_provider._handle_chunk_output(context, "test content") is False  # pyright: ignore[reportPrivateUsage]
 
         # Test successful update
@@ -695,7 +695,7 @@ class TestStreamingHandlers:
         from core.providers.base.abstract_provider import RawCompletion
         from core.providers.base.streaming_context import StreamingContext
 
-        context = StreamingContext(RawCompletion(response="", usage=LLMUsage()))
+        context = StreamingContext(RawCompletion(response="", usage=LLMUsage()), json=True)
 
         # Test no reasoning steps
         assert mocked_provider._handle_chunk_reasoning_steps(context, None) is False  # pyright: ignore[reportPrivateUsage]
@@ -718,7 +718,7 @@ class TestStreamingHandlers:
         from core.providers.base.abstract_provider import RawCompletion
         from core.providers.base.streaming_context import StreamingContext
 
-        context = StreamingContext(RawCompletion(response="", usage=LLMUsage()))
+        context = StreamingContext(RawCompletion(response="", usage=LLMUsage()), json=True)
 
         # Test no tool calls
         assert mocked_provider._handle_chunk_tool_calls(context, None) is False  # pyright: ignore[reportPrivateUsage]
@@ -744,7 +744,7 @@ class TestStreamingHandlers:
         from core.providers.base.abstract_provider import RawCompletion
         from core.providers.base.streaming_context import StreamingContext
 
-        context = StreamingContext(RawCompletion(response="", usage=LLMUsage()))
+        context = StreamingContext(RawCompletion(response="", usage=LLMUsage()), json=True)
 
         # Test no delta
         mocked_provider.mock._extract_stream_delta.return_value = None
@@ -771,7 +771,7 @@ class TestStreamingHandlers:
             content='{"key": "value"}',
             tool_calls=[tool_call],
         )
-        context.streamer.process_chunk = Mock(return_value=[])  # No content updates
+        context.streamer.process_chunk = Mock(return_value=None)  # No content updates
         assert mocked_provider._handle_chunk(context, b"test") is False  # pyright: ignore[reportPrivateUsage]
         assert context.tool_calls is not None
         assert len(context.tool_calls) == 1
@@ -805,7 +805,7 @@ class TestStreamingHandlers:
             output_factory=lambda x, _: StructuredOutput(output=json.loads(x)),
             partial_output_factory=lambda x: StructuredOutput(output=json.loads(x) if isinstance(x, str) else x),
             raw_completion=RawCompletion(response="", usage=LLMUsage()),
-            options=ProviderOptions(model=Model.GPT_4O_2024_05_13),
+            options=ProviderOptions(model=Model.GPT_4O_2024_05_13, output_schema={}),
         ):
             outputs.append(copy.deepcopy(output))  # noqa: PERF401
 
@@ -839,11 +839,11 @@ class TestStreamingHandlers:
                 output_factory=lambda x, _: StructuredOutput(output=json.loads(x)),
                 partial_output_factory=lambda x: StructuredOutput(output=x),
                 raw_completion=RawCompletion(response="", usage=LLMUsage()),
-                options=ProviderOptions(model=Model.GPT_4O_2024_05_13),
+                options=ProviderOptions(model=Model.GPT_4O_2024_05_13, output_schema={}),
             ):
                 pass
 
-        assert "Generation does not contain a valid JSON" in str(exc_info.value)
+        assert "Model failed to generate a valid json" in str(exc_info.value)
         assert exc_info.value.retry is True
 
     async def test_single_stream_with_tool_calls_invalid_json(
@@ -877,12 +877,12 @@ class TestStreamingHandlers:
             output_factory=lambda x, _: StructuredOutput(output=json.loads(x)),
             partial_output_factory=lambda x: StructuredOutput(output=x),
             raw_completion=RawCompletion(response="", usage=LLMUsage()),
-            options=ProviderOptions(model=Model.GPT_4O_2024_05_13),
+            options=ProviderOptions(model=Model.GPT_4O_2024_05_13, output_schema={}),
         ):
             outputs.append(output)  # noqa: PERF401
 
         assert len(outputs) == 1  # Only final output
-        assert outputs[0].output == {}  # Empty JSON when content is invalid but we have tool calls
+        assert outputs[0].output is None
         assert outputs[0].tool_calls == [tool_call]
 
     async def test_single_stream_error_response(self, mocked_provider: MockedProvider, httpx_mock: HTTPXMock):
@@ -928,7 +928,7 @@ class TestStreamingHandlers:
             output_factory=lambda x, _: StructuredOutput(output=json.loads(x)),
             partial_output_factory=lambda x: StructuredOutput(output=x),
             raw_completion=RawCompletion(response="", usage=LLMUsage()),
-            options=ProviderOptions(model=Model.GPT_4O_2024_05_13),
+            options=ProviderOptions(model=Model.GPT_4O_2024_05_13, output_schema={}),
         ):
             outputs.append(output)  # noqa: PERF401
 
@@ -966,11 +966,83 @@ class TestStreamingHandlers:
                 output_factory=failing_output_factory,
                 partial_output_factory=lambda x: StructuredOutput(output=x),
                 raw_completion=RawCompletion(response="", usage=LLMUsage()),
-                options=ProviderOptions(model=Model.GPT_4O_2024_05_13),
+                options=ProviderOptions(model=Model.GPT_4O_2024_05_13, output_schema={}),
             ):
                 pass
 
         assert "Invalid schema" in str(exc_info.value)
+
+    async def test_stream_raw_string(self, mocked_provider: MockedProvider, httpx_mock: HTTPXMock):
+        sse_stream = IteratorStream(
+            [
+                b'data: {"content": "Hello"}\n\n',
+                b'data: {"content": " world"}\n\n',
+                b"data: [DONE]\n\n",
+            ],
+        )
+        httpx_mock.add_response(
+            url="https://api.openai.com/v1/chat/completions",
+            stream=sse_stream,
+            status_code=200,
+        )
+
+        # Setup mock for stream delta extraction
+        mocked_provider.mock._extract_stream_delta.side_effect = [
+            ParsedResponse(content="Hello"),
+            ParsedResponse(content=" world"),
+            None,
+        ]
+
+        outputs: list[StructuredOutput] = []
+        async for output in mocked_provider._single_stream(  # pyright: ignore[reportPrivateUsage]
+            request={},
+            output_factory=lambda x, _: StructuredOutput(output=x),
+            partial_output_factory=lambda x: StructuredOutput(output=x),
+            raw_completion=RawCompletion(response="", usage=LLMUsage()),
+            options=ProviderOptions(model=Model.GPT_4O_2024_05_13),
+        ):
+            outputs.append(copy.deepcopy(output))  # noqa: PERF401
+
+        assert len(outputs) == 3
+        assert outputs[0].output == "Hello"
+        assert outputs[1].output == "Hello world"
+
+    async def test_stream_deltas(self, mocked_provider: MockedProvider, httpx_mock: HTTPXMock):
+        sse_stream = IteratorStream(
+            [
+                b'data: {"content": "Hello"}\n\n',
+                b'data: {"content": " world"}\n\n',
+                b"data: [DONE]\n\n",
+            ],
+        )
+        httpx_mock.add_response(
+            url="https://api.openai.com/v1/chat/completions",
+            stream=sse_stream,
+            status_code=200,
+        )
+
+        # Setup mock for stream delta extraction
+        mocked_provider.mock._extract_stream_delta.side_effect = [
+            ParsedResponse(content="Hello"),
+            ParsedResponse(content=" world"),
+            None,
+        ]
+
+        outputs: list[StructuredOutput] = []
+        async for output in mocked_provider._single_stream(  # pyright: ignore[reportPrivateUsage]
+            request={},
+            output_factory=lambda x, _: StructuredOutput(output=x),
+            partial_output_factory=lambda x: StructuredOutput(output=x),
+            raw_completion=RawCompletion(response="", usage=LLMUsage()),
+            options=ProviderOptions(model=Model.GPT_4O_2024_05_13, stream_deltas=True, output_schema={}),
+        ):
+            outputs.append(copy.deepcopy(output))  # noqa: PERF401
+
+        assert len(outputs) == 3  # Two partial outputs and one final
+        assert outputs[0].delta == "Hello"
+        assert outputs[1].delta == " world"
+        assert outputs[2].delta is None
+        assert outputs[2].output == "Hello world"
 
 
 class TestBuildStructuredOutput:

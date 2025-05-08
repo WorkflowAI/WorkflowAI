@@ -3,7 +3,7 @@ from enum import Enum
 from logging import getLogger
 
 from core.domain.events import Event
-from core.storage.slack.slack_types import SlackMessage
+from core.storage.slack.slack_types import OutboundSlackMessage
 from core.storage.slack.webhook_client import SlackWebhookClient
 
 logger = getLogger(__name__)
@@ -70,7 +70,7 @@ class SlackNotificationDestination(Enum):
 
 # TODO: deprecated ? move to customer service instead
 async def send_slack_notification(
-    message: str | SlackMessage,
+    message: str | OutboundSlackMessage,
     user_email: str | None,
     destination: SlackNotificationDestination,
 ):

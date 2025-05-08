@@ -1222,7 +1222,8 @@ class IntegrationTestClient:
                         "required": ["name", "age"],
                     },
                     "output_schema": output_schema
-                    or {
+                    if output_schema is not None
+                    else {
                         "type": "object",
                         "properties": {
                             "greeting": {"type": "string"},

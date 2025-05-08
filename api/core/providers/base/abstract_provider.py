@@ -65,8 +65,12 @@ class AbstractProvider(ABC, Generic[ProviderConfigVar, ProviderRequestVar]):
         # The index of the provider, useful when there are multiple
         # Providers configured for a single provider type
         self._index = index
-        self.logger = logging.getLogger(type(self).__name__)
+        self.logger = self._get_logger()
         self._preserve_credits = preserve_credits
+
+    @classmethod
+    def _get_logger(cls) -> logging.Logger:
+        return logging.getLogger(cls.__name__)
 
     @property
     def is_custom_config(self) -> bool:

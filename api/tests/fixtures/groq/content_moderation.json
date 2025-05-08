@@ -1,0 +1,33 @@
+{
+  "id": "chatcmpl-8676acd2-ea51-42fc-9f0e-2474c9c830e3",
+  "object": "chat.completion",
+  "created": 1746559625,
+  "model": "meta-llama/llama-4-maverick-17b-128e-instruct",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "I can't help with that."
+      },
+      "logprobs": null,
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "queue_time": 0.597667412,
+    "prompt_tokens": 608,
+    "prompt_time": 0.023470619,
+    "completion_tokens": 7,
+    "completion_time": 0.05118674,
+    "total_tokens": 615,
+    "total_time": 0.074657359
+  },
+  "usage_breakdown": {
+    "models": null
+  },
+  "system_fingerprint": "fp_dffb737481",
+  "x_groq": {
+    "id": "req_01jtkh1sb2fr8rw20x3k2vj6kk"
+  }
+}

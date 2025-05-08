@@ -424,19 +424,19 @@ async def test_get_features_by_domain_e2e(  # noqa: C901
             )
 
     with (
-        patch.object(service, "_stream_company_context", mock_stream_company_context),
+        patch.object(FeatureService, "_stream_company_context", mock_stream_company_context),
         patch.object(
-            service,
+            FeatureService,
             "get_company_domain_content",
             AsyncMock(return_value=URLContent(url=company_domain, content="some content")),
         ),
         # get_company_website_contents
-        patch.object(service, "get_company_website_contents", AsyncMock(return_value=[])),
-        patch.object(service, "_stream_feature_suggestions", mock_stream_feature_suggestions),
-        patch.object(service, "_get_company_latest_news", AsyncMock(return_value="")),
-        patch.object(service, "_stream_company_context", mock_stream_company_context),
+        patch.object(FeatureService, "get_company_website_contents", AsyncMock(return_value=[])),
+        patch.object(FeatureService, "_stream_feature_suggestions", mock_stream_feature_suggestions),
+        patch.object(FeatureService, "_get_company_latest_news", AsyncMock(return_value="")),
+        patch.object(FeatureService, "_stream_company_context", mock_stream_company_context),
         # Ensure validation passes for simplicity in this e2e test
-        patch.object(service, "_is_agent_validated", AsyncMock(return_value=True)),
+        patch.object(FeatureService, "_is_agent_validated", AsyncMock(return_value=True)),
     ):
         # Collect all outputs from the generator
         mock_event_router = Mock()
@@ -881,7 +881,11 @@ async def test_stream_feature_suggestions_with_validation(
 
     with (
         patch("api.services.features.stream_suggest_agents_for_company", mock_stream),
-        patch.object(service, "_is_agent_validated", side_effect=mock_is_validated),  # Use side_effect to pass args
+        patch.object(
+            FeatureService,
+            "_is_agent_validated",
+            side_effect=mock_is_validated,
+        ),  # Use side_effect to pass args
     ):
         mock_input = Mock(spec=SuggestAgentForCompanyInput)
         mock_input.company_context = None

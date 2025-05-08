@@ -144,6 +144,7 @@ class TaskRunStorage(TaskRunSystemStorage):
     def run_count_by_agent_uid(
         self,
         from_date: datetime,
+        to_date: datetime | None = None,
         is_active: bool | None = None,
     ) -> AsyncIterator[AgentRunCount]: ...
 

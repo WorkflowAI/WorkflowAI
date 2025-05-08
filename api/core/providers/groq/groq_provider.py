@@ -1,23 +1,28 @@
 import json
+import re
 from typing import Any, Literal
 
 from httpx import Response
 from pydantic import BaseModel, ValidationError
 from typing_extensions import override
 
-from core.domain.errors import FailedGenerationError, MaxTokensExceededError, ProviderBadRequestError
+from core.domain.errors import (
+    ContentModerationError,
+    FailedGenerationError,
+    MaxTokensExceededError,
+    ProviderBadRequestError,
+)
 from core.domain.fields.file import File
 from core.domain.llm_usage import LLMUsage
 from core.domain.message import MessageDeprecated
 from core.domain.models import Model, Provider
 from core.domain.models.model_data import ModelData
-from core.domain.tool import Tool
 from core.domain.tool_call import ToolCallRequestWithID
 from core.providers.base.abstract_provider import RawCompletion
-from core.providers.base.httpx_provider import HTTPXProvider, ParsedResponse
+from core.providers.base.httpx_provider import HTTPXProvider
 from core.providers.base.models import StandardMessage
 from core.providers.base.provider_options import ProviderOptions
-from core.providers.base.streaming_context import ToolCallRequestBuffer
+from core.providers.base.streaming_context import ParsedResponse, ToolCallRequestBuffer
 from core.providers.base.utils import get_provider_config_env
 from core.providers.google.google_provider_domain import native_tool_name_to_internal
 from core.providers.groq.groq_domain import (
@@ -42,6 +47,26 @@ class GroqConfig(BaseModel):
 
 
 class GroqProvider(HTTPXProvider[GroqConfig, CompletionResponse]):
+    _content_moderation_regexp = re.compile(r"(can't|not)[^\.]*(help|assist|going)[^\.]*with that", re.IGNORECASE)
+
+    @classmethod
+    def is_content_moderation_completion(cls, raw_completion: str) -> bool:
+        return cls._content_moderation_regexp.search(raw_completion) is not None
+
+    @classmethod
+    @override
+    def _invalid_json_error(
+        cls,
+        response: Response | None,
+        exception: Exception | None,
+        raw_completion: str,
+        error_msg: str,
+        retry: bool = False,
+    ) -> Exception:
+        if cls.is_content_moderation_completion(raw_completion):
+            return ContentModerationError(retry=retry, provider_error=raw_completion, capture=False)
+        return super()._invalid_json_error(response, exception, raw_completion, error_msg, retry)
+
     @override
     @classmethod
     def name(cls) -> Provider:
@@ -297,11 +322,6 @@ class GroqProvider(HTTPXProvider[GroqConfig, CompletionResponse]):
         messages: list[dict[str, Any]],
     ):
         return 0, None
-
-    @override
-    def is_streamable(self, model: Model, enabled_tools: list[Tool] | None = None) -> bool:
-        # Disable streaming to enforce JSON Response Format
-        return False
 
     @override
     def sanitize_model_data(self, model_data: ModelData):
