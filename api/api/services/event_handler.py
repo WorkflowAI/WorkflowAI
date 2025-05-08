@@ -5,7 +5,6 @@ from typing import Any, Concatenate, Coroutine, Generic, NamedTuple, Sequence, T
 
 from taskiq import AsyncTaskiqDecoratedTask
 
-from api.jobs import features_by_domain_generation_started_jobs
 from core.domain.analytics_events.analytics_events import OrganizationProperties, TaskProperties, UserProperties
 from core.domain.events import (
     AgentInstructionsGeneratedEvent,
@@ -18,6 +17,7 @@ from core.domain.events import (
     FeaturesByDomainGenerationStarted,
     FeedbackCreatedEvent,
     MetaAgentChatMessagesSent,
+    ProxyAgentCreatedEvent,
     RecomputeReviewBenchmarkEvent,
     RunCreatedEvent,
     SendAnalyticsEvent,
@@ -49,12 +49,14 @@ class _JobListing(NamedTuple, Generic[T]):
 def _jobs():
     # Importing here to avoid circular dependency
     from api.jobs import (
+        agent_created_via_proxy_jobs,
         ai_review_completed_jobs,
         ai_review_started_jobs,
         ai_reviewer_build_started_jobs,
         ai_reviewer_updated_jobs,
         analytics_jobs,
         chat_started_jobs,
+        features_by_domain_generation_started_jobs,
         feedback_created_jobs,
         meta_agent_chat_messages_sent_jobs,
         recompute_review_benchmark_jobs,
@@ -104,6 +106,7 @@ def _jobs():
         _JobListing(FeaturesByDomainGenerationStarted, features_by_domain_generation_started_jobs.JOBS),
         _JobListing(TenantCreatedEvent, tenant_created_jobs.JOBS),
         _JobListing(TenantMigratedEvent, tenant_migrated_jobs.JOBS),
+        _JobListing(ProxyAgentCreatedEvent, agent_created_via_proxy_jobs.JOBS),
     ]
 
 

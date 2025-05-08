@@ -8,5 +8,6 @@ alwaysApply: false
 - You do not need to add @pytest.mark.asyncio since the async tests are configured to run without it
 - Always use @pytest.mark.parametrize when possible instead of duplicating tests.
 - Avoid having logic in tests, ex: "if should_raise then pytest.raises", write separate test for separate cases
-- You can extensivelly use '# type: ignore[reportPrivateUsage]' in test to solve linting errors that occur when calling private methods from the tests.
+- You can extensivelly use '# pyright: ignore[reportPrivateUsage]' in test to solve linting errors that occur when calling private methods from the tests.
+- When writing test you MUST also run the test yourself to verify if they pass
 

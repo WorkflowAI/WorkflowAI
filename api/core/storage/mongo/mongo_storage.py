@@ -3,7 +3,7 @@ import json
 import logging
 import os
 from datetime import datetime
-from typing import Any, AsyncIterator, Optional
+from typing import Annotated, Any, AsyncIterator, Optional
 
 from bson import CodecOptions
 from motor.motor_asyncio import (
@@ -454,7 +454,10 @@ class MongoStorage(BackendStorage):
             sort=[("created_at", -1)],
         )
 
-    async def store_task_resource(self, task: SerializableTaskVariant) -> tuple[SerializableTaskVariant, bool]:
+    async def store_task_resource(
+        self,
+        task: SerializableTaskVariant,
+    ) -> tuple[SerializableTaskVariant, Annotated[bool, "whether a new task was created"]]:
         existing_variant = await self._task_variants_collection.find_one_and_update(
             {"version": task.id, "slug": task.task_id, **self._tenant_filter()},
             {"$set": {"created_at": task.created_at}},

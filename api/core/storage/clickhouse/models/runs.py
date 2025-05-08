@@ -580,6 +580,7 @@ class ClickhouseRun(BaseModel):
         return AgentRun(
             # IDs
             task_id=task_id,
+            task_uid=self.task_uid,
             id=str(self.run_uuid),
             created_at=uuid7_generation_time(self.run_uuid),
             task_schema_id=self.task_schema_id,
