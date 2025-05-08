@@ -7,7 +7,7 @@ WorkflowAI integrates seamlessly with your existing [Instructor](https://github.
 - **Access to over [100+ models](https://workflowai.com/developers/python/instructor) (and counting)** from OpenAI, Google, Anthropic, Llama, Grok, Mistral, etc. New models are usually added to WorkflowAI just a few hours after their public release.
 - **High Reliability with Automatic Fallback** thanks to our multi-provider infrastructure. For example, we fall back on Azure OpenAI when OpenAI is down. If using Claude, we fall back on AWS Bedrock when Anthropic is down. Our [uptime](https://status.workflowai.com/) for the last 5 months is 100%, and the overhead of our API is only 100ms! We are working on smart cross model fallback. (e.g. fallback on Claude 3.7 when GPT-4.1 is down)
 - **Guaranteed structured outputs** thanks to our native structured generation provider features (for models supporting structured generation) and thanks to our carefully crafted prompt and automatic retry (for models not supporting structured generation)
-- **Unlimited, free observability** visualize all your LLMs [runs](https://docs.workflowai.com/concepts/runs), share runs with your team, [evaluate](https://docs.workflowai.com/features/reviews) runs, add runs to [benchmarks](https://docs.workflowai.com/features/benchmarks) *(note that [templating with input variables](#templating-with-input-variables) is required to run benchmarks)*, [re-run input](https://docs.workflowai.com/features/playground) on different models, etc. 
+- **Unlimited, free observability** visualize all your LLMs [runs](https://docs.workflowai.com/concepts/runs), share runs with your team, [evaluate](https://docs.workflowai.com/features/reviews) runs, add runs to [benchmarks](https://docs.workflowai.com/features/benchmarks) *(note that [templating with input variables](#templating-with-input-variables) is required to run benchmarks)*, [re-run input](https://docs.workflowai.com/features/playground) on different models, etc.
 - **Fix your agents in seconds without deploying code** Optionally, you can use our [deployment](#using-deployments-for-server-managed-instructions) features to enhance & deploy your agent's instruction right from our web-app. Ideal for fixing agent corner cases in production. *Note that [templating with input variables](#templating-with-input-variables) is a required to use deployments.*
 - **Zero token price markup** because we negotiate bulk deals with major providers, you will pay exactly the same price as if you were going directly to the provider. And you get a unified, detailed view of your LLM spending (per agent, per day, etc.). Also, no need for a separate key for each provider. You get your WorkflowAI API key and you can access all major providers.
 - **Cloud-based or self-hosted** thanks to our [open-source](https://github.com/WorkflowAI/WorkflowAI/blob/main/LICENSE) licensing model
@@ -67,7 +67,7 @@ def extract_user_info(user_message: str) -> UserInfo:
     )
 
     return client.chat.completions.create(
-        model="user-info-extraction-agent/gpt-4o-mini-latest",  # Recommendation: use '<agent_name>/<model_name>' format, see why in the next section. 
+        model="user-info-extraction-agent/gpt-4o-mini-latest",  # Recommendation: use '<agent_name>/<model_name>' format, see why in the next section.
         response_model=UserInfo,
         messages=[{"role": "user", "content": user_message}],
     )
@@ -84,7 +84,7 @@ Note that if `mode=...` is omitted, the `TOOLS` mode will be used. Other support
 
 ### Why use `model=<agent_name>/<model_name>` ?
 
-When specifying the `model` parameter of the `client.chat.completions.create` method, we recommend to use the `<agent_name>/<model_name>` format. For example: 
+When specifying the `model` parameter of the `client.chat.completions.create` method, we recommend to use the `<agent_name>/<model_name>` format. For example:
 - `"user-info-extraction-agent/gpt-4o-mini-latest"`
 
 Adding an `<agent_name>` will allow your different agents to be properly organized in your WorkflowAI account, as shown below:
@@ -96,7 +96,7 @@ Adding an `<agent_name>` will allow your different agents to be properly organiz
 
 The WorkflowAI chat completion endpoint allows you to run more than 100 models using the same endpoint schema as OpenAI chat completion, making switching model family completely transparent on your side.
 
-To change the model to use, simply update the `model` string, ex: 
+To change the model to use, simply update the `model` string, ex:
 
 ```python
 import os
@@ -175,7 +175,7 @@ async def extract_user_info_async(user_message: str) -> UserInfo:
         response_model=UserInfo,
         messages=[{"role": "user", "content": user_message}],
     )
-    
+
 if __name__ == "__main__":
     user_info = asyncio.run(extract_user_info_async("John Black is 33 years old."))
     print("Basic example result:", user_info)  # UserInfo(name='John Black', age=33)
@@ -231,7 +231,7 @@ if __name__ == "__main__":
     print(f"Classification: {result.kind}") # 'work'
 ```
 
-## Using Deployments for Server-Managed Instructions 
+## Using Deployments for Server-Managed Instructions
 
 *Note that using templated instructions as explained in the previous [Templating with Input Variables](#templating-with-input-variables) section above is needed in order to use deployments.*
 

@@ -6,6 +6,7 @@ from typing import AsyncIterator, Literal, NamedTuple
 from pydantic import BaseModel, Field
 
 from api.services.api_keys import APIKeyService
+from api.services.documentation_service import DocumentationService
 from api.services.runs import RunsService
 from core.agents.agent_name_suggestion_agent import (
     AGENT_ID as AGENT_NAME_SUGGESTION_AGENT_ID,
@@ -15,6 +16,7 @@ from core.agents.agent_name_suggestion_agent import (
     agent_name_suggestion_agent,
 )
 from core.agents.integration_agent import (
+    INTEGRATION_AGENT_INSTRUCTIONS,
     IntegrationAgentChatMessage,
     IntegrationAgentInput,
     integration_chat_agent,
@@ -22,6 +24,7 @@ from core.agents.integration_agent import (
 from core.domain.agent_run import AgentRun
 from core.domain.errors import ObjectNotFoundError
 from core.domain.events import EventRouter
+from core.domain.fields.chat_message import ChatMessage
 from core.domain.integration_domain import (
     OFFICIAL_INTEGRATIONS,
     PROPOSED_AGENT_NAME_PLACEHOLDER,
@@ -113,10 +116,34 @@ class IntegrationService:
     async def _build_integration_chat_agent_input(
         self,
         messages: list[IntegrationChatMessage],
+        integration: Integration,
     ) -> IntegrationAgentInput:
+        doc_service = DocumentationService()
+        try:
+            relevant_documentation_sections = await doc_service.get_relevant_doc_sections(
+                chat_messages=[ChatMessage(role=message.role, content=message.content) for message in messages],
+                agent_instructions=INTEGRATION_AGENT_INSTRUCTIONS,
+            )
+        except Exception as e:
+            self._logger.exception("Error getting relevant documentation sections", exc_info=e)
+            relevant_documentation_sections = []
+
+        try:
+            # Makes sure the integration documentation sections are always included
+            integration_documentation_sections = doc_service.get_documentation_by_path(
+                integration.documentation_filepaths,
+            )
+        except Exception as e:
+            self._logger.exception("Error getting integration documentation sections", exc_info=e)
+            integration_documentation_sections = []
+
         return IntegrationAgentInput(
             current_datetime=datetime.datetime.now(),
+            integration=integration,
             messages=[message.to_agent_message() for message in messages],
+            documentation=list(
+                set(relevant_documentation_sections + integration_documentation_sections),  # Deduplicate
+            ),
         )
 
     @staticmethod
@@ -313,6 +340,7 @@ well organized (by agent) on WorkflowAI (trust me, makes everything easier).
 
         integration_agent_input = await self._build_integration_chat_agent_input(
             messages,
+            integration,
         )
 
         # Actually run the integration chat agent

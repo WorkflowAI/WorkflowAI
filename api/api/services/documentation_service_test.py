@@ -1,4 +1,5 @@
 # Removed the test for the private function _extract_doc_title as it's no longer used.
+import logging
 import os
 from typing import NamedTuple
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -118,3 +119,36 @@ async def test_get_relevant_doc_sections_pick_error(
     assert actual_section_tuples == expected_section_tuples
     mock_get_all_sections.assert_called_once()
     mock_pick_relevant.assert_called_once()
+
+
+def test_get_documentation_by_path_with_existing_paths(documentation_service: DocumentationService):
+    """Tests that get_documentation_by_path returns sections matching the provided paths."""
+    sections = [
+        DocumentationSection(title="a.md", content="A content"),
+        DocumentationSection(title="b.md", content="B content"),
+    ]
+    # Patch get_all_doc_sections to return our dummy sections
+    with patch.object(DocumentationService, "get_all_doc_sections", return_value=sections):
+        result = documentation_service.get_documentation_by_path(["b.md", "a.md"])
+        # Order follows the order in all_doc_sections
+        expected_titles = ["a.md", "b.md"]
+        assert [s.title for s in result] == expected_titles
+        assert [s.content for s in result] == ["A content", "B content"]
+
+
+def test_get_documentation_by_path_with_missing_paths_logs_error(
+    documentation_service: DocumentationService,
+    caplog: pytest.LogCaptureFixture,
+):
+    """Tests that get_documentation_by_path logs an error for missing paths and returns only found sections."""
+    sections = [
+        DocumentationSection(title="a.md", content="A content"),
+    ]
+    # Patch get_all_doc_sections to return our dummy sections
+    with patch.object(DocumentationService, "get_all_doc_sections", return_value=sections):
+        caplog.set_level(logging.ERROR, logger="api.services.documentation_service")
+        result = documentation_service.get_documentation_by_path(["a.md", "c.md"])
+        # Only the existing section should be returned
+        assert [s.title for s in result] == ["a.md"]
+        # The missing path should trigger an error log
+        assert "Documentation not found for paths: c.md" in caplog.text

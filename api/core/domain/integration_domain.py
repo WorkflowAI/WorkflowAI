@@ -35,6 +35,8 @@ class Integration(BaseModel):
     integration_chat_initial_snippet: str
     integration_chat_agent_naming_snippet: str
 
+    documentation_filepaths: list[str]
+
 
 INSTRUCTOR_PYTHON_LANDING_PAGE_SNIPPET = """import os
 
@@ -100,5 +102,8 @@ OFFICIAL_INTEGRATIONS = [
         landing_page_structured_generation_snippet=INSTRUCTOR_PYTHON_LANDING_PAGE_STRUCTURED_GENERATION_SNIPPET,
         integration_chat_initial_snippet=INSTRUCTOR_PYTHON_INTEGRATION_CHAT_INITIAL_SNIPPET,
         integration_chat_agent_naming_snippet=INSTRUCTOR_PYTHON_INTEGRATION_CHAT_AGENT_NAMING_SNIPPET,
+        documentation_filepaths=[
+            "developers/python/instructor.md",
+        ],
     ),
 ]

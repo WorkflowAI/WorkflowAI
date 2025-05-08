@@ -2,12 +2,11 @@ import workflowai
 from pydantic import BaseModel, Field
 
 from core.domain.documentation_section import DocumentationSection
-
-from .meta_agent import MetaAgentChatMessage
+from core.domain.fields.chat_message import ChatMessage
 
 
 class PickRelevantDocumentationSectionsInput(BaseModel):
-    chat_messages: list[MetaAgentChatMessage] | None = Field(
+    chat_messages: list[ChatMessage] | None = Field(
         default=None,
         description="The chat messages between the user and the assistant.",
     )
