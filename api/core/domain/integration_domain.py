@@ -28,7 +28,10 @@ class Integration(BaseModel):
 
     logo_url: str
     landing_page_snippet: str
-    landing_page_structured_generation_snippet: str
+
+    # Not all integration may support structured generation.
+    landing_page_structured_generation_snippet: str | None = None
+
     integration_chat_initial_snippet: str
     integration_chat_agent_naming_snippet: str
 

@@ -30,7 +30,7 @@ class Integration(BaseModel):
     code_snippet: str = Field(
         description="A code snippet that shows how to use the integration",
     )
-    structured_output_snippet: str = Field(
+    structured_output_snippet: str | None = Field(
         description="A code snippet that shows how to use the integration with structured outputs",
     )
 
