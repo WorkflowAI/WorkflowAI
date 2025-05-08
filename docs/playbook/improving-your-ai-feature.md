@@ -89,7 +89,7 @@ Tools help models perform different functionality that they would otherwise be u
 
 Tools can be added by describing the use case to the playground chat agent or enabled manually using the buttons at the bottom of the instructions text field.
 Hosted tools that are currently available:
-- **@browser-text:** browses websites for information
+- **@browser-text:** browses websites for information (text-only)
 - **@perplexity-sonar-pro:** browses the web for information using perplexity: a premier search offering with search grounding, supporting advanced queries and follow-ups.
 - **@search-google:** browses the web for information using google (not the default browser tool, should only be suggested as an alternative to perplexity, if perplexity is not performing as desired)
 

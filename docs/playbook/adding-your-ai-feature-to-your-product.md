@@ -37,3 +37,26 @@ After integrating the feature into your product, consider integrating WorkflowAI
 ### Monitoring Feedback
 
 User feedback is essential for continuous improvement. Monitoring responses through WorkflowAI’s feedback system helps determine where enhancements are needed. The WorkflowAI feedback integration also connects to Slack so you'll be able to have user feedback sent from the WorkflowAI web app to Slack to make it easier to discuss the feedback insights with your team.
+
+## Sharing your AI Feature
+
+### If your AI feature is public
+
+If you want to share your public AI feature with others, you can do so by sharing the feature's URL with them.
+
+If your AI feature is not public but you would like it to be:
+1. Login to [WorkflowAI](https://workflowai.com/)
+2. Select **Settings** on the side bar of your feature
+3. Select **Change AI Agent Visibility** and confirm
+
+### If your AI feature is private
+
+If your AI feature is private, you can share the feature with others by inviting them to your organization.
+
+To invite others:
+1. Login to [WorkflowAI](https://workflowai.com/)
+2. Go to the Code page of your feature
+3. Select **Invite Team**
+4. Enter the email of the person you want to invite
+
+Once the user accepts the invitation, they will be added to your organization and will have access to the feature.

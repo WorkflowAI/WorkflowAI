@@ -54,6 +54,18 @@ deems that tools are needed for a particular run, the agent will:
 - ...
 - until either no tool calls are requested, the max iteration (10 by default) or the agent has run to completion
 
+{% hint style="info" %}
+The default maximum number of tool call iterations (turns) is 10. You can override this limit by passing the `max_turns` argument when calling the agent's `run` method:
+
+```python
+# Allow up to 50 tool call iterations for this specific run
+run = await answer_question.run(
+    AnswerQuestionInput(question="What is the current time in Phoenix, AZ?"), 
+    max_turns=50
+)
+```
+{% endhint %}
+
 ```python
 run = await answer_question(
     AnswerQuestionInput(question="What is the current time in Phoenix, AZ?")
@@ -114,8 +126,9 @@ This section is not up to date.
 
 WorkflowAI hosts a few tools:
 
-- `@browser-text` allows fetching the content of a web page
-- `@google-search` allows performing a web search
+- `@browser-text` allows fetching the content of a web page (text-only)
+- `@google-search` allows performing a web search using Google's search API
+- `@perplexity-sonar-pro` allows performing a web search using Perplexity's Sonar Pro model
 
 Hosted tools tend to be faster because there is no back and forth between the client and the WorkflowAI API. Instead,
 if a tool call is needed, the WorkflowAI API will call it within a single request.

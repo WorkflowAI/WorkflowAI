@@ -1,8 +1,9 @@
 ## Deployments
 
+### What are deployments?
 Deploy specific versions of an agent with ease, allowing for updates to prompts and models **without any code changes**.
 
-### Why use deployments?
+### Why are deployments useful?
 
 - ✅ update to a new model or prompt without asking your engineering team.
 - ✅ save cost by updating to a more recent, cheaper model, without changing your code.
@@ -11,11 +12,14 @@ Deploy specific versions of an agent with ease, allowing for updates to prompts 
 
 ### How to deploy a version?
 
-1. Go to **Deployments** section from the menu.
-2. Pick the environment you want to deploy to, either: production, staging, or development.
-3. Tap **Deploy Version**
-4. Select the version you want to deploy.
-5. Tap **Deploy**
+1. Go to [workflowai.com](https://workflowai.com) and login.
+2. Go to **Deployments** section from the menu.
+3. Pick the environment you want to deploy to, either: production, staging, or development.
+4. Tap **Deploy Version**
+5. Select the version you want to deploy.
+6. Tap **Deploy**
+
+After deploying a version: you will be able to reference the version you want to use by its environment in your code. Anytime you want to update the version, you can do so by going to the **Deployments** section and deploying a new version to the same environment, no code changes are required.
 
 {% embed url="https://customer-turax1sz4f7wbpuv.cloudflarestream.com/58dfabcb7b91f2a57d99602876dc98f1/watch" %}
 
@@ -24,11 +28,3 @@ To avoid any breaking changes: deployments are **schema specific**, not AI featu
 
 This also means that you can deploy a (development, staging, production) version for each schema of an agent without the version deployed to production being affected.
 {% endhint %}
-
-### Using your own AI Provider Keys
-
-Your own API provider keys can be added by going to: [workflowai.com/organization/settings/providers](https://workflowai.com/organization/settings/providers). 
-
-**Important: If you are using WorkflowAI Cloud, credits will still deducted by default. There is a required manual operation on our side to mark the keys as a customer provided key.** If you would like to use your own keys via workflowai.com, please reach out to us via [email](mailto:team@workflowai.support) or on [GitHub](https://github.com/workflowai/workflowai/discussions) so we can help you out.
-
-If you are self-hosting, adding your own API provider keys does not require any additional steps beyond adding them at: [workflowai.com/organization/settings/providers](https://workflowai.com/organization/settings/providers). 

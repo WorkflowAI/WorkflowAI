@@ -8,5 +8,5 @@ To get further insights to how an AI feature is performing, you can go to the "C
 More metrics, including average feature latency and organization-wide monitoring , are coming soon!
 
 {% hint style="info" %}
-If you need more metrics, please open a discussion on [GitHub](https://github.com/workflowai/workflowai/discussions/categories/ideas).
+If you need more metrics, please open a discussion on [GitHub](https://github.com/workflowai/workflowai/discussions/categories/ideas) or [Discord](https://discord.gg/jSahs44g)
 {% endhint %}
