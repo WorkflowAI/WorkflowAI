@@ -164,12 +164,10 @@ class TestGetInitialCodeSnippetMessages:
             api_key_result,
         )
 
-        assert isinstance(result, IntegrationChatResponse)
-        assert len(result.messages) == 1
-        assert result.messages[0].role == "ASSISTANT"
-        assert result.messages[0].message_kind == MessageKind.api_key_code_snippet
-        assert "test-api-key" in result.messages[0].content
-        assert "Use your existing WorkflowAI key" in result.messages[0].content
+        assert result.role == "ASSISTANT"
+        assert result.message_kind == MessageKind.api_key_code_snippet
+        assert "test-api-key" in result.content
+        assert "Use your existing WorkflowAI key" in result.content
 
     def test_get_initial_code_snippet_new_key(
         self,
@@ -185,12 +183,10 @@ class TestGetInitialCodeSnippetMessages:
             api_key_result,
         )
 
-        assert isinstance(result, IntegrationChatResponse)
-        assert len(result.messages) == 1
-        assert result.messages[0].role == "ASSISTANT"
-        assert result.messages[0].message_kind == MessageKind.api_key_code_snippet
-        assert "test-api-key" in result.messages[0].content
-        assert "Use your new WorkflowAI key" in result.messages[0].content
+        assert result.role == "ASSISTANT"
+        assert result.message_kind == MessageKind.api_key_code_snippet
+        assert "test-api-key" in result.content
+        assert "Use your new WorkflowAI key" in result.content
 
 
 class TestGetAgentNamingCodeSnippetMessages:
@@ -209,12 +205,10 @@ class TestGetAgentNamingCodeSnippetMessages:
             mock_integration,
         )
 
-        assert isinstance(result, IntegrationChatResponse)
-        assert len(result.messages) == 1
-        assert result.messages[0].role == "ASSISTANT"
-        assert result.messages[0].message_kind == MessageKind.agent_naming_code_snippet
-        assert proposed_agent_name in result.messages[0].content
-        assert f"[{proposed_agent_name}/" in result.messages[0].content
+        assert result.role == "ASSISTANT"
+        assert result.message_kind == MessageKind.agent_naming_code_snippet
+        assert proposed_agent_name in result.content
+        assert f"[{proposed_agent_name}/" in result.content
 
 
 class TestHasSentAgentNamingCodeSnippet:
