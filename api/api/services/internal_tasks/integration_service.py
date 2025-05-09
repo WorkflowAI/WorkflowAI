@@ -52,7 +52,7 @@ class RelevantRunAndAgent(NamedTuple):
 
 
 class MessageKind(Enum):
-    initial_code_snippet = "initial_code_snippet"  # The initial message that is sent to the user to show how to integrate WorkflowAI into their code
+    api_key_code_snippet = "initial_code_snippet"  # The initial message that is sent to the user to show how to integrate WorkflowAI into their code
     agent_naming_code_snippet = "agent_name_definition_code_snippet"  # The message that is sent to the user to show how to define the agent name
     non_specific = "non_specific"  # Any other message that is not one of the above
 
@@ -141,7 +141,7 @@ class IntegrationService:
         return IntegrationAgentInput(
             current_datetime=datetime.datetime.now(),
             integration=integration,
-            messages=[message.to_agent_message() for message in messages],
+            messages=self._get_integration_agent_chat_messages(messages, integration),
             documentation=list(
                 set(relevant_documentation_sections + integration_documentation_sections),  # Deduplicate
             ),
@@ -152,7 +152,7 @@ class IntegrationService:
         now: datetime.datetime,
         integration: Integration,
         api_key_result: ApiKeyResult,
-    ) -> IntegrationChatResponse:
+    ) -> IntegrationChatMessage:
         if api_key_result.was_existing:
             api_key_message = f'"{api_key_result.api_key}", # ← 1. Use your existing WorkflowAI key'
         else:
@@ -175,15 +175,11 @@ As soon as your first run is received, we’ll take you to the Playground so you
 If you have any questions, just let me know!
 """
 
-        return IntegrationChatResponse(
-            messages=[
-                IntegrationChatMessage(
-                    sent_at=now,
-                    role="ASSISTANT",
-                    content=MESSAGE_CONTENT,
-                    message_kind=MessageKind.initial_code_snippet,
-                ),
-            ],
+        return IntegrationChatMessage(
+            sent_at=now,
+            role="ASSISTANT",
+            content=MESSAGE_CONTENT,
+            message_kind=MessageKind.api_key_code_snippet,
         )
 
     @staticmethod
@@ -192,7 +188,7 @@ If you have any questions, just let me know!
         proposed_agent_name: str,
         model: str,
         integration: Integration,
-    ) -> IntegrationChatResponse:
+    ) -> IntegrationChatMessage:
         MESSAGE_CONTENT = f"""Congratulations on sending your first run!
 Looks like you’re building a `{
             proposed_agent_name
@@ -208,16 +204,32 @@ well organized (by agent) on WorkflowAI (trust me, makes everything easier).
         }
 ```
 """
-        return IntegrationChatResponse(
-            messages=[
-                IntegrationChatMessage(
-                    sent_at=now,
-                    role="ASSISTANT",
-                    content=MESSAGE_CONTENT,
-                    message_kind=MessageKind.agent_naming_code_snippet,
-                ),
-            ],
+        return IntegrationChatMessage(
+            sent_at=now,
+            role="ASSISTANT",
+            content=MESSAGE_CONTENT,
+            message_kind=MessageKind.agent_naming_code_snippet,
         )
+
+    @classmethod
+    def _get_integration_agent_chat_messages(
+        cls,
+        messages: list[IntegrationChatMessage],
+        integration: Integration,
+    ) -> list[IntegrationAgentChatMessage]:
+        integration_agent_chat_messages: list[IntegrationAgentChatMessage] = []
+        for message in messages:
+            if message.message_kind == MessageKind.api_key_code_snippet:
+                # IMPORTANT: Make sure we send a snippet without the api key to the agent.
+                obfuscated_message = cls._get_initial_code_snippet_messages(
+                    now=message.sent_at,
+                    integration=integration,
+                    api_key_result=ApiKeyResult(api_key=WORKFLOWAI_API_KEY_PLACEHOLDER, was_existing=True),
+                )
+                message.content = obfuscated_message.content
+            integration_agent_chat_messages.append(message.to_agent_message())
+
+        return integration_agent_chat_messages
 
     async def has_sent_agent_naming_code_snippet(self, messages: list[IntegrationChatMessage]) -> bool:
         return any(message.message_kind == MessageKind.agent_naming_code_snippet for message in messages)
@@ -273,10 +285,14 @@ well organized (by agent) on WorkflowAI (trust me, makes everything easier).
 
         if len(messages) == 0:
             # This is the beginning of the onboarding discussion, we'll send the initial code snippet
-            yield self._get_initial_code_snippet_messages(
-                now,
-                integration,
-                await self._get_api_key(),
+            yield IntegrationChatResponse(
+                messages=[
+                    self._get_initial_code_snippet_messages(
+                        now,
+                        integration,
+                        await self._get_api_key(),
+                    ),
+                ],
             )
             return
 
@@ -314,11 +330,15 @@ well organized (by agent) on WorkflowAI (trust me, makes everything easier).
                     ),
                 )
                 # Send the agent naming suggestion code snippet
-                yield self._get_agent_naming_code_snippet_messages(
-                    now,
-                    proposed_agent_name_run.output.agent_name,
-                    relevant_run_and_agent.run.group.properties.model or workflowai.Model.GPT_4O_LATEST,
-                    integration,
+                yield IntegrationChatResponse(
+                    messages=[
+                        self._get_agent_naming_code_snippet_messages(
+                            now,
+                            proposed_agent_name_run.output.agent_name,
+                            relevant_run_and_agent.run.group.properties.model or workflowai.Model.GPT_4O_LATEST,
+                            integration,
+                        ),
+                    ],
                 )
                 return
 

@@ -24,6 +24,8 @@ from core.domain.agent_run import AgentRun
 from core.domain.errors import ObjectNotFoundError
 from core.domain.events import EventRouter
 from core.domain.integration_domain import (
+    OFFICIAL_INTEGRATIONS,
+    WORKFLOWAI_API_KEY_PLACEHOLDER,
     Integration,
     IntegrationKind,
 )
@@ -167,7 +169,7 @@ class TestGetInitialCodeSnippetMessages:
         assert isinstance(result, IntegrationChatResponse)
         assert len(result.messages) == 1
         assert result.messages[0].role == "ASSISTANT"
-        assert result.messages[0].message_kind == MessageKind.initial_code_snippet
+        assert result.messages[0].message_kind == MessageKind.api_key_code_snippet
         assert "test-api-key" in result.messages[0].content
         assert "Use your existing WorkflowAI key" in result.messages[0].content
 
@@ -188,7 +190,7 @@ class TestGetInitialCodeSnippetMessages:
         assert isinstance(result, IntegrationChatResponse)
         assert len(result.messages) == 1
         assert result.messages[0].role == "ASSISTANT"
-        assert result.messages[0].message_kind == MessageKind.initial_code_snippet
+        assert result.messages[0].message_kind == MessageKind.api_key_code_snippet
         assert "test-api-key" in result.messages[0].content
         assert "Use your new WorkflowAI key" in result.messages[0].content
 
@@ -457,7 +459,7 @@ class TestStreamIntegrationChatResponse:
             assert isinstance(results[0], IntegrationChatResponse)
             assert len(results[0].messages) == 1
             assert results[0].messages[0].role == "ASSISTANT"
-            assert results[0].messages[0].message_kind == MessageKind.initial_code_snippet
+            assert results[0].messages[0].message_kind == MessageKind.api_key_code_snippet
             assert "test-key" in results[0].messages[0].content
 
     @patch("api.services.internal_tasks.integration_service.integration_chat_agent")
@@ -652,3 +654,39 @@ class TestStreamIntegrationChatResponse:
 
             # Verify mock calls
             mock_integration_agent.stream.assert_called_once()
+
+
+class TestGetIntegrationAgentChatMessages:
+    def test_get_integration_agent_chat_messages(self):
+        now = datetime.datetime(year=2025, month=1, day=1, hour=12, minute=0, second=0)
+
+        secret_key = "test-key"
+
+        messages = [
+            IntegrationChatMessage(
+                sent_at=now,
+                role="USER",
+                content="Hello",
+                message_kind=MessageKind.non_specific,
+            ),
+            IntegrationChatMessage(
+                sent_at=now,
+                role="ASSISTANT",
+                content=f"message with secret key: {secret_key}",
+                message_kind=MessageKind.api_key_code_snippet,
+            ),
+            IntegrationChatMessage(
+                sent_at=now,
+                role="USER",
+                content="Hello",
+                message_kind=MessageKind.non_specific,
+            ),
+        ]
+
+        result = IntegrationService._get_integration_agent_chat_messages(messages, OFFICIAL_INTEGRATIONS[0])  # pyright: ignore[reportPrivateUsage]
+
+        assert len(result) == 3
+        assert secret_key not in result[0].content
+        assert secret_key not in result[1].content
+        assert WORKFLOWAI_API_KEY_PLACEHOLDER in result[1].content
+        assert secret_key not in result[2].content
