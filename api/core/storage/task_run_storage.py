@@ -147,3 +147,10 @@ class TaskRunStorage(TaskRunSystemStorage):
         to_date: datetime | None = None,
         is_active: bool | None = None,
     ) -> AsyncIterator[AgentRunCount]: ...
+
+    def list_runs_since(
+        self,
+        since_date: datetime,
+        is_active: bool = True,
+        limit: int = 10,
+    ) -> AsyncIterator[AgentRun]: ...

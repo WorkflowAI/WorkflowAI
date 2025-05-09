@@ -2,6 +2,8 @@ import asyncio
 from abc import ABC, abstractmethod
 from typing import Any
 
+from typing_extensions import Annotated
+
 from core.domain.agent_run import AgentRun
 from core.domain.analytics_events.analytics_events import SourceType
 from core.domain.task_example import SerializableTaskExample
@@ -29,7 +31,10 @@ class AbstractStorage(ABC):
         pass
 
     @abstractmethod
-    async def store_task_resource(self, task: SerializableTaskVariant) -> tuple[SerializableTaskVariant, bool]:
+    async def store_task_resource(
+        self,
+        task: SerializableTaskVariant,
+    ) -> tuple[SerializableTaskVariant, Annotated[bool, "whether a new task was created"]]:
         pass
 
     @abstractmethod

@@ -10,7 +10,7 @@ from api.dependencies.analytics import (
 )
 from api.dependencies.event_router import EventRouterDep
 from api.dependencies.provider_factory import ProviderFactoryDep
-from api.dependencies.security import SystemStorageDep, TenantUIDDep, UserDep
+from api.dependencies.security import RequiredUserDep, SystemStorageDep, TenantUIDDep, UserDep
 from api.dependencies.storage import (
     OrganizationStorageDep,
     StorageDep,
@@ -22,6 +22,7 @@ from api.services.analytics import AnalyticsService, analytics_service
 from api.services.api_keys import APIKeyService
 from api.services.feedback_svc import FeedbackTokenGenerator
 from api.services.groups import GroupService
+from api.services.internal_tasks.integration_service import IntegrationService
 from api.services.internal_tasks.internal_tasks_service import InternalTasksService
 from api.services.models import ModelsService
 from api.services.payments_service import PaymentService, PaymentSystemService
@@ -292,3 +293,22 @@ def tools_service(storage: StorageDep) -> ToolsService:
 
 
 ToolsServiceDep = Annotated[ToolsService, Depends(tools_service)]
+
+
+def integration_service_dependency(
+    storage: StorageDep,
+    event_router: EventRouterDep,
+    runs_service: RunsServiceDep,
+    api_keys_service: APIKeyServiceDep,
+    user: RequiredUserDep,
+):
+    return IntegrationService(
+        storage=storage,
+        event_router=event_router,
+        runs_service=runs_service,
+        api_keys_service=api_keys_service,
+        user=user,
+    )
+
+
+IntegrationAgentServiceDep = Annotated[IntegrationService, Depends(integration_service_dependency)]

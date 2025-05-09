@@ -3,6 +3,7 @@ from typing import Any
 
 from fastapi import APIRouter, Request, Response
 
+from api.dependencies.event_router import EventRouterDep
 from api.dependencies.services import GroupServiceDep, RunServiceDep
 from api.dependencies.storage import StorageDep
 from api.routers.openai_proxy_models import (
@@ -13,6 +14,7 @@ from api.routers.openai_proxy_models import (
 )
 from api.utils import get_start_time
 from core.domain.errors import BadRequestError
+from core.domain.events import ProxyAgentCreatedEvent
 from core.domain.message import Messages
 from core.domain.models.models import Model
 from core.domain.task_group_properties import TaskGroupProperties
@@ -121,6 +123,7 @@ async def chat_completions(
     group_service: GroupServiceDep,
     storage: StorageDep,
     run_service: RunServiceDep,
+    event_router: EventRouterDep,
     request: Request,
 ) -> Response:
     request_start_time = get_start_time(request)
@@ -130,7 +133,16 @@ async def chat_completions(
         agent_slug = body.agent_id or "default"
 
     raw_variant, output_mapper = _build_variant(agent_slug, body.response_format)
-    variant, _ = await storage.store_task_resource(raw_variant)
+    variant, new_variant_created = await storage.store_task_resource(raw_variant)
+
+    if new_variant_created:
+        event_router(
+            ProxyAgentCreatedEvent(
+                agent_slug=agent_slug,
+                task_id=variant.task_id,
+                task_schema_id=variant.task_schema_id,
+            ),
+        )
 
     tool_calls, deprecated_function = body.domain_tools()
     properties = TaskGroupProperties(

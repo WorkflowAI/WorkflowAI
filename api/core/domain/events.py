@@ -96,6 +96,12 @@ class TaskSchemaGeneratedEvent(Event):
     updated_task_schema: AgentSchemaJson
 
 
+class ProxyAgentCreatedEvent(Event):
+    agent_slug: str
+    task_id: str
+    task_schema_id: int
+
+
 class TriggerTaskRunEvent(TaskEvent):
     group_iteration: int
     # Either task_input_hash or task_input must be provided

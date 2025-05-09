@@ -1,7 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from api.dependencies.security import URLPublicOrganizationDep, key_ring_dependency, tenant_dependency
-from api.routers import clerk_webhooks, features, feedback_v1, helpscout_webhooks, slack_webhooks, stripe_webhooks
+from api.routers import (
+    clerk_webhooks,
+    features,
+    feedback_v1,
+    helpscout_webhooks,
+    integrations_router,
+    slack_webhooks,
+    stripe_webhooks,
+)
 from api.routers.agents import meta_agent, new_tool_agent
 from api.tags import RouteTags
 from core.domain.tenant_data import PublicOrganizationData
@@ -81,6 +89,7 @@ def _authenticated_router():
     authenticated_router.include_router(organizations.router)
     authenticated_router.include_router(features.router, tags=[RouteTags.FEATURES])
     authenticated_router.include_router(feedback_v1.router)
+    authenticated_router.include_router(integrations_router.router, tags=[RouteTags.INTEGRATIONS])
     return authenticated_router
 
 

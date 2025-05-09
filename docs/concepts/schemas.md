@@ -6,7 +6,7 @@ An AI feature has at least one schema. Each schema define:
 
 For example, a [feature that answer question about a PDF](https://workflowai.dev/workflowai/tasks/pdf-question-answering/1/schemas) is represented:
 
-![alt text](/docs/assets/images/schema.png)
+![An example of a schema](/docs/assets/images/schema.png)
 
 {% tabs %}
 {% tab title="Python" %}
@@ -70,6 +70,26 @@ WorkflowAI leverages structured generation, also called [structured output](http
 WorkflowAI supports two ways to create a schema:
 - using our web-app, using AI or manually. 
 - [writing code directly (for Python)](/docs/sdk/python/get-started.md).
+
+### Field data types
+
+When creating a schema, you will notice that each field is assigned a data type. In most cases, the AI schema generator will choose the correct data type. However, you can also manually choose the data type.
+
+Here are the different data types you can choose from:
+- `string`: a sequence of characters, like letters, numbers, and symbols.
+- `boolean`: the value can only be true or false.
+- `number`: can be both whole numbers (integers) and numbers with decimal points (floats).
+- `list`: contains 1 or more entries of another data types (ex. a list of strings). The number of entries can vary in different task runs of the same task. 
+- `enum`: the value can only be one of a predetermined, finite number of options. Similar to a boolean, but the options can be customized.
+- `object`: a single instance of a defined structure. The structure can contain multiple properties within it. 
+- `date`: includes a year, a month, and a day.
+- `date-time`: includes a year, a month, a day, an hour, a minute, and a second. 
+- `time`: includes an hour, a minute, and a second. 
+- `timezone`: is a region that has the same standard time, defined by the difference in hours from Coordinated Universal Time (UTC).
+- `html`: content formatted as an HTML page.
+- `image`: an image. Supported formats are PNG, JPG, and WEBP.
+- `audio`: an audio file. Supported formats are MP3, WAV, AIFF, AAC, OGG Vorbis, and FLAC.
+- `document`: an uploaded document. Supported formats are PDF, CSV, TXT, and supported image formats.
 
 ## Edit a schema
 Finding the right schema takes a few iterations, so we try to make editing a schema as easy as possible.

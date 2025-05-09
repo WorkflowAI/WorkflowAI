@@ -42,6 +42,7 @@ from core.agents.meta_agent_user_confirmation_agent import (
 )
 from core.domain.agent_run import AgentRun
 from core.domain.events import EventRouter, MetaAgentChatMessagesSent
+from core.domain.fields.chat_message import ChatMessage
 from core.domain.fields.file import File
 from core.domain.page import Page
 from core.domain.task_variant import SerializableTaskVariant
@@ -255,6 +256,18 @@ class MetaAgentChatMessage(BaseModel):
             content=self.content,
             tool_call=self.tool_call.to_domain() if self.tool_call else None,
             tool_call_status=self.tool_call.status if self.tool_call else None,
+        )
+
+    def to_chat_message(self) -> ChatMessage:
+        role_map: dict[Literal["USER", "PLAYGROUND", "ASSISTANT"], Literal["USER", "ASSISTANT"]] = {
+            "USER": "USER",
+            "PLAYGROUND": "ASSISTANT",
+            "ASSISTANT": "ASSISTANT",
+        }
+
+        return ChatMessage(
+            role=role_map[self.role],
+            content=self.content,
         )
 
 
@@ -553,7 +566,7 @@ class MetaAgentService:
                 existing_agents_descriptions=context.existing_agents or [],
             ),
             workflowai_documentation_sections=await DocumentationService().get_relevant_doc_sections(
-                chat_messages=[message.to_domain() for message in messages],
+                chat_messages=[message.to_chat_message() for message in messages],
                 agent_instructions=META_AGENT_INSTRUCTIONS or "",
             ),
             available_tools_description=internal_tools_description(

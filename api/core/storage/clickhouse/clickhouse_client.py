@@ -522,6 +522,34 @@ class ClickhouseClient(TaskRunStorage):
             )
 
     @override
+    async def list_runs_since(
+        self,
+        since_date: datetime,
+        is_active: bool = True,
+        limit: int = 100,
+    ) -> AsyncIterator[AgentRun]:
+        w = W("created_at_date", type="Date", value=since_date.strftime("%Y-%m-%d"), operator=">=") & W(
+            "run_uuid",
+            type="UInt128",
+            value=id_lower_bound(since_date),
+            operator=">=",
+        )
+        if is_active:
+            w &= W("is_active", type="Boolean", value=is_active)
+        runs = await self._runs(
+            task_id=None,
+            select=None,
+            where=w,
+            limit=limit,
+            offset=None,
+            order_by=[
+                "run_uuid DESC",  # Allows for finer ordering than created_at_date
+            ],
+        )
+        for run in runs:
+            yield run
+
+    @override
     async def list_runs_for_memory_id(
         self,
         tenant_uid: int,

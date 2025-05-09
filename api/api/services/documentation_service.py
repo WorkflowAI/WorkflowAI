@@ -1,12 +1,12 @@
 import logging
 import os
 
-from core.agents.meta_agent import MetaAgentChatMessage
 from core.agents.pick_relevant_documentation_categories import (
     PickRelevantDocumentationSectionsInput,
     pick_relevant_documentation_sections,
 )
 from core.domain.documentation_section import DocumentationSection
+from core.domain.fields.chat_message import ChatMessage
 
 _logger = logging.getLogger(__name__)
 
@@ -53,9 +53,22 @@ class DocumentationService:
                     )
         return doc_sections
 
+    def get_documentation_by_path(self, pathes: list[str]) -> list[DocumentationSection]:
+        all_doc_sections: list[DocumentationSection] = self.get_all_doc_sections()
+        found_sections = [doc_section for doc_section in all_doc_sections if doc_section.title in pathes]
+
+        # Check if any paths were not found
+        found_paths = {doc_section.title for doc_section in found_sections}
+        missing_paths = set(pathes) - found_paths
+
+        if missing_paths:
+            _logger.error(f"Documentation not found for paths: {', '.join(missing_paths)}")  # noqa: G004
+
+        return found_sections
+
     async def get_relevant_doc_sections(
         self,
-        chat_messages: list[MetaAgentChatMessage],
+        chat_messages: list[ChatMessage],
         agent_instructions: str,
     ) -> list[DocumentationSection]:
         all_doc_sections: list[DocumentationSection] = self.get_all_doc_sections()

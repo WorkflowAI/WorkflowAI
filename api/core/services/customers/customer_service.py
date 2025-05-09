@@ -25,6 +25,7 @@ from core.domain.events import (
     Event,
     FeaturesByDomainGenerationStarted,
     MetaAgentChatMessagesSent,
+    ProxyAgentCreatedEvent,
     TaskSchemaCreatedEvent,
 )
 from core.domain.fields.chat_message import ChatMessageWithTimestamp
@@ -292,6 +293,17 @@ class CustomerService:
         username = _readable_name(user)
         action_str = "update " + existing_task_name if existing_task_name else "create a new task"
         message = f'{username} started a chat to {action_str}\nmessage: "{user_message}"'
+
+        await self._send_message(message)
+
+    async def send_proxy_agent_created(self, event: ProxyAgentCreatedEvent):
+        username = _readable_name(event.user_properties)
+        agent_str = _get_task_str_for_slack(event=event, task_id=event.task_id, task_schema_id=event.task_schema_id)
+
+        if event.task_schema_id == 1:  # task creation
+            message = f"{username} created a new agent via OpenAI proxy: {agent_str}"
+        else:  # task update
+            message = f"{username} updated an agent via OpenAI proxy: {agent_str}"
 
         await self._send_message(message)
 

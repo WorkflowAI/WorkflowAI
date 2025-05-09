@@ -7,7 +7,7 @@ from core.domain.errors import DuplicateValueError
 from core.domain.users import UserIdentifier
 from core.storage.mongo.models.organization_document import APIKeyDocument
 
-from .api_keys import APIKeyService, GeneratedAPIKey
+from .api_keys import APIKeyService, GeneratedAPIKey, find_api_key_in_text
 
 
 @pytest.fixture(scope="function")
@@ -111,6 +111,21 @@ class TestAPIKeyService:
         with pytest.raises(DuplicateValueError):
             await api_key_service.create_key(name, created_by)
 
+    async def test_generated_key_matches_find_pattern(self, api_key_service: APIKeyService):
+        # This test relies on find_api_key_in_text using the *corrected* regex
+        generated = api_key_service._generate_api_key()  # pyright: ignore[reportPrivateUsage]
+
+        # Check 3: find_api_key_in_text should find this generated key
+        assert find_api_key_in_text(generated.key) == {generated.key}, (
+            f"Generated key {generated.key} was not found by find_api_key_in_text when tested standalone."
+        )
+
+        # Check 4: find_api_key_in_text should find this key when embedded in other text
+        text_with_key = f"Some text before {generated.key} and some text after."
+        assert find_api_key_in_text(text_with_key) == {generated.key}, (
+            f"Generated key {generated.key} was not found by find_api_key_in_text when embedded in text."
+        )
+
 
 class TestIsAPIKey:
     @pytest.mark.parametrize(
@@ -124,3 +139,125 @@ class TestIsAPIKey:
     )
     def test_is_api_key(self, key: str, expected: bool):
         assert APIKeyService.is_api_key(key) == expected
+
+
+class TestFindAPIKeyInText:
+    # Predefined keys for clarity in tests
+    KEY_ALPHANUM = "wai-Abcdefghijklmnopqrstuvwxyz1234567890ABCDEFG"  # 26+10+7=43
+    KEY_HYPHENS_UNDERSCORES = "wai-key-with-hyphens_and_underscores_is_valid"  # 4+5+8+4+11+3+6 = 41, need 2 more
+    KEY_HYPHENS_UNDERSCORES_FIXED = "wai-key-with-hyphens_and_underscores_is_validOK"  # 43
+    KEY_NUMERIC_ONLY = "wai-0123456789012345678901234567890123456789012"  # 43
+    KEY_LOWER_ALPHA_ONLY = "wai-abcdefghijklmnopqrstuvwxyzabcdefghijklmnopq"  # 43
+
+    @pytest.mark.parametrize(
+        "description, input_text, expected_keys",
+        [
+            ("Empty string", "", set[str]()),
+            ("No API key", "Some random text without any keys.", set[str]()),
+            (
+                "Single key, standalone",
+                KEY_LOWER_ALPHA_ONLY,
+                {KEY_LOWER_ALPHA_ONLY},
+            ),
+            (
+                "Single key at start",
+                f"{KEY_ALPHANUM} is at the start.",
+                {KEY_ALPHANUM},
+            ),
+            (
+                "Single key in middle",
+                f"Text {KEY_HYPHENS_UNDERSCORES_FIXED} in the middle.",
+                {KEY_HYPHENS_UNDERSCORES_FIXED},
+            ),
+            (
+                "Single key at end",
+                f"Text at the end is {KEY_NUMERIC_ONLY}",
+                {KEY_NUMERIC_ONLY},
+            ),
+            (
+                "Two distinct keys",
+                f"Key one {KEY_ALPHANUM}, key two {KEY_HYPHENS_UNDERSCORES_FIXED}.",
+                {KEY_ALPHANUM, KEY_HYPHENS_UNDERSCORES_FIXED},
+            ),
+            (
+                "Duplicate keys in text",
+                f"Key {KEY_ALPHANUM} and same key {KEY_ALPHANUM}.",
+                {KEY_ALPHANUM},
+            ),
+            (
+                "Adjacent keys",
+                f"{KEY_ALPHANUM}{KEY_NUMERIC_ONLY}",
+                {KEY_ALPHANUM, KEY_NUMERIC_ONLY},
+            ),
+            (
+                "Key with only numbers",
+                f"Key: {KEY_NUMERIC_ONLY}",
+                {KEY_NUMERIC_ONLY},
+            ),
+            (
+                "Key with only lowercase alpha",
+                f"Key: {KEY_LOWER_ALPHA_ONLY}",
+                {KEY_LOWER_ALPHA_ONLY},
+            ),
+            (
+                "Key with hyphens and underscores",
+                f"Key: {KEY_HYPHENS_UNDERSCORES_FIXED}",
+                {KEY_HYPHENS_UNDERSCORES_FIXED},
+            ),
+            (
+                "Key with mixed case, numbers, hyphens, underscores",
+                f"A complex key: {KEY_ALPHANUM} is here.",  # KEY_ALPHANUM is mixed case and numbers
+                {KEY_ALPHANUM},
+            ),
+            (
+                "Mixed valid and invalid (short)",
+                f"Valid: {KEY_ALPHANUM} but invalid: wai-shortkey",
+                {KEY_ALPHANUM},
+            ),
+            (
+                "Mixed valid and invalid (bad char)",
+                f"Invalid: wai-key!{'x' * 40} and then valid: {KEY_NUMERIC_ONLY}",
+                {KEY_NUMERIC_ONLY},
+            ),
+            (
+                "Text containing a key that is almost too long",
+                "wai-ThisKeyIsExactly43CharsLongAndIsValidNow" + "X",  # This makes the key part 44 chars
+                set[str](),  # Should not match wai-ThisKeyIsExactly43CharsLongAndIsValidNow
+            ),
+            (
+                "Text containing a key that is almost too short",
+                "wai-ThisKeyIsExactly43CharsLongAndIsValidNo"[:-1],  # This makes the key part 42 chars
+                set[str](),
+            ),
+        ],
+    )
+    def test_find_api_keys_valid_scenarios(
+        self,
+        description: str,
+        input_text: str,
+        expected_keys: set[str],
+    ):
+        assert find_api_key_in_text(input_text) == expected_keys, f"Failed: {description}"
+
+    @pytest.mark.parametrize(
+        "text, description",
+        [
+            ("wxi-" + "a" * 43, "Wrong prefix 'wxi-'"),
+            ("wai." + "a" * 43, "Wrong prefix separator '.'"),
+            ("wai-" + "a" * 42, "Payload too short (42 chars)"),
+            ("wai-" + "a" * 20 + "!" + "a" * 22, "Invalid char '!' in payload"),
+            (
+                "wai-@bcdefghijklmnopqrstuvwxyz1234567890ABCDEFG",
+                "Invalid char '@' at start of payload",
+            ),  # 43 chars after wai-
+            (
+                "wai-abcdefghijklmnopqrstuvwxyz1234567890ABCDEF@",
+                "Invalid char '@' at end of payload",
+            ),  # 43 chars after wai-
+            ("wai- abcdefghijklmnopqrstuvwxyz1234567890ABCDEF", "Space at start of payload"),  # 43 chars after wai-
+            ("wai-abcdefghijklmno pqrstuvwxyz1234567890ABC", "Space in middle of payload"),  # 43 chars after wai-
+            ("wai-abcdefghijklmno*pqrstuvwxyz1234567890ABC", "Asterisk in payload"),  # 43 chars after wai-
+        ],
+    )
+    def test_find_api_keys_invalid_scenarios(self, text: str, description: str):
+        assert find_api_key_in_text(text) == set(), f"Failed for: {description}"

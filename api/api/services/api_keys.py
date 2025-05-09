@@ -1,3 +1,4 @@
+import re
 import secrets
 from typing import List
 
@@ -61,3 +62,9 @@ class APIKeyService:
 
     async def get_keys(self) -> List[APIKey]:
         return [key for key in await self.storage.get_api_keys_for_organization()]
+
+
+def find_api_key_in_text(text: str) -> set[str]:
+    # api keys are generated as secrets.token_urlsafe(32)
+    # equals to 43 characters in base64 (A-Z, a-z, 0-9, -, _)
+    return set(re.findall(r"wai-[-A-Za-z0-9_]{43}", text))
