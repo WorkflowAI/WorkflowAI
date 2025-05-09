@@ -25,7 +25,6 @@ from core.domain.errors import ObjectNotFoundError
 from core.domain.events import EventRouter
 from core.domain.integration_domain import (
     OFFICIAL_INTEGRATIONS,
-    WORKFLOWAI_API_KEY_PLACEHOLDER,
     Integration,
     IntegrationKind,
 )
@@ -87,7 +86,6 @@ def integration_service(
 @pytest.fixture
 def mock_integration() -> Integration:
     # Use the first official integration for testing
-    from core.domain.integration_domain import OFFICIAL_INTEGRATIONS
 
     return OFFICIAL_INTEGRATIONS[0]
 
@@ -657,10 +655,11 @@ class TestStreamIntegrationChatResponse:
 
 
 class TestGetIntegrationAgentChatMessages:
-    def test_get_integration_agent_chat_messages(self):
+    def test_get_integration_agent_chat_messages(self, integration_service: IntegrationService):
         now = datetime.datetime(year=2025, month=1, day=1, hour=12, minute=0, second=0)
 
-        secret_key = "test-key"
+        secret_key = "wai-Abcdefghijklmnopqrstuvwxyz1234567890ABCDEFG"  # Valid format API key
+        obfuscated_secret_key = "wai-Abcde****"
 
         messages = [
             IntegrationChatMessage(
@@ -673,20 +672,32 @@ class TestGetIntegrationAgentChatMessages:
                 sent_at=now,
                 role="ASSISTANT",
                 content=f"message with secret key: {secret_key}",
-                message_kind=MessageKind.api_key_code_snippet,
+                message_kind=MessageKind.non_specific,
             ),
             IntegrationChatMessage(
                 sent_at=now,
                 role="USER",
-                content="Hello",
+                content=f"Another message with the same key: {secret_key} and a non-key: test-key",
                 message_kind=MessageKind.non_specific,
             ),
         ]
 
-        result = IntegrationService._get_integration_agent_chat_messages(messages, OFFICIAL_INTEGRATIONS[0])  # pyright: ignore[reportPrivateUsage]
+        # Call the method on the instance
+        result = integration_service._get_integration_agent_chat_messages(messages)  # pyright: ignore[reportPrivateUsage]
 
         assert len(result) == 3
-        assert secret_key not in result[0].content
+        assert result[0].role == "USER"
+        assert result[0].content == "Hello"
+
+        assert result[1].role == "ASSISTANT"
         assert secret_key not in result[1].content
-        assert WORKFLOWAI_API_KEY_PLACEHOLDER in result[1].content
+        assert obfuscated_secret_key in result[1].content
+        assert f"message with secret key: {obfuscated_secret_key}" == result[1].content
+
+        assert result[2].role == "USER"
         assert secret_key not in result[2].content
+        assert obfuscated_secret_key in result[2].content
+        assert "test-key" in result[2].content  # Ensure non-matching keys are not obfuscated
+        assert (
+            f"Another message with the same key: {obfuscated_secret_key} and a non-key: test-key" == result[2].content
+        )

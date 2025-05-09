@@ -6,7 +6,7 @@ from typing import AsyncIterator, Literal, NamedTuple
 import workflowai
 from pydantic import BaseModel, Field
 
-from api.services.api_keys import APIKeyService
+from api.services.api_keys import APIKeyService, find_api_key_in_text
 from api.services.documentation_service import DocumentationService
 from api.services.runs import RunsService
 from core.agents.agent_name_suggestion_agent import (
@@ -72,12 +72,6 @@ class IntegrationChatMessage(BaseModel):
         default=MessageKind.non_specific,
     )
 
-    def to_agent_message(self) -> IntegrationAgentChatMessage:
-        return IntegrationAgentChatMessage(
-            role=self.role,
-            content=self.content,
-        )
-
 
 class PlaygroundRedirection(BaseModel):
     agent_name: str
@@ -86,6 +80,14 @@ class PlaygroundRedirection(BaseModel):
 class IntegrationChatResponse(BaseModel):
     messages: list[IntegrationChatMessage]
     redirect_to_agent_playground: PlaygroundRedirection | None = None
+
+
+class ObfuscatedString(BaseModel):
+    original: str
+    obfuscated: str
+
+    def __hash__(self) -> int:
+        return hash(self.original + self.obfuscated)
 
 
 class IntegrationService:
@@ -103,6 +105,7 @@ class IntegrationService:
         self.runs_service = runs_service
         self.api_keys_service = api_keys_service
         self.user = user
+        self.obfuscated_strings: set[ObfuscatedString] = set()
 
     def _get_integration_for_slug(self, slug: IntegrationKind) -> Integration:
         integration = next(
@@ -141,7 +144,7 @@ class IntegrationService:
         return IntegrationAgentInput(
             current_datetime=datetime.datetime.now(),
             integration=integration,
-            messages=self._get_integration_agent_chat_messages(messages, integration),
+            messages=self._get_integration_agent_chat_messages(messages),
             documentation=list(
                 set(relevant_documentation_sections + integration_documentation_sections),  # Deduplicate
             ),
@@ -171,7 +174,7 @@ Set the api_base to your specific WorkflowAI API endpoint URL.
         }
 ```
 
-As soon as your first run is received, we’ll take you to the Playground so you can start comparing models!
+As soon as your first run is received, we'll take you to the Playground so you can start comparing models!
 If you have any questions, just let me know!
 """
 
@@ -190,7 +193,7 @@ If you have any questions, just let me know!
         integration: Integration,
     ) -> IntegrationChatMessage:
         MESSAGE_CONTENT = f"""Congratulations on sending your first run!
-Looks like you’re building a `{
+Looks like you're building a `{
             proposed_agent_name
         }` agent, one more step is to update the model=[] in the code to get the agent prefix so that things are
 well organized (by agent) on WorkflowAI (trust me, makes everything easier).
@@ -211,25 +214,30 @@ well organized (by agent) on WorkflowAI (trust me, makes everything easier).
             message_kind=MessageKind.agent_naming_code_snippet,
         )
 
-    @classmethod
-    def _get_integration_agent_chat_messages(
-        cls,
-        messages: list[IntegrationChatMessage],
-        integration: Integration,
-    ) -> list[IntegrationAgentChatMessage]:
-        integration_agent_chat_messages: list[IntegrationAgentChatMessage] = []
-        for message in messages:
-            if message.message_kind == MessageKind.api_key_code_snippet:
-                # IMPORTANT: Make sure we send a snippet without the api key to the agent.
-                obfuscated_message = cls._get_initial_code_snippet_messages(
-                    now=message.sent_at,
-                    integration=integration,
-                    api_key_result=ApiKeyResult(api_key=WORKFLOWAI_API_KEY_PLACEHOLDER, was_existing=True),
-                )
-                message.content = obfuscated_message.content
-            integration_agent_chat_messages.append(message.to_agent_message())
+    def _obfuscate_api_keys(self, text: str) -> str:
+        api_keys = find_api_key_in_text(text)
+        for api_key in api_keys:
+            self.obfuscated_strings.add(ObfuscatedString(original=api_key, obfuscated=api_key[:9] + "****"))
+            text = text.replace(api_key, f"{api_key[:9]}****")
+        return text
 
-        return integration_agent_chat_messages
+    def _deobfuscate_api_keys(self, text: str) -> str:
+        for obfuscated_string in self.obfuscated_strings:
+            text = text.replace(obfuscated_string.obfuscated, obfuscated_string.original)
+        return text
+
+    def _get_integration_agent_chat_messages(
+        self,
+        messages: list[IntegrationChatMessage],
+    ) -> list[IntegrationAgentChatMessage]:
+        return [
+            IntegrationAgentChatMessage(
+                role=message.role,
+                # Make sure we don't send any API key to the agent.
+                content=self._obfuscate_api_keys(message.content),
+            )
+            for message in messages
+        ]
 
     async def has_sent_agent_naming_code_snippet(self, messages: list[IntegrationChatMessage]) -> bool:
         return any(message.message_kind == MessageKind.agent_naming_code_snippet for message in messages)
@@ -362,7 +370,7 @@ well organized (by agent) on WorkflowAI (trust me, makes everything easier).
                         IntegrationChatMessage(
                             sent_at=now,
                             role="ASSISTANT",
-                            content=chunk.output.content,
+                            content=self._deobfuscate_api_keys(chunk.output.content),
                             message_kind=MessageKind.non_specific,
                         ),
                     ],
