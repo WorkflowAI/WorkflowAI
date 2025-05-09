@@ -3,6 +3,7 @@ import logging
 from enum import Enum
 from typing import AsyncIterator, Literal, NamedTuple
 
+import workflowai
 from pydantic import BaseModel, Field
 
 from api.services.api_keys import APIKeyService
@@ -27,7 +28,7 @@ from core.domain.events import EventRouter
 from core.domain.fields.chat_message import ChatMessage
 from core.domain.integration_domain import (
     OFFICIAL_INTEGRATIONS,
-    PROPOSED_AGENT_NAME_PLACEHOLDER,
+    PROPOSED_AGENT_NAME_AND_MODEL_PLACEHOLDER,
     WORKFLOWAI_API_KEY_PLACEHOLDER,
     Integration,
     IntegrationKind,
@@ -189,19 +190,20 @@ If you have any questions, just let me know!
     def _get_agent_naming_code_snippet_messages(
         now: datetime.datetime,
         proposed_agent_name: str,
+        model: str,
         integration: Integration,
     ) -> IntegrationChatResponse:
         MESSAGE_CONTENT = f"""Congratulations on sending your first run!
 Looks like you’re building a `{
             proposed_agent_name
-        }`, one more step is to update the model=[] in the code to get the agent prefix so that things are
+        }` agent, one more step is to update the model=[] in the code to get the agent prefix so that things are
 well organized (by agent) on WorkflowAI (trust me, makes everything easier).
 
 ```
 {
             integration.integration_chat_agent_naming_snippet.replace(
-                PROPOSED_AGENT_NAME_PLACEHOLDER,
-                proposed_agent_name,
+                PROPOSED_AGENT_NAME_AND_MODEL_PLACEHOLDER,
+                f"{proposed_agent_name}/{model}",
             )
         }
 ```
@@ -311,11 +313,11 @@ well organized (by agent) on WorkflowAI (trust me, makes everything easier).
                         ),  # Dump everything in the content
                     ),
                 )
-
                 # Send the agent naming suggestion code snippet
                 yield self._get_agent_naming_code_snippet_messages(
                     now,
                     proposed_agent_name_run.output.agent_name,
+                    relevant_run_and_agent.run.group.properties.model or workflowai.Model.GPT_4O_LATEST,
                     integration,
                 )
                 return
@@ -327,17 +329,6 @@ well organized (by agent) on WorkflowAI (trust me, makes everything easier).
             return
 
         # After this point, we know the user triggered the action.
-        if latest_message.content == "debug step 2":
-            yield self._get_agent_naming_code_snippet_messages(now, "dummy_proposed_agent_name", integration)
-            return
-
-        if latest_message.content == "debug step 3":
-            yield IntegrationChatResponse(
-                messages=[],
-                redirect_to_agent_playground=PlaygroundRedirection(agent_name="default"),
-            )
-            return
-
         integration_agent_input = await self._build_integration_chat_agent_input(
             messages,
             integration,

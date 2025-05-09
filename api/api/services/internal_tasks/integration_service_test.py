@@ -139,7 +139,7 @@ class TestBuildIntegrationChatAgentInput:
             ),
         ]
 
-        result = await integration_service._build_integration_chat_agent_input(messages)  # pyright: ignore[reportPrivateUsage]
+        result = await integration_service._build_integration_chat_agent_input(messages, Mock(spec=Integration))  # pyright: ignore[reportPrivateUsage]
 
         assert isinstance(result, IntegrationAgentInput)
         assert len(result.messages) == 2
@@ -205,6 +205,7 @@ class TestGetAgentNamingCodeSnippetMessages:
         result = IntegrationService._get_agent_naming_code_snippet_messages(  # pyright: ignore[reportPrivateUsage]
             now,
             proposed_agent_name,
+            workflowai.Model.GPT_4O_LATEST.value,
             mock_integration,
         )
 
@@ -484,7 +485,7 @@ class TestStreamIntegrationChatResponse:
         ]
 
         # Mock the run and agent
-        mock_run = Mock(spec=AgentRun)
+        mock_run = Mock(spec=AgentRun, group=Mock(properties=Mock(model=workflowai.Model.GPT_4O_LATEST.value)))
         mock_run.llm_completions = "some completions"
 
         mock_agent = Mock(spec=SerializableTaskVariant)
@@ -651,76 +652,3 @@ class TestStreamIntegrationChatResponse:
 
             # Verify mock calls
             mock_integration_agent.stream.assert_called_once()
-
-    @patch("api.services.internal_tasks.integration_service.integration_chat_agent")
-    async def test_debug_steps(
-        self,
-        mock_integration_agent: Any,
-        integration_service: IntegrationService,
-        mock_integration: Integration,
-    ):
-        # Test debug step 2
-        now = datetime.datetime.now()
-        messages_step2 = [
-            IntegrationChatMessage(
-                sent_at=now,
-                role="USER",
-                content="debug step 2",
-                message_kind=MessageKind.non_specific,
-            ),
-        ]
-
-        # Patch methods
-        with patch.object(
-            integration_service,
-            "_get_integration_for_slug",
-            return_value=mock_integration,
-        ):
-            # Call the method for debug step 2
-            results_step2 = [
-                result
-                async for result in integration_service.stream_integration_chat_response(
-                    IntegrationKind.INSTRUCTOR_PYTHON,
-                    messages_step2,
-                )
-            ]
-
-            # Verify results for step 2
-            assert len(results_step2) == 1
-            assert isinstance(results_step2[0], IntegrationChatResponse)
-            assert len(results_step2[0].messages) == 1
-            assert results_step2[0].messages[0].role == "ASSISTANT"
-            assert results_step2[0].messages[0].message_kind == MessageKind.agent_naming_code_snippet
-            assert "dummy_proposed_agent_name" in results_step2[0].messages[0].content
-
-        # Test debug step 3
-        messages_step3 = [
-            IntegrationChatMessage(
-                sent_at=now,
-                role="USER",
-                content="debug step 3",
-                message_kind=MessageKind.non_specific,
-            ),
-        ]
-
-        # Patch methods
-        with patch.object(
-            integration_service,
-            "_get_integration_for_slug",
-            return_value=mock_integration,
-        ):
-            # Call the method for debug step 3
-            results_step3 = [
-                result
-                async for result in integration_service.stream_integration_chat_response(
-                    IntegrationKind.INSTRUCTOR_PYTHON,
-                    messages_step3,
-                )
-            ]
-
-            # Verify results for step 3
-            assert len(results_step3) == 1
-            assert isinstance(results_step3[0], IntegrationChatResponse)
-            assert results_step3[0].messages == []
-            assert results_step3[0].redirect_to_agent_playground is not None
-            assert results_step3[0].redirect_to_agent_playground.agent_name == "default"

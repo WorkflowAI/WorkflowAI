@@ -1,6 +1,6 @@
 from core.domain.integration_domain import (
     OFFICIAL_INTEGRATIONS,
-    PROPOSED_AGENT_NAME_PLACEHOLDER,
+    PROPOSED_AGENT_NAME_AND_MODEL_PLACEHOLDER,
     WORKFLOWAI_API_KEY_PLACEHOLDER,
     IntegrationKind,
 )
@@ -33,7 +33,7 @@ def test_integration_snippets_contain_required_placeholders():
         )
 
         # Check that agent naming snippet contains the agent name placeholder
-        assert PROPOSED_AGENT_NAME_PLACEHOLDER in integration.integration_chat_agent_naming_snippet, (
-            f"Integration '{integration.display_name}' is missing {PROPOSED_AGENT_NAME_PLACEHOLDER} "
+        assert PROPOSED_AGENT_NAME_AND_MODEL_PLACEHOLDER in integration.integration_chat_agent_naming_snippet, (
+            f"Integration '{integration.display_name}' is missing {PROPOSED_AGENT_NAME_AND_MODEL_PLACEHOLDER} "
             f"in integration_chat_agent_naming_snippet"
         )
