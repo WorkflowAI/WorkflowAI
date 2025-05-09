@@ -14,7 +14,7 @@ type TaskOutputViewerProps = Omit<ObjectViewerProps, 'blacklistedKeys' | 'value'
   defaultOpenForSteps?: boolean;
 };
 
-function ObjectViewerPrefixSlot(props: {
+export function ObjectViewerPrefixSlot(props: {
   toolCalls: Array<ToolCallPreview> | undefined;
   reasoningSteps: ReasoningStep[] | undefined;
   streamLoading: boolean | undefined;

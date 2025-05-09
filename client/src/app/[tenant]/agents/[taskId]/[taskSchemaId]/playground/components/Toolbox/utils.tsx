@@ -1,9 +1,9 @@
-import { GlobeSearchRegular, WindowAdRegular } from '@fluentui/react-icons';
+import { GlobeSearchRegular, WindowAdRegular, WindowDevToolsRegular } from '@fluentui/react-icons';
 import { ToolKind } from '@/types/workflowAI';
 
 export const allTools: ToolKind[] = ['@search-google', '@perplexity-sonar-pro', '@browser-text'];
 
-export function getIcon(tool: ToolKind) {
+export function getIcon(tool: string) {
   switch (tool) {
     case '@search-google':
     case '@perplexity-sonar-pro':
@@ -11,11 +11,11 @@ export function getIcon(tool: ToolKind) {
     case '@browser-text':
       return <WindowAdRegular className='w-[18px] h-[18px]' />;
     default:
-      return undefined;
+      return <WindowDevToolsRegular className='w-[18px] h-[18px]' />;
   }
 }
 
-export function getToolName(tool: ToolKind) {
+export function getToolName(tool: string) {
   switch (tool) {
     case '@search-google':
       return (

@@ -10,8 +10,7 @@ import { TENANT_PLACEHOLDER } from '@/lib/routeFormatter';
 import { sortVersions } from '@/lib/versionUtils';
 import { TaskID, TaskSchemaID, TenantID } from '@/types/aliases';
 import { CodeLanguage } from '@/types/snippets';
-import { GeneralizedTaskInput } from '@/types/task_run';
-import { ChatMessage, CreateVersionRequest, FieldQuery, PlaygroundState, VersionV1 } from '@/types/workflowAI';
+import { ChatMessage, FieldQuery, PlaygroundState, VersionV1 } from '@/types/workflowAI';
 import { useAIModels } from './ai_models';
 import { useApiKeys } from './api_keys';
 import { useClerkOrganizationStore } from './clerk_organisations';
@@ -42,7 +41,6 @@ import {
   buildVersionScopeKey,
   getOrUndef,
 } from './utils';
-import { buildCreateVersionScopeKey, buildRunVersionScopeKey } from './utils';
 import { getVersionsPerEnvironment, mapMajorVersionsToVersions, useVersions } from './versions';
 import { useWeeklyRuns } from './weekly_runs';
 
@@ -1221,6 +1219,7 @@ export const useOrFetchLatestRun = (tenant: TenantID | undefined, taskId: TaskID
   });
 
   const isLoading = useTaskRuns((state) => state.isLatestRunLoadingByScope.get(scopeKey));
+  const isInitialized = useTaskRuns((state) => state.isLatestRunInitializedByScope.get(scopeKey));
   const latestRun = useTaskRuns((state) => state.latestRunByScope.get(scopeKey));
 
   const fetchLatestRun = useTaskRuns((state) => state.fetchLatestRun);
@@ -1232,6 +1231,7 @@ export const useOrFetchLatestRun = (tenant: TenantID | undefined, taskId: TaskID
   return {
     latestRun,
     isLoading,
+    isInitialized,
   };
 };
 

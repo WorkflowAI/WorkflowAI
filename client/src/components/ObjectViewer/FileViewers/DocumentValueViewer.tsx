@@ -7,7 +7,7 @@ import { ValueViewerProps } from '../utils';
 import { CSVDocumentViewer } from './CSVDocumentViewer';
 import { DocumentPreviewControls } from './DocumentPreviewControls';
 import { FileUploader } from './FileUploader';
-import { ImageValueViewer } from './ImageValueViewer';
+import { UniversalImageValueViewer } from './ImageValueViewer';
 import { FileValueType, extractFileSrc } from './utils';
 
 type TextDocumentViewerProps = {
@@ -93,8 +93,16 @@ function TextDocumentViewerWrapper(props: TextDocumentViewerWrapperProps) {
   );
 }
 
-export function DocumentValueViewer(props: ValueViewerProps<FileValueType | undefined>) {
-  const { value, className, editable, onEdit, keyPath, showTypes, showTypesForFiles } = props;
+type UniversalDocumentValueViewerProps = {
+  value: FileValueType | undefined;
+  className: string | undefined;
+  editable: boolean | undefined;
+  onEdit: ((keyPath: string, newVal: FileValueType | undefined, triggerSave?: boolean | undefined) => void) | undefined;
+  keyPath: string;
+};
+
+export function UniversalDocumentValueViewer(props: UniversalDocumentValueViewerProps) {
+  const { value, className, editable, onEdit, keyPath } = props;
   const castedValue = value as FileValueType | undefined;
 
   const onChange = useCallback(
@@ -119,12 +127,6 @@ export function DocumentValueViewer(props: ValueViewerProps<FileValueType | unde
     },
     [onEdit, keyPath]
   );
-
-  if (!editable && (showTypes || showTypesForFiles)) {
-    return (
-      <ReadonlyValue {...props} value='document' referenceValue={undefined} icon={<DocumentBulletList16Regular />} />
-    );
-  }
 
   const src = extractFileSrc(castedValue);
 
@@ -155,7 +157,7 @@ export function DocumentValueViewer(props: ValueViewerProps<FileValueType | unde
     );
   }
   if (isImage) {
-    return <ImageValueViewer {...props} />;
+    return <UniversalImageValueViewer {...props} />;
   }
 
   return (
@@ -166,5 +168,27 @@ export function DocumentValueViewer(props: ValueViewerProps<FileValueType | unde
     >
       <TextDocumentViewerWrapper value={castedValue} className='max-h-[250px] max-w-[500px] overflow-hidden' />
     </DocumentPreviewControls>
+  );
+}
+
+export function DocumentValueViewer(props: ValueViewerProps<unknown>) {
+  const { editable, showTypes, showTypesForFiles } = props;
+
+  if (!editable && (showTypes || showTypesForFiles)) {
+    return (
+      <ReadonlyValue {...props} value='document' referenceValue={undefined} icon={<DocumentBulletList16Regular />} />
+    );
+  }
+
+  const castedValue = props.value as FileValueType | undefined;
+
+  return (
+    <UniversalDocumentValueViewer
+      value={castedValue}
+      className={props.className}
+      editable={props.editable}
+      onEdit={props.onEdit}
+      keyPath={props.keyPath}
+    />
   );
 }

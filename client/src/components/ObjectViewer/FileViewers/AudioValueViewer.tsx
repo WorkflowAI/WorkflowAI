@@ -54,19 +54,27 @@ function AudioWaveform() {
   );
 }
 
-export function AudioValueViewer(props: ValueViewerProps<FileValueType | undefined>) {
-  const {
-    value,
-    className,
-    editable,
-    onEdit,
-    keyPath,
-    showTypes,
-    showTypesForFiles,
-    transcriptions,
-    fetchAudioTranscription,
-    handleUploadFile,
-  } = props;
+type UniversalAudioValueViewerProps = {
+  value: FileValueType | undefined;
+  className: string | undefined;
+  editable: boolean | undefined;
+  onEdit: ((keyPath: string, newVal: FileValueType | undefined, triggerSave?: boolean | undefined) => void) | undefined;
+  keyPath: string;
+  transcriptions: Record<string, string> | undefined;
+  fetchAudioTranscription: ((payload: FileInputRequest) => Promise<string | undefined>) | undefined;
+  handleUploadFile:
+    | ((
+        formData: FormData,
+        hash: string,
+        onProgress?: ((progress: number) => void) | undefined
+      ) => Promise<string | undefined>)
+    | undefined;
+};
+
+export function UniversalAudioValueViewer(props: UniversalAudioValueViewerProps) {
+  const { value, className, editable, onEdit, keyPath, transcriptions, fetchAudioTranscription, handleUploadFile } =
+    props;
+
   const castedValue = value as FileValueType | undefined;
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -90,6 +98,7 @@ export function AudioValueViewer(props: ValueViewerProps<FileValueType | undefin
           setTextTranscription(transcription);
         }
       } catch (err) {
+        console.error(err);
         setTextTranscription('Transcription Unavailable');
       } finally {
         setTranscriptionLoading(false);
@@ -167,6 +176,7 @@ export function AudioValueViewer(props: ValueViewerProps<FileValueType | undefin
           onEdit?.(keyPath, newVal);
           setIsPlaying(false);
         } catch (error) {
+          console.error(error);
           displayErrorToaster('Failed to upload file');
         } finally {
           resetUploadProps();
@@ -230,10 +240,6 @@ export function AudioValueViewer(props: ValueViewerProps<FileValueType | undefin
 
   const transcription = textTranscription || runTranscription;
 
-  if (!editable && (showTypes || showTypesForFiles)) {
-    return <ReadonlyValue {...props} value='audio' referenceValue={undefined} icon={<DeviceEqFilled />} />;
-  }
-
   const src = extractFileSrc(castedValue);
 
   if (!src && !editable) {
@@ -281,5 +287,28 @@ export function AudioValueViewer(props: ValueViewerProps<FileValueType | undefin
       </div>
       <TranscriptionViewer transcription={transcription} transcriptionLoading={transcriptionLoading} />
     </div>
+  );
+}
+
+export function AudioValueViewer(props: ValueViewerProps<FileValueType | undefined>) {
+  const { editable, showTypes, showTypesForFiles } = props;
+
+  if (!editable && (showTypes || showTypesForFiles)) {
+    return <ReadonlyValue {...props} value='audio' referenceValue={undefined} icon={<DeviceEqFilled />} />;
+  }
+
+  const castedValue = props.value as FileValueType | undefined;
+
+  return (
+    <UniversalAudioValueViewer
+      value={castedValue}
+      className={props.className}
+      editable={props.editable}
+      onEdit={props.onEdit}
+      keyPath={props.keyPath}
+      transcriptions={props.transcriptions}
+      fetchAudioTranscription={props.fetchAudioTranscription}
+      handleUploadFile={props.handleUploadFile}
+    />
   );
 }

@@ -3,6 +3,7 @@ import {
   InternalReasoningStep,
   ReasoningStep,
   ToolCall,
+  ToolCallRequestWithID,
   ToolKind,
   api__routers__run__RunResponseStreamChunk__ToolCall,
   api__routers__run__RunResponse__ToolCall,
@@ -45,19 +46,31 @@ export function toolCallsFromStreamOrRun(
   });
 }
 
+export function toolCallPreviewFromToolCallRequests(
+  requests: ToolCallRequestWithID[] | undefined
+): ToolCallPreview[] | undefined {
+  if (!requests) return undefined;
+
+  return requests.map((request) => {
+    return {
+      id: request.id ?? '',
+      name: request.tool_name,
+      input_preview: JSON.stringify(request.tool_input_dict),
+      output_preview: undefined,
+    };
+  });
+}
+
 export function toolCallsFromRun(run: TaskRun | undefined): ToolCallPreview[] | undefined {
   if (!run) return undefined;
 
   const result: ToolCallPreview[] = [];
   run.llm_completions?.forEach((llmCompletion) => {
-    llmCompletion.tool_calls?.forEach((toolCall) => {
-      result.push({
-        id: toolCall.id ?? '',
-        name: toolCall.tool_name,
-        input_preview: JSON.stringify(toolCall.tool_input_dict),
-        output_preview: undefined,
-      });
-    });
+    const toolCalls = llmCompletion.tool_calls;
+    const toolCallPreviews = toolCallPreviewFromToolCallRequests(toolCalls ?? undefined);
+    if (toolCallPreviews) {
+      result.push(...toolCallPreviews);
+    }
   });
 
   return result.length > 0 ? result : undefined;

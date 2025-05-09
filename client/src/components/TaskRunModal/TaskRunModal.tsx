@@ -98,9 +98,8 @@ export default function TaskRunModal(props: TaskRunModalProps) {
     }
 
     return taskSchemaRoute(tenant, taskId, taskSchemaId, {
-      inputTaskRunId: taskRunId,
       versionId: version?.id,
-      preselectedVariantId: version?.properties.task_variant_id,
+      taskRunId1: taskRunId,
     });
   }, [showPlaygroundButton, tenant, taskId, taskSchemaId, taskRunId, version]);
 

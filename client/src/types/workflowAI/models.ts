@@ -2607,6 +2607,7 @@ export type TaskGroupProperties = {
 };
 
 export type Tool = {
+  id?: string | null;
   /**
    * The name of the tool
    */

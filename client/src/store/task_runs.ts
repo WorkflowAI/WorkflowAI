@@ -25,6 +25,7 @@ export interface TaskRunsState {
   isRunV1InitializedById: Map<string, boolean>;
 
   isLatestRunLoadingByScope: Map<string, boolean>;
+  isLatestRunInitializedByScope: Map<string, boolean>;
   latestRunByScope: Map<string, RunV1>;
 
   fetchTaskRuns(params: {
@@ -56,6 +57,7 @@ export const useTaskRuns = create<TaskRunsState>((set, get) => ({
   countByScope: new Map<string, number>(),
 
   isLatestRunLoadingByScope: new Map<string, boolean>(),
+  isLatestRunInitializedByScope: new Map<string, boolean>(),
   latestRunByScope: new Map<string, RunV1>(),
 
   runV1ById: new Map<string, RunV1>(),
@@ -238,6 +240,7 @@ export const useTaskRuns = create<TaskRunsState>((set, get) => ({
     set(
       produce((state: TaskRunsState) => {
         state.isLatestRunLoadingByScope.set(scope, false);
+        state.isLatestRunInitializedByScope.set(scope, true);
       })
     );
   },

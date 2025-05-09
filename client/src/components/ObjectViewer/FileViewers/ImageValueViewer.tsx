@@ -14,9 +14,16 @@ const ZOOM_FACTOR = 4;
 const MIME_TYPES = IMAGE_MIME_TYPES.join(',');
 const ALLOWED_EXTENSIONS = new Set(IMAGE_MIME_TYPES.map((type) => type.split('/')[1]));
 
-export function ImageValueViewer(props: ValueViewerProps<unknown>) {
-  const { value, showTypes, showTypesForFiles, className, editable, onEdit, keyPath } = props;
-  const castedValue = value as FileValueType | undefined;
+type UniversalImageValueViewerProps = {
+  value: FileValueType | undefined;
+  className: string | undefined;
+  editable: boolean | undefined;
+  onEdit: ((keyPath: string, newVal: FileValueType | undefined, triggerSave?: boolean | undefined) => void) | undefined;
+  keyPath: string;
+};
+
+export function UniversalImageValueViewer(props: UniversalImageValueViewerProps) {
+  const { value, className, editable, onEdit, keyPath } = props;
 
   const [zoomPosition, setZoomPosition] = useState<{
     x: number;
@@ -36,7 +43,7 @@ export function ImageValueViewer(props: ValueViewerProps<unknown>) {
     setZoomPosition(null);
   }, []);
 
-  const isRealImage = castedValue && castedValue?.content_type?.startsWith('image');
+  const isRealImage = value && value?.content_type?.startsWith('image');
 
   const onChange = useCallback(
     async (file: File) => {
@@ -79,11 +86,7 @@ export function ImageValueViewer(props: ValueViewerProps<unknown>) {
     [onEdit, keyPath]
   );
 
-  if (!editable && (showTypes || showTypesForFiles)) {
-    return <ReadonlyValue {...props} value='image' referenceValue={undefined} icon={<ImagePlaceholderIcon />} />;
-  }
-
-  const src = extractFileSrc(castedValue);
+  const src = extractFileSrc(value);
 
   // If we don't have a file to show and we are not uploading it we show nothing
   if (!src && !editable) {
@@ -99,7 +102,7 @@ export function ImageValueViewer(props: ValueViewerProps<unknown>) {
     );
   }
 
-  const alt = castedValue?.name || 'Image';
+  const alt = value?.name || 'Image';
 
   return (
     <div className='flex flex-col gap-1 relative'>
@@ -109,7 +112,7 @@ export function ImageValueViewer(props: ValueViewerProps<unknown>) {
         dialogContent={
           <div className='flex items-center justify-center overflow-hidden p-1'>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={src} alt={castedValue?.name} className='h-full rounded-md shadow' />
+            <img src={src} alt={value?.name} className='h-full rounded-md shadow' />
           </div>
         }
       >
@@ -139,5 +142,25 @@ export function ImageValueViewer(props: ValueViewerProps<unknown>) {
         />
       )}
     </div>
+  );
+}
+
+export function ImageValueViewer(props: ValueViewerProps<unknown>) {
+  const { editable, showTypes, showTypesForFiles } = props;
+
+  if (!editable && (showTypes || showTypesForFiles)) {
+    return <ReadonlyValue {...props} value='image' referenceValue={undefined} icon={<ImagePlaceholderIcon />} />;
+  }
+
+  const castedValue = props.value as FileValueType | undefined;
+
+  return (
+    <UniversalImageValueViewer
+      value={castedValue}
+      className={props.className}
+      editable={props.editable}
+      onEdit={props.onEdit}
+      keyPath={props.keyPath}
+    />
   );
 }

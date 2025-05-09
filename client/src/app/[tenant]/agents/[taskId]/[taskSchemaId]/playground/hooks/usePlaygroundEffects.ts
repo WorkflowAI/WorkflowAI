@@ -7,7 +7,7 @@ import { SchemaNodeType } from '@/lib/schemaUtils';
 import { useOrFetchTaskRun } from '@/store';
 import { GeneralizedTaskInput, TaskRun } from '@/types';
 import { Model, ModelOptional, TaskID, TenantID } from '@/types/aliases';
-import { ModelResponse, VersionV1 } from '@/types/workflowAI';
+import { ModelResponse, RunV1, VersionV1 } from '@/types/workflowAI';
 import { useDefaultModels } from './useDefaultModels';
 import { GeneratePlaygroundInputParams } from './usePlaygroundPersistedState';
 import { PlaygroundModels } from './utils';
@@ -30,7 +30,7 @@ type Props = {
   handleGenerateInstructions: () => void;
   resetStreamedChunk: (index: number) => void;
   onTaskRunIdUpdate: (index: number, runId: string | undefined) => void;
-  latestTaskRun: TaskRun | undefined;
+  latestRun: RunV1 | undefined;
   schemaModels: PlaygroundModels;
   taskModels: PlaygroundModels;
   persistedTaskRunIds: (string | undefined)[];
@@ -57,7 +57,7 @@ export function usePlaygroundEffects(props: Props) {
     handleGeneratePlaygroundInput,
     handleGenerateInstructions,
     resetStreamedChunk,
-    latestTaskRun,
+    latestRun,
     onTaskRunIdUpdate,
     schemaModels,
     taskModels,
@@ -169,9 +169,9 @@ export function usePlaygroundEffects(props: Props) {
         return;
         // If the latest task run has the same input as the generated input, we redirect to its task group
       } else if (!!generatedInput) {
-        if (!!latestTaskRun) {
+        if (!!latestRun) {
           redirectWithParams({
-            params: { versionId: latestTaskRun.group?.id },
+            params: { versionId: latestRun.version.id },
             scroll: false,
           });
         }
@@ -226,8 +226,8 @@ export function usePlaygroundEffects(props: Props) {
         // We only want to update the task run id if the latest task run is on the same model
         // Otherwise, we lose the persistence of the model
         onTaskRunIdUpdate(0, latestTaskRunOnSameModel.id);
-      } else if (!!latestTaskRun) {
-        setGeneratedInput(latestTaskRun.task_input);
+      } else if (!!latestRun) {
+        setGeneratedInput(latestRun.task_input);
       } else if (!!voidInput) {
         setGeneratedInput(voidInput);
       }
@@ -240,7 +240,7 @@ export function usePlaygroundEffects(props: Props) {
     handleGeneratePlaygroundInput,
     hasModelsBeenSet,
     hasVersions,
-    latestTaskRun,
+    latestRun,
     latestTaskRunOnSameModel,
     onTaskRunIdUpdate,
     persistedTaskRunsInitialized,

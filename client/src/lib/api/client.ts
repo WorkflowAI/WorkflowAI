@@ -272,6 +272,7 @@ export async function uploadFile<R = unknown>(
 
 function parseSSEEvent(eventData: string) {
   let parsed: unknown;
+
   try {
     parsed = JSON.parse(eventData);
   } catch (e) {
@@ -286,7 +287,7 @@ function parseSSEEvent(eventData: string) {
 
   if ('error' in parsed) {
     const msg = extractErrorMessage(parsed);
-    if ('task_run_id' in parsed) {
+    if ('task_run_id' in parsed && !!parsed.task_run_id) {
       throw new StreamError(msg ?? 'An unknown error occurred', msg === undefined, {
         eventData,
         runId: parsed.task_run_id,
