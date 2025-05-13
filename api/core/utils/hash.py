@@ -21,9 +21,9 @@ class _CustomEncoder(json.JSONEncoder):
 
 
 # TODO: tests
-def compute_obj_hash(obj: Any) -> str:
+def compute_obj_hash(obj: Any, sort_keys: bool = True) -> str:
     """Compute a hash of an object based on its json representation."""
-    obj_str = json.dumps(obj, sort_keys=True, indent=None, separators=(",", ":"), cls=_CustomEncoder)
+    obj_str = json.dumps(obj, sort_keys=sort_keys, indent=None, separators=(",", ":"), cls=_CustomEncoder)
     # cannot use python hash function here because it is not
     # stable accross sessions
     return hashlib.md5(obj_str.encode("utf-8")).hexdigest()

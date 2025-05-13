@@ -16,21 +16,21 @@ from .task_io import SerializableTaskIO
 
 class SerializableTaskVariant(BaseModel):
     id: str = Field(
-        ...,
+        default="",
         description="the task version id, computed based on the other parameters. Read only.",
     )
     task_id: str = Field(default="", description="the task id, stable accross all versions")
     # TODO[uids]: this is not filled on every path for now, we should eventually store it with the task variant
     task_uid: int = 0
     task_schema_id: int = Field(
-        0,
+        default=0,
         description="""The task schema idx. The schema index only changes when the types
         of the input / ouput objects change so all task versions with the same schema idx
         have compatible input / output objects. Read only""",
     )
     tenant: str | None = Field(default=None, description="A unique tenant id that the task variant belongs to")
     # TODO: remove, should be at task info level
-    name: str = Field(description="the task display name")
+    name: str = Field(default="", description="the task display name")
     # TODO: remove, should be at task info level
     description: str | None = Field(default=None, description="a concise task description")
     input_schema: SerializableTaskIO
@@ -56,6 +56,8 @@ class SerializableTaskVariant(BaseModel):
         # the model hash depends on the full json schema for both input and outputs
         return compute_obj_hash(
             {"input_schema": self.input_schema.json_schema, "output_schema": self.output_schema.json_schema},
+            # We don't sort keys here because we want the fields to be in the same order as in the json schema
+            sort_keys=False,
         )
 
     @model_validator(mode="after")
