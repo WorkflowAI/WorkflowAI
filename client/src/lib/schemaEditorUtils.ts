@@ -471,11 +471,81 @@ function sanitizeDefsForComparison(schema: JsonSchema) {
   };
 }
 
-export function areSchemasEquivalent(schema1: JsonSchema | undefined, schema2: JsonSchema | undefined) {
+/**
+ * Compares objects for structural equality, maintaining order only for property objects
+ * under a 'properties' key.
+ */
+function orderSensitiveCompare(obj1: unknown, obj2: unknown, parentKey?: string): boolean {
+  // If primitives or different types, use direct comparison
+  if (obj1 === obj2) return true;
+  if (typeof obj1 !== typeof obj2) return false;
+  if (obj1 === null || obj2 === null) return obj1 === obj2;
+
+  // Handle arrays (order always matters)
+  if (Array.isArray(obj1) && Array.isArray(obj2)) {
+    if (obj1.length !== obj2.length) return false;
+    return obj1.every((val, idx) => orderSensitiveCompare(val, obj2[idx]));
+  }
+
+  // Handle objects
+  if (typeof obj1 === 'object' && typeof obj2 === 'object' && obj1 !== null && obj2 !== null) {
+    const keys1 = Object.keys(obj1 as Record<string, unknown>);
+    const keys2 = Object.keys(obj2 as Record<string, unknown>);
+
+    if (keys1.length !== keys2.length) return false;
+
+    // Order matters specifically for objects under 'properties' key
+    const isPropertiesObject = parentKey === 'properties';
+
+    if (isPropertiesObject) {
+      // Check if keys are in the same order for property objects
+      if (!keys1.every((key, idx) => key === keys2[idx])) return false;
+
+      // Check all values, passing the key name for context
+      return keys1.every((key) =>
+        orderSensitiveCompare((obj1 as Record<string, unknown>)[key], (obj2 as Record<string, unknown>)[key], key)
+      );
+    } else {
+      // For all other objects, order doesn't matter, so we use a different approach
+      // Sort keys to normalize the order for comparison
+      const sortedKeys1 = [...keys1].sort();
+      const sortedKeys2 = [...keys2].sort();
+
+      // Check if the same keys exist
+      if (!sortedKeys1.every((key, idx) => key === sortedKeys2[idx])) return false;
+
+      // Check all values using sorted keys
+      return sortedKeys1.every((key) =>
+        orderSensitiveCompare((obj1 as Record<string, unknown>)[key], (obj2 as Record<string, unknown>)[key], key)
+      );
+    }
+  }
+
+  return false;
+}
+
+export function areSchemasEquivalent(
+  schema1: JsonSchema | undefined,
+  schema2: JsonSchema | undefined,
+  isOrderImportant: boolean = false
+) {
   if (!schema1 || !schema2) {
     return false;
   }
+
   const sanitizedSchema1 = sanitizeDefsForComparison(schema1);
   const sanitizedSchema2 = sanitizeDefsForComparison(schema2);
-  return isEqual(sanitizedSchema1, sanitizedSchema2);
+
+  // eslint-disable-next-line no-console
+  console.log('sanitizedSchema1', JSON.stringify(sanitizedSchema1));
+  // eslint-disable-next-line no-console
+  console.log('sanitizedSchema2', JSON.stringify(sanitizedSchema2));
+
+  // For order-insensitive comparison (original behavior)
+  if (!isOrderImportant) {
+    return isEqual(sanitizedSchema1, sanitizedSchema2);
+  }
+
+  // For order-sensitive comparison
+  return orderSensitiveCompare(sanitizedSchema1, sanitizedSchema2);
 }
