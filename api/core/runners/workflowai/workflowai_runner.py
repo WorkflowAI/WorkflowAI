@@ -563,10 +563,13 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
             if isinstance(input, list):
                 input = {"messages": input}
             try:
-                return Messages.model_validate(input)
+                messages = Messages.model_validate(input)
             except ValidationError as e:
                 # Capturing for now just in case
                 raise BadRequestError(f"Input is not a valid list of messages: {str(e)}", capture=True) from e
+            if self._options.messages:
+                messages.messages = [*self._options.messages, *messages.messages]
+            return messages
         if not self._options.messages:
             return None
         # Then the current version is a full message template

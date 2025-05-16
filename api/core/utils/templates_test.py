@@ -68,18 +68,18 @@ class TestRenderTemplate:
 
 class TestExtractVariableSchema:
     def test_extract_variable_schema(self):
-        schema = extract_variable_schema("Hello, {{ name }}!")
+        schema, _ = extract_variable_schema("Hello, {{ name }}!")
         assert schema == {"type": "object", "properties": {"name": {}}}
 
     def test_attribute_access(self):
-        schema = extract_variable_schema("User: {{ user.name }}")
+        schema, _ = extract_variable_schema("User: {{ user.name }}")
         assert schema == {
             "type": "object",
             "properties": {"user": {"type": "object", "properties": {"name": {}}}},
         }
 
     def test_nested_attribute_access(self):
-        schema = extract_variable_schema("Email: {{ user.profile.email }}")
+        schema, _ = extract_variable_schema("Email: {{ user.profile.email }}")
         assert schema == {
             "type": "object",
             "properties": {
@@ -97,7 +97,7 @@ class TestExtractVariableSchema:
 
     def test_item_access_as_array(self):
         # Note: Getitem is always treated as array access ('*') by the current implementation
-        schema = extract_variable_schema("First user: {{ users[0].name }}")
+        schema, _ = extract_variable_schema("First user: {{ users[0].name }}")
         assert schema == {
             "type": "object",
             "properties": {
@@ -113,7 +113,7 @@ class TestExtractVariableSchema:
 
     def test_for_loop(self):
         template = "{% for item in items %}{{ item.name }}{% endfor %}"
-        schema = extract_variable_schema(template)
+        schema, _ = extract_variable_schema(template)
         assert schema == {
             "type": "object",
             "properties": {
@@ -129,7 +129,7 @@ class TestExtractVariableSchema:
 
     def test_nested_for_loop(self):
         template = "{% for user in users %}{% for post in user.posts %}{{ post.title }}{% endfor %}{% endfor %}"
-        schema = extract_variable_schema(template)
+        schema, _ = extract_variable_schema(template)
         assert schema == {
             "type": "object",
             "properties": {
@@ -153,7 +153,7 @@ class TestExtractVariableSchema:
 
     def test_conditional(self):
         template = "{% if user.is_admin %}{{ user.name }}{% else %}Guest{% endif %}"
-        schema = extract_variable_schema(template)
+        schema, _ = extract_variable_schema(template)
         assert schema == {
             "type": "object",
             "properties": {
@@ -169,7 +169,7 @@ class TestExtractVariableSchema:
 
     def test_combined(self):
         template = "{{ user.name }} {% for project in user.projects %}{{ project.id }}{% endfor %}"
-        schema = extract_variable_schema(template)
+        schema, _ = extract_variable_schema(template)
         assert schema == {
             "type": "object",
             "properties": {
@@ -190,8 +190,8 @@ class TestExtractVariableSchema:
         }
 
     def test_no_variables(self):
-        schema = extract_variable_schema("Just plain text.")
-        assert schema == {}
+        schema, _ = extract_variable_schema("Just plain text.")
+        assert schema is None
 
     def test_function_call_raises_error(self):
         # Functions are not supported
@@ -199,16 +199,16 @@ class TestExtractVariableSchema:
             extract_variable_schema("{{ my_func() }}")
 
     def test_single_array(self):
-        schema = extract_variable_schema("{% for item in seq %}{{ item }}{% endfor %}")
+        schema, _ = extract_variable_schema("{% for item in seq %}{{ item }}{% endfor %}")
         assert schema == {
             "type": "object",
             "properties": {"seq": {"type": "array", "items": {}}},
         }
 
     def test_existing_schema(self):
-        schema = extract_variable_schema(
+        schema, _ = extract_variable_schema(
             "{{ name }} {{ counter}}",
-            existing_schema={
+            use_types_from={
                 "type": "object",
                 "properties": {
                     "counter": {"type": "integer", "description": "The counter"},
@@ -224,9 +224,9 @@ class TestExtractVariableSchema:
         }
 
     def test_existing_schema_with_array(self):
-        schema = extract_variable_schema(
+        schema, _ = extract_variable_schema(
             "{% for user in users %}{{ user.name }} {{ user.counter }} {% endfor %}",
-            existing_schema={
+            use_types_from={
                 "type": "object",
                 "properties": {
                     "users": {
@@ -253,4 +253,14 @@ class TestExtractVariableSchema:
                     },
                 },
             },
+        }
+
+    def test_start_schema(self):
+        schema, _ = extract_variable_schema(
+            "Hello, {{ name }}!",
+            start_schema={"type": "object", "properties": {"hello": {}}},
+        )
+        assert schema == {
+            "type": "object",
+            "properties": {"hello": {}, "name": {}},
         }

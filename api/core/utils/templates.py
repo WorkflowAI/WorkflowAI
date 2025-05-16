@@ -93,18 +93,26 @@ class TemplateManager:
 
 
 class _SchemaBuilder(NodeVisitor):
-    def __init__(self, existing_schema: dict[str, Any] | None = None):
+    def __init__(self):
         # A graph of visited paths
         self._visited_paths: dict[str, Any] = {}
         self._aliases: list[Mapping[str, Any]] = []
-        self._existing_schema = JsonSchema(existing_schema) if existing_schema else None
 
-    def build_schema(self) -> dict[str, Any]:
-        if not self._visited_paths:
-            return {}
-        schema: dict[str, Any] = {}
-        self._handle_components(schema=schema, existing=self._existing_schema, components=self._visited_paths)
+    def build_schema(
+        self,
+        start_schema: dict[str, Any] | None = None,
+        use_types_from: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        schema: dict[str, Any] = start_schema or {}
+        self._handle_components(
+            schema=schema,
+            existing=JsonSchema(use_types_from) if use_types_from else None,
+            components=self._visited_paths,
+        )
         return schema
+
+    def is_empty(self) -> bool:
+        return not self._visited_paths
 
     def _ensure_path(self, path: Sequence[str]):
         """
@@ -135,8 +143,8 @@ class _SchemaBuilder(NodeVisitor):
             self._handle_components(schema, existing, components)
             return
 
-        schema["type"] = "object"
-        schema["properties"] = {}
+        schema.setdefault("type", "object")
+        schema.setdefault("properties", {})
         schema = schema["properties"]
 
         for k, v in components.items():
@@ -231,13 +239,20 @@ class _SchemaBuilder(NodeVisitor):
         raise BadRequestError("Template functions are not supported", capture=True)
 
 
-def extract_variable_schema(template: str, existing_schema: dict[str, Any] | None = None) -> dict[str, Any]:
+def extract_variable_schema(
+    template: str,
+    start_schema: dict[str, Any] | None = None,
+    use_types_from: dict[str, Any] | None = None,
+) -> tuple[dict[str, Any] | None, bool]:
+    """Returns the new schema and a boolean indicating if the argument was indeed templated"""
     env = Environment()
     try:
         ast = env.parse(template)
     except TemplateError as e:
         raise InvalidTemplateError.from_jinja(e)
 
-    builder = _SchemaBuilder(existing_schema)
+    builder = _SchemaBuilder()
     builder.visit(ast)
-    return builder.build_schema()
+    if builder.is_empty():
+        return start_schema, False
+    return builder.build_schema(start_schema=start_schema, use_types_from=use_types_from), True

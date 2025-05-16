@@ -8,6 +8,7 @@ from openai.types.chat.chat_completion_message_tool_call import ChatCompletionMe
 
 from core.domain.models.models import Model
 from tests.integration.common import IntegrationTestClient
+from tests.integration.openai_proxy.common import save_version_from_completion
 
 
 async def test_raw_string_output(test_client: IntegrationTestClient, openai_client: AsyncOpenAI):
@@ -504,3 +505,78 @@ async def test_unsupported_parameter(openai_client: AsyncOpenAI):
         )
 
     assert "Fields `logit_bias`, `stop` are not supported" in str(e)
+
+
+async def test_deployed_version_no_messages(test_client: IntegrationTestClient, openai_client: AsyncOpenAI):
+    test_client.mock_openai_call(raw_content="Hello James!")
+
+    # Create a version that will result in empty messages in the version
+    res = await openai_client.chat.completions.create(
+        model="my-agent/gpt-4o",
+        messages=[
+            {"role": "user", "content": "Hello, world!"},
+        ],
+    )
+    assert res.choices[0].message.content == "Hello James!"
+    await test_client.wait_for_completed_tasks()
+
+    version = await save_version_from_completion(test_client, res, "production")
+    assert version["properties"].get("messages") is None
+
+    # Now use the deployed version
+    test_client.mock_openai_call(raw_content="Hello James!")
+
+    res = await openai_client.chat.completions.create(
+        model="my-agent/#1/production",
+        messages=[{"role": "user", "content": "Hello hades!"}],
+    )
+    assert res.choices[0].message.content == "Hello James!"
+
+    request = test_client.httpx_mock.get_requests(url="https://api.openai.com/v1/chat/completions")
+    assert len(request) == 2, "sanity"
+
+    body = json.loads(request[-1].content)
+    assert len(body["messages"]) == 1
+    assert body["messages"][0]["content"] == "Hello hades!"
+
+
+async def test_deployed_version_no_messages_with_empty_input(
+    test_client: IntegrationTestClient,
+    openai_client: AsyncOpenAI,
+):
+    test_client.mock_openai_call(raw_content="Hello James!")
+
+    # Create a version that will result in empty messages in the version
+    res = await openai_client.chat.completions.create(
+        model="my-agent/gpt-4o",
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant"},
+            {"role": "user", "content": "Hello, world!"},
+        ],
+        # Passing an empty input signals that the first system message should be used in the version
+        extra_body={"input": {}},
+    )
+    assert res.choices[0].message.content == "Hello James!"
+    await test_client.wait_for_completed_tasks()
+
+    version = await save_version_from_completion(test_client, res, "production")
+    assert version["properties"].get("messages") == [
+        {"role": "system", "content": [{"text": "You are a helpful assistant"}]},
+    ]
+
+    # Now use the deployed version
+    test_client.mock_openai_call(raw_content="Hello James!")
+
+    res = await openai_client.chat.completions.create(
+        model="my-agent/#1/production",
+        messages=[{"role": "user", "content": "Hello hades!"}],
+    )
+    assert res.choices[0].message.content == "Hello James!"
+
+    request = test_client.httpx_mock.get_requests(url="https://api.openai.com/v1/chat/completions")
+    assert len(request) == 2, "sanity"
+
+    body = json.loads(request[-1].content)
+    assert len(body["messages"]) == 2
+    assert body["messages"][0]["content"] == "You are a helpful assistant"
+    assert body["messages"][1]["content"] == "Hello hades!"

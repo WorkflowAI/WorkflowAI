@@ -9,12 +9,13 @@ from api.dependencies.event_router import EventRouterDep
 from api.dependencies.security import RequiredUserOrganizationDep
 from api.dependencies.services import AnalyticsServiceDep
 from api.dependencies.storage import StorageDep
+from api.services.messages.messages_utils import json_schema_for_template
 from api.tags import RouteTags
 from core.domain.analytics_events.analytics_events import CreatedTaskProperties, TaskProperties
 from core.domain.errors import BadRequestError
 from core.domain.events import TaskSchemaCreatedEvent
 from core.domain.fields.chat_message import ChatMessage
-from core.domain.message import Message, Messages
+from core.domain.message import Message
 from core.domain.page import Page
 from core.domain.task_io import SerializableTaskIO
 from core.domain.task_variant import SerializableTaskVariant
@@ -164,20 +165,27 @@ class ExtractTemplateRequest(BaseModel):
     template: str | None = None
     messages: list[Message] | None = None
 
+    base_schema: dict[str, Any] | None = None
+
 
 class ExtractTemplateResponse(BaseModel):
-    json_schema: Mapping[str, Any]
+    json_schema: Mapping[str, Any] | None
+    last_templated_index: int
 
 
 @router.post("/{agent_id}/templates/extract")
 async def extract_template(request: ExtractTemplateRequest) -> ExtractTemplateResponse:
     try:
         if request.template:
-            json_schema = extract_variable_schema(request.template)
+            json_schema, is_templated = extract_variable_schema(request.template)
+            last_templated_index = 0 if is_templated else -1
         elif request.messages:
-            json_schema = Messages(messages=request.messages).json_schema_for_template(base_schema=None)
+            json_schema, last_templated_index = json_schema_for_template(
+                request.messages,
+                base_schema=request.base_schema,
+            )
         else:
             raise BadRequestError("Either template or messages must be provided")
     except InvalidTemplateError as e:
         raise BadRequestError(e.message)
-    return ExtractTemplateResponse(json_schema=json_schema)
+    return ExtractTemplateResponse(json_schema=json_schema, last_templated_index=last_templated_index)

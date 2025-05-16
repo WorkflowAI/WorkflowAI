@@ -86,7 +86,9 @@ def task_example_ser(**kwargs: Any) -> SerializableTaskExample:
 
 def task_variant(
     input_schema: dict[str, Any] | None = None,
+    input_io: SerializableTaskIO | None = None,
     output_schema: dict[str, Any] | None = None,
+    output_io: SerializableTaskIO | None = None,
     input_model: type[BaseModel] | None = None,
     output_model: type[BaseModel] | None = None,
     **kwargs: Any,
@@ -96,14 +98,17 @@ def task_variant(
         task_id="task_id",
         name="task_name",
         task_schema_id=1,
-        input_schema=SerializableTaskIO.from_model(input_model)
-        if input_model
-        else SerializableTaskIO(
-            version="input_version",
-            json_schema=input_schema
-            or {"type": "object", "properties": {"input": {"type": "string"}}, "required": ["input"]},
+        input_schema=input_io
+        or (
+            SerializableTaskIO.from_model(input_model)
+            if input_model
+            else SerializableTaskIO(
+                version="input_version",
+                json_schema=input_schema
+                or {"type": "object", "properties": {"input": {"type": "string"}}, "required": ["input"]},
+            )
         ),
-        output_schema=SerializableTaskIO.from_model(output_model)
+        output_schema=output_io or SerializableTaskIO.from_model(output_model)
         if output_model
         else SerializableTaskIO(
             version="output_version",
