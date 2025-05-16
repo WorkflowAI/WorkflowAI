@@ -177,9 +177,11 @@ async function fetchWrapper<T, R = unknown>(
   {
     method,
     body,
+    signal,
   }: {
     method: Method;
     body?: T;
+    signal?: AbortSignal;
   }
 ): Promise<R> {
   // We don't compute a token here
@@ -192,6 +194,7 @@ async function fetchWrapper<T, R = unknown>(
     method,
     headers,
     body: JSON.stringify(body),
+    signal,
   });
   if (!res.ok) {
     const error = new RequestError(res.status, path, res);
@@ -214,8 +217,8 @@ export async function get<T>(path: string, query?: URLSearchParams): Promise<T> 
   return fetchWrapper(url, { method: Method.GET });
 }
 
-export async function post<T, R = unknown>(path: string, body: T): Promise<R> {
-  return fetchWrapper(path, { method: Method.POST, body });
+export async function post<T, R = unknown>(path: string, body: T, signal?: AbortSignal): Promise<R> {
+  return fetchWrapper(path, { method: Method.POST, body, signal });
 }
 
 export async function put<T, R = unknown>(path: string, body: T): Promise<R> {

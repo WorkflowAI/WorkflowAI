@@ -95,7 +95,7 @@ export function ProxyMessagesView(props: Props) {
           <div className='flex px-4 h-max w-full'>
             <ProxyInputVariables
               inputSchema={inputSchema}
-              input={input}
+              input={undefined}
               setInput={setInput}
               tenant={tenant}
               taskId={taskId}
