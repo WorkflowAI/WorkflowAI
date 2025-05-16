@@ -20,6 +20,9 @@ from api.services.internal_tasks.meta_agent_service import (
     PlaygroundState,
     RunCurrentAgentOnModelsToolCall,
 )
+from api.services.internal_tasks.meta_agent_service import (
+    _remove_typescript_comments as remove_ts_comments,  # pyright: ignore[reportPrivateUsage]
+)
 from api.services.runs.runs_service import RunsService
 from core.agents.extract_company_info_from_domain_task import Product
 from core.agents.meta_agent import (
@@ -1207,3 +1210,26 @@ class TestMetaAgentService:
             assert result.instructions == "Generate another sample input"
             assert result.auto_run is False
             mock_resolve.assert_called_once()
+
+    @pytest.mark.parametrize(
+        "content, expected",
+        [
+            # No comments to remove
+            ("print('hello')", "print('hello')"),
+            # Single inline TypeScript style comment
+            (
+                "const a = 1; /* this is a comment */ const b = 2;",
+                "const a = 1;  const b = 2;",
+            ),
+            # Comment at the beginning
+            ("/* leading comment */const x = 5;", "const x = 5;"),
+            # Multiple comments in one string
+            (
+                "const x=1;/* c1 */const y=2;/* c2 */const z=3;",
+                "const x=1;const y=2;const z=3;",
+            ),
+        ],
+    )
+    def test_remove_typescript_comments(self, content: str, expected: str) -> None:
+        """Verify that _remove_typescript_comments correctly strips TypeScript style block comments."""
+        assert remove_ts_comments(content) == expected

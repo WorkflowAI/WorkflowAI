@@ -33,10 +33,10 @@ from openai import OpenAI
 # After (WorkflowAI Proxy)
 client = instructor.from_openai(
     OpenAI(
-        base_url="https://run.workflowai.com/v1",  # OpenAI now uses WorkflowAI's URL and API key
+        base_url="https://run.workflowai.com/v1", # Instructor now uses WorkflowAI's chat completion endpoint
         api_key=<WORKFLOWAI_API_KEY_PLACEHOLDER>
     ),
-    mode=instructor.Mode.OPENROUTER_STRUCTURED_OUTPUTS,
+    mode=instructor.Mode.OPENROUTER_STRUCTURED_OUTPUTS, # Allows to leverage structured generation
 )
 
 

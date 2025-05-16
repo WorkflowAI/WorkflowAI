@@ -74,7 +74,7 @@ OPENAI_SDK_TS_INTEGRATION_CHAT_INITIAL_SNIPPET = """import OpenAI from 'openai';
 // After (WorkflowAI Proxy)
 const client = new OpenAI({
   apiKey: <WORKFLOWAI_API_KEY_PLACEHOLDER>,
-  baseURL: 'https://run.workflowai.com/v1',
+  baseURL: 'https://run.workflowai.com/v1', // OpenAI SDK now uses WorkflowAI's chat completion API endpoint
 });
 
 // Everything else (model calls, parameters) stays the same

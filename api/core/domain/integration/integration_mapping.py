@@ -1,22 +1,22 @@
-from core.domain.integration.instruction_python_snippets import (
-    INSTRUCTOR_PYTHON_INTEGRATION_CHAT_AGENT_NAMING_SNIPPET,
-    INSTRUCTOR_PYTHON_INTEGRATION_CHAT_INITIAL_SNIPPET,
-    INSTRUCTOR_PYTHON_LANDING_PAGE_SNIPPET,
-    INSTRUCTOR_PYTHON_LANDING_PAGE_STRUCTURED_GENERATION_SNIPPET,
-)
 from core.domain.integration.integration_domain import (
     Integration,
     IntegrationKind,
     IntegrationPartner,
     ProgrammingLanguage,
 )
-from core.domain.integration.openai_sdk_python_snippets import (
+from core.domain.integration.snippets.instructor_python_snippets import (
+    INSTRUCTOR_PYTHON_INTEGRATION_CHAT_AGENT_NAMING_SNIPPET,
+    INSTRUCTOR_PYTHON_INTEGRATION_CHAT_INITIAL_SNIPPET,
+    INSTRUCTOR_PYTHON_LANDING_PAGE_SNIPPET,
+    INSTRUCTOR_PYTHON_LANDING_PAGE_STRUCTURED_GENERATION_SNIPPET,
+)
+from core.domain.integration.snippets.openai_sdk_python_snippets import (
     OPENAI_SDK_PYTHON_INTEGRATION_CHAT_AGENT_NAMING_SNIPPET,
     OPENAI_SDK_PYTHON_INTEGRATION_CHAT_INITIAL_SNIPPET,
     OPENAI_SDK_PYTHON_LANDING_PAGE_SNIPPET,
     OPENAI_SDK_PYTHON_LANDING_PAGE_STRUCTURED_GENERATION_SNIPPET,
 )
-from core.domain.integration.openai_sdk_ts_snippets import (
+from core.domain.integration.snippets.openai_sdk_ts_snippets import (
     OPENAI_SDK_TS_INTEGRATION_CHAT_AGENT_NAMING_SNIPPET,
     OPENAI_SDK_TS_INTEGRATION_CHAT_INITIAL_SNIPPET,
     OPENAI_SDK_TS_LANDING_PAGE_SNIPPET,

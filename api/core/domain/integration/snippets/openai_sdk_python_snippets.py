@@ -6,7 +6,7 @@ import openai
 openai.api_key = os.environ.get("WORKFLOWAI_API_KEY")  # Use your WorkflowAI API key
 openai.api_base = "https://run.workflowai.com/v1"
 
-response = openai.ChatCompletion.create(
+response = openai.chat.completions.create(
     model="gpt-4o-2024-11-20",  # Or any model supported by your WorkflowAI setup
     messages=[
         {"role": "system", "content": "You are a helpful assistant."},
@@ -60,14 +60,14 @@ OPENAI_SDK_PYTHON_INTEGRATION_CHAT_INITIAL_SNIPPET = """import openai
 
 # After (WorkflowAI Proxy)
 openai.api_key = <WORKFLOWAI_API_KEY_PLACEHOLDER>
-openai.api_base = "https://run.workflowai.com/v1"
+openai.api_base = "https://run.workflowai.com/v1" # OpenAI SDK now uses WorkflowAI's chat completion API endpoint
 
 # Everything else (model calls, parameters) stays the same
-response = openai.ChatCompletion.create(
+response = openai.chat.completions.create(
     ...,
 )"""
 
-OPENAI_SDK_PYTHON_INTEGRATION_CHAT_AGENT_NAMING_SNIPPET = """response = openai.ChatCompletion.create(
+OPENAI_SDK_PYTHON_INTEGRATION_CHAT_AGENT_NAMING_SNIPPET = """response = openai.chat.completions.create(
     model="<PROPOSED_AGENT_NAME_PLACEHOLDER>",
     messages=[{"role": "user", "content": "Hello!"}]
 )"""

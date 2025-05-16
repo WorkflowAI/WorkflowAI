@@ -159,13 +159,13 @@ class IntegrationService:
         api_key_result: ApiKeyResult,
     ) -> IntegrationChatMessage:
         if api_key_result.was_existing:
-            api_key_message = f'"{api_key_result.api_key}", # ← 1. Use your existing WorkflowAI key'
+            api_key_message = f'"{api_key_result.api_key}", # Use your existing WorkflowAI key'
         else:
-            api_key_message = f"{api_key_result.api_key}, # ← 1. Use your new WorkflowAI key"
+            api_key_message = f"{api_key_result.api_key}, # Use your new WorkflowAI key"
 
         MESSAGE_CONTENT = f"""Great. To get started, there are two small code changes needed to use WorkflowAI with your AI agent. You will need to:
 Replace your OPENAI_API_KEY with your WORKFLOWAI_API_KEY.
-Set the api_base to your specific WorkflowAI API endpoint URL.
+Set the api_base to WorkflowAI's chat completion endpoint URL.
 
 ```
 {
@@ -176,6 +176,7 @@ Set the api_base to your specific WorkflowAI API endpoint URL.
         }
 ```
 
+Then, you will need to actually execute ▶️ this code to make your agent first agent run on WorkflowAI.
 As soon as your first run is received, we'll take you to the Playground so you can start comparing models!
 If you have any questions, just let me know!
 """
@@ -194,10 +195,10 @@ If you have any questions, just let me know!
         model: str,
         integration: Integration,
     ) -> IntegrationChatMessage:
-        MESSAGE_CONTENT = f"""Congratulations on sending your first run!
+        MESSAGE_CONTENT = f"""Congratulations on sending your first run 🎉!
 Looks like you're building a `{
             proposed_agent_name
-        }` agent, one more step is to update the model=[] in the code to get the agent prefix so that things are
+        }` agent, one more step is to update the 'model' in the code to get the agent prefix so that things are
 well organized (by agent) on WorkflowAI (trust me, makes everything easier).
 
 ```
@@ -267,7 +268,7 @@ well organized (by agent) on WorkflowAI (trust me, makes everything easier).
             # There is a change we are capturing a pre-existing, unnamed agent run here, but this is pretty rare, and low impact
             # Especially since the proposed agent name we'll compute will allow the user to understand where the captured run is coming
             # And this will hopefully convince them to name the pre-existing, unnamed agent.
-            if agent.name == DEFAULT_AGENT_ID:
+            if agent.name.lower() == DEFAULT_AGENT_ID.lower():
                 return RelevantRunAndAgent(run=run, agent=agent)
 
             # If the agent is already named we just check that it was created after the discussion started

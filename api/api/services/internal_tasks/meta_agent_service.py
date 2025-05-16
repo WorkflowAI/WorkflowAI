@@ -1,6 +1,7 @@
 import asyncio
 import datetime
 import logging
+import re
 from typing import Any, AsyncIterator, NamedTuple, TypeAlias
 
 import workflowai
@@ -47,6 +48,9 @@ from core.agents.meta_agent_proxy import (
     ProxyMetaAgentInput,
     proxy_meta_agent,
 )
+from core.agents.meta_agent_proxy import (
+    AgentRun as ProxyAgentRun,
+)
 from core.agents.meta_agent_proxy import PlaygroundState as ProxyPlaygroundStateDomain
 from core.agents.meta_agent_proxy import (
     ProxyMetaAgentChatMessage as ProxyMetaAgentChatMessageDomain,
@@ -86,6 +90,11 @@ def _reverse_optional_bool(value: bool | None) -> bool | None:
     if value is None:
         return None
     return not value
+
+
+def _remove_typescript_comments(content: str) -> str:
+    # Remove /* */ comments, since the agent is VERY stubborn adding typescript comments in Python.
+    return re.sub(r"/\*.*?\*/", "", content)
 
 
 class HasActiveRunAndDate(NamedTuple):
@@ -294,6 +303,7 @@ MetaAgentChatMessageKind: TypeAlias = Literal[
     "try_other_models_proposal",
     "setup_input_variables_proposal",
     "setup_structured_output_proposal",
+    "setup_deployment_proposal",
 ]
 
 
@@ -1105,6 +1115,32 @@ class MetaAgentService:
             agent_input_schema,
         )
 
+        agent_runs: list[ProxyAgentRun] | None = (
+            [
+                ProxyAgentRun(
+                    id=agent_run.id,
+                    model=agent_run.group.properties.model or "",
+                    input=str(agent_run.task_input),
+                    output=str(agent_run.task_output),  # Handle both dict output and str
+                    error=agent_run.error.model_dump() if agent_run.error else None,
+                    cost_usd=agent_run.cost_usd,
+                    duration_seconds=agent_run.duration_seconds,
+                    user_evaluation=agent_run.user_review,
+                    tool_calls=[
+                        ProxyAgentRun.ToolCall(
+                            name=tool_call.tool_name,
+                            input=tool_call.tool_input_dict,
+                        )
+                        for llm_completion in agent_run.llm_completions or []
+                        for tool_call in llm_completion.tool_calls or []
+                    ],
+                )
+                for agent_run in context.agent_runs
+            ]
+            if context.agent_runs
+            else None
+        )
+
         return ProxyMetaAgentInput(
             current_datetime=datetime.datetime.now(tz=datetime.timezone.utc),
             messages=[message.to_proxy_domain() for message in messages],
@@ -1116,6 +1152,8 @@ class MetaAgentService:
                 input_schema=current_agent.input_schema.json_schema,
                 output_schema=current_agent.output_schema.json_schema,
             ),
+            latest_agent_run=agent_runs[0] if agent_runs and len(agent_runs) > 0 else None,
+            previous_agent_runs=agent_runs[1:] if agent_runs and len(agent_runs) > 1 else None,
             latest_messages_url_content=await self._extract_url_content_from_messages(messages),
             company_context=ProxyMetaAgentInput.CompanyContext(
                 company_name=context.company_description.company_name if context.company_description else None,
@@ -1140,35 +1178,6 @@ class MetaAgentService:
                 agent_temperature=playground_state.agent_temperature,
                 available_models=await self._proxy_build_model_list("", current_agent),  # TODO: add instructions
                 selected_models=playground_state.selected_models.to_domain(),
-                agent_runs=[
-                    ProxyPlaygroundStateDomain.AgentRun(
-                        id=agent_run.id,
-                        model=agent_run.group.properties.model or "",
-                        input=str(agent_run.task_input),
-                        output=str(agent_run.task_output),  # Handle both dict output and str
-                        error=agent_run.error.model_dump() if agent_run.error else None,
-                        cost_usd=agent_run.cost_usd,
-                        duration_seconds=agent_run.duration_seconds,
-                        user_evaluation=agent_run.user_review,
-                        tool_calls=[
-                            ProxyPlaygroundStateDomain.AgentRun.ToolCall(
-                                name=tool_call.tool_name,
-                                input=tool_call.tool_input_dict,
-                            )
-                            for llm_completion in agent_run.llm_completions or []
-                            for tool_call in llm_completion.tool_calls or []
-                        ],
-                        raw_run_request=agent_run.metadata.get(
-                            "initial_request_body",  # TODO: put "initial_request_body" in a variable
-                            None,
-                        )
-                        if agent_run.metadata
-                        else None,
-                    )
-                    for agent_run in context.agent_runs
-                ]
-                if context.agent_runs
-                else None,
             ),
             agent_lifecycle_info=ProxyMetaAgentInput.AgentLifecycleInfo(
                 deployment_info=ProxyMetaAgentInput.AgentLifecycleInfo.DeploymentInfo(
@@ -1256,6 +1265,11 @@ class MetaAgentService:
 
         programming_language = get_programming_language_for_user_agent(user_agent)
         return default_integration_for_language(programming_language)
+
+    async def _sanitize_output_string(self, output_string: str, integration: Integration) -> str:
+        if integration.programming_language == ProgrammingLanguage.PYTHON:
+            return _remove_typescript_comments(output_string)
+        return output_string
 
     async def stream_proxy_meta_agent_response(
         self,
@@ -1374,6 +1388,25 @@ class MetaAgentService:
                 )
                 instructions = PROPOSE_STRUCTURED_OUTPUT_INSTRUCTIONS
                 message_kind = "setup_structured_output_proposal"
+            elif (
+                agent_runs
+                and has_tried_other_models
+                and is_using_instruction_variables
+                and is_using_structured_generation
+                and not self._is_message_kind_already_sent(messages, "setup_deployment_proposal")
+                and proxy_meta_agent_input.agent_lifecycle_info
+                and proxy_meta_agent_input.agent_lifecycle_info.deployment_info
+                and not proxy_meta_agent_input.agent_lifecycle_info.deployment_info.deployments
+            ):
+                yield [
+                    MetaAgentChatMessage(
+                        role="ASSISTANT",
+                        content="Congratulations on get all that set! Do you want to deploy your agent now? This will allow you to manage your agent instructions from the WorkflowAI dashboard, and you won't need to deploy every time you update your agent's instructions.",
+                        sent_at=now,
+                        kind="setup_deployment_proposal",
+                    ),
+                ]
+                return
             else:
                 # This is a polling without required action, return.
                 yield []
@@ -1392,7 +1425,7 @@ class MetaAgentService:
             instructions,
         ):
             if chunk.assistant_answer:
-                accumulator += chunk.assistant_answer
+                accumulator = await self._sanitize_output_string(accumulator + chunk.assistant_answer, integration)
                 ret = [
                     MetaAgentChatMessage(
                         role="ASSISTANT",

@@ -188,6 +188,49 @@ class ProxyMetaAgentChatMessage(BaseModel):
     )
 
 
+class AgentRun(BaseModel):
+    id: str = Field(
+        description="The id of the agent run",
+    )
+    model: str | None = Field(
+        default=None,
+        description="The model that was used to generate the agent output",
+    )
+    input: str | None = Field(
+        default=None,
+        description="The input of the agent, if no error occurred.",
+    )
+    output: str | None = Field(
+        default=None,
+        description="The output of the agent, if no error occurred.",
+    )
+    error: dict[str, Any] | None = Field(
+        default=None,
+        description="The error that occurred during the agent run, if any.",
+    )
+
+    class ToolCall(BaseModel):
+        name: str
+        input: dict[str, Any]
+
+    tool_calls: list[ToolCall] | None = Field(
+        default=None,
+        description="The tool calls that were made by the agent to produce the output",
+    )
+    cost_usd: float | None = Field(
+        default=None,
+        description="The cost of the agent run in USD",
+    )
+    duration_seconds: float | None = Field(
+        default=None,
+        description="The duration of the agent in seconds",
+    )
+    user_evaluation: Literal["positive", "negative"] | None = Field(
+        default=None,
+        description="The user evaluation of the agent output",
+    )
+
+
 class PlaygroundState(BaseModel):
     agent_input: dict[str, Any] | None = Field(
         default=None,
@@ -207,52 +250,6 @@ class PlaygroundState(BaseModel):
         default=None,
         description="The temperature for the agent",
     )
-
-    class AgentRun(BaseModel):
-        id: str = Field(
-            description="The id of the agent run",
-        )
-        model: str | None = Field(
-            default=None,
-            description="The model that was used to generate the agent output",
-        )
-        input: str | None = Field(
-            default=None,
-            description="The input of the agent, if no error occurred.",
-        )
-        output: str | None = Field(
-            default=None,
-            description="The output of the agent, if no error occurred.",
-        )
-        error: dict[str, Any] | None = Field(
-            default=None,
-            description="The error that occurred during the agent run, if any.",
-        )
-        raw_run_request: dict[str, Any] | None = Field(
-            default=None,
-            description="The raw run request that was used to generate the agent output",
-        )
-
-        class ToolCall(BaseModel):
-            name: str
-            input: dict[str, Any]
-
-        tool_calls: list[ToolCall] | None = Field(
-            default=None,
-            description="The tool calls that were made by the agent to produce the output",
-        )
-        cost_usd: float | None = Field(
-            default=None,
-            description="The cost of the agent run in USD",
-        )
-        duration_seconds: float | None = Field(
-            default=None,
-            description="The duration of the agent in seconds",
-        )
-        user_evaluation: Literal["positive", "negative"] | None = Field(
-            default=None,
-            description="The user evaluation of the agent output",
-        )
 
     class PlaygroundModel(BaseModel):
         id: str = Field(
@@ -290,11 +287,6 @@ class PlaygroundState(BaseModel):
         description="The models currently selected in the playground",
     )
 
-    agent_runs: list[AgentRun] | None = Field(
-        default=None,
-        description="The agent runs",
-    )
-
 
 class ProxyMetaAgentInput(BaseModel):
     current_datetime: datetime.datetime = Field(
@@ -324,6 +316,16 @@ class ProxyMetaAgentInput(BaseModel):
 
     current_agent: Agent = Field(
         description="The current agent to use for the conversation",
+    )
+
+    latest_agent_run: AgentRun | None = Field(
+        default=None,
+        description="The latest agent run",
+    )
+
+    previous_agent_runs: list[AgentRun] | None = Field(
+        default=None,
+        description="The previous agent runs",
     )
 
     latest_messages_url_content: list[URLContent] = Field(
@@ -492,7 +494,7 @@ _PROXY_META_AGENT_COMMON_INSTRUCTIONS = """Your WorkflowAI proxy playground agen
 
 The discussion you are having with the user happens in the "Playground" section of the WorkflowAI platform, which is the main interface to build agents.
 
-It's very important that you check the 'playground_state.agent_runs' to see the latest agent runs that the user has made.
+It's very important that you check the 'latest_agent_run' to see the latest agent runs that the user has made.
 Pay attention to the temporality of those runs, with newer runs being at the beginning of the agent runs array.
 
 If the first run in the array use Claude models, and the second one is GPT, that means the user has switched to Claude. If there are back and forth between models, consider that the user has tried cloud but went back to GPT.
@@ -502,13 +504,14 @@ When returning code blocks, always make sure the code block is customized to the
 When returning code blocks, always make sure to just return the part that is to be updated and do not return a full working code block that is too lengthy.
 When returning code blocks, do not use diff formate (+, -, etc.) because the user will not be able to copy paste the code block effectively.
 Inside returning code blocks do not forget to escape double quotes: \" , same for triple quotes: \"\"\"
-Always refer to the 'integration_documentation' that matchers 'current_agent.used_integration' for code block language and syntax.
-When inserting 'messages' in the code blocks, make the the 'messages' content match what is found in 'playground_state.agent_runs.input' array.
-When inserting 'model' name in the code blocks, make sure it matches what is found in 'playground_state.agent_runs.model' array.
+When inserting 'messages' in the code blocks, ALWAYS make the the 'messages' content match what is found in 'latest_agent_run.input' array.
+When inserting 'model' name in the code blocks, ALWAYS make sure it matches what is found in 'latest_agent_run.model' array.
 When the current_agent.is_structured_output_enabled is false, you can't include a reponse format in the code block, since this is not what is currently used by the agent.
-In code block, make sure to respect the capitalization of (ex: openai.chat.completions.create(), NOT response = openai.ChatCompletion.create())
-When truncating a code, make sure to use the characters that work for the integration language. Ex: "# rest of the code ..." NOT  "/* ... rest of the code ... */" if "current_agent.used_integration.programming_language" is Python.
-
+NEVER truncate a lines of code, either write the full line or omit the line and say '# Your existing...'.
+When returning code blocks, always return the smallest chunk possible that really highlight what needs to be changed by the user, from the previous "messages". It's better to return three small code snippets that really highlight what needs to be changed rather than a big one where it's harder for the user to find what to change.
+I repeat, you need to consider the code updates the user has made in the previous "messages" and return the smallest chunk possible that really highlight what needs to be changed. Do not repeat code that has not changed from previous messages.
+Please be VERY careful NOT including comments in another language format ex: DO NOT USE '/* */' if 'current_agent.used_integration.programming_language==python' and DO NOT USE '#' if 'current_agent.used_integration.programming_language==typescript'.
+Do NOT provider example for other languages / integration other that the one defined in 'current_agent.used_integration' and 'integration_documentation'.
 """
 
 _PROPOSE_NON_OPENAI_MODELS_INSTRUCTIONS = """
@@ -530,14 +533,18 @@ PROPOSE_NON_OPENAI_MODELS_INSTRUCTIONS = f"""
 """
 
 _PROPOSE_INPUT_VARIABLES_INSTRUCTIONS = """Your goal here is to make the user migrate to input variables. You can check the documentation to see why it's a good idea to use input variables.
-Use the 'suggested_messages_with_input_variables' and 'suggested_input_variables_example'.
 
+Use the 'suggested_messages_with_input_variables' and 'suggested_input_variables_example'.
 Your answer must include:
 - the rational why using input variables is a good idea, based on the documentation in 'workflowai_documentation_sections' and 'integration_documentation'
-- the messages migrated with input variables, from 'suggested_messages_with_input_variables'. Optionally define the messages in separate variable if the messages are lengthy.
-- the part of the code where the updated messages are injected in the completion request
-- the part of the code that shows how to pass the input variables in the completion request (with extra_body for examples)
+- all the messages from 'suggested_messages_with_input_variables'. Optionally define the messages in separate variable if the messages are lengthy.
+- the part of the code where the updated messages are injected in the completion request. Make sure all the messages are used.
+- the part of the code that shows how to pass the input variables in the completion request (with "extra_body": {"input": "..."} for OpenAI Python examples, WARNING OpenAI JS does not support "extra_body", "input" needs to be passed in the top level of the completion request)
 
+Your answer must NOT include:
+- the parts where the user is setting its API keys
+- the initialization of the client (ex: client=openai.OpenAI())
+- do not talk about deployments at this stage
 """
 
 PROPOSE_INPUT_VARIABLES_INSTRUCTIONS = f"""
@@ -549,22 +556,42 @@ PROPOSE_INPUT_VARIABLES_INSTRUCTIONS = f"""
 
 _PROPOSE_STRUCTURED_OUTPUT_INSTRUCTIONS = """
 Your goal here is to make the user migrate to structured output. You can check the documentation to see why it's a good idea to use structured output.
-Use the 'suggested_output_class_code' and 'suggested_instructions_parts_to_remove' in order to provide code snippet that are valid in the context of the WorkflowAI integrations documented in the 'workflowai_documentation_sections' section of the input.`
-If 'suggested_instructions_parts_to_remove' are fed, can remove those parts in their existing messages that talk about generating a valid JSON, because this is not needed anymore when you use structure generation. But inform the user that you removed them in your answer.
 
-Start by 1. Explaining to the user why it's a good idea to use structured output. Start with a simple phrase like "Next step is to migrate to structured output...."
-Then 2. Provide the code snippets to the user that will allow them to use structured output. Based on 'suggested_output_class_code' and how to plug the right respons format in the code. Most of the time, you will use 'reponse_format=<the suggested output class>' in the code block.
-Also add the imports in the code block.
+Your answer MUST include, different code blocks that show the following:
+- an explanation of why you are stuctured output is useful, based on the documentation in 'workflowai_documentation_sections' and 'integration_documentation' and the user context
+- 'suggested_output_class_code' that shows the output class to use
+- when needed, update the 'client.chat.completions.create' to 'client.beta.chat.completions.parse' WARNING: for OpenAI SDK, the method to use for structured output is 'client.beta.chat.completions.parse' NOT 'client.chat.completions.create' NOR 'client.chat.completions.parse'.
+- pass the right response_format in the completion request
+- the "messages" without the parts that are not needed anymore for structured generation (see: 'suggested_instructions_parts_to_remove') but DO NOT REMOVED INPUT VARIABLES if they were present before in the messages, since those are also needed for the structured output
 
-If you mention a SDK or package, etc., make sure you are mentioning the right one, for example "Instructor". You do not need to rebuild the full code snippets, just higlight the main changes to do and a few lines of code around it.
 
-Be aware that the user can just update his code and has nothing to do in the interface. Just updating the code is enough, and a new schema and the agent will be automatically updated in WorkflowAI.com."""
+
+Your answer must NOT include:
+- the parts where the user is setting its API keys
+- the initialization of the client (ex: client=openai.OpenAI())
+- do not talk about deployments at this stage
+- DO NOT REMOVED INPUT VARIABLES if they were present before in the messages, since those are also needed for the structured output
+"""
 
 PROPOSE_STRUCTURED_OUTPUT_INSTRUCTIONS = f"""
 {_PROXY_META_AGENT_COMMON_INSTRUCTIONS}
 
 # Goal
 {_PROPOSE_STRUCTURED_OUTPUT_INSTRUCTIONS}
+"""
+
+_PROPOSE_DEPLOYMENT_INSTRUCTIONS = """
+Check in the 'agent_lifecycle_info.deployment_info.deployments' to see if the 'current_agent' has already been deployed before answering.
+
+You answer MUST include:
+- Before talking about code update, explains about how to deploy the agent based on the docs in 'features/deployments.md'
+- Then, you can talk about the model parameter update needed:  <current_agent.slug>/#<current_agent.schema_id>/<deployment env (production, staging, dev)>
+ex: model="my-agent/#1/production" You can explain the format above to the user: (model="my-agent/#1/production")
+- A Note that the 'messages' array will be empty if the when using deployments because the messages are registered in the WorkflowAI deployment. So user can pass messages=[] but NOT OMITTED. Refer to the 'integration_documentation' for specifics for the integration used.
+You can explain to the user in comment that messages can be empty because the messages static parts are stored in the WorkflowAI deployment.
+
+You answer MUST NOT INCLUDE:
+- A repetition of the whole code from previous answers. You ONLY need to show the "model=..." parameters and the "messages=[]".
 """
 
 GENERIC_INSTRUCTIONS = f"""
@@ -578,6 +605,12 @@ GENERIC_INSTRUCTIONS = f"""
 
 # In case the user enquires a about structured output:
 {_PROPOSE_STRUCTURED_OUTPUT_INSTRUCTIONS}
+
+# In case the user enquires a about deployments:
+{_PROPOSE_DEPLOYMENT_INSTRUCTIONS}
+
+# All other cases:
+You must answer users' questions, but what you know from all the documentation in 'workflowai_documentation_sections' and 'integration_documentation' is not enough to answer the question.
 """
 
 
