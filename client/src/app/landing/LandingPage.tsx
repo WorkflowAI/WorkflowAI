@@ -9,6 +9,7 @@ import { signUpRoute } from '@/lib/routeFormatter';
 import { useOrFetchUptime } from '@/store/fetchers';
 import { ModelBanner } from '../[tenant]/components/ModelBanner';
 import { useModelToAdvertise } from '../[tenant]/components/useModelToAdvertise';
+import { DeveloperBanner } from './components/DeveloperBanner';
 import { LandingPageContainer } from './container/LandingPageContainer';
 import { CompaniesMoneyComponent } from './sections/Components/CompaniesMoneyComponent';
 import { ComparePriceComponent } from './sections/Components/ComparePriceComponent';
@@ -68,6 +69,9 @@ export function LandingPage() {
 
   return (
     <div className='flex flex-col w-full h-full'>
+      <DeveloperBanner
+        customLink="https://docs.workflowai.com/"
+      />
       {!!modelsToAdvertise && (
         <ModelBanner models={modelsToAdvertise} onClose={dismiss} routeForSignUp={routeForSignUp} />
       )}
