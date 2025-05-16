@@ -69,9 +69,7 @@ export function LandingPage() {
 
   return (
     <div className='flex flex-col w-full h-full'>
-      <DeveloperBanner
-        customLink="https://docs.workflowai.com/"
-      />
+      <DeveloperBanner customLink='https://docs.workflowai.com/' />
       {!!modelsToAdvertise && (
         <ModelBanner models={modelsToAdvertise} onClose={dismiss} routeForSignUp={routeForSignUp} />
       )}
