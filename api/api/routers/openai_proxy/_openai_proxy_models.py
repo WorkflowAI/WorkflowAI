@@ -465,6 +465,12 @@ class OpenAIProxyChatCompletionRequest(BaseModel):
 
         return list(_iterator()) or None
 
+    def register_metadata(self, d: dict[str, Any]):
+        if self.metadata:
+            self.metadata = {**self.metadata, **d}
+        else:
+            self.metadata = d
+
     def full_metadata(self, headers: Mapping[str, Any]) -> dict[str, Any] | None:
         base = self.metadata or {}
         base[METADATA_KEY_INTEGRATION] = "openai_chat_completions"

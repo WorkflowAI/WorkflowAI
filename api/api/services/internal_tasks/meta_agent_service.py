@@ -42,6 +42,7 @@ from core.agents.meta_agent import (
 )
 from core.agents.meta_agent_proxy import (
     GENERIC_INSTRUCTIONS,
+    PROPOSE_DEPLOYMENT_INSTRUCTIONS,
     PROPOSE_INPUT_VARIABLES_INSTRUCTIONS,
     PROPOSE_NON_OPENAI_MODELS_INSTRUCTIONS,
     PROPOSE_STRUCTURED_OUTPUT_INSTRUCTIONS,
@@ -293,18 +294,60 @@ class GenerateAgentInputToolCall(MetaAgentToolCall):
         )
 
 
+class UpdateVersionMessagesToolCall(MetaAgentToolCall):
+    tool_name: str = "update_version_messages"
+
+    updated_version_messages: list[dict[str, Any]] = Field(
+        description="The messages to update the version with.",
+    )
+
+    input_variables: dict[str, Any] = Field(
+        description="The input variables to update the version with.",
+    )
+
+    def to_domain(self) -> None:
+        return None
+
+
 MetaAgentToolCallType: TypeAlias = (
-    ImprovePromptToolCall | EditSchemaToolCall | RunCurrentAgentOnModelsToolCall | GenerateAgentInputToolCall
+    ImprovePromptToolCall
+    | EditSchemaToolCall
+    | RunCurrentAgentOnModelsToolCall
+    | GenerateAgentInputToolCall
+    | UpdateVersionMessagesToolCall
 )
 
 
 MetaAgentChatMessageKind: TypeAlias = Literal[
     "non_specific",
-    "try_other_models_proposal",
-    "setup_input_variables_proposal",
-    "setup_structured_output_proposal",
-    "setup_deployment_proposal",
+    "try_other_models_assistant_proposal",
+    "try_other_models_user_confirmation",
+    "try_other_models_user_postponement",
+    "try_other_models_assistant_validation",
+    "setup_input_variables_assistant_proposal",
+    "setup_input_variables_user_confirmation",
+    "setup_input_variables_user_postponement",
+    "setup_input_variables_assistant_validation",
+    "setup_structured_output_assistant_proposal",
+    "setup_structured_output_user_confirmation",
+    "setup_structured_output_user_postponement",
+    "setup_structured_output_assistant_validation",
+    "setup_deployment_assistant_proposal",
+    "setup_deployment_user_confirmation",
+    "setup_deployment_user_postponement",
+    "setup_deployment_assistant_validation",
+    "user_deployed_agent_in_playground",
+    "run_deployed_agent_assistant_proposal",
+    "run_deployed_agent_user_postponement",
+    "run_deployed_agent_user_confirmation",
+    "run_deployed_agent_assistant_validation",
 ]
+
+
+class ProxyMetaAgentAgentPayload(NamedTuple):
+    input: ProxyMetaAgentInput
+    instructions: str
+    message_kind: MetaAgentChatMessageKind
 
 
 class MetaAgentChatMessage(BaseModel):
@@ -330,6 +373,8 @@ class MetaAgentChatMessage(BaseModel):
     )
 
     feedback_token: str | None = None
+
+    switch_to_schema_id: int | None = None
 
     kind: MetaAgentChatMessageKind = Field(
         default="non_specific",
@@ -1033,7 +1078,7 @@ class MetaAgentService:
         context_results = await asyncio.gather(
             safe_generate_company_description_from_email(user_email),
             list_agent_summaries(self.storage, limit=10),
-            self._fetch_latest_agent_runs(task_tuple),
+            self._fetch_latest_agent_runs(task_tuple, agent_schema_id),
             self.feedback_service.list_feedback(
                 task_tuple[1],
                 run_id=None,
@@ -1202,6 +1247,7 @@ class MetaAgentService:
     async def _fetch_latest_agent_runs(
         self,
         task_tuple: TaskTuple,
+        task_schema_id: int,
     ) -> list[AgentRun]:
         return [
             run
@@ -1209,6 +1255,7 @@ class MetaAgentService:
                 task_uid=task_tuple[1],
                 limit=10,
             )
+            if run.task_schema_id == task_schema_id
         ]
 
     def _is_user_triggered(self, messages: list[MetaAgentChatMessage]) -> bool:
@@ -1271,7 +1318,97 @@ class MetaAgentService:
             return _remove_typescript_comments(output_string)
         return output_string
 
-    async def stream_proxy_meta_agent_response(
+    async def _get_proxy_agent_input_variables_proposal_paylaod(
+        self,
+        proxy_meta_agent_input: ProxyMetaAgentInput,
+        agent_runs: list[AgentRun],
+    ) -> ProxyMetaAgentAgentPayload:
+        # "Migrate to input variables" use case
+        input_variables_extractor_agent_run = await input_variables_extractor_agent(
+            InputVariablesExtractorInput(
+                agent_inputs=[agent_run.task_input for agent_run in agent_runs],
+            ),
+        )
+        proxy_meta_agent_input.suggested_messages_with_input_variables = [
+            message.model_dump() for message in input_variables_extractor_agent_run.messages_with_input_variables
+        ]
+        proxy_meta_agent_input.suggested_input_variables_example = (
+            input_variables_extractor_agent_run.input_variables_example
+        )
+        instructions = PROPOSE_INPUT_VARIABLES_INSTRUCTIONS
+        message_kind = "setup_input_variables_assistant_proposal"
+
+        return ProxyMetaAgentAgentPayload(
+            input=proxy_meta_agent_input,
+            instructions=instructions,
+            message_kind=message_kind,
+        )
+
+    async def _get_structured_output_proposal_payload(
+        self,
+        proxy_meta_agent_input: ProxyMetaAgentInput,
+        agent_runs: list[AgentRun],
+        integration: Integration,
+    ) -> ProxyMetaAgentAgentPayload:
+        output_schema_extractor_run = await output_schema_extractor_agent(
+            OutputSchemaExtractorInput(
+                agent_runs=[
+                    OutputSchemaExtractorInput.AgentRun(
+                        raw_messages=[
+                            llm_completion.messages or [] for llm_completion in agent_run.llm_completions or []
+                        ],
+                        input=str(agent_run.task_input),
+                        output=str(agent_run.task_output),
+                    )
+                    for agent_run in agent_runs
+                ],
+                programming_language=integration.programming_language,
+                structured_object_class=integration.output_class,
+            ),
+        )
+        proxy_meta_agent_input.suggested_output_class_code = (
+            output_schema_extractor_run.proposed_structured_object_class
+        )
+        proxy_meta_agent_input.suggested_instructions_parts_to_remove = (
+            output_schema_extractor_run.instructions_parts_to_remove
+        )
+
+        return ProxyMetaAgentAgentPayload(
+            input=proxy_meta_agent_input,
+            instructions=PROPOSE_STRUCTURED_OUTPUT_INSTRUCTIONS,
+            message_kind="setup_structured_output_assistant_proposal",
+        )
+
+    def get_agent_deployment(
+        self,
+        proxy_meta_agent_input: ProxyMetaAgentInput,
+    ) -> ProxyMetaAgentInput.AgentLifecycleInfo.DeploymentInfo.Deployment | None:
+        if (
+            not proxy_meta_agent_input.agent_lifecycle_info
+            or not proxy_meta_agent_input.agent_lifecycle_info.deployment_info
+            or not proxy_meta_agent_input.agent_lifecycle_info.deployment_info.deployments
+        ):
+            return None
+        return proxy_meta_agent_input.agent_lifecycle_info.deployment_info.deployments[0]
+
+    def _is_any_run_using_deployment(self, agent_runs: list[AgentRun]) -> bool:
+        return any(run.metadata.get("run_from_deployment_environment") if run.metadata else False for run in agent_runs)
+
+    def detect_message_kind_in_raw_completion(self, raw_completion: str) -> tuple[MetaAgentChatMessageKind, str] | None:
+        message_kinds: list[MetaAgentChatMessageKind] = [
+            "setup_input_variables_assistant_proposal",
+            "setup_structured_output_assistant_proposal",
+            "try_other_models_assistant_proposal",
+            "setup_deployment_assistant_proposal",
+        ]
+
+        for kind in message_kinds:
+            if kind in raw_completion:
+                raw_completion = raw_completion.replace(kind, "")
+                return kind, raw_completion
+        return None
+
+    async def stream_proxy_meta_agent_response(  # noqa: C901
         self,
         task_tuple: TaskTuple,
         agent_schema_id: int,
@@ -1301,7 +1438,7 @@ class MetaAgentService:
 
         proxy_meta_agent_input, agent_runs = await self._build_proxy_meta_agent_input(
             task_tuple,
-            agent_schema_id,
+            current_agent.task_schema_id,
             user_email,
             messages,
             current_agent,
@@ -1320,80 +1457,81 @@ class MetaAgentService:
         is_user_triggered = self._is_user_triggered(messages) and messages[-1].content not in ["POLL", "poll"]
         is_using_instruction_variables = current_agent.input_schema.json_schema.get("properties", None) is not None
         is_using_structured_generation = not current_agent.output_schema.json_schema.get("format") == "message"
+        agent_deployment = self.get_agent_deployment(proxy_meta_agent_input)
         has_tried_other_models = not self._is_only_using_openai_models(agent_runs)
 
         proxy_meta_agent_input.current_agent.is_input_variables_enabled = is_using_instruction_variables
         proxy_meta_agent_input.current_agent.is_structured_output_enabled = is_using_structured_generation
 
-        message_kind = "non_specific"
-        if not is_user_triggered:
+        tool_call: MetaAgentToolCallType | None = None
+        fixed_messages: list[MetaAgentChatMessage] = []
+
+        if messages[-1].kind == "user_deployed_agent_in_playground":
+            if (
+                agent_deployment
+                and proxy_meta_agent_input.agent_lifecycle_info
+                and proxy_meta_agent_input.agent_lifecycle_info.deployment_info
+                and proxy_meta_agent_input.agent_lifecycle_info.deployment_info.deployments
+                and len(proxy_meta_agent_input.agent_lifecycle_info.deployment_info.deployments) == 1
+            ):
+                environment = agent_deployment.environment or "production"
+                yield [
+                    MetaAgentChatMessage(
+                        role="ASSISTANT",
+                        content=f"Congratulations on deploying your agent! You can now make runs by using 'model={current_agent.task_id}/{current_agent.task_schema_id}/{environment}'.",
+                        kind="run_deployed_agent_assistant_proposal",
+                    ),
+                ]
+                return
+            else:
+                # This is not the first deployed version of the agent, we don't need to show the message
+                yield []
+                return
+
+        # message_kind = "non_specific"
+        if not is_user_triggered:  # Polling
             if (
                 agent_runs
                 and not has_tried_other_models
-                and not self._is_message_kind_already_sent(messages, "try_other_models_proposal")
+                and not self._is_message_kind_already_sent(messages, "try_other_models_assistant_proposal")
             ):
                 # "Try non-OpenAI model" use case
                 instructions = PROPOSE_NON_OPENAI_MODELS_INSTRUCTIONS
-                message_kind = "try_other_models_proposal"
+                message_kind = "try_other_models_assistant_proposal"
             elif (
                 agent_runs
                 and has_tried_other_models
                 and not is_using_instruction_variables
-                and not self._is_message_kind_already_sent(messages, "setup_input_variables_proposal")
+                and not self._is_message_kind_already_sent(messages, "setup_input_variables_assistant_proposal")
             ):
-                # "Migrate to input variables" use case
-                input_variables_extractor_agent_run = await input_variables_extractor_agent(
-                    InputVariablesExtractorInput(
-                        agent_inputs=[agent_run.task_input for agent_run in agent_runs],
-                    ),
+                (
+                    proxy_meta_agent_input,
+                    instructions,
+                    message_kind,
+                ) = await self._get_proxy_agent_input_variables_proposal_paylaod(proxy_meta_agent_input, agent_runs)
+                tool_call = UpdateVersionMessagesToolCall(
+                    updated_version_messages=proxy_meta_agent_input.suggested_messages_with_input_variables or [],
+                    input_variables=proxy_meta_agent_input.suggested_input_variables_example or {},
                 )
-                proxy_meta_agent_input.suggested_messages_with_input_variables = [
-                    message.model_dump()
-                    for message in input_variables_extractor_agent_run.messages_with_input_variables
-                ]
-                proxy_meta_agent_input.suggested_input_variables_example = (
-                    input_variables_extractor_agent_run.input_variables_example
-                )
-                instructions = PROPOSE_INPUT_VARIABLES_INSTRUCTIONS
-                message_kind = "setup_input_variables_proposal"
             elif (
                 agent_runs
                 and has_tried_other_models
                 and is_using_instruction_variables  # We require the user to have used input variables before proposing structured output
                 and not is_using_structured_generation
-                and not self._is_message_kind_already_sent(messages, "setup_structured_output_proposal")
+                and not self._is_message_kind_already_sent(messages, "setup_structured_output_assistant_proposal")
             ):
-                # "Migrate to structured output" use case
-                output_schema_extractor_run = await output_schema_extractor_agent(
-                    OutputSchemaExtractorInput(
-                        agent_runs=[
-                            OutputSchemaExtractorInput.AgentRun(
-                                raw_messages=[
-                                    llm_completion.messages or [] for llm_completion in agent_run.llm_completions or []
-                                ],
-                                input=str(agent_run.task_input),
-                                output=str(agent_run.task_output),
-                            )
-                            for agent_run in agent_runs
-                        ],
-                        programming_language=integration.programming_language,
-                        structured_object_class=integration.output_class,
-                    ),
-                )
-                proxy_meta_agent_input.suggested_output_class_code = (
-                    output_schema_extractor_run.proposed_structured_object_class
-                )
-                proxy_meta_agent_input.suggested_instructions_parts_to_remove = (
-                    output_schema_extractor_run.instructions_parts_to_remove
-                )
-                instructions = PROPOSE_STRUCTURED_OUTPUT_INSTRUCTIONS
-                message_kind = "setup_structured_output_proposal"
+                (
+                    proxy_meta_agent_input,
+                    instructions,
+                    message_kind,
+                ) = await self._get_structured_output_proposal_payload(proxy_meta_agent_input, agent_runs, integration)
+
             elif (
                 agent_runs
                 and has_tried_other_models
                 and is_using_instruction_variables
                 and is_using_structured_generation
-                and not self._is_message_kind_already_sent(messages, "setup_deployment_proposal")
+                and not self._is_message_kind_already_sent(messages, "setup_deployment_assistant_proposal")
                 and proxy_meta_agent_input.agent_lifecycle_info
                 and proxy_meta_agent_input.agent_lifecycle_info.deployment_info
                 and not proxy_meta_agent_input.agent_lifecycle_info.deployment_info.deployments
@@ -1403,7 +1541,7 @@ class MetaAgentService:
                         role="ASSISTANT",
                         content="Congratulations on get all that set! Do you want to deploy your agent now? This will allow you to manage your agent instructions from the WorkflowAI dashboard, and you won't need to deploy every time you update your agent's instructions.",
                         sent_at=now,
-                        kind="setup_deployment_proposal",
+                        kind="setup_deployment_assistant_proposal",
                     ),
                 ]
                 return
@@ -1412,10 +1550,182 @@ class MetaAgentService:
                 yield []
                 return
 
-        else:
-            # This is an actual client message. Answer
-            instructions = GENERIC_INSTRUCTIONS
-            message_kind = "non_specific"
+        else:  # Message is user-triggered
+            if messages[-1].kind == "run_deployed_agent_user_confirmation":
+                if not self._is_any_run_using_deployment(agent_runs):
+                    yield [
+                        MetaAgentChatMessage(
+                            role="ASSISTANT",
+                            content="I can't find any run using your deployment, make sure you have set 'model={current_agent.task_id}/{current_agent.task_schema_id}/{environment}', and you have run the agent at least once after setting the deployment.",
+                            kind="run_deployed_agent_user_confirmation",
+                        ),
+                    ]
+                    return
+                else:
+                    yield [
+                        MetaAgentChatMessage(
+                            role="ASSISTANT",
+                            content="Well done! I confirm that I've received a run using your deployment.",
+                            kind="run_deployed_agent_assistant_validation",
+                        ),
+                    ]
+                    return
+
+            elif messages[-1].kind in [
+                "try_other_models_user_postponement",
+                "setup_input_variables_user_postponement",
+                "setup_structured_output_user_postponement",
+                "setup_deployment_user_postponement",
+                "run_deployed_agent_user_postponement",
+            ]:
+                yield [
+                    MetaAgentChatMessage(
+                        role="ASSISTANT",
+                        content="Ok. Anything else you need help with?",
+                        kind="non_specific",
+                    ),
+                ]
+                return
+            elif messages[-1].kind == "try_other_models_user_confirmation":
+                if not has_tried_other_models:
+                    yield [
+                        MetaAgentChatMessage(
+                            role="ASSISTANT",
+                            content="""I did not receive any run with non-OpenAI models.
+Please double check:
+- You have updated your model=... parametes as mentioned above.
+- You did run the agent at least once after update.
+                            """,
+                            sent_at=now,
+                            kind="try_other_models_assistant_proposal",
+                        ),
+                    ]
+                    return
+                else:
+                    # User confirmed input variables
+                    fixed_messages.append(
+                        MetaAgentChatMessage(
+                            role="ASSISTANT",
+                            content="Congratulations on trying out a non-OpenAI model!",
+                            sent_at=now,
+                            kind="try_other_models_assistant_validation",
+                        ),
+                    )
+                    yield fixed_messages
+                    (
+                        proxy_meta_agent_input,
+                        instructions,
+                        message_kind,
+                    ) = await self._get_proxy_agent_input_variables_proposal_paylaod(proxy_meta_agent_input, agent_runs)
+                    tool_call = UpdateVersionMessagesToolCall(
+                        updated_version_messages=proxy_meta_agent_input.suggested_messages_with_input_variables or [],
+                        input_variables=proxy_meta_agent_input.suggested_input_variables_example or {},
+                    )
+            elif messages[-1].kind == "setup_input_variables_user_confirmation":
+                if not is_using_instruction_variables:
+                    yield [
+                        MetaAgentChatMessage(
+                            role="ASSISTANT",
+                            content="""I did not receive any run with input variables, please try double check:
+- You have included input variables in your agent messages, inside double curly braces '{'.
+- You are passing your 'input' payload to the completion request. And the 'input' values match the input variables you defined in your 'messages'.
+- You did run the agent at least once after update.
+                            """,
+                            sent_at=now,
+                            kind="setup_input_variables_assistant_proposal",
+                        ),
+                    ]
+                    return
+                else:
+                    # User confirmed input variables
+                    fixed_messages.append(
+                        MetaAgentChatMessage(
+                            role="ASSISTANT",
+                            content="Congratulations on setting up input variables! I confirm that your agent is now running with input variables.",
+                            sent_at=now,
+                            kind="setup_input_variables_assistant_validation",
+                        ),
+                    )
+                    yield fixed_messages
+                    (
+                        proxy_meta_agent_input,
+                        instructions,
+                        message_kind,
+                    ) = await self._get_structured_output_proposal_payload(
+                        proxy_meta_agent_input,
+                        agent_runs,
+                        integration,
+                    )
+            elif messages[-1].kind == "setup_structured_output_user_confirmation":
+                if not is_using_structured_generation:
+                    yield [
+                        MetaAgentChatMessage(
+                            role="ASSISTANT",
+                            content="""I did not receive any run with structured output, please try double check:
+- You have included a response_format in your completion request.
+- You did run the agent at least once after update.
+                            """,
+                            sent_at=now,
+                            kind="setup_structured_output_assistant_proposal",
+                        ),
+                    ]
+                    return
+                else:
+                    # User confirmed input variables
+                    fixed_messages.extend(
+                        [
+                            MetaAgentChatMessage(
+                                role="ASSISTANT",
+                                content="Congratulations on setting up structured output! I confirm that your agent is now running with structured output.",
+                                sent_at=now,
+                                kind="setup_structured_output_assistant_validation",
+                            ),
+                        ],
+                    )
+                    yield fixed_messages
+                    instructions = PROPOSE_DEPLOYMENT_INSTRUCTIONS
+                    message_kind = "setup_deployment_assistant_proposal"
+            elif messages[-1].kind == "setup_deployment_user_confirmation":
+                if agent_deployment is None:
+                    yield [
+                        MetaAgentChatMessage(
+                            role="ASSISTANT",
+                            content="I can't find any deployment for your agent. Please double check https://docs.workflowai.com/features/deployments for more information.",
+                            sent_at=now,
+                            kind="setup_deployment_assistant_proposal",
+                        ),
+                    ]
+                    return
+                else:
+                    if not self._is_any_run_using_deployment(agent_runs):
+                        yield [
+                            MetaAgentChatMessage(
+                                role="ASSISTANT",
+                                content=f"Congratulations on deploying your agent! You can now make runs by using 'model={current_agent.task_id}/{current_agent.task_schema_id}/{agent_deployment.environment}'.",
+                                sent_at=now,
+                                kind="setup_deployment_assistant_validation",
+                            ),
+                            MetaAgentChatMessage(
+                                role="ASSISTANT",
+                                content="Let me know when you will have run the agent",
+                                sent_at=now,
+                                kind="run_deployed_agent_assistant_proposal",
+                            ),
+                        ]
+                        return
+                    else:
+                        yield [
+                            MetaAgentChatMessage(
+                                role="ASSISTANT",
+                                content="Congratulations on deploying your agent! I confirm that I've received a run using your deployment.",
+                                kind="run_deployed_agent_assistant_validation",
+                            ),
+                        ]
+                        return
+            else:
+                # This is a another client message like 'I want to do ...'
+                instructions = GENERIC_INSTRUCTIONS
+                message_kind = "non_specific"
 
         ret: list[MetaAgentChatMessage] = []
 
@@ -1426,12 +1736,19 @@ class MetaAgentService:
         ):
             if chunk.assistant_answer:
                 accumulator = await self._sanitize_output_string(accumulator + chunk.assistant_answer, integration)
-                ret = [
+
+                message_kind_detection = self.detect_message_kind_in_raw_completion(accumulator)
+                if message_kind_detection:
+                    message_kind, accumulator = message_kind_detection
+
+                ret = fixed_messages + [
                     MetaAgentChatMessage(
                         role="ASSISTANT",
                         content=accumulator,
                         sent_at=now,
                         kind=message_kind,
+                        tool_call=tool_call,
+                        switch_to_schema_id=current_agent.task_schema_id,
                     ),
                 ]
                 yield ret

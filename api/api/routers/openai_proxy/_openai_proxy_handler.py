@@ -317,6 +317,8 @@ class OpenAIProxyHandler:
                 input=body.input,
                 response_format=body.response_format,
             )
+            # Keep track the run was made from a deployment
+            body.register_metadata({"run_from_deployment_environment": agent_ref.environment})
         else:
             prepared_run = await self._prepare_for_model(
                 agent_ref=agent_ref,

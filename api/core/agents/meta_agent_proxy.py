@@ -593,20 +593,41 @@ You answer MUST NOT INCLUDE:
 - A repetition of the whole code from previous answers. You ONLY need to show the "model=..." parameters and the "messages=[]".
 """
 
+PROPOSE_DEPLOYMENT_INSTRUCTIONS = f"""
+{_PROXY_META_AGENT_COMMON_INSTRUCTIONS}
+
+# Goal
+{_PROPOSE_DEPLOYMENT_INSTRUCTIONS}
+"""
+
 GENERIC_INSTRUCTIONS = f"""
 {_PROXY_META_AGENT_COMMON_INSTRUCTIONS}
 
+<test_new_models>
 # In case the user enquires a about testing new models:
 {_PROPOSE_NON_OPENAI_MODELS_INSTRUCTIONS}
+You MUST end your message with the 'try_other_models_assistant_proposal' in this cases with no quotes or any characters around it.
+</test_new_models>
 
+<setup_input_variables>
 # In case the user enquires a about input variables:
 {_PROPOSE_INPUT_VARIABLES_INSTRUCTIONS}
+You MUST end your message with the 'setup_input_variables_assistant_proposal' in this cases with no quotes or any characters around it.
+</setup_input_variables>
 
+
+<setup_structured_output>
 # In case the user enquires a about structured output:
 {_PROPOSE_STRUCTURED_OUTPUT_INSTRUCTIONS}
+You MUST end your message with the 'setup_structured_output_assistant_proposal' in this cases
+</setup_structured_output>
 
+<setup_deployment>
 # In case the user enquires a about deployments:
 {_PROPOSE_DEPLOYMENT_INSTRUCTIONS}
+You MUST end your message with the 'setup_deployment_assistant_proposal' in this cases
+</setup_deployment>
+
 
 # All other cases:
 You must answer users' questions, but what you know from all the documentation in 'workflowai_documentation_sections' and 'integration_documentation' is not enough to answer the question.
@@ -627,5 +648,6 @@ async def proxy_meta_agent(input: ProxyMetaAgentInput, instructions: str) -> Asy
         stream=True,
         temperature=0.0,
     )
+
     async for chunk in response:
         yield ProxyMetaAgentOutput(assistant_answer=chunk.choices[0].delta.content)
