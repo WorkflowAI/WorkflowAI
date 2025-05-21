@@ -1,4 +1,5 @@
 import datetime
+import json
 import os
 from typing import Any, AsyncIterator, Literal, Self
 
@@ -488,6 +489,16 @@ class ProxyMetaAgentOutput(BaseModel):
         description="The content of the answer message from the meta-agent",
     )
 
+    updated_version_messages: list[dict[str, Any]] | None = Field(
+        default=None,
+        description="The new list of versions messages to use for the current agent, including unchanged messages.",
+    )
+
+    example_input: dict[str, Any] | None = Field(
+        default=None,
+        description="The example input to update the current agent version with.",
+    )
+
 
 _PROXY_META_AGENT_COMMON_INSTRUCTIONS = """Your WorkflowAI proxy playground agent's role is to make the user succeed in the WorkflowAI platform, having performant and reliable agents.
 
@@ -634,7 +645,11 @@ You must answer users' questions, but what you know from all the documentation i
 """
 
 
-async def proxy_meta_agent(input: ProxyMetaAgentInput, instructions: str) -> AsyncIterator[ProxyMetaAgentOutput]:
+async def proxy_meta_agent(
+    input: ProxyMetaAgentInput,
+    instructions: str,
+    use_tool_calls: bool = False,
+) -> AsyncIterator[ProxyMetaAgentOutput]:
     client = AsyncOpenAI(
         api_key=os.environ["WORKFLOWAI_API_KEY"],
         base_url=f"{os.environ['WORKFLOWAI_API_URL']}/v1",
@@ -647,7 +662,52 @@ async def proxy_meta_agent(input: ProxyMetaAgentInput, instructions: str) -> Asy
         ],
         stream=True,
         temperature=0.0,
+        tools=[
+            {
+                "type": "function",
+                "function": {
+                    "name": "update_version_messages",
+                    "description": "Update the messages of the current agent version.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "updated_version_messages": {
+                                "type": "array",
+                                "description": "The new list of versions messages to use for the current agent, including unchanged messages.",
+                            },
+                            "example_input": {
+                                "type": "object",
+                                "description": "The example input to update the current agent version with.",
+                            },
+                        },
+                        "required": [
+                            "updated_version_messages",
+                            "example_input",
+                        ],
+                        "additionalProperties": False,
+                    },
+                },
+            },
+        ]
+        if use_tool_calls
+        else [],
     )
 
     async for chunk in response:
-        yield ProxyMetaAgentOutput(assistant_answer=chunk.choices[0].delta.content)
+        updated_version_messages = None
+        example_input = None
+        if chunk.choices[0].delta.tool_calls:
+            tool_call = chunk.choices[0].delta.tool_calls[0]
+            if (
+                tool_call.function
+                and tool_call.function.name == "update_version_messages"
+                and tool_call.function.arguments
+            ):
+                updated_version_messages = json.loads(tool_call.function.arguments)["updated_version_messages"]
+                example_input = json.loads(tool_call.function.arguments)["example_input"]
+
+        yield ProxyMetaAgentOutput(
+            assistant_answer=chunk.choices[0].delta.content,
+            updated_version_messages=updated_version_messages,
+            example_input=example_input,
+        )

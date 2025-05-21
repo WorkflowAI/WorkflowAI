@@ -1466,6 +1466,7 @@ class MetaAgentService:
         tool_call: MetaAgentToolCallType | None = None
         fixed_messages: list[MetaAgentChatMessage] = []
 
+        use_tools = False
         if messages[-1].kind == "user_deployed_agent_in_playground":
             if (
                 agent_deployment
@@ -1724,15 +1725,19 @@ Please double check:
                         return
             else:
                 # This is a another client message like 'I want to do ...'
+                use_tools = True
                 instructions = GENERIC_INSTRUCTIONS
                 message_kind = "non_specific"
 
         ret: list[MetaAgentChatMessage] = []
 
         accumulator = ""
+        updated_version_messages: list[dict[str, Any]] | None = None
+        example_input: dict[str, Any] | None = None
         async for chunk in proxy_meta_agent(
             proxy_meta_agent_input,
             instructions,
+            use_tools,
         ):
             if chunk.assistant_answer:
                 accumulator = await self._sanitize_output_string(accumulator + chunk.assistant_answer, integration)
@@ -1752,5 +1757,26 @@ Please double check:
                     ),
                 ]
                 yield ret
+
+            if chunk.updated_version_messages:
+                updated_version_messages = chunk.updated_version_messages
+            if chunk.example_input:
+                example_input = chunk.example_input
+
+        if updated_version_messages and example_input:
+            ret = fixed_messages + [
+                MetaAgentChatMessage(
+                    role="ASSISTANT",
+                    content=accumulator,
+                    sent_at=now,
+                    kind=message_kind,
+                    tool_call=UpdateVersionMessagesToolCall(
+                        updated_version_messages=updated_version_messages,
+                        input_variables=example_input,
+                    ),
+                    switch_to_schema_id=current_agent.task_schema_id,
+                ),
+            ]
+            yield ret
 
         self.dispatch_new_assistant_messages_event(ret)
