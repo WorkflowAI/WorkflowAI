@@ -3,14 +3,22 @@ from logging import getLogger
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Query
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from api.dependencies.services import RunFeedbackGeneratorDep, RunsSearchServiceDep, RunsServiceDep, VersionsServiceDep
+from api.dependencies.services import (
+    ModelsServiceDep,
+    RunFeedbackGeneratorDep,
+    RunsSearchServiceDep,
+    RunsServiceDep,
+    VersionsServiceDep,
+)
 from api.dependencies.task_info import TaskInfoDep, TaskTupleDep
 from api.schemas.api_tool_call_request import APIToolCallRequest
 from api.schemas.reasoning_step import ReasoningStep
 from api.schemas.version_properties import ShortVersionProperties
 from api.services.runs.runs_service import LLMCompletionsResponse
+from api.services.tool_call_service import ToolCallResultPreviewResponse, ToolCallService
 from api.tags import RouteTags
 from core.domain.agent_run import AgentRun, AgentRunBase
 from core.domain.error_response import ErrorCode, ErrorResponse
@@ -22,6 +30,7 @@ from core.domain.types import AgentInput, AgentOutput
 from core.storage import ObjectNotFoundException
 from core.utils.iter_utils import safe_map_optional
 from core.utils.schemas import FieldType
+from core.utils.stream_response_utils import safe_streaming_response
 
 router = APIRouter(prefix="/v1/{tenant}/agents/{task_id}/runs", tags=[RouteTags.RUNS])
 
@@ -261,3 +270,30 @@ async def save_run_version(
     version_id = (await runs_service.run_by_id(task_tuple, run_id, include={"version_id"})).group.id
     grp = await versions_service.save_version(task_tuple[0], version_id)
     return CreateVersionResponse.from_domain(grp)
+
+
+@router.post(
+    "/{run_id}/tool-call-result-preview",
+    responses={
+        200: {
+            "content": {
+                "text/event-stream": {
+                    "schema": ToolCallResultPreviewResponse.model_json_schema(),
+                },
+            },
+        },
+    },
+)
+async def get_tool_call_result_preview(
+    task_tuple: TaskTupleDep,
+    run_id: str,
+    runs_service: RunsServiceDep,
+    versions_service: VersionsServiceDep,
+    models_service: ModelsServiceDep,
+) -> StreamingResponse:
+    run = await runs_service.run_by_id(task_tuple, run_id)
+    version = await versions_service.get_version(task_tuple, run.group.id, models_service)
+
+    return safe_streaming_response(
+        lambda: ToolCallService().stream_tool_call_result_preview(run, version),
+    )
