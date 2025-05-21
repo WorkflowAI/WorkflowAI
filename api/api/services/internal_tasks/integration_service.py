@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from api.services.api_keys import APIKeyService, find_api_key_in_text
 from api.services.documentation_service import DocumentationService
 from api.services.runs.runs_service import RunsService
+from api.services.versions import VersionsService
 from core.agents.agent_name_suggestion_agent import (
     AGENT_ID as AGENT_NAME_SUGGESTION_AGENT_ID,
 )
@@ -22,6 +23,7 @@ from core.agents.integration_agent import (
     IntegrationAgentInput,
     integration_chat_agent,
 )
+from core.agents.integration_code_block_agent import IntegrationCodeSnippetAgentInput, integration_code_snippet_agent
 from core.constants import DEFAULT_AGENT_ID
 from core.domain.agent_run import AgentRun
 from core.domain.errors import ObjectNotFoundError
@@ -35,9 +37,11 @@ from core.domain.integration.integration_mapping import (
     OFFICIAL_INTEGRATIONS,
     PROPOSED_AGENT_NAME_AND_MODEL_PLACEHOLDER,
     WORKFLOWAI_API_KEY_PLACEHOLDER,
+    get_integration_by_kind,
 )
 from core.domain.task_variant import SerializableTaskVariant
 from core.domain.users import User
+from core.storage import ObjectNotFoundException, TaskTuple
 from core.storage.backend_storage import BackendStorage
 from core.utils.redis_cache import redis_cached
 
@@ -45,6 +49,11 @@ from core.utils.redis_cache import redis_cached
 class ApiKeyResult(NamedTuple):
     api_key: str
     was_existing: bool
+
+
+class VersionCode(BaseModel):
+    code: str
+    integration: Integration
 
 
 class RelevantRunAndAgent(NamedTuple):
@@ -388,3 +397,85 @@ well organized (by agent) on WorkflowAI (trust me, makes everything easier).
                         ),
                     ],
                 )
+
+    async def _get_messages_payload_for_code_snippet(
+        self,
+        version: VersionsService.EnrichedVersion,
+        task_tuple: TaskTuple,
+        task_schema_id: int,
+    ) -> str:
+        if version.group.properties.messages:
+            return str(
+                [m.model_dump() for m in version.group.properties.messages],
+            )
+
+        # Then we'll need to fetch the messages from the latest task run, if any.
+        try:
+            latest_run = await self.runs_service.latest_run(
+                task_uid=task_tuple,
+                schema_id=task_schema_id,
+                is_success=True,
+                exclude_fields=set(),  # We do want the 'llm_completions'
+            )
+            version_messages_payload = str(latest_run.task_input)
+
+        except ObjectNotFoundException:
+            self._logger.warning(
+                "No successful run found for task tuple %s, schema id %s",
+                task_tuple,
+                task_schema_id,
+            )
+            # Fallback to a default system message if no successful run is found
+            version_messages_payload = str(
+                [
+                    {
+                        "role": "system",
+                        "content": "You're a helpful assistant.",
+                    },
+                ],
+            )
+
+        return version_messages_payload
+
+    async def stream_code_for_version(
+        self,
+        task_tuple: TaskTuple,
+        task_schema_id: int,
+        version: VersionsService.EnrichedVersion,
+        forced_integration_kind: IntegrationKind | None = None,
+    ) -> AsyncIterator[VersionCode]:
+        if not version.variant:
+            raise ObjectNotFoundError(f"Can't resolve the agent for version {version.group.id}")
+
+        agent = version.variant
+
+        integration = get_integration_by_kind(
+            forced_integration_kind or agent.used_integration_kind or IntegrationKind.OPENAI_SDK_PYTHON,
+        )
+
+        version_messages = await self._get_messages_payload_for_code_snippet(version, task_tuple, agent.task_schema_id)
+        doc_gen_input = IntegrationCodeSnippetAgentInput(
+            integration=integration,
+            agent_id=agent.task_id,
+            agent_schema_id=agent.task_schema_id,
+            model_used=version.group.properties.model or workflowai.DEFAULT_MODEL,
+            version_messages=version_messages,
+            integration_documentations=DocumentationService().get_documentation_by_path(
+                integration.documentation_filepaths,
+            ),
+            version_deployment_environment=version.deployments[0].environment if version.deployments else None,
+            is_using_instruction_variables=agent.input_schema.json_schema.get("properties", None) is not None,
+            input_schema=agent.input_schema.json_schema,
+            is_using_structured_generation=not agent.output_schema.json_schema.get("format") == "message",
+            output_schema=agent.output_schema.json_schema,
+        )
+
+        async for chunk in integration_code_snippet_agent(doc_gen_input):
+            yield VersionCode(
+                code=chunk,
+                integration=integration,
+            )
+
+
+class IntegrationCodeBlockAgentOutput(NamedTuple):
+    code: str

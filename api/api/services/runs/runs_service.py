@@ -135,6 +135,7 @@ class RunsService:
         schema_id: int | None,
         is_success: bool | None,
         is_active: bool | None = None,
+        exclude_fields: set[SerializableTaskRunField] = {"llm_completions"},
     ) -> AgentRun:
         """Returns the latest successful run for a task and optionally a schema"""
 
@@ -150,7 +151,7 @@ class RunsService:
         q = SerializableTaskRunQuery(
             task_id=task_uid[0],
             task_schema_id=schema_id,
-            exclude_fields={"llm_completions"},
+            exclude_fields=exclude_fields,
             limit=1,
             status=status,
             is_active=is_active,
