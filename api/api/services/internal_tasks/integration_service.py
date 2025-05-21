@@ -475,7 +475,3 @@ well organized (by agent) on WorkflowAI (trust me, makes everything easier).
                 code=chunk,
                 integration=integration,
             )
-
-
-class IntegrationCodeBlockAgentOutput(NamedTuple):
-    code: str
