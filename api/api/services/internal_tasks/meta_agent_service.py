@@ -62,6 +62,7 @@ from core.agents.meta_agent_user_confirmation_agent import (
 )
 from core.agents.output_schema_extractor_agent import OutputSchemaExtractorInput, output_schema_extractor_agent
 from core.domain.agent_run import AgentRun
+from core.domain.consts import METADATA_KEY_DEPLOYMENT_ENVIRONMENT
 from core.domain.events import EventRouter, MetaAgentChatMessagesSent
 from core.domain.fields.chat_message import ChatMessage
 from core.domain.fields.file import File
@@ -1392,7 +1393,9 @@ class MetaAgentService:
         return proxy_meta_agent_input.agent_lifecycle_info.deployment_info.deployments[0]
 
     def _is_any_run_using_deployment(self, agent_runs: list[AgentRun]) -> bool:
-        return any(run.metadata.get("run_from_deployment_environment") if run.metadata else False for run in agent_runs)
+        return any(
+            run.metadata.get(METADATA_KEY_DEPLOYMENT_ENVIRONMENT) if run.metadata else False for run in agent_runs
+        )
 
     def detect_message_kind_in_raw_completion(self, raw_completion: str) -> tuple[MetaAgentChatMessageKind, str] | None:
         message_kinds: list[MetaAgentChatMessageKind] = [

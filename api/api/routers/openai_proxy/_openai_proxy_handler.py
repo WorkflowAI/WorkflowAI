@@ -11,7 +11,7 @@ from api.services.messages.messages_utils import json_schema_for_template
 from api.services.models import ModelsService
 from api.utils import get_start_time
 from core.domain.analytics_events.analytics_events import SourceType, TaskProperties
-from core.domain.consts import INPUT_KEY_MESSAGES, WORKFLOWAI_APP_URL
+from core.domain.consts import INPUT_KEY_MESSAGES, METADATA_KEY_DEPLOYMENT_ENVIRONMENT, WORKFLOWAI_APP_URL
 from core.domain.errors import BadRequestError
 from core.domain.events import ProxyAgentCreatedEvent
 from core.domain.message import Message, Messages
@@ -318,7 +318,8 @@ class OpenAIProxyHandler:
                 response_format=body.response_format,
             )
             # Keep track the run was made from a deployment
-            body.register_metadata({"run_from_deployment_environment": agent_ref.environment})
+            # TODO: Adding to the body is not great. We should add metadata to the prepared run and even remove the 'full_metadata'
+            body.register_metadata({METADATA_KEY_DEPLOYMENT_ENVIRONMENT: agent_ref.environment})
         else:
             prepared_run = await self._prepare_for_model(
                 agent_ref=agent_ref,
