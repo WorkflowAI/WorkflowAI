@@ -716,13 +716,6 @@ class OpenAIProxyChatCompletionResponse(BaseModel):
             metadata=run.metadata,
         )
 
-    @classmethod
-    def serializer(cls, model: str, deprecated_function: bool, output_mapper: Callable[[Any], str]):
-        def _serializer(run: AgentRun):
-            return cls.from_domain(run, output_mapper, model, deprecated_function)
-
-        return _serializer
-
 
 class OpenAIProxyChatCompletionChunkDelta(BaseModel):
     content: str | None = None
@@ -760,6 +753,11 @@ class OpenAIProxyChatCompletionChunk(BaseModel):
     object: Literal["chat.completion.chunk"] = "chat.completion.chunk"
     usage: OpenAIProxyCompletionUsage | None = None
 
+    # TODO:
+    # cost_usd: float | None = Field(description="The cost of the completion in USD, WorkflowAI specific")
+    # duration_seconds: float | None = Field(description="The duration of the completion in seconds, WorkflowAI specific")
+    # metadata: dict[str, Any] | None = Field(description="Metadata about the completion, WorkflowAI specific")
+
     @classmethod
     def from_domain(cls, id: str, output: RunOutput, model: str, deprecated_function: bool):
         chunk_delta = OpenAIProxyChatCompletionChunkDelta.from_domain(output, deprecated_function)
@@ -769,12 +767,39 @@ class OpenAIProxyChatCompletionChunk(BaseModel):
             id=id,
             created=int(time.time()),
             model=model,
-            choices=[OpenAIProxyChatCompletionChunkChoice(delta=chunk_delta, finish_reason="stop", index=0)],
+            choices=[OpenAIProxyChatCompletionChunkChoice(delta=chunk_delta, finish_reason=None, index=0)],
         )
 
     @classmethod
-    def stream_serializer(cls, model: str, deprecated_function: bool):
+    def stream_serializer(cls, agent_id: str, model: str, deprecated_function: bool):
         def _serializer(id: str, output: RunOutput):
-            return cls.from_domain(id, output, model=model, deprecated_function=deprecated_function)
+            return cls.from_domain(f"{agent_id}/{id}", output, model=model, deprecated_function=deprecated_function)
+
+        return _serializer
+
+    @classmethod
+    def serializer(cls, model: str, deprecated_function: bool, output_mapper: Callable[[AgentOutput], str]):
+        # Builds the final chunk containing the usage
+        def _serializer(run: AgentRun):
+            # TODO: we should still return the usage when not from cache
+            if not run.from_cache:
+                return None
+
+            # The delta contains the entirety of the output
+            output = RunOutput.from_run(run, delta=output_mapper(run.task_output))
+            chunk_delta = OpenAIProxyChatCompletionChunkDelta.from_domain(
+                output,
+                deprecated_function,
+            )
+            if not chunk_delta:
+                _logger.warning("No delta found for run", extra={"run_id": run.id})
+                return None
+
+            return cls(
+                id=f"{run.task_id}/{run.id}",
+                created=int(time.time()),
+                model=model,
+                choices=[OpenAIProxyChatCompletionChunkChoice(delta=chunk_delta, finish_reason=None, index=0)],
+            )
 
         return _serializer

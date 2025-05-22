@@ -14,10 +14,11 @@ class RunOutput(NamedTuple):
     delta: str | None = None
 
     @classmethod
-    def from_run(cls, run: AgentRun):
+    def from_run(cls, run: AgentRun, delta: str | None = None):
         return cls(
             task_output=run.task_output,
             tool_calls=run.tool_calls,
             tool_call_requests=run.tool_call_requests,
             reasoning_steps=run.reasoning_steps,
+            delta=delta,
         )

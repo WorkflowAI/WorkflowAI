@@ -59,17 +59,17 @@ class RunService:
         self.analytics_service = analytics_service
         self.user = user
 
-    async def _stream_run(
+    async def stream_run(
         self,
         builder: TaskRunBuilder,
         runner: AbstractRunner[Any],
         cache: CacheUsage,
         trigger: RunTrigger,
         chunk_serializer: Callable[[str, RunOutput], BaseModel | None],
-        serializer: Callable[[AgentRun], BaseModel] | None,
-        store_inline: bool,
+        serializer: Callable[[AgentRun], BaseModel | None],
         source: SourceType | None,
-        file_storage: FileStorage | None,
+        store_inline: bool = False,
+        file_storage: FileStorage | None = None,
     ) -> AsyncGenerator[str, None]:
         try:
             chunk: RunOutput | None = None
@@ -85,9 +85,10 @@ class RunService:
             ):
                 if chunk and (serialized := chunk_serializer(builder.id, chunk)):
                     yield _format_model(serialized)
-            if serializer:
-                if run := builder.task_run:
-                    yield _format_model(serializer(run))
+
+            if run := builder.task_run:
+                if final_chunk := serializer(run):
+                    yield _format_model(final_chunk)
         except ContentModerationError as e:
             yield _format_model(e.error_response(), exclude_none=True)
             capture_content_moderation_error(e, self._storage.tenant, builder.task.name)
@@ -103,6 +104,31 @@ class RunService:
                 self._logger.exception("Unknown error in stream run", exc_info=e)
             yield _format_model(ErrorResponse.internal_error())
 
+    async def prepare_builder(
+        self,
+        task_input: dict[str, Any] | Messages,
+        runner: AbstractRunner[Any],
+        task_run_id: Optional[str],
+        metadata: Optional[dict[str, Any]],
+        start_time: float,
+        author_tenant: TenantTuple | None,
+        private_fields: set[str] | None,
+        is_different_version: bool,
+    ):
+        builder = await runner.task_run_builder(
+            input=task_input,
+            task_run_id=task_run_id,
+            metadata=metadata,
+            private_fields=private_fields,
+            start_time=start_time,
+        )
+        builder.author_uid = author_tenant[1] if author_tenant else None
+        builder.author_tenant = author_tenant[0] if author_tenant else None
+        builder.version_changed = is_different_version
+        return builder
+
+    # TODO: remove this function and use a combo prepare_builder + run_from_builder + stream
+    # when we have removed the deprecated endpoint
     async def run(
         self,
         task_input: dict[str, Any] | Messages,
@@ -124,25 +150,25 @@ class RunService:
         is_different_version: bool = False,
         file_storage: FileStorage | None = None,
     ) -> Response:
-        builder = await runner.task_run_builder(
-            input=task_input,
+        builder = await self.prepare_builder(
+            task_input=task_input,
+            runner=runner,
             task_run_id=task_run_id,
             metadata=metadata,
             private_fields=private_fields,
             start_time=start_time,
+            author_tenant=author_tenant,
+            is_different_version=is_different_version,
         )
-        builder.author_uid = author_tenant[1] if author_tenant else None
-        builder.author_tenant = author_tenant[0] if author_tenant else None
-        builder.version_changed = is_different_version
         if stream_serializer:
             return StreamingResponse(
-                self._stream_run(
+                self.stream_run(
                     builder=builder,
                     runner=runner,
                     cache=cache,
                     trigger=trigger,
                     chunk_serializer=stream_serializer,
-                    serializer=serializer if stream_last_chunk else None,
+                    serializer=serializer if stream_last_chunk else lambda _: None,
                     store_inline=store_inline,
                     source=source,
                     file_storage=file_storage,
@@ -214,7 +240,7 @@ class RunService:
         builder.version_changed = is_different_version
         if stream_serializer:
             return StreamingResponse(
-                self._stream_run(
+                self.stream_run(
                     builder=builder,
                     runner=runner,
                     cache="never",
