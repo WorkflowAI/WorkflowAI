@@ -273,7 +273,7 @@ async def save_run_version(
 
 
 @router.post(
-    "/{run_id}/tool-call-result-preview",
+    "/{run_id}/tools/previews/result",
     responses={
         200: {
             "content": {
