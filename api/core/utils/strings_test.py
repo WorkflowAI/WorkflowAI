@@ -4,6 +4,7 @@ from .strings import (
     b64_urldecode,
     clean_unicode_chars,
     is_url_safe,
+    is_valid_unicode,
     normalize,
     obfuscate,
     remove_accents,
@@ -185,3 +186,8 @@ class TestObfuscate:
     )
     def test_obfuscate(self, input_str: str, max_chars: int, expected_output: str):
         assert obfuscate(input_str, max_chars) == expected_output
+
+
+class TestIsValidUnicode:
+    def test_not_raised_on_single_byte(self):
+        assert is_valid_unicode(b"a") is None

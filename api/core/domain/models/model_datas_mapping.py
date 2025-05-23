@@ -695,6 +695,60 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             model=Model.GEMINI_1_5_FLASH_002,
             display_name="Gemini 1.5 Flash (latest)",
         ),
+        Model.CLAUDE_4_SONNET_LATEST: LatestModel(
+            model=Model.CLAUDE_4_SONNET_20250514,
+            display_name="Claude 4 Sonnet (latest)",
+            is_default=True,
+        ),
+        Model.CLAUDE_4_SONNET_20250514: ModelData(
+            display_name="Claude 4 Sonnet (2025-05-14)",
+            supports_json_mode=False,
+            supports_input_image=True,
+            supports_input_pdf=True,
+            supports_input_audio=False,
+            max_tokens_data=MaxTokensData(
+                max_tokens=200_000,
+                # See https://docs.anthropic.com/en/docs/about-claude/models/all-models
+                max_output_tokens=64_000,
+                source="https://docs.anthropic.com/en/docs/about-claude/models",
+            ),
+            provider_for_pricing=Provider.AMAZON_BEDROCK,
+            icon_url="https://workflowai.blob.core.windows.net/workflowai-public/anthropic.svg",
+            release_date=date(2025, 5, 22),
+            # https://www.anthropic.com/news/claude-4
+            # We only have the mmmlu for now...
+            quality_data=QualityData(gpqa_diamond=70),
+            latest_model=Model.CLAUDE_4_SONNET_LATEST,
+            provider_name=DisplayedProvider.ANTHROPIC.value,
+            supports_tool_calling=True,
+        ),
+        Model.CLAUDE_4_OPUS_LATEST: LatestModel(
+            model=Model.CLAUDE_4_OPUS_20250514,
+            display_name="Claude 4 Opus (latest)",
+            is_default=True,
+        ),
+        Model.CLAUDE_4_OPUS_20250514: ModelData(
+            display_name="Claude 4 Opus (2025-05-14)",
+            supports_json_mode=False,
+            supports_input_image=True,
+            supports_input_pdf=True,
+            supports_input_audio=False,
+            max_tokens_data=MaxTokensData(
+                max_tokens=200_000,
+                # See https://docs.anthropic.com/en/docs/about-claude/models/all-models
+                max_output_tokens=32_000,
+                source="https://docs.anthropic.com/en/docs/about-claude/models",
+            ),
+            provider_for_pricing=Provider.AMAZON_BEDROCK,
+            icon_url="https://workflowai.blob.core.windows.net/workflowai-public/anthropic.svg",
+            release_date=date(2025, 5, 22),
+            # https://www.anthropic.com/news/claude-4
+            # We only have the mmmlu for now...
+            quality_data=QualityData(gpqa_diamond=74.9),
+            latest_model=Model.CLAUDE_4_OPUS_LATEST,
+            provider_name=DisplayedProvider.ANTHROPIC.value,
+            supports_tool_calling=True,
+        ),
         Model.CLAUDE_3_7_SONNET_LATEST: LatestModel(
             model=Model.CLAUDE_3_7_SONNET_20250219,
             display_name="Claude 3.7 Sonnet (latest)",
@@ -708,9 +762,8 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             supports_input_audio=False,
             max_tokens_data=MaxTokensData(
                 max_tokens=200_000,
-                # TODO: 64_000 in extended thinking mode
                 # See https://docs.anthropic.com/en/docs/about-claude/models/all-models
-                max_output_tokens=8192,
+                max_output_tokens=64_000,
                 source="https://docs.anthropic.com/en/docs/about-claude/models",
             ),
             provider_for_pricing=Provider.AMAZON_BEDROCK,

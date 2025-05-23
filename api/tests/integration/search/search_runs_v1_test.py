@@ -47,7 +47,7 @@ async def searchable_runs(int_clickhouse_client: Any):
     db = base_storage.client[_INT_DB_NAME]
     names = await db.list_collection_names()
     await asyncio.gather(
-        *(db[c].delete_many({}) for c in names),
+        *(db[c].delete_many({}) for c in names if c != "system.profile"),
     )
 
     # Forcing the task_uid to be 1, hardcoded values will need to change if the token changes

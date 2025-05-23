@@ -146,12 +146,12 @@ class OpenAIProviderBase(HTTPXProvider[_OpenAIConfigVar, CompletionResponse], Ge
         if is_preview_model or options.output_schema is None:
             return TextResponseFormat()
 
-        schema = copy.deepcopy(options.output_schema)
-        if not schema or not options.structured_generation:
+        if not options.output_schema or not options.structured_generation:
             return JSONResponseFormat()
 
         task_name = options.task_name or ""
 
+        schema = copy.deepcopy(options.output_schema)
         return JSONSchemaResponseFormat(
             json_schema=OpenAISchema(
                 name=get_openai_json_schema_name(task_name, schema),

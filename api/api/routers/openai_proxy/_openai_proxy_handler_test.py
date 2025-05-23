@@ -136,6 +136,7 @@ class TestPrepareRunForModel:
         """Check that we don't set the message in the version properties if input is None"""
         result = await proxy_handler._prepare_for_model(
             agent_ref=ModelRef(model=Model.GPT_4O_LATEST, agent_id=None),
+            tenant_data=PublicOrganizationData(),
             messages=Messages(messages=[Message.with_text("Hello, world!", role=role)]),
             input=None,
             response_format=None,
@@ -151,6 +152,7 @@ class TestPrepareRunForModel:
         """When the input is an empty dict, we still use messages in the version properties"""
         result = await proxy_handler._prepare_for_model(
             agent_ref=ModelRef(model=Model.GPT_4O_LATEST, agent_id=None),
+            tenant_data=PublicOrganizationData(),
             messages=Messages(
                 messages=[
                     Message.with_text("You are a helpful assistant", role="system"),
@@ -171,6 +173,7 @@ class TestPrepareRunForModel:
         """Check that we set the message in the version properties if input is not None"""
         result = await proxy_handler._prepare_for_model(
             agent_ref=ModelRef(model=Model.GPT_4O_LATEST, agent_id=None),
+            tenant_data=PublicOrganizationData(),
             messages=Messages(messages=[Message.with_text("Hello, world!", role="user")]),
             input={},
             response_format=None,
@@ -184,6 +187,7 @@ class TestPrepareRunForModel:
     async def test_templated_messages(self, proxy_handler: OpenAIProxyHandler):
         result = await proxy_handler._prepare_for_model(
             agent_ref=ModelRef(model=Model.GPT_4O_LATEST, agent_id=None),
+            tenant_data=PublicOrganizationData(),
             messages=Messages(
                 messages=[
                     Message.with_text("Hello, world!", role="system"),

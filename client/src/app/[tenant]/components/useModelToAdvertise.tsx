@@ -9,14 +9,14 @@ type ModelToAdvertise = {
 
 const MODELS_TO_ADVERTISE: ModelToAdvertise[] = [
   {
-    name: 'Mistral Medium 3',
-    date: '2025-05-08',
-    modelId: 'mistral-medium-2505',
+    name: 'Claude 4 Sonnet',
+    date: '2025-05-22',
+    modelId: 'claude-sonnet-4-20250514',
   },
   {
-    name: 'Gemini 2.5 Pro Preview',
-    date: '2025-05-08',
-    modelId: 'gemini-2.5-pro-preview-05-06',
+    name: 'Claude 4 Opus',
+    date: '2025-05-22',
+    modelId: 'claude-opus-4-20250514',
   },
 ];
 

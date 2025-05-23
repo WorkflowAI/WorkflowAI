@@ -19,13 +19,17 @@ from api.dependencies.security import SystemStorageDep, TenantDep, UserDep, User
 from api.dependencies.services import (
     AnalyticsServiceDep,
     GroupServiceDep,
+    IntegrationAgentServiceDep,
     InternalTasksServiceDep,
+    ModelsServiceDep,
     RunsServiceDep,
     TaskDeploymentsServiceDep,
+    VersionsServiceDep,
 )
 from api.dependencies.task_info import TaskTupleDep
 from api.errors import prettify_errors
 from api.routers._common import DeprecatedVersionReference
+from api.routers.integrations_router import Integration
 from api.services.python_gen import RunCode, generate_full_run_code
 from api.utils import error_json_response
 from core.agents.task_instruction_tool_update_task import (
@@ -39,6 +43,7 @@ from core.domain.analytics_events.analytics_events import (
 )
 from core.domain.error_response import ErrorResponse
 from core.domain.events import RunCreatedEvent
+from core.domain.integration.integration_domain import IntegrationKind
 from core.domain.page import Page
 from core.domain.task_example import SerializableTaskExample
 from core.domain.task_group import TaskGroup
@@ -681,3 +686,46 @@ async def update_task_instructions(
             yield chunk
 
     return safe_streaming_response(_stream, media_type="text/event-stream")
+
+
+class IntegrationCodeRequest(BaseModel):
+    version_id: str
+    integration_kind: IntegrationKind | None = None
+
+
+class IntegrationCodeResponse(BaseModel):
+    code: str
+    integration_used: Integration
+
+
+@router.post(
+    "/integrations/code",
+    description="Get the code for a given integration",
+    responses={
+        200: {
+            "content": {
+                "text/event-stream": {
+                    "schema": IntegrationCodeResponse.model_json_schema(),
+                },
+            },
+        },
+    },
+)
+async def get_integration_code(
+    task_tuple: TaskTupleDep,
+    task_schema_id: TaskSchemaID,
+    request: IntegrationCodeRequest,
+    integration_service: IntegrationAgentServiceDep,
+    versions_service: VersionsServiceDep,
+    models_service: ModelsServiceDep,
+) -> StreamingResponse:
+    version = await versions_service.get_version(task_tuple, request.version_id, models_service)
+
+    return safe_streaming_response(
+        lambda: integration_service.stream_code_for_version(
+            task_tuple,
+            task_schema_id,
+            version,
+            request.integration_kind,
+        ),
+    )

@@ -34,6 +34,7 @@ class AbstractStorage(ABC):
     async def store_task_resource(
         self,
         task: SerializableTaskVariant,
+        update_created_at: bool = False,
     ) -> tuple[SerializableTaskVariant, Annotated[bool, "whether a new task was created"]]:
         pass
 

@@ -16,6 +16,7 @@ from core.domain.errors import (
     message_from_validation_error,
 )
 from core.domain.fields.file import File, FileWithKeyPath
+from core.domain.fields.internal_reasoning_steps import InternalReasoningStep
 from core.domain.models import Model, Provider
 from core.domain.models.model_data import DeprecatedModel
 from core.domain.models.model_datas_mapping import MODEL_DATAS
@@ -25,6 +26,7 @@ from core.runners.workflowai.internal_tool import InternalTool
 from core.tools import ToolKind
 from core.utils.dicts import set_at_keypath
 from core.utils.file_utils.file_utils import guess_content_type
+from core.utils.iter_utils import safe_map_optional
 from core.utils.schema_sanitation import get_file_format
 from core.utils.schemas import JsonSchema
 from core.utils.strings import clean_unicode_chars
@@ -361,3 +363,15 @@ def cleanup_provider_json(obj: Any) -> Any:
     if isinstance(obj, str):
         return clean_unicode_chars(obj)
     return obj
+
+
+def reasoning_step_mapper(x: Any, logger: logging.Logger | None = None) -> list[InternalReasoningStep] | None:
+    if not isinstance(x, list):
+        if logger:
+            logger.warning("Expected a list of reasoning steps", extra={"x": x})
+        return None
+    return safe_map_optional(
+        (i for i in cast(list[Any], x) if i),
+        InternalReasoningStep.model_validate,
+        logger=logger,
+    )

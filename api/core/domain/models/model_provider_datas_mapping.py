@@ -429,6 +429,26 @@ OPENAI_IMAGE_PROVIDER_DATA: ProviderDataByModel = {
 }
 
 AMAZON_BEDROCK_PROVIDER_DATA: ProviderDataByModel = {
+    Model.CLAUDE_4_OPUS_20250514: ModelProviderData(
+        text_price=TextPricePerToken(
+            prompt_cost_per_token=0.000_015,
+            completion_cost_per_token=0.000_075,
+            source="https://aws.amazon.com/bedrock/pricing/",
+        ),
+        supports_override=ModelDataSupportsOverride(
+            supports_input_pdf=False,
+        ),
+    ),
+    Model.CLAUDE_4_SONNET_20250514: ModelProviderData(
+        text_price=TextPricePerToken(
+            prompt_cost_per_token=0.000_003,
+            completion_cost_per_token=0.000_015,
+            source="https://aws.amazon.com/bedrock/pricing/",
+        ),
+        supports_override=ModelDataSupportsOverride(
+            supports_input_pdf=False,
+        ),
+    ),
     Model.CLAUDE_3_7_SONNET_20250219: ModelProviderData(
         text_price=TextPricePerToken(
             prompt_cost_per_token=0.000_003,
@@ -790,6 +810,20 @@ ANTHROPIC_PROVIDER_DATA: ProviderDataByModel = {
         text_price=TextPricePerToken(
             prompt_cost_per_token=3.00 * ONE_MILLION_TH,
             completion_cost_per_token=15.00 * ONE_MILLION_TH,
+            source="https://docs.anthropic.com/en/docs/about-claude/models/all-models#model-comparison-table",
+        ),
+    ),
+    Model.CLAUDE_4_OPUS_20250514: ModelProviderData(
+        text_price=TextPricePerToken(
+            prompt_cost_per_token=0.000_015,
+            completion_cost_per_token=0.000_075,
+            source="https://docs.anthropic.com/en/docs/about-claude/models/all-models#model-comparison-table",
+        ),
+    ),
+    Model.CLAUDE_4_SONNET_20250514: ModelProviderData(
+        text_price=TextPricePerToken(
+            prompt_cost_per_token=0.000_003,
+            completion_cost_per_token=0.000_015,
             source="https://docs.anthropic.com/en/docs/about-claude/models/all-models#model-comparison-table",
         ),
     ),

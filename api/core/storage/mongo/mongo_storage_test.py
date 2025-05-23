@@ -1,3 +1,5 @@
+# pyright: reportPrivateUsage=false
+
 import asyncio
 import datetime
 import uuid
@@ -866,12 +868,13 @@ class TestStoreTaskResource:
 
         assert await tasks_col.count_documents({}) == 1
 
-        # Make sure the created_at is updated
+        # Make sure the created_at is not updated
         copied = ser.model_copy(deep=True)
         copied.created_at = datetime.datetime(2024, 4, 16, tzinfo=datetime.timezone.utc)
         copied.task_id = "another"
         stored2, created = await storage.store_task_resource(copied)
         assert created
+
         # The id of the task variant is task_id specific...
         assert stored2.id == ser.id
         assert stored2.task_id == "another"
@@ -881,6 +884,28 @@ class TestStoreTaskResource:
 
         stored_tasks = [t async for t in task_variants_col.find({})]
         assert len(stored_tasks) == 2
+
+    async def test_update_created_at(self, storage: MongoStorage) -> None:
+        ser = task_variant()
+        ser.created_at = datetime.datetime(2024, 4, 15, tzinfo=datetime.timezone.utc)
+        stored, created = await storage.store_task_resource(ser.model_copy())
+        assert created
+        assert stored.created_at == ser.created_at
+
+        # Now update the created at and store the variant again
+        ser.created_at = datetime.datetime(2025, 4, 16, tzinfo=datetime.timezone.utc)
+        _, created2 = await storage.store_task_resource(ser.model_copy(), update_created_at=False)
+        assert not created2
+        fetched = await storage._task_variants_collection.find_one({"tenant": TENANT, "slug": TASK_ID})
+        assert fetched
+        assert fetched["created_at"] == datetime.datetime(2024, 4, 15, tzinfo=datetime.timezone.utc)
+
+        # Same thing with update_created_at=True
+        _, created3 = await storage.store_task_resource(ser.model_copy(), update_created_at=True)
+        assert not created3
+        fetched2 = await storage._task_variants_collection.find_one({"tenant": TENANT, "slug": TASK_ID})
+        assert fetched2
+        assert fetched2["created_at"] == datetime.datetime(2025, 4, 16, tzinfo=datetime.timezone.utc)
 
 
 class TestGetInputsByHash:

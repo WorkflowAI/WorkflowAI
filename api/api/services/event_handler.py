@@ -174,6 +174,30 @@ def system_event_router() -> EventRouter:
     return _event_router
 
 
+class _TenantEventRouter:
+    def __init__(
+        self,
+        tenant: str,
+        tenant_uid: int,
+        user_properties: UserProperties | None,
+        organization_properties: OrganizationProperties | None,
+        task_properties: TaskProperties | None,
+    ) -> None:
+        self.tenant = tenant
+        self.tenant_uid = tenant_uid
+        self.user_properties = user_properties
+        self.organization_properties = organization_properties
+        self.task_properties = task_properties
+
+    def __call__(self, event: Event, retry_after: datetime | None = None) -> None:
+        event.tenant = self.tenant
+        event.tenant_uid = self.tenant_uid
+        event.user_properties = self.user_properties
+        event.organization_properties = self.organization_properties
+        event.task_properties = self.task_properties
+        _event_router(event, retry_after)
+
+
 def tenant_event_router(
     tenant: str,
     tenant_uid: int,
@@ -181,12 +205,4 @@ def tenant_event_router(
     organization_properties: OrganizationProperties | None,
     task_properties: TaskProperties | None,
 ) -> EventRouter:
-    def _tenant_event_router(event: Event, retry_after: datetime | None = None) -> None:
-        event.tenant = tenant
-        event.tenant_uid = tenant_uid
-        event.user_properties = user_properties
-        event.organization_properties = organization_properties
-        event.task_properties = task_properties
-        _event_router(event, retry_after)
-
-    return _tenant_event_router
+    return _TenantEventRouter(tenant, tenant_uid, user_properties, organization_properties, task_properties)

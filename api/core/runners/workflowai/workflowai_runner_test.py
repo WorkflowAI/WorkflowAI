@@ -1,3 +1,5 @@
+# pyright: reportPrivateUsage=false
+
 import json
 import re
 from collections.abc import Awaitable, Callable
@@ -369,8 +371,13 @@ Output:
 
 
 class TestInlineMessages:
-    async def test_inlined_structured_output(self, patched_runner: WorkflowAIRunner):
-        messages = await patched_runner._inline_messages(  # pyright: ignore [reportPrivateUsage]
+    async def test_inlined_structured_output(self, mock_provider_factory_full: Mock):
+        runner = _build_runner2(
+            mock_provider_factory=mock_provider_factory_full,
+            input_schema=RawMessagesSchema,
+            output_schema={"properties": {"output": {"type": "string"}}},
+        )
+        messages = await runner._inline_messages(
             Messages(messages=[Message(role="user", content=[MessageContent(text="cool cool cool")])]),
             Mock(),
             True,
@@ -380,8 +387,13 @@ class TestInlineMessages:
         assert messages[0].role == MessageDeprecated.Role.USER
         assert messages[0].content == "cool cool cool"
 
-    async def test_inlined_no_structured_output(self, patched_runner: WorkflowAIRunner):
-        messages = await patched_runner._inline_messages(  # pyright: ignore [reportPrivateUsage]
+    async def test_inlined_raw_json(self, mock_provider_factory_full: Mock):
+        runner = _build_runner2(
+            mock_provider_factory=mock_provider_factory_full,
+            input_schema=RawMessagesSchema,
+            output_schema=RawJSONMessageSchema,
+        )
+        messages = await runner._inline_messages(
             Messages(messages=[Message(role="user", content=[MessageContent(text="cool cool cool")])]),
             Mock(),
             False,
@@ -389,15 +401,7 @@ class TestInlineMessages:
         )
         assert len(messages) == 2
         assert messages[0].role == MessageDeprecated.Role.SYSTEM
-        assert (
-            messages[0].content
-            == """Return a single JSON object enforcing the following schema:
-```json
-{
-  "properties": {}
-}
-```"""
-        )
+        assert messages[0].content == """Return a single JSON object"""
         assert messages[1].role == MessageDeprecated.Role.USER
         assert messages[1].content == "cool cool cool"
 

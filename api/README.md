@@ -19,7 +19,7 @@ brew install python@3.12
 brew install pipx
 pipx ensurepath
 # Install poetry with pipx
-pipx install poetry==1.8.5
+pipx install poetry==2.1.3
 # [Recommended] Configure poetry to create virtual envs in project
 # It makes it easier to be picked up by vscode
 poetry config virtualenvs.in-project true

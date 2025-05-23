@@ -30,7 +30,7 @@ WORKDIR /app
 RUN apk add --no-cache build-base libffi-dev geos-dev
 # Update pip, install poetry setuptools, and wheel
 # TODO: fetch version from pyproject.toml ?
-RUN pip install --upgrade pip setuptools wheel poetry==1.8.0 poetry-plugin-export==1.8.0
+RUN pip install --upgrade pip setuptools wheel poetry==2.1.3 poetry-plugin-export==1.9.0
 
 # Copy the requirements file and install dependencies
 ADD pyproject.toml poetry.lock ./

@@ -1,5 +1,7 @@
+# pyright: reportPrivateUsage=false
+
 import json
-from typing import Any
+from typing import Any, cast
 from unittest.mock import patch
 
 import pytest
@@ -11,7 +13,7 @@ from core.domain.llm_usage import LLMUsage
 from core.domain.message import MessageDeprecated
 from core.domain.models import Model, Provider
 from core.domain.structured_output import StructuredOutput
-from core.domain.tool_call import ToolCallRequestWithID
+from core.domain.tool_call import ToolCall, ToolCallRequestWithID
 from core.providers.base.abstract_provider import RawCompletion
 from core.providers.base.httpx_provider import ParsedResponse
 from core.providers.base.models import StandardMessage
@@ -59,7 +61,7 @@ class TestValues:
 
 class TestBuildRequest:
     def test_build_request(self, mistral_provider: MistralAIProvider):
-        request = mistral_provider._build_request(  # pyright: ignore [reportPrivateUsage]
+        request = mistral_provider._build_request(
             messages=[
                 MessageDeprecated(role=MessageDeprecated.Role.SYSTEM, content="Hello 1"),
                 MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello"),
@@ -84,7 +86,7 @@ class TestBuildRequest:
         assert request_dict["stream"] is False
 
     def test_build_request_with_model_mapping(self, mistral_provider: MistralAIProvider):
-        request = mistral_provider._build_request(  # pyright: ignore [reportPrivateUsage]
+        request = mistral_provider._build_request(
             messages=[MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello")],
             options=ProviderOptions(model=Model.MISTRAL_LARGE_2_2407, temperature=0),
             stream=False,
@@ -102,7 +104,7 @@ class TestBuildRequest:
             output_schema={"type": "object", "properties": {"result": {"type": "string"}}},
         )
 
-        request = mistral_provider._build_request(  # pyright: ignore [reportPrivateUsage]
+        request = mistral_provider._build_request(
             messages=[MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello")],
             options=ProviderOptions(
                 model=Model.PIXTRAL_12B_2409,
@@ -123,7 +125,7 @@ class TestBuildRequest:
         }
 
     def test_build_request_without_tools(self, mistral_provider: MistralAIProvider):
-        request = mistral_provider._build_request(  # pyright: ignore [reportPrivateUsage]
+        request = mistral_provider._build_request(
             messages=[MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello")],
             options=ProviderOptions(model=Model.PIXTRAL_12B_2409, temperature=0, enabled_tools=[]),
             stream=False,
@@ -132,7 +134,7 @@ class TestBuildRequest:
         assert request_dict["tools"] is None
 
     def test_build_request_with_stream(self, mistral_provider: MistralAIProvider):
-        request = mistral_provider._build_request(  # pyright: ignore [reportPrivateUsage]
+        request = mistral_provider._build_request(
             messages=[MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello")],
             options=ProviderOptions(model=Model.PIXTRAL_12B_2409, temperature=0),
             stream=True,
@@ -141,7 +143,7 @@ class TestBuildRequest:
         assert request_dict["stream"] is True
 
     def test_build_request_without_max_tokens(self, mistral_provider: MistralAIProvider):
-        request = mistral_provider._build_request(  # pyright: ignore [reportPrivateUsage]
+        request = mistral_provider._build_request(
             messages=[MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello")],
             options=ProviderOptions(model=Model.PIXTRAL_12B_2409, temperature=0),
             stream=False,
@@ -158,7 +160,7 @@ class TestBuildRequest:
             input_schema={"type": "object", "properties": {"test": {"type": "string"}}},
             output_schema={"type": "object", "properties": {"result": {"type": "string"}}},
         )
-        request = mistral_provider._build_request(  # pyright: ignore [reportPrivateUsage]
+        request = mistral_provider._build_request(
             messages=[MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello")],
             options=ProviderOptions(
                 model=Model.PIXTRAL_12B_2409,
@@ -170,6 +172,67 @@ class TestBuildRequest:
         )
         request_dict = request.model_dump(exclude_none=True)
         assert request_dict["tool_choice"] == "auto"
+
+    def test_build_request_multiple_tools(self, mistral_provider: MistralAIProvider):
+        messages = [
+            MessageDeprecated(
+                role=MessageDeprecated.Role.USER,
+                content="What is the weather in Tokyo and in Paris?",
+            ),
+            MessageDeprecated(
+                role=MessageDeprecated.Role.ASSISTANT,
+                content="Let me get the weather in tokyo first",
+                tool_call_requests=[
+                    ToolCallRequestWithID(
+                        id="tool_use_01NhMGWVdTLvEuDB6Rx76hYJ",
+                        tool_name="get_weather",
+                        tool_input_dict={"city": "Tokyo"},
+                    ),
+                    ToolCallRequestWithID(
+                        id="tool_use_01NhMGWVdTLvEuDB6Rx76hYK",
+                        tool_name="get_weather",
+                        tool_input_dict={"city": "Paris"},
+                    ),
+                ],
+            ),
+            MessageDeprecated(
+                role=MessageDeprecated.Role.USER,
+                content="The weather in Tokyo is sunny",
+                tool_call_results=[
+                    ToolCall(
+                        id="tool_use_01NhMGWVdTLvEuDB6Rx76hYJ",
+                        tool_name="get_weather",
+                        tool_input_dict={"city": "Tokyo"},
+                        result="The weather in Tokyo is sunny",
+                    ),
+                    ToolCall(
+                        id="tool_use_01NhMGWVdTLvEuDB6Rx76hYK",
+                        tool_name="get_weather",
+                        tool_input_dict={"city": "Paris"},
+                        result="The weather in Paris is sunny",
+                    ),
+                ],
+            ),
+        ]
+        request = mistral_provider._build_request(
+            messages=messages,
+            options=ProviderOptions(model=Model.PIXTRAL_12B_2409, temperature=0),
+            stream=False,
+        )
+        request = cast(CompletionRequest, request)  # noqa: F821
+
+        assert len(request.messages) == 4
+        assert request.messages[0].role == "user"
+        assert request.messages[1].role == "assistant"
+        assert request.messages[1].tool_calls and len(request.messages[1].tool_calls) == 2
+        assert request.messages[1].tool_calls[0].id == "70b3a00ce"
+        assert request.messages[1].tool_calls[1].id == "76af333cd"
+        assert request.messages[2].role == "tool"
+        assert request.messages[2].tool_call_id == "70b3a00ce"
+        assert request.messages[2].content == '{"result": "The weather in Tokyo is sunny"}'
+        assert request.messages[3].role == "tool"
+        assert request.messages[3].tool_call_id == "76af333cd"
+        assert request.messages[3].content == '{"result": "The weather in Paris is sunny"}'
 
 
 class TestSingleStream:
@@ -189,7 +252,7 @@ class TestSingleStream:
         provider = MistralAIProvider()
         raw = RawCompletion(usage=LLMUsage(), response="")
 
-        raw_chunks = provider._single_stream(  # pyright: ignore [reportPrivateUsage]
+        raw_chunks = provider._single_stream(
             request={"messages": [{"role": "user", "content": "Hello"}]},
             output_factory=lambda x, _: StructuredOutput(json.loads(x)),
             partial_output_factory=lambda x: StructuredOutput(x),

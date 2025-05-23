@@ -314,7 +314,7 @@ class TestMistralToolMessageToStandard:
         expected_contents = [
             {
                 "type": "tool_call_result",
-                "id": "tool1",
+                "id": "1bc3b0c4b",
                 "tool_name": "analyzer",  # assuming identity transformation
                 "tool_input_dict": None,
                 "result": '{"analysis": "success"}',
@@ -322,7 +322,7 @@ class TestMistralToolMessageToStandard:
             },
             {
                 "type": "tool_call_result",
-                "id": "tool2",
+                "id": "175ad3e3e",
                 "tool_name": "summarizer",
                 "tool_input_dict": None,
                 "result": '{"summary": "all good"}',
@@ -365,7 +365,7 @@ class TestStandardizeMessagesProvider:
         assert isinstance(first["content"], list)
         expected_first = {
             "type": "tool_call_result",
-            "id": "tm1",
+            "id": "ad8a21601",
             "tool_name": "calculator",
             "tool_input_dict": None,
             "result": '{"result": 42}',
@@ -383,7 +383,7 @@ class TestStandardizeMessagesProvider:
         assert third["role"] == "user"
         expected_third = {
             "type": "tool_call_result",
-            "id": "tm1",
+            "id": "ad8a21601",
             "tool_name": "calculator",
             "tool_input_dict": None,
             "result": '{"result": 42}',

@@ -21,7 +21,11 @@ class NoopStorage(AbstractStorage):
         return ""
 
     @override
-    async def store_task_resource(self, task: SerializableTaskVariant) -> tuple[SerializableTaskVariant, bool]:
+    async def store_task_resource(
+        self,
+        task: SerializableTaskVariant,
+        update_created_at: bool = True,
+    ) -> tuple[SerializableTaskVariant, bool]:
         return task, False
 
     @override

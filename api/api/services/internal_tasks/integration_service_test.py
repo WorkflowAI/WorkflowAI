@@ -697,3 +697,122 @@ class TestGetIntegrationAgentChatMessages:
         assert (
             f"Another message with the same key: {obfuscated_secret_key} and a non-key: test-key" == result[2].content
         )
+
+
+class TestGetMessagesPayloadForCodeSnippet:
+    @pytest.fixture
+    def mock_version(self):
+        """Create a mock for VersionsService.EnrichedVersion."""
+        version = Mock()
+        version.group = Mock()
+        version.group.properties = Mock()
+        return version
+
+    @pytest.fixture
+    def mock_task_tuple(self):
+        """Create a mock for TaskTuple."""
+        from core.storage import TaskTuple
+
+        return Mock(spec=TaskTuple)
+
+    async def test_get_messages_payload_with_version_messages(
+        self,
+        integration_service: IntegrationService,
+        mock_version: Mock,
+        mock_task_tuple: Mock,
+    ):
+        # Create message mocks that have model_dump method
+        message1 = Mock()
+        message1.model_dump.return_value = {"role": "system", "content": "You are a helpful assistant."}
+        message2 = Mock()
+        message2.model_dump.return_value = {"role": "user", "content": "Hello"}
+
+        # Set up mock version with message objects that have model_dump method
+        mock_version.group.properties.messages = [message1, message2]
+
+        # Make sure runs_service.latest_run is properly mocked
+        integration_service.runs_service.latest_run = AsyncMock()
+
+        # For testing protected methods, we need to access them directly
+        # Call the method
+        result = await integration_service._get_messages_payload_for_code_snippet(  # type: ignore # pylint: disable=protected-access
+            version=mock_version,
+            task_tuple=mock_task_tuple,
+            task_schema_id=123,
+        )
+
+        # Verify result contains the expected messages
+        assert (
+            "[{'role': 'system', 'content': 'You are a helpful assistant.'}, {'role': 'user', 'content': 'Hello'}]"
+            in result
+        )
+        # Verify runs_service.latest_run was not called
+        integration_service.runs_service.latest_run.assert_not_called()
+
+    async def test_get_messages_payload_with_successful_run(
+        self,
+        integration_service: IntegrationService,
+        mock_version: Mock,
+        mock_task_tuple: Mock,
+    ):
+        # Set up mock version without messages
+        mock_version.group.properties.messages = None
+
+        # Set up mock run
+        mock_run = Mock()
+        mock_run.task_input = {"messages": [{"role": "user", "content": "Hello from run"}]}
+        integration_service.runs_service.latest_run = AsyncMock(return_value=mock_run)
+
+        # Call the method
+        result = await integration_service._get_messages_payload_for_code_snippet(  # type: ignore # pylint: disable=protected-access
+            version=mock_version,
+            task_tuple=mock_task_tuple,
+            task_schema_id=123,
+        )
+
+        # Verify result
+        assert "{'messages': [{'role': 'user', 'content': 'Hello from run'}]}" in result
+        # Verify runs_service.latest_run was called with correct parameters
+        integration_service.runs_service.latest_run.assert_awaited_once_with(
+            task_uid=mock_task_tuple,
+            schema_id=123,
+            is_success=True,
+            exclude_fields=set(),
+        )
+
+    async def test_get_messages_payload_with_no_successful_run(
+        self,
+        integration_service: IntegrationService,
+        mock_version: Mock,
+        mock_task_tuple: Mock,
+    ):
+        # Set up mock version without messages
+        mock_version.group.properties.messages = None
+
+        # Mock runs_service.latest_run to raise ObjectNotFoundException
+        from core.storage import ObjectNotFoundException
+
+        integration_service.runs_service.latest_run = AsyncMock(side_effect=ObjectNotFoundException("No run found"))
+
+        # Get a reference to the logger to avoid protected access warning
+        logger = integration_service._logger  # type: ignore # pylint: disable=protected-access
+
+        # Spy on logger.warning
+        with patch.object(logger, "warning") as mock_warning:
+            # Call the method
+            result = await integration_service._get_messages_payload_for_code_snippet(  # type: ignore # pylint: disable=protected-access
+                version=mock_version,
+                task_tuple=mock_task_tuple,
+                task_schema_id=123,
+            )
+
+            # Verify result contains default system message
+            assert "system" in result
+            assert "You're a helpful assistant." in result
+
+            # Verify logger.warning was called
+            mock_warning.assert_called_once()
+            assert "No successful run found" in mock_warning.call_args[0][0]
+
+        # Verify runs_service.latest_run was called
+        integration_service.runs_service.latest_run.assert_awaited_once()

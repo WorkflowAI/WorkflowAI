@@ -77,9 +77,9 @@ def safe_b64decode(input_str: str | None) -> bytes | None:
     return None
 
 
-def is_valid_unicode(b: str):
+def is_valid_unicode(b: bytes):
     if len(b) != 2:
-        raise ValueError("Expected exactly two bytes.")
+        return None
     # Convert bytes to an integer.
     try:
         code_point = int(b, 16)
@@ -108,7 +108,7 @@ def clean_unicode_chars(input_str: str) -> str:
     for i, val in enumerated:
         first_two_bytes = val[:2]
         # Check if \x[first two bytes] is a valid unicode character
-        if c := is_valid_unicode(first_two_bytes.decode()):
+        if c := is_valid_unicode(first_two_bytes):
             # We have a valid unicode character so we can
             # Replace the first two bytes with the valid character
             splits[i] = c + val[2:]

@@ -2,14 +2,13 @@ import asyncio
 import copy
 import re
 from collections.abc import Mapping, Sequence
-from typing import Any
+from typing import Any, cast
 
 from cachetools import LRUCache
 from jinja2 import Environment, Template, TemplateError, nodes
 from jinja2.meta import find_undeclared_variables
 from jinja2.visitor import NodeVisitor
 
-from core.domain.errors import BadRequestError
 from core.domain.types import TemplateRenderer
 from core.utils.schemas import JsonSchema
 
@@ -20,16 +19,47 @@ _template_regex = re.compile(rf"({re.escape('{%')}|{re.escape('{{')}|{re.escape(
 
 
 class InvalidTemplateError(Exception):
-    def __init__(self, message: str, lineno: int | None):
+    def __init__(
+        self,
+        message: str,
+        line_number: int | None = None,
+        source: str | None = None,
+        unexpected_char: str | None = None,
+    ):
         self.message = message
-        self.line_number = lineno
+        self.line_number = line_number
+        self.source = source
+        self.unexpected_char = unexpected_char
 
     def __str__(self) -> str:
         return f"{self.message} (line {self.line_number})"
 
     @classmethod
     def from_jinja(cls, e: TemplateError):
-        return cls(e.message or str(e), getattr(e, "lineno", None))
+        lineno = cast(int | None, getattr(e, "lineno", None))
+        source = cast(str | None, getattr(e, "source", None))
+
+        if source and lineno:
+            # We split to only show the offending line in the source
+            lines = source.splitlines()
+            if len(lines) > lineno:
+                source = lines[lineno - 1]
+
+        msg = e.message or str(e)
+        unexpected_char = re.findall(r"unexpected '(.*)'", msg)
+        if unexpected_char:
+            unexpected_char = unexpected_char[0]
+        else:
+            unexpected_char = None
+
+        return cls(e.message or str(e), line_number=lineno, source=source, unexpected_char=unexpected_char)
+
+    def serialize_details(self) -> dict[str, Any]:
+        return {
+            "line_number": self.line_number,
+            "unexpected_char": self.unexpected_char,
+            "source": self.source,
+        }
 
 
 class TemplateManager:
@@ -103,7 +133,12 @@ class _SchemaBuilder(NodeVisitor):
         start_schema: dict[str, Any] | None = None,
         use_types_from: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        schema: dict[str, Any] = start_schema or {}
+        schema: dict[str, Any] | None = start_schema
+        if not schema and use_types_from:
+            _carried_over_keys = {"format", "description", "examples"}
+            schema = {k: v for k, v in use_types_from.items() if k in _carried_over_keys}
+        if not schema:
+            schema = {}
         self._handle_components(
             schema=schema,
             existing=JsonSchema(use_types_from) if use_types_from else None,
@@ -236,7 +271,7 @@ class _SchemaBuilder(NodeVisitor):
         self._pop_scope()
 
     def visit_Call(self, node: nodes.Call):
-        raise BadRequestError("Template functions are not supported", capture=True)
+        raise InvalidTemplateError("Template functions are not supported")
 
 
 def extract_variable_schema(

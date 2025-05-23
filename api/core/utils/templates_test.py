@@ -1,6 +1,5 @@
 import pytest
 
-from core.domain.errors import BadRequestError
 from core.utils.templates import InvalidTemplateError, TemplateManager, extract_variable_schema
 
 
@@ -195,7 +194,7 @@ class TestExtractVariableSchema:
 
     def test_function_call_raises_error(self):
         # Functions are not supported
-        with pytest.raises(BadRequestError, match="Template functions are not supported"):
+        with pytest.raises(InvalidTemplateError, match="Template functions are not supported"):
             extract_variable_schema("{{ my_func() }}")
 
     def test_single_array(self):
@@ -263,4 +262,22 @@ class TestExtractVariableSchema:
         assert schema == {
             "type": "object",
             "properties": {"hello": {}, "name": {}},
+        }
+
+    def test_invalid_template(self):
+        with pytest.raises(InvalidTemplateError) as e:
+            extract_variable_schema("Hello {{ name }} {{ blabla }} hello\n{{name}")
+        assert e.value.message == "unexpected '}'"
+        assert e.value.line_number == 2
+        assert e.value.unexpected_char == "}"
+
+    def test_format_at_root_in_base_schema(self):
+        schema, _ = extract_variable_schema(
+            "{{ name  }}",
+            use_types_from={"type": "object", "format": "messages"},
+        )
+        assert schema == {
+            "type": "object",
+            "format": "messages",
+            "properties": {"name": {}},
         }

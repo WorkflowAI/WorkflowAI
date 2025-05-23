@@ -5,7 +5,13 @@ from httpx import AsyncClient
 from pytest_httpx import HTTPXMock
 from taskiq import InMemoryBroker
 
-from tests.integration.common import create_task, get_amplitude_requests, result_or_raise, wait_for_completed_tasks
+from tests.integration.common import (
+    IntegrationTestClient,
+    create_task,
+    get_amplitude_requests,
+    result_or_raise,
+    wait_for_completed_tasks,
+)
 
 
 async def test_update_info_and_schema(
@@ -142,75 +148,68 @@ async def test_update_info_and_schema(
 
 
 async def test_revert_to_previous_schema(
-    int_api_client: AsyncClient,
+    test_client: IntegrationTestClient,
     frozen_time: FrozenDateTimeFactory,
-    httpx_mock: HTTPXMock,
-    patched_broker: InMemoryBroker,
-) -> None:
-    task = await create_task(int_api_client, patched_broker, httpx_mock)
-    assert task["id"] == "ffa888f1b7f2632199fe957f4338e030"
+):
+    task = await test_client.create_agent_v1()
+    assert task["variant_id"] == "802a5890e100e4581e8a8174242bc4df"
 
     frozen_time.tick()
 
-    new_task_variant = result_or_raise(
-        await int_api_client.post(
-            f"_/agents/{task['task_id']}/schemas",
-            json={
-                "name": "Test name",
-                "input_schema": {
-                    "type": "object",
-                    "properties": {
-                        # The description is different
-                        "name": {"type": "string", "description": "A name"},
-                        "age": {"type": "integer"},
-                    },
-                    "required": ["name", "age"],
+    new_task_variant = await test_client.post(
+        "/v1/_/agents",
+        json={
+            "id": task["id"],
+            "name": "Test name",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    # The description is different
+                    "name": {"type": "string", "description": "A name"},
+                    "age": {"type": "integer"},
                 },
-                "output_schema": {
-                    "type": "object",
-                    "properties": {
-                        "greeting": {"type": "string"},
-                    },
-                    "required": ["greeting"],
-                },
-                "skip_generation": True,  # Do not generate instructions for this tests, instruction gen is test elsewhere
-                "create_first_iteration": False,
+                "required": ["name", "age"],
             },
-        ),
+            "output_schema": {
+                "type": "object",
+                "properties": {
+                    "greeting": {"type": "string"},
+                },
+                "required": ["greeting"],
+            },
+        },
     )
-    assert new_task_variant["id"] == "eb59a6f2fcdac97a7a70e47a0e699f92"
+    assert new_task_variant["variant_id"] == "9779163c34441000688f9ec5cea6c30e"
 
     # fetch the current schema
-    schema = result_or_raise(await int_api_client.get(f"/_/agents/{task['task_id']}/schemas/1"))
+    schema = await test_client.get(f"/_/agents/{task['id']}/schemas/1")
     assert schema["input_schema"]["json_schema"]["properties"]["name"] == {"type": "string", "description": "A name"}
     assert schema["name"] == "Greet"
+    assert schema["schema_id"] == 1
 
     frozen_time.tick()
 
-    new_new_task_variant = result_or_raise(
-        await int_api_client.post(
-            f"/_/agents/{task['task_id']}/schemas",
-            json={
-                "name": "Test name",
-                "input_schema": {
-                    "type": "object",
-                    # Schema is the same as before
-                    "properties": {"name": {"type": "string"}, "age": {"type": "integer"}},
-                    "required": ["name", "age"],
-                },
-                "output_schema": {
-                    "type": "object",
-                    "properties": {"greeting": {"type": "string"}},
-                    "required": ["greeting"],
-                },
-                "skip_generation": True,  # Do not generate instructions for this tests, instruction gen is test elsewhere.
-                "create_first_iteration": False,
+    new_new_task_variant = await test_client.post(
+        "/v1/_/agents",
+        json={
+            "id": task["id"],
+            "name": "Test name",
+            "input_schema": {
+                "type": "object",
+                # Schema is the same as before
+                "properties": {"name": {"type": "string"}, "age": {"type": "integer"}},
+                "required": ["name", "age"],
             },
-        ),
+            "output_schema": {
+                "type": "object",
+                "properties": {"greeting": {"type": "string"}},
+                "required": ["greeting"],
+            },
+        },
     )
     # Make sure we reverted back
-    assert new_new_task_variant["id"] == "ffa888f1b7f2632199fe957f4338e030"
+    assert new_new_task_variant["variant_id"] == "802a5890e100e4581e8a8174242bc4df"
 
-    schema = result_or_raise(await int_api_client.get(f"/_/agents/{task['task_id']}/schemas/1"))
+    schema = await test_client.get(f"/_/agents/{task['id']}/schemas/1")
     assert schema["input_schema"]["json_schema"]["properties"]["name"] == {"type": "string"}
     assert schema["name"] == "Greet"

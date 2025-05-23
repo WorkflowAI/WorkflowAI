@@ -1,5 +1,6 @@
 import base64
 import json
+from logging import Logger
 from typing import Any
 from unittest.mock import Mock, patch
 
@@ -11,6 +12,7 @@ from pytest_httpx import HTTPXMock
 from core.domain.consts import FILE_DEFS
 from core.domain.errors import InvalidFileError
 from core.domain.fields.file import File
+from core.domain.fields.internal_reasoning_steps import InternalReasoningStep
 from core.domain.tool import Tool
 from core.domain.types import AgentOutput
 from core.runners.workflowai.internal_tool import InternalTool
@@ -26,6 +28,7 @@ from .utils import (
     download_file,
     extract_files,
     is_schema_containing_legacy_file,
+    reasoning_step_mapper,
     remove_files_from_schema,
     split_tools,
 )
@@ -708,3 +711,26 @@ class TestRemoveFilesFromSchema:
         assert max_file_count is None
 
         assert schema["properties"] == {}
+
+
+class TestReasoningStepMapper:
+    def test_with_none_items(self):
+        mock_logger = Mock(spec=Logger)
+        extracted = reasoning_step_mapper(
+            [None, None, None, {}, {"explaination": "h"}],
+            logger=mock_logger,
+        )
+        assert extracted is not None
+        mock_logger.warning.assert_not_called()
+        mock_logger.exception.assert_not_called()
+        assert extracted == [InternalReasoningStep(explaination="h")]
+
+    def test_with_invalid_items(self):
+        mock_logger = Mock(spec=Logger)
+        extracted = reasoning_step_mapper(
+            [None, None, None, {}, {"explaination": 1}],
+            logger=mock_logger,
+        )
+        mock_logger.warning.assert_not_called()
+        mock_logger.exception.assert_called_once()
+        assert extracted is None

@@ -1,9 +1,9 @@
 import hashlib
 import json
 import re
-from typing import Any, Literal, Self
+from typing import Annotated, Any, Literal, Self
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
+from pydantic import AliasChoices, BaseModel, BeforeValidator, ConfigDict, Field
 
 from core.domain.errors import UnpriceableRunError
 from core.domain.fields.file import File
@@ -97,8 +97,20 @@ _role_to_map: dict[MessageDeprecated.Role, Literal["user", "assistant", "system"
 }
 
 
+def _sanitize_tool_id(v: str | None) -> str | None:
+    if not v:
+        return None
+    if re.match(r"^[a-zA-Z0-9_-]{9}$", v) is not None:
+        return v
+    # Otherwise we hash the tool call id as a hex and take the first 9 characters
+    return hashlib.sha256(v.encode()).hexdigest()[:9]
+
+
+MistralToolID = Annotated[str, BeforeValidator(_sanitize_tool_id)]
+
+
 class MistralToolCall(BaseModel):
-    id: str | None = None
+    id: MistralToolID | None = None
     type: Literal["function"] = "function"
 
     class Function(BaseModel):
@@ -117,18 +129,6 @@ class MistralToolCall(BaseModel):
                 arguments=tool_call.tool_input_dict,
             ),
         )
-
-    @field_validator("id")
-    def validate_id(cls, v: str | None) -> str | None:
-        """Sanitize the tool call id to be a valid Mistral tool call id.
-        "must be a-z, A-Z, 0-9, with a length of 9." from the mistral error message
-        """
-        if not v:
-            return None
-        if re.match(r"^[a-zA-Z0-9_-]{9}", v) is not None:
-            return v
-        # Otherwise we hash the tool call id as a hex and take the first 9 characters
-        return hashlib.sha256(v.encode()).hexdigest()[:9]
 
 
 class MistralAIMessage(BaseModel):
@@ -221,9 +221,10 @@ class MistralToolChoice(BaseModel):
     function: FunctionName
 
 
+# TODO: merge with MistralMessage above
 class MistralToolMessage(BaseModel):
     role: Literal["tool"]
-    tool_call_id: str
+    tool_call_id: MistralToolID
     name: str
     content: str
 

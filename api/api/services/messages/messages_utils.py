@@ -2,7 +2,29 @@ from typing import Any, Iterable
 
 from core.domain.message import Message
 from core.utils.schema_sanitation import streamline_schema
-from core.utils.templates import extract_variable_schema
+from core.utils.templates import InvalidTemplateError, extract_variable_schema
+
+
+class MessageTemplateError(InvalidTemplateError):
+    def __init__(
+        self,
+        message: str,
+        line_number: int | None,
+        source: str | None = None,
+        unexpected_char: str | None = None,
+        message_index: int | None = None,
+        content_index: int | None = None,
+    ):
+        super().__init__(message=message, line_number=line_number, source=source, unexpected_char=unexpected_char)
+        self.message_index = message_index
+        self.content_index = content_index
+
+    def serialize_details(self) -> dict[str, Any]:
+        return {
+            "message_index": self.message_index,
+            "content_index": self.content_index,
+            **super().serialize_details(),
+        }
 
 
 def json_schema_for_template(
@@ -29,8 +51,18 @@ def json_schema_for_template(
         #     continue
         # We are in a case where the content is a mix of variables and plain text so we can't
         # really extract the file
-        for c, _ in m.content_iterator():
-            schema, is_templated = extract_variable_schema(c, start_schema=schema, use_types_from=base_schema)
+        for j, (c, _) in enumerate(m.content_iterator()):
+            try:
+                schema, is_templated = extract_variable_schema(c, start_schema=schema, use_types_from=base_schema)
+            except InvalidTemplateError as e:
+                raise MessageTemplateError(
+                    message=e.message,
+                    line_number=e.line_number,
+                    source=e.source,
+                    unexpected_char=e.unexpected_char,
+                    message_index=i,
+                    content_index=j,
+                )
             if is_templated:
                 last_templated_index = i
 

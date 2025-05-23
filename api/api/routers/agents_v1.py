@@ -107,7 +107,7 @@ async def create_agent(
         creation_chat_messages=request.chat_messages,
     )
 
-    stored, created = await storage.store_task_resource(variant)
+    stored, created = await storage.store_task_resource(variant, update_created_at=True)
     if created:
         event_router(
             TaskSchemaCreatedEvent(
@@ -187,5 +187,5 @@ async def extract_template(request: ExtractTemplateRequest) -> ExtractTemplateRe
         else:
             raise BadRequestError("Either template or messages must be provided")
     except InvalidTemplateError as e:
-        raise BadRequestError(e.message)
+        raise BadRequestError(f"Invalid template: {e.message}", details=e.serialize_details())
     return ExtractTemplateResponse(json_schema=json_schema, last_templated_index=last_templated_index)

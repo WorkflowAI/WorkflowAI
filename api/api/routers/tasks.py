@@ -313,7 +313,7 @@ async def create_task(
     except ObjectNotFoundException:
         pass
 
-    stored, _ = await storage.store_task_resource(task_variant)
+    stored, _ = await storage.store_task_resource(task_variant, update_created_at=True)
 
     async def create_first_iteration():
         try:

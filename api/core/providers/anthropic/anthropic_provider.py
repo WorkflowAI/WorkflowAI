@@ -1,4 +1,5 @@
 import json
+import logging
 from typing import Any, AsyncIterator, Literal
 
 from httpx import Response
@@ -10,6 +11,7 @@ from core.domain.fields.file import File
 from core.domain.llm_usage import LLMUsage
 from core.domain.message import MessageDeprecated
 from core.domain.models import Model, Provider
+from core.domain.models.model_data import FinalModelData
 from core.domain.models.utils import get_model_data
 from core.domain.tool_call import ToolCallRequestWithID
 from core.providers.anthropic.anthropic_domain import (
@@ -41,7 +43,7 @@ from core.providers.google.google_provider_domain import (
     native_tool_name_to_internal,
 )
 
-DEFAULT_MAX_TOKENS = 1024
+DEFAULT_MAX_TOKENS = 8192
 
 ANTHROPIC_VERSION = "2023-06-01"
 
@@ -58,19 +60,22 @@ class AnthropicConfig(BaseModel):
 
 
 class AnthropicProvider(HTTPXProvider[AnthropicConfig, CompletionResponse]):
+    @classmethod
+    def _max_tokens(cls, model_data: FinalModelData, requested_max_tokens: int | None) -> int:
+        model_max_output_tokens = model_data.max_tokens_data.max_output_tokens
+        if not model_max_output_tokens:
+            logging.warning(
+                "Max tokens not set for Anthropic",
+                extra={"model": model_data.model},
+            )
+            model_max_output_tokens = DEFAULT_MAX_TOKENS
+        return min(requested_max_tokens or DEFAULT_MAX_TOKENS, model_max_output_tokens)
+
     @override
     def _build_request(self, messages: list[MessageDeprecated], options: ProviderOptions, stream: bool) -> BaseModel:
         model_data = get_model_data(options.model)
         # Anthropic requires the max tokens to be set to the max generated tokens for the model
         # https://docs.anthropic.com/en/api/messages#body-max-tokens
-        max_tokens = options.max_tokens or model_data.max_tokens_data.max_output_tokens
-        if not max_tokens:
-            # This should never happen, we have a test in place to check
-            # see test_all_anthropic_models_have_max_output_tokens
-            self.logger.warning(
-                "Max tokens not set for Anthropic",
-                extra={"model": options.model},
-            )
 
         if messages[0].role == MessageDeprecated.Role.SYSTEM:
             system_message = messages[0].content
@@ -88,7 +93,7 @@ class AnthropicProvider(HTTPXProvider[AnthropicConfig, CompletionResponse]):
             ],
             model=options.model,
             temperature=options.temperature,
-            max_tokens=max_tokens or DEFAULT_MAX_TOKENS,
+            max_tokens=self._max_tokens(model_data, options.max_tokens),
             stream=stream,
             tool_choice=AntToolChoice.from_domain(options.tool_choice),
             top_p=options.top_p,

@@ -19,6 +19,6 @@ class TestPreviewModels:
         assert Model.DEEPSEEK_R1_2501_BASIC in model_ids
         assert Model.MISTRAL_LARGE_2_LATEST in model_ids
         assert Model.LLAMA_4_MAVERICK_BASIC in model_ids
-        assert Model.CLAUDE_3_7_SONNET_LATEST in model_ids
+        assert Model.CLAUDE_4_SONNET_LATEST in model_ids
         assert Model.GROK_3_BETA in model_ids
         models_from_run_endpoint.assert_called_once()

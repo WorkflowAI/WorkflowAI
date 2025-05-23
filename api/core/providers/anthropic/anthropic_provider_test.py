@@ -1,3 +1,5 @@
+# pyright: reportPrivateUsage=false
+
 from __future__ import annotations
 
 import json
@@ -53,6 +55,26 @@ def _output_factory(x: str, _: bool):
     return StructuredOutput(json.loads(x))
 
 
+class TestMaxTokens:
+    @pytest.mark.parametrize(
+        ("model", "requested_max_tokens", "expected_max_tokens"),
+        [
+            pytest.param(Model.CLAUDE_3_5_HAIKU_LATEST, 10, 10, id="Requested less than default"),
+            pytest.param(Model.CLAUDE_3_7_SONNET_20250219, None, 8192, id="Default"),
+            pytest.param(Model.CLAUDE_3_7_SONNET_20250219, 50_000, 50_000, id="Requested less than max"),
+            pytest.param(Model.CLAUDE_3_7_SONNET_20250219, 100_000, 64_000, id="Requested more than max"),
+        ],
+    )
+    def test_max_tokens(
+        self,
+        anthropic_provider: AnthropicProvider,
+        model: Model,
+        requested_max_tokens: int,
+        expected_max_tokens: int,
+    ):
+        assert anthropic_provider._max_tokens(get_model_data(model), requested_max_tokens) == expected_max_tokens
+
+
 class TestBuildRequest:
     def test_build_request(self, anthropic_provider: AnthropicProvider):
         request = cast(
@@ -81,8 +103,7 @@ class TestBuildRequest:
         assert request.temperature == 0
         assert request.max_tokens == 10
 
-    @pytest.mark.parametrize("model", ANTHROPIC_PROVIDER_DATA.keys())
-    def test_build_request_without_max_tokens(self, anthropic_provider: AnthropicProvider, model: Model):
+    def test_build_request_without_max_tokens(self, anthropic_provider: AnthropicProvider):
         request = cast(
             CompletionRequest,
             anthropic_provider._build_request(  # pyright: ignore[reportPrivateUsage]
@@ -90,18 +111,12 @@ class TestBuildRequest:
                     MessageDeprecated(role=MessageDeprecated.Role.SYSTEM, content="Hello 1"),
                     MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello"),
                 ],
-                options=ProviderOptions(model=model, temperature=0),
+                options=ProviderOptions(model=Model.CLAUDE_3_7_SONNET_20250219, temperature=0),
                 stream=False,
             ),
         )
-        model_data = get_model_data(model)
-        assert request.max_tokens is not None
-        if model_data.max_tokens_data.max_output_tokens:
-            assert request.max_tokens == model_data.max_tokens_data.max_output_tokens
-        elif model_data.max_tokens_data.max_tokens:
-            assert request.max_tokens == model_data.max_tokens_data.max_tokens
-        else:
-            assert request.max_tokens == 1024
+
+        assert request.max_tokens == 8192
 
     @pytest.mark.parametrize("model", ANTHROPIC_PROVIDER_DATA.keys())
     def test_build_request_with_tools(self, anthropic_provider: AnthropicProvider, model: Model) -> None:

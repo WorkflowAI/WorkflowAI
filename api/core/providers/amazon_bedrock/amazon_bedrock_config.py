@@ -29,6 +29,8 @@ def _default_resource_ids():
         Model.LLAMA_3_1_70B: "us.meta.llama3-1-70b-instruct-v1:0",
         Model.LLAMA_3_1_8B: "us.meta.llama3-1-8b-instruct-v1:0",
         Model.MISTRAL_LARGE_2_2407: "mistral.mistral-large-2407-v1:0",
+        Model.CLAUDE_4_OPUS_20250514: "us.anthropic.claude-opus-4-20250514-v1:0",
+        Model.CLAUDE_4_SONNET_20250514: "us.anthropic.claude-sonnet-4-20250514-v1:0",
     }
 
 

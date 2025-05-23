@@ -1,4 +1,5 @@
 import json
+from collections.abc import Awaitable, Callable
 from unittest import mock
 
 import openai
@@ -7,8 +8,10 @@ from openai import AsyncOpenAI
 from openai.types.chat.chat_completion_message_tool_call import ChatCompletionMessageToolCall, Function
 
 from core.domain.models.models import Model
+from core.storage.mongo.mongo_types import AsyncCollection
 from tests.integration.common import IntegrationTestClient
 from tests.integration.openai_proxy.common import save_version_from_completion
+from tests.pausable_memory_broker import PausableInMemoryBroker
 
 
 async def test_raw_string_output(test_client: IntegrationTestClient, openai_client: AsyncOpenAI):
@@ -23,6 +26,11 @@ async def test_raw_string_output(test_client: IntegrationTestClient, openai_clie
     assert res.model_extra and res.model_extra["cost_usd"]
 
     await test_client.wait_for_completed_tasks()
+
+    # Check the amplitude call
+    amplitude_events = test_client.amplitude_events_with_type("org.ran.task")
+    assert len(amplitude_events) == 1
+    assert amplitude_events[0]["event_properties"]["task"]["id"] == "default"
 
     task_id, run_id = res.id.split("/")
     run = await test_client.fetch_run({"id": task_id}, run_id=run_id, v1=True)
@@ -324,11 +332,20 @@ async def test_stream_raw_json(test_client: IntegrationTestClient, openai_client
 
     chunks = [c async for c in streamer]
     assert len(chunks) == 2
+    assert chunks[0].id.startswith("default/")
 
     await test_client.wait_for_completed_tasks()
 
     run = await test_client.get("/v1/_/agents/default/runs/latest")
     assert run["task_output"] == {"hello": "world2"}
+
+    # Here we don't add a message since
+    request = test_client.httpx_mock.get_request(url="https://api.openai.com/v1/chat/completions")
+    assert request
+    body = json.loads(request.content)
+    assert len(body["messages"]) == 2
+    assert body["messages"][0]["content"] == "Return a single JSON object"
+    assert body["messages"][1]["content"] == "Hello, world!"
 
 
 async def test_stream_structured_output(test_client: IntegrationTestClient, openai_client: AsyncOpenAI):
@@ -582,6 +599,49 @@ async def test_deployed_version_no_messages_with_empty_input(
     assert body["messages"][1]["content"] == "Hello hades!"
 
 
+async def test_profile_db_calls(
+    test_client: IntegrationTestClient,
+    openai_client: AsyncOpenAI,
+    patched_broker: PausableInMemoryBroker,
+    start_mongo_profiling: Callable[[], Awaitable[AsyncCollection]],
+):
+    """Check that we make a minimal number of db calls on the critical path"""
+    # Pause the broker so we know nothing comes from tasks
+
+    # First call, the task will be created and stored
+
+    test_client.mock_openai_call(raw_content="Hello, world!")
+    res = await openai_client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": "Hello, world!"}],
+    )
+    assert res.choices[0].message.content == "Hello, world!"
+
+    await test_client.wait_for_completed_tasks()
+
+    # Second call, now we should really not have a lot of calls
+    patched_broker.pause()
+    system_profile_col = await start_mongo_profiling()
+
+    test_client.mock_openai_call(raw_content="Hello, world!")
+    await openai_client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": "Hello, world 2"}],
+    )
+
+    # Check the number of calls we actually made
+    calls = [a async for a in system_profile_col.find({})]
+    assert len(calls) == 2
+
+    assert calls[0]["op"] == "query"
+    assert calls[0]["ns"] == "workflowai_int_test.org_settings"
+    assert "IXSCAN" in calls[0]["planSummary"]
+
+    assert calls[1]["op"] == "query"
+    assert calls[1]["ns"] == "workflowai_int_test.tasks"
+    assert "IXSCAN" in calls[1]["planSummary"]
+
+
 async def test_internal_tools(test_client: IntegrationTestClient, openai_client: AsyncOpenAI):
     test_client.mock_openai_call(
         tool_calls_content=[
@@ -612,3 +672,37 @@ async def test_internal_tools(test_client: IntegrationTestClient, openai_client:
     serper_request = test_client.httpx_mock.get_request(url="https://google.serper.dev/search")
     assert serper_request
     assert serper_request.content == b'{"q": "bla"}'
+
+
+async def test_with_cache(test_client: IntegrationTestClient, openai_client: AsyncOpenAI):
+    test_client.mock_openai_call(raw_content="Hello, world!")
+
+    # Create a first completion
+    res = await openai_client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": "Hello, world!"}],
+    )
+
+    await test_client.wait_for_completed_tasks()
+
+    # Now create a second completion with the same input and use the cache
+    res = await openai_client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": "Hello, world!"}],
+        extra_body={"use_cache": "always"},
+    )
+    assert res.choices[0].message.content == "Hello, world!"
+
+    # Check that we did not make any new calls
+    assert len(test_client.httpx_mock.get_requests(url="https://api.openai.com/v1/chat/completions")) == 1
+
+    # Same with streaming
+    streamer = await openai_client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": "Hello, world!"}],
+        extra_body={"use_cache": "always"},
+        stream=True,
+    )
+    chunks = [c async for c in streamer]
+    assert len(chunks) == 1
+    assert chunks[0].choices[0].delta.content == "Hello, world!"
