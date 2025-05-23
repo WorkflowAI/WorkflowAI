@@ -404,6 +404,20 @@ export const useVersions = create<VersionsState>((set, get) => ({
     const version = await get().fetchVersion(tenant, taskId, versionId);
     await get().fetchVersions(tenant, taskId, undefined);
 
+    const versionByScope = get().versionByScope;
+    versionByScope.forEach(async (candiate) => {
+      if (
+        candiate.schema_id !== version?.schema_id ||
+        candiate.id === versionId ||
+        candiate.deployments === undefined ||
+        candiate.deployments?.length === 0
+      ) {
+        return;
+      }
+
+      await get().fetchVersion(tenant, taskId, candiate.id);
+    });
+
     return version;
   },
 }));

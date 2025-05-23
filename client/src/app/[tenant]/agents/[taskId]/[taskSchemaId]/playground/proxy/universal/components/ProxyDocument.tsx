@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { UniversalImageValueViewer } from '@/components/ObjectViewer/FileViewers/ImageValueViewer';
+import { UniversalDocumentValueViewer } from '@/components/ObjectViewer/FileViewers/DocumentValueViewer';
 import { FileValueType } from '@/components/ObjectViewer/FileViewers/utils';
 
 type Props = {
@@ -8,7 +8,7 @@ type Props = {
   readonly?: boolean;
 };
 
-export function ProxyImage(props: Props) {
+export function ProxyDocument(props: Props) {
   const { file, setFile, readonly } = props;
 
   const onEdit = useCallback(
@@ -29,13 +29,14 @@ export function ProxyImage(props: Props) {
   );
 
   return (
-    <UniversalImageValueViewer
+    <UniversalDocumentValueViewer
       value={file}
       className={undefined}
       editable={!readonly}
       onEdit={onEdit}
       keyPath={'.'}
       readonly={readonly}
+      hideCloseButton={true}
     />
   );
 }

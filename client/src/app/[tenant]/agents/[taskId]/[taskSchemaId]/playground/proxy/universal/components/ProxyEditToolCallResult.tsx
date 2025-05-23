@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Textarea } from '@/components/ui/Textarea';
 import { ProxyToolCallResult } from '@/types/workflowAI';
-import { formatResponseToText, formatTextToResponse } from './utils';
+import { formatResponseToText, formatTextToResponse } from '../../utils';
 
 type Props = {
   result: ProxyToolCallResult | undefined;

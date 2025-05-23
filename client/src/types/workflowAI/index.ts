@@ -31,3 +31,7 @@ export type ProxyMessage = {
   role: 'user' | 'system' | 'assistant';
   content: ProxyMessageContent[];
 };
+
+export type ProxyMessageWithID = ProxyMessage & {
+  internal_id?: string;
+};

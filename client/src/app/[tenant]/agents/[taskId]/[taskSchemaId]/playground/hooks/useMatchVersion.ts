@@ -1,27 +1,43 @@
 import { useMemo } from 'react';
-import { MajorVersion } from '@/types/workflowAI';
+import { MajorVersion, ProxyMessage } from '@/types/workflowAI';
+import { removeIdsFromMessages } from '../proxy/utils';
+
+function proxyMessagesValue(proxyMessages: ProxyMessage[] | undefined) {
+  if (proxyMessages) {
+    return JSON.stringify(proxyMessages);
+  }
+  return undefined;
+}
 
 type Props = {
   majorVersions: MajorVersion[];
   temperature: number | undefined;
   instructions: string | undefined;
+  proxyMessages: ProxyMessage[] | undefined;
   variantId: string | undefined;
   userSelectedMajor: number | undefined;
 };
 
 export function useMatchVersion(props: Props) {
-  const { majorVersions, temperature, instructions, variantId, userSelectedMajor } = props;
+  const { majorVersions, temperature, instructions, proxyMessages, variantId, userSelectedMajor } = props;
+
+  const stringifiedProxyMessages = useMemo(() => {
+    const cleanedProxyMessages = proxyMessages ? removeIdsFromMessages(proxyMessages) : undefined;
+    return proxyMessagesValue(cleanedProxyMessages);
+  }, [proxyMessages]);
 
   const matchedVersion = useMemo(() => {
     const matchingVersions = majorVersions.filter((version) => {
       const normalizedVersionInstructions = version.properties.instructions?.toLowerCase().trim() || '';
 
       const normalizedInstructions = instructions?.toLowerCase().trim() || '';
+      const candidateProxyMessagesValue = proxyMessagesValue(version.properties.messages || undefined);
 
       return (
         version.properties.temperature === temperature &&
         normalizedVersionInstructions === normalizedInstructions &&
-        version.properties.task_variant_id === variantId
+        version.properties.task_variant_id === variantId &&
+        candidateProxyMessagesValue === stringifiedProxyMessages
       );
     });
 
@@ -38,7 +54,7 @@ export function useMatchVersion(props: Props) {
     }
 
     return allMatchedVersions[0];
-  }, [majorVersions, temperature, instructions, userSelectedMajor, variantId]);
+  }, [majorVersions, temperature, instructions, userSelectedMajor, variantId, stringifiedProxyMessages]);
 
   return { matchedVersion };
 }

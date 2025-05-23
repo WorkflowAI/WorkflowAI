@@ -9,12 +9,11 @@ import { ProxyEditToolCallResult } from './ProxyEditToolCallResult';
 type Props = {
   result: ProxyToolCallResult;
   setContent: (content: ProxyMessageContent) => void;
-  onRemove: () => void;
   readonly?: boolean;
 };
 
 export function ProxyToolCallResultView(props: Props) {
-  const { result, setContent, onRemove, readonly } = props;
+  const { result, setContent, readonly } = props;
 
   const dictText = useMemo(() => JSON.stringify(result.result), [result.result]);
 
@@ -34,7 +33,7 @@ export function ProxyToolCallResultView(props: Props) {
 
   return (
     <div
-      className='flex flex-row w-full items-center justify-between'
+      className='flex flex-row w-full items-center justify-between relative'
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
     >
@@ -45,17 +44,14 @@ export function ProxyToolCallResultView(props: Props) {
             Tool Call Result
           </div>
         </div>
-        <div className='pl-6 py-2'>
+        <div className='pl-6 pt-2'>
           <div className='flex flex-col text-gray-700 text-xsm border-l px-3 gap-2'>{dictText}</div>
         </div>
       </div>
       {isHovering && !readonly && (
-        <div className='flex items-center justify-center gap-2'>
+        <div className='absolute right-0 top-[50%] -translate-y-1/2 flex items-center justify-center gap-2'>
           <Button variant='newDesign' size='sm' onClick={() => setIsEditModalOpen(true)}>
             Edit
-          </Button>
-          <Button variant='destructive' size='sm' onClick={onRemove}>
-            Remove
           </Button>
         </div>
       )}

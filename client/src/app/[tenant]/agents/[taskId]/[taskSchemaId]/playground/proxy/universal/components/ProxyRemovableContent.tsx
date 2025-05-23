@@ -17,7 +17,7 @@ export function ProxyRemovableContent(props: Props) {
 
   return (
     <div
-      className={cn('flex w-full relative', className)}
+      className={cn('flex max-w-full relative', className)}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
     >
@@ -28,7 +28,7 @@ export function ProxyRemovableContent(props: Props) {
           size='none'
           icon={<Subtract16Filled />}
           onClick={onRemove}
-          className='absolute w-6 h-6 right-2 top-1 rounded-full'
+          className='absolute w-6 h-6 -right-2 -top-1.5 rounded-full'
         />
       )}
     </div>

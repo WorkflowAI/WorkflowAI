@@ -59,10 +59,7 @@ export function ProxyInputVariables(props: Props) {
   );
 
   return (
-    <div className='flex flex-col border border-gray-200 rounded-[2px] min-h-[90px] pb-1 w-full'>
-      <div className='flex w-full px-4 text-[13px] text-gray-900 font-medium border-b border-gray-200 border-dashed justify-between items-center'>
-        <div className='py-3'>Input Variables</div>
-      </div>
+    <div className='flex flex-col min-h-[90px] pb-2 w-full border-b border-gray-200 border-dashed'>
       <ObjectViewer
         schema={inputSchema}
         defs={inputSchema?.$defs}

@@ -10,12 +10,11 @@ import { ProxyEditToolCallRequest } from './ProxyEditToolCallRequest';
 type Props = {
   content: ProxyMessageContent;
   setContent: (content: ProxyMessageContent) => void;
-  onRemove: () => void;
   readonly?: boolean;
 };
 
 export function ProxyToolCallRequest(props: Props) {
-  const { content, setContent, onRemove, readonly } = props;
+  const { content, setContent, readonly } = props;
 
   const request = content.tool_call_request;
   const dictText = useMemo(() => JSON.stringify(request?.tool_input_dict), [request?.tool_input_dict]);
@@ -36,7 +35,7 @@ export function ProxyToolCallRequest(props: Props) {
 
   return (
     <div
-      className='flex flex-row w-full items-center justify-between'
+      className='flex flex-row w-full items-center justify-between relative'
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
     >
@@ -57,12 +56,9 @@ export function ProxyToolCallRequest(props: Props) {
         </div>
       </div>
       {isHovering && !readonly && (
-        <div className='flex items-center justify-center gap-2'>
+        <div className='absolute right-0 top-[50%] -translate-y-1/2 flex items-center justify-center gap-2'>
           <Button variant='newDesign' size='sm' onClick={() => setIsEditModalOpen(true)}>
             Edit
-          </Button>
-          <Button variant='destructive' size='sm' onClick={onRemove}>
-            Remove
           </Button>
         </div>
       )}

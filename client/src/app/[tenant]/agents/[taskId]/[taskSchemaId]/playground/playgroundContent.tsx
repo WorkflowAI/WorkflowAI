@@ -68,7 +68,6 @@ import { RunAgentsButton } from './components/RunAgentsButton';
 import { useFetchTaskRunUntilCreated } from './hooks/useFetchTaskRunUntilCreated';
 import { useImproveInstructions } from './hooks/useImproveInstructions';
 import { useInputGenerator } from './hooks/useInputGenerator';
-import { useIsProxy } from './hooks/useIsProxy';
 import { useMatchVersion } from './hooks/useMatchVersion';
 import { usePlaygroundEffects } from './hooks/usePlaygroundEffects';
 import { usePlaygroundInputHistory } from './hooks/usePlaygroundInputHistory';
@@ -83,7 +82,8 @@ import { pickFinalRunProperties } from './hooks/utils';
 import { PlaygroundInputContainer } from './playgroundInputContainer';
 import { PlaygroundInputSettingsModal } from './playgroundInputSettingsModal';
 import { PlaygroundOutput } from './playgroundOutput';
-import { ProxyHeader } from './proxy/ProxyHeader';
+import { ProxySection } from './proxy/ProxySection';
+import { useIsProxy } from './proxy/hooks/useIsProxy';
 
 export type PlaygroundContentProps = {
   taskId: TaskID;
@@ -228,20 +228,14 @@ export function PlaygroundContent(props: PlaygroundContentBodyProps) {
 
   const { version: currentVersion } = useOrFetchVersion(tenant, taskId, versionId ?? persistedVersionId);
 
-  const {
-    isProxy,
-    hasInput: hasProxyInput,
-    messages: proxyMessagesFromVersion,
-  } = useIsProxy(currentTaskSchema, currentVersion);
+  const { isProxy, messages: proxyMessagesFromVersion } = useIsProxy(currentTaskSchema, currentVersion);
 
   const [proxyMessages, setProxyMessages] = useState<ProxyMessage[] | undefined>(proxyMessagesFromVersion);
   const proxyMessagesRef = useRef<ProxyMessage[] | undefined>(proxyMessages);
   proxyMessagesRef.current = proxyMessages;
 
   useEffect(() => {
-    if (proxyMessagesFromVersion) {
-      setProxyMessages(proxyMessagesFromVersion);
-    }
+    setProxyMessages(proxyMessagesFromVersion);
   }, [proxyMessagesFromVersion]);
 
   const isInputGenerationSupported = useMemo(() => {
@@ -354,6 +348,7 @@ export function PlaygroundContent(props: PlaygroundContentBodyProps) {
     majorVersions,
     temperature,
     instructions,
+    proxyMessages,
     variantId,
     userSelectedMajor,
   });
@@ -913,8 +908,6 @@ export function PlaygroundContent(props: PlaygroundContentBodyProps) {
     tenant,
     taskId,
     taskRunners,
-    instructions,
-    temperature,
     hiddenModelColumns,
   });
 
@@ -1014,15 +1007,17 @@ export function PlaygroundContent(props: PlaygroundContentBodyProps) {
     [openEditTaskModal, checkIfAllowed, onSaveTaskPreview, variantId]
   );
 
-  const useInstructionsAndTemperatureFromMajorVersion = useCallback(
+  const useParametersFromMajorVersion = useCallback(
     (version: MajorVersion) => {
       onResetTaskRunIds();
       setInstructions(version.properties.instructions);
       setTemperature(version.properties.temperature);
+      const messages = (version.properties.messages as ProxyMessage[]) ?? undefined;
+      setProxyMessages(messages);
       setVariantId(!!version.properties.task_variant_id ? version.properties.task_variant_id : undefined);
       setUserSelectedMajor(version.major);
     },
-    [setInstructions, setTemperature, setUserSelectedMajor, onResetTaskRunIds, setVariantId]
+    [setInstructions, setTemperature, setUserSelectedMajor, onResetTaskRunIds, setVariantId, setProxyMessages]
   );
 
   const onSetInstructions = useCallback(
@@ -1203,6 +1198,22 @@ export function PlaygroundContent(props: PlaygroundContentBodyProps) {
     [setGeneratedInput, scrollToBottomOfProxyMessages, handleRunTasks]
   );
 
+  const onSetProxyMessages = useCallback(
+    (messages: ProxyMessage[] | undefined) => {
+      onResetTaskRunIds();
+      setProxyMessages(messages);
+    },
+    [setProxyMessages, onResetTaskRunIds]
+  );
+
+  const onSetGeneratedInput = useCallback(
+    (input: GeneralizedTaskInput | undefined) => {
+      onResetTaskRunIds();
+      setGeneratedInput(input);
+    },
+    [setGeneratedInput, onResetTaskRunIds]
+  );
+
   return (
     <div className='flex flex-row h-full w-full'>
       <div className='flex h-full flex-1 overflow-hidden'>
@@ -1219,7 +1230,7 @@ export function PlaygroundContent(props: PlaygroundContentBodyProps) {
               <Button variant='newDesign' icon={<Link16Regular />} onClick={copyUrl} className='w-9 h-9 px-0 py-0' />
               {!isMobile && (
                 <RunAgentsButton
-                  showSaveAllVersions={showSaveAllVersions && !noCreditsLeft && !isInDemoMode}
+                  showSaveAllVersions={showSaveAllVersions && !noCreditsLeft && !isInDemoMode && !isProxy}
                   areTasksRunning={areTasksRunning}
                   inputLoading={inputLoading}
                   areInstructionsLoading={areInstructionsLoading}
@@ -1242,21 +1253,25 @@ export function PlaygroundContent(props: PlaygroundContentBodyProps) {
           >
             <div className='flex flex-col w-full sm:pb-0 pb-20'>
               {isProxy ? (
-                <ProxyHeader
+                <ProxySection
                   inputSchema={inputSchema}
                   input={generatedInput}
-                  setInput={setGeneratedInput}
+                  setInput={onSetGeneratedInput}
                   temperature={temperature}
                   setTemperature={setTemperature}
-                  handleRunTasks={onUserRunTasks}
                   toolCalls={proxyToolCalls}
                   setToolCalls={setProxyToolCalls}
                   maxHeight={isMobile ? undefined : containerHeight - 50}
                   proxyMessages={proxyMessages}
-                  setProxyMessages={setProxyMessages}
-                  hasProxyInput={hasProxyInput}
+                  setProxyMessages={onSetProxyMessages}
                   tenant={tenant}
                   taskId={taskId}
+                  matchedMajorVersion={matchedMajorVersion}
+                  majorVersions={majorVersions}
+                  useParametersFromMajorVersion={useParametersFromMajorVersion}
+                  showSaveAllVersions={showSaveAllVersions && !noCreditsLeft && !isInDemoMode}
+                  onSaveAllVersions={onSaveAllVersions}
+                  versionsForRuns={versionsForRuns}
                 />
               ) : (
                 <PlaygroundInputContainer
@@ -1295,7 +1310,7 @@ export function PlaygroundContent(props: PlaygroundContentBodyProps) {
                   maxHeight={isMobile ? undefined : containerHeight - 50}
                   matchedMajorVersion={matchedMajorVersion}
                   majorVersions={majorVersions}
-                  useInstructionsAndTemperatureFromMajorVersion={useInstructionsAndTemperatureFromMajorVersion}
+                  useInstructionsAndTemperatureFromMajorVersion={useParametersFromMajorVersion}
                   onToolsChange={updateTaskInstructions}
                   onStopGeneratingInput={onStopGeneratingInput}
                   isInDemoMode={isInDemoMode}
@@ -1330,7 +1345,6 @@ export function PlaygroundContent(props: PlaygroundContentBodyProps) {
                   hideModelColumn={hideModelColumn}
                   hiddenModelColumns={hiddenModelColumns}
                   isProxy={isProxy}
-                  hasProxyInput={hasProxyInput}
                   updateInputAndRun={updateInputAndRun}
                 />
               </div>
@@ -1352,7 +1366,7 @@ export function PlaygroundContent(props: PlaygroundContentBodyProps) {
 
             <div className='fixed bottom-0 left-0 right-0 z-10 bg-white border-t border-gray-200 p-4 sm:hidden flex w-full'>
               <RunAgentsButton
-                showSaveAllVersions={showSaveAllVersions && !noCreditsLeft && !isInDemoMode}
+                showSaveAllVersions={showSaveAllVersions && !noCreditsLeft && !isInDemoMode && !isProxy}
                 areTasksRunning={areTasksRunning}
                 inputLoading={inputLoading}
                 areInstructionsLoading={areInstructionsLoading}

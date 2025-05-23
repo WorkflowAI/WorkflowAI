@@ -55,9 +55,8 @@ type ModelOutputProps = {
   isInDemoMode: boolean;
   isHideModelColumnAvaible: boolean;
   hideModelColumn: () => void;
-  isProxy: boolean;
   updateInputAndRun: (input: TaskInputDict) => Promise<void>;
-  hasProxyInput: boolean;
+  isProxy: boolean;
 };
 
 function ModelOutput(props: ModelOutputProps) {
@@ -83,9 +82,8 @@ function ModelOutput(props: ModelOutputProps) {
     isInDemoMode,
     isHideModelColumnAvaible,
     hideModelColumn,
-    isProxy,
     updateInputAndRun,
-    hasProxyInput,
+    isProxy,
   } = props;
 
   const taskRun = taskRunner.data;
@@ -195,9 +193,8 @@ function ModelOutput(props: ModelOutputProps) {
               isInDemoMode={isInDemoMode}
               isHideModelColumnAvaible={isHideModelColumnAvaible}
               hideModelColumn={hideModelColumn}
-              isProxy={isProxy}
               updateInputAndRun={updateInputAndRun}
-              hasProxyInput={hasProxyInput}
+              isProxy={isProxy}
             />
           </div>
         )}
@@ -232,7 +229,6 @@ type PlaygroundOutputProps = Pick<
   hideModelColumn: (index: number) => void;
   hiddenModelColumns: number[] | undefined;
   isProxy: boolean;
-  hasProxyInput: boolean;
   updateInputAndRun: (input: TaskInputDict) => Promise<void>;
 };
 
@@ -250,7 +246,6 @@ export function PlaygroundOutput(props: PlaygroundOutputProps) {
     isInDemoMode,
     hiddenModelColumns,
     isProxy,
-    hasProxyInput,
     updateInputAndRun,
     ...rest
   } = props;
@@ -406,9 +401,8 @@ export function PlaygroundOutput(props: PlaygroundOutputProps) {
               isInDemoMode={isInDemoMode}
               isHideModelColumnAvaible={isHideModelColumnAvaible}
               hideModelColumn={() => onHideModelColumn(index)}
-              isProxy={isProxy}
               updateInputAndRun={updateInputAndRun}
-              hasProxyInput={hasProxyInput}
+              isProxy={isProxy}
             />
           ))}
         </div>

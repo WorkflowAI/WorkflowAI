@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import { Textarea } from '@/components/ui/Textarea';
 import { ProxyMessageContent } from '@/types/workflowAI';
-import { createEmptyMessageContent, formatResponseToText } from './utils';
+import { createEmptyMessageContent, formatResponseToText } from '../../utils';
 
 type ProxyTextareaProps = {
   content: ProxyMessageContent | undefined;
@@ -29,7 +29,7 @@ export function ProxyTextarea(props: ProxyTextareaProps) {
 
   return (
     <Textarea
-      className='flex text-gray-900 placeholder:text-gray-500 font-normal text-[13px] rounded-[2px] border-gray-300 overflow-y-auto focus-within:ring-inset'
+      className='flex py-0 text-gray-900 placeholder:text-gray-500 font-normal text-[13px] overflow-y-auto border-none focus:ring-0 !ring-0 outline-none focus:outline-none'
       style={{ minHeight: minHeight }}
       placeholder={placeholder}
       value={text}

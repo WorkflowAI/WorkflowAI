@@ -1,20 +1,31 @@
-import { useCallback, useState } from 'react';
+import { useMemo } from 'react';
 import { TemperatureSelector } from '@/components/TemperatureSelector/TemperatureSelector';
-import { ProxyMessage, ToolKind, Tool_Output } from '@/types/workflowAI';
-import { ProxyTools } from '../ProxyTools';
-import { createEmptySystemMessage, createEmptyUserMessage } from '../utils';
-import { ProxyAddMessageButton } from './ProxyAddMessageButton';
-import { ProxyParametersMessagesView } from './ProxyParametersMessagesView';
+import { Button } from '@/components/ui/Button';
+import { SimpleTooltip } from '@/components/ui/Tooltip';
+import { ProxyMajorVersionDetails } from '@/components/v2/ProxyMajorVersionDetails';
+import { MajorVersion, ProxyMessage, ToolKind, Tool_Output, VersionV1 } from '@/types/workflowAI';
+import { MajorVersionCombobox } from '../../components/MajorVersionSelector/MajorVersionSelector';
+import { ProxyMessagesView } from '../universal/ProxyMessagesView';
+import { getAvaibleMessageTypes } from '../utils';
+import { ProxyTools } from './ProxyTools';
 
 type ProxyParametersProps = {
-  messages: ProxyMessage[];
-  setMessages: (messages: ProxyMessage[]) => void;
+  messages: ProxyMessage[] | undefined;
+  setMessages: (messages: ProxyMessage[] | undefined) => void;
+
   temperature: number;
   setTemperature: (temperature: number) => void;
-  handleRunTasks: () => void;
+
   toolCalls: (ToolKind | Tool_Output)[] | undefined;
   setToolCalls: (toolCalls: (ToolKind | Tool_Output)[] | undefined) => void;
-  supportOnlySystemMessages: boolean;
+
+  majorVersions: MajorVersion[];
+  matchedMajorVersion: MajorVersion | undefined;
+  useParametersFromMajorVersion: (version: MajorVersion) => void;
+
+  showSaveAllVersions: boolean;
+  onSaveAllVersions: () => void;
+  versionsForRuns: Record<string, VersionV1>;
 };
 
 export function ProxyParameters(props: ProxyParametersProps) {
@@ -23,50 +34,69 @@ export function ProxyParameters(props: ProxyParametersProps) {
     setMessages,
     temperature,
     setTemperature,
-    handleRunTasks,
     toolCalls,
     setToolCalls,
-    supportOnlySystemMessages,
+    majorVersions,
+    matchedMajorVersion,
+    useParametersFromMajorVersion,
+    showSaveAllVersions,
+    onSaveAllVersions,
+    versionsForRuns,
   } = props;
 
-  const [isHovering, setIsHovering] = useState(false);
-
-  const onAddSystemMessage = useCallback(() => {
-    setMessages([...messages, createEmptySystemMessage()]);
-  }, [messages, setMessages]);
-
-  const addUserMessage = useCallback(() => {
-    setMessages([...messages, createEmptyUserMessage('text')]);
-  }, [messages, setMessages]);
+  const version = useMemo(() => {
+    const keys = Object.keys(versionsForRuns);
+    if (keys.length === 0) {
+      return undefined;
+    }
+    return versionsForRuns[keys[0]];
+  }, [versionsForRuns]);
 
   return (
-    <div
-      className='flex flex-col w-full h-full'
-      onMouseEnter={() => setIsHovering(true)}
-      onMouseLeave={() => setIsHovering(false)}
-    >
+    <div className='flex flex-col w-full h-full'>
       <div className='flex flex-row h-[48px] w-full justify-between items-center shrink-0 border-b border-gray-200 border-dashed px-4'>
-        <div className='flex w-full items-center font-semibold text-[16px] text-gray-700'>Parameters</div>
-        <ProxyAddMessageButton
-          isHovering={isHovering}
-          addSystemMessage={onAddSystemMessage}
-          addUserMessage={addUserMessage}
-          supportOnlySystemMessages={supportOnlySystemMessages}
+        <div className='flex flex-row items-center gap-2'>
+          <div className='flex items-center font-semibold text-[16px] text-gray-700'>Version</div>
+          {showSaveAllVersions && version && (
+            <SimpleTooltip
+              content={<ProxyMajorVersionDetails version={version} />}
+              tooltipClassName='w-[350px] p-0 rounded-[2px] border border-gray-200'
+              tooltipDelay={100}
+              side='bottom'
+              align='start'
+            >
+              <Button variant='newDesign' size='sm' onClick={onSaveAllVersions}>
+                Save
+              </Button>
+            </SimpleTooltip>
+          )}
+        </div>
+        <div className='flex w-full justify-end'>
+          <MajorVersionCombobox
+            majorVersions={majorVersions}
+            matchedMajorVersion={matchedMajorVersion}
+            useParametersFromMajorVersion={useParametersFromMajorVersion}
+          />
+        </div>
+      </div>
+      <div className='flex flex-col w-full h-full overflow-y-auto'>
+        <ProxyMessagesView
+          messages={messages}
+          setMessages={setMessages}
+          defaultType={getAvaibleMessageTypes('version')[0]}
+          avaibleTypes={getAvaibleMessageTypes('version')}
+          className='px-4 py-4 min-h-[100px]'
+          allowRemovalOfLastMessage={false}
         />
       </div>
-      <ProxyParametersMessagesView messages={messages} setMessages={setMessages} />
       <div className='flex flex-col w-full border-t border-gray-200 border-dashed'>
-        <div className='flex flex-col gap-1 px-4 pt-2'>
+        <div className='flex flex-col gap-1 px-4 pt-2 pb-3 border-b border-gray-200 border-dashed'>
           <div className='flex w-full items-center font-medium text-[13px] text-gray-900'>Tools</div>
           <ProxyTools toolCalls={toolCalls} setToolCalls={setToolCalls} />
         </div>
         <div className='flex flex-col gap-1 px-4 pt-3 pb-3'>
           <div className='flex w-full items-center font-medium text-[13px] text-gray-900'>Temperature</div>
-          <TemperatureSelector
-            temperature={temperature}
-            setTemperature={setTemperature}
-            handleRunTasks={handleRunTasks}
-          />
+          <TemperatureSelector temperature={temperature} setTemperature={setTemperature} />
         </div>
       </div>
     </div>

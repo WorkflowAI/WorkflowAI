@@ -60,6 +60,7 @@ export function ProxyAudio(props: Props) {
       transcriptions={undefined}
       fetchAudioTranscription={fetchAudioTranscription}
       handleUploadFile={handleUploadFile}
+      hideCloseButton={true}
     />
   );
 }

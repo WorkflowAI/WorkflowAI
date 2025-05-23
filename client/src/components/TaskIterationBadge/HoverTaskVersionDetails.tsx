@@ -1,6 +1,7 @@
 import { HoverCardContentProps } from '@radix-ui/react-hover-card';
 import { HoverCardContent } from '@radix-ui/react-hover-card';
 import { DebouncedState } from 'usehooks-ts';
+import { ProxyVersionDetails } from '@/components/v2/ProxyVersionDetails';
 import { TaskVersionDetails } from '@/components/v2/TaskVersionDetails';
 import { VersionV1 } from '@/types/workflowAI';
 
@@ -9,10 +10,11 @@ type HoverTaskVersionDetailsProps = {
   align?: HoverCardContentProps['align'];
   version: VersionV1;
   handleUpdateNotes?: DebouncedState<(versionId: string, notes: string) => Promise<void>>;
+  isProxy?: boolean;
 };
 
 export function HoverTaskVersionDetails(props: HoverTaskVersionDetailsProps) {
-  const { side, align, version, handleUpdateNotes } = props;
+  const { side, align, version, handleUpdateNotes, isProxy } = props;
 
   return (
     <HoverCardContent
@@ -20,12 +22,16 @@ export function HoverTaskVersionDetails(props: HoverTaskVersionDetailsProps) {
       side={side}
       align={align}
     >
-      <div className='flex flex-col'>
-        <div className='text-gray-700 text-[16px] font-semibold px-4 py-3 border-b border-gray-200 border-dashed'>
-          Version Details
+      {isProxy ? (
+        <ProxyVersionDetails version={version} handleUpdateNotes={handleUpdateNotes} className='w-[360px]' />
+      ) : (
+        <div className='flex flex-col'>
+          <div className='text-gray-700 text-[16px] font-semibold px-4 py-3 border-b border-gray-200 border-dashed'>
+            Version Details
+          </div>
+          <TaskVersionDetails version={version} handleUpdateNotes={handleUpdateNotes} className='max-w-[360px]' />
         </div>
-        <TaskVersionDetails version={version} handleUpdateNotes={handleUpdateNotes} className='max-w-[360px]' />
-      </div>
+      )}
     </HoverCardContent>
   );
 }

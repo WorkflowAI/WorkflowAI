@@ -11,13 +11,11 @@ type Props = {
   tenant: TenantID | undefined;
   taskId: TaskID;
   taskRunners: TaskRunner[];
-  instructions: string;
-  temperature: number;
   hiddenModelColumns: number[] | undefined;
 };
 
 export function useVersionsForTaskRunners(props: Props) {
-  const { tenant, taskId, taskRunners, instructions, temperature, hiddenModelColumns } = props;
+  const { tenant, taskId, taskRunners, hiddenModelColumns } = props;
 
   const { version: versionRunOne } = useOrFetchVersion(
     tenant,
@@ -58,22 +56,6 @@ export function useVersionsForTaskRunners(props: Props) {
     return Object.values(versionsForRuns).every((version) => isVersionSaved(version));
   }, [versionsForRuns]);
 
-  const showSaveAllVersions = useMemo(() => {
-    if (areAllVersionsForTaskRunsSaved) {
-      return false;
-    }
-
-    const versionsToSave = Object.values(versionsForRuns);
-    const isThereVersionNotMatchingParameters = versionsToSave.some((version) => {
-      return (
-        version.properties.instructions?.trim().toLowerCase() !== instructions.trim().toLowerCase() ||
-        version.properties.temperature !== temperature
-      );
-    });
-
-    return !isThereVersionNotMatchingParameters;
-  }, [areAllVersionsForTaskRunsSaved, instructions, temperature, versionsForRuns]);
-
   const saveVersion = useVersions((state) => state.saveVersion);
 
   const onSaveAllVersions = useCallback(async () => {
@@ -87,5 +69,5 @@ export function useVersionsForTaskRunners(props: Props) {
     await Promise.all(versionsToSave.map((version) => saveVersion(tenant, taskId, version.id)));
   }, [versionsForRuns, saveVersion, tenant, taskId]);
 
-  return { versionsForRuns, showSaveAllVersions, onSaveAllVersions };
+  return { versionsForRuns, showSaveAllVersions: !areAllVersionsForTaskRunsSaved, onSaveAllVersions };
 }

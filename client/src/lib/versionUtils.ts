@@ -25,6 +25,23 @@ export function getEnvironmentShorthandName(environment: VersionEnvironment | un
   }
 }
 
+export function getEnvironmentFullName(environment: VersionEnvironment | undefined): string | undefined {
+  if (!environment) {
+    return undefined;
+  }
+
+  switch (environment) {
+    case 'dev':
+      return 'Development';
+    case 'staging':
+      return 'Staging';
+    case 'production':
+      return 'Production';
+    default:
+      return 'Unknown';
+  }
+}
+
 export function formatSemverVersion(
   version: VersionV1 | undefined,
   hideMinorVersion: boolean = false

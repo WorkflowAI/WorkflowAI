@@ -72,8 +72,6 @@ type TaskRunOutputRowsProps = {
   side?: HoverCardContentProps['side'];
   showTaskIterationDetails?: boolean;
   version: VersionV1 | undefined;
-  isProxy?: boolean;
-  hasProxyInput?: boolean;
 };
 
 export function TaskRunOutputRows({
@@ -88,8 +86,6 @@ export function TaskRunOutputRows({
   showAllFields = false,
   side,
   showTaskIterationDetails = false,
-  isProxy = false,
-  hasProxyInput = false,
 }: TaskRunOutputRowsProps) {
   const filteredMetadata = useMemo(() => {
     if (!taskRun?.metadata) {
@@ -106,16 +102,10 @@ export function TaskRunOutputRows({
 
   return (
     <div className='flex flex-col'>
-      <div className='grid grid-cols-2 [&>*]:border-gray-100 [&>*]:border-b [&>*:nth-child(odd)]:border-r'>
+      <div className='grid grid-cols-[repeat(auto-fit,minmax(max(160px,50%),1fr))] [&>*]:border-gray-100 [&>*]:border-b [&>*:nth-child(odd)]:border-r'>
         {showVersion && (
           <div className='flex h-10'>
-            <VersionOutputValueRow
-              version={version}
-              side={side}
-              showTaskIterationDetails={showTaskIterationDetails}
-              isProxy={isProxy}
-              hasProxyInput={hasProxyInput}
-            />
+            <VersionOutputValueRow version={version} side={side} showTaskIterationDetails={showTaskIterationDetails} />
           </div>
         )}
         <div className='flex h-10'>

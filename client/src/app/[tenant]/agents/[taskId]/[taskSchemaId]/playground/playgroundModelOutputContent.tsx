@@ -27,7 +27,7 @@ import { TaskInputDict } from '@/types/workflowAI';
 import { ImprovePrompt } from './ImprovePrompt';
 import { AIEvaluationReview } from './components/AIEvaluation/AIEvaluationReview';
 import { TaskRunOutputRows } from './components/TaskRunOutputRows/TaskRunOutputRows';
-import { ProxyReplyView } from './proxy/ProxyReplyView';
+import { ProxyReplyView } from './proxy/universal/ProxyReplyView';
 
 type ModelOutputContentProps = {
   currentAIModel: ModelResponse | undefined;
@@ -52,9 +52,8 @@ type ModelOutputContentProps = {
   isInDemoMode: boolean;
   isHideModelColumnAvaible: boolean;
   hideModelColumn: () => void;
-  isProxy: boolean;
-  hasProxyInput: boolean;
   updateInputAndRun: (input: TaskInputDict) => Promise<void>;
+  isProxy: boolean;
 };
 
 export function PlaygroundModelOutputContent(props: ModelOutputContentProps) {
@@ -81,9 +80,8 @@ export function PlaygroundModelOutputContent(props: ModelOutputContentProps) {
     isInDemoMode,
     isHideModelColumnAvaible,
     hideModelColumn,
-    isProxy,
-    hasProxyInput,
     updateInputAndRun,
+    isProxy,
   } = props;
 
   const onCopyTaskRunUrl = useCopyRunURL(tenant, taskId, taskRun?.id);
@@ -144,6 +142,7 @@ export function PlaygroundModelOutputContent(props: ModelOutputContentProps) {
   const emptyMode = !taskOutput || hasInputChanged;
 
   const outputSchema = (version?.output_schema as JsonSchema) ?? outputSchemaFromProps;
+  const inputSchema = version?.input_schema as JsonSchema;
 
   const [showReplyView, setShowReplyView] = useState(false);
   const showReplyButton = isProxy && !!taskRun && !showReplyView;
@@ -217,32 +216,30 @@ export function PlaygroundModelOutputContent(props: ModelOutputContentProps) {
           showVersion={true}
           contextWindowInformation={contextWindowInformation}
           showTaskIterationDetails={true}
-          isProxy={isProxy}
-          hasProxyInput={hasProxyInput}
         />
         {showReplyView && !!taskRun && (
           <ProxyReplyView
-            hasProxyInput={hasProxyInput}
             toolCalls={toolCallsPreview}
             input={taskRun.task_input}
             output={taskRun.task_output}
+            inputSchema={inputSchema}
             updateInputAndRun={updateInputAndRun}
           />
         )}
-      </div>
 
-      {showReplyButton && (
-        <div className='flex w-full overflow-hidden pb-2'>
-          <Button
-            variant='newDesignGray'
-            size='sm'
-            onClick={onShowReplyView}
-            icon={<Add16Filled className='h-3.5 w-3.5' />}
-          >
-            User Message
-          </Button>
-        </div>
-      )}
+        {showReplyButton && (
+          <div className='flex w-full overflow-hidden py-3 px-4'>
+            <Button
+              variant='newDesignGray'
+              size='sm'
+              onClick={onShowReplyView}
+              icon={<Add16Filled className='h-3.5 w-3.5' />}
+            >
+              Reply with {toolCallsPreview && toolCallsPreview.length > 0 ? 'Tool Call Result' : 'User Message'}
+            </Button>
+          </div>
+        )}
+      </div>
 
       <div className={cn('sm:flex hidden items-center justify-between', isHovering ? 'opacity-100' : 'opacity-0')}>
         <div className='flex items-center gap-2'>
@@ -266,28 +263,32 @@ export function PlaygroundModelOutputContent(props: ModelOutputContentProps) {
               disabled={!taskRun}
             />
           </SimpleTooltip>
-          <SimpleTooltip content='View Code'>
-            <Button
-              variant='newDesignGray'
-              size='none'
-              onClick={onOpenTaskCode}
-              icon={<Code16Regular className='h-4 w-4' />}
-              className='h-7 w-7 border-none shadow-sm shadow-gray-400/30'
-              disabled={!taskRun}
-              loading={isOpeningCode}
-            />
-          </SimpleTooltip>
-          <SimpleTooltip content='Deploy Version'>
-            <Button
-              variant='newDesignGray'
-              size='none'
-              onClick={onDeployToClick}
-              icon={<ArrowCircleUp16Regular className='h-4 w-4' />}
-              className='h-7 w-7 border-none shadow-sm shadow-gray-400/30'
-              disabled={!taskRun || isInDemoMode}
-              loading={isOpeningDeploy}
-            />
-          </SimpleTooltip>
+          {!isProxy && (
+            <>
+              <SimpleTooltip content='View Code'>
+                <Button
+                  variant='newDesignGray'
+                  size='none'
+                  onClick={onOpenTaskCode}
+                  icon={<Code16Regular className='h-4 w-4' />}
+                  className='h-7 w-7 border-none shadow-sm shadow-gray-400/30'
+                  disabled={!taskRun}
+                  loading={isOpeningCode}
+                />
+              </SimpleTooltip>
+              <SimpleTooltip content='Deploy Version'>
+                <Button
+                  variant='newDesignGray'
+                  size='none'
+                  onClick={onDeployToClick}
+                  icon={<ArrowCircleUp16Regular className='h-4 w-4' />}
+                  className='h-7 w-7 border-none shadow-sm shadow-gray-400/30'
+                  disabled={!taskRun || isInDemoMode}
+                  loading={isOpeningDeploy}
+                />
+              </SimpleTooltip>
+            </>
+          )}
         </div>
 
         {isHideModelColumnAvaible && (

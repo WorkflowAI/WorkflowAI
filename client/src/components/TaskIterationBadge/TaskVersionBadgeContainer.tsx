@@ -1,6 +1,7 @@
 import { Save16Regular } from '@fluentui/react-icons';
 import { HoverCard, HoverCardContentProps, HoverCardTrigger } from '@radix-ui/react-hover-card';
 import { useCallback, useMemo, useState } from 'react';
+import { checkVersionForProxy } from '@/app/[tenant]/agents/[taskId]/[taskSchemaId]/playground/proxy/hooks/useIsProxy';
 import { useDemoMode } from '@/lib/hooks/useDemoMode';
 import { useFavoriteToggle } from '@/lib/hooks/useFavoriteToggle';
 import { useIsAllowed } from '@/lib/hooks/useIsAllowed';
@@ -14,6 +15,8 @@ import { TaskSchemaID } from '@/types/aliases';
 import { VersionV1 } from '@/types/workflowAI';
 import { Button } from '../ui/Button';
 import { SimpleTooltip } from '../ui/Tooltip';
+import { ProxyDeployBadgeButton } from '../v2/ProxyDeployBadgeButton';
+import { ProxySaveBadgeButton } from '../v2/ProxySaveBadgeButton';
 import { AddNoteCard } from './AddNoteCard';
 import { HoverTaskVersionDetails } from './HoverTaskVersionDetails';
 import { TaskStats } from './TaskIterationStats';
@@ -37,9 +40,6 @@ type TaskVersionBadgeContainerProps = {
 
   className?: string;
   height?: number;
-
-  isProxy?: boolean;
-  hasProxyInput?: boolean;
 };
 
 export function TaskVersionBadgeContainer(props: TaskVersionBadgeContainerProps) {
@@ -57,8 +57,6 @@ export function TaskVersionBadgeContainer(props: TaskVersionBadgeContainerProps)
     height,
     interaction = true,
     hideMinorVersion = false,
-    isProxy = false,
-    hasProxyInput = false,
   } = props;
   const [noteHoverCardOpen, setNoteHoverCardOpen] = useState(false);
 
@@ -68,6 +66,10 @@ export function TaskVersionBadgeContainer(props: TaskVersionBadgeContainerProps)
   const { tenant, taskId } = useTaskSchemaParams();
 
   const taskSchemaId = `${version.schema_id}` as TaskSchemaID;
+
+  const isProxy = useMemo(() => {
+    return checkVersionForProxy(version);
+  }, [version]);
 
   const { handleUpdateNotes } = useUpdateNotes({
     tenant: tenant,
@@ -117,24 +119,35 @@ export function TaskVersionBadgeContainer(props: TaskVersionBadgeContainerProps)
   const shouldShowActiveIndicator = showActiveIndicator && isActive && version.id !== undefined;
 
   const isSaving = useIsSavingVersion(version?.id);
-
   const isSaved = isVersionSaved(version);
 
   if (!isSaved) {
-    return (
-      <SimpleTooltip content={'Save as a new version'}>
-        <Button
-          variant='newDesign'
-          size='sm'
-          icon={<Save16Regular />}
-          onClick={onSave}
-          loading={isSaving}
-          disabled={isInDemoMode || (isProxy && !hasProxyInput)}
-        >
-          Save
-        </Button>
-      </SimpleTooltip>
-    );
+    if (isProxy) {
+      return (
+        <ProxySaveBadgeButton
+          version={version}
+          onSave={onSave}
+          handleUpdateNotes={handleUpdateNotes}
+          tenant={tenant}
+          taskId={taskId}
+        />
+      );
+    } else {
+      return (
+        <SimpleTooltip content={'Save as a new version'}>
+          <Button
+            variant='newDesign'
+            size='sm'
+            icon={<Save16Regular />}
+            onClick={onSave}
+            loading={isSaving}
+            disabled={isInDemoMode}
+          >
+            Save
+          </Button>
+        </SimpleTooltip>
+      );
+    }
   }
 
   if (!interaction) {
@@ -169,23 +182,34 @@ export function TaskVersionBadgeContainer(props: TaskVersionBadgeContainerProps)
           });
         }}
       >
-        <HoverCardTrigger asChild>
-          <div>
-            <TaskVersionBadgeContent
-              text={badgeText}
-              schemaText={showSchema ? taskSchemaId : undefined}
-              isFavorite={isFavorite}
-              onFavoriteToggle={onFavoriteToggle}
-              showFavorite={showFavorite}
-              className={className}
-              showHoverState={showHoverState}
-              openRightSide={shouldShowActiveIndicator}
-              height={height}
-            />
-          </div>
-        </HoverCardTrigger>
+        <div className='flex flex-row items-center'>
+          <HoverCardTrigger asChild>
+            <div>
+              <TaskVersionBadgeContent
+                text={badgeText}
+                schemaText={showSchema ? taskSchemaId : undefined}
+                isFavorite={isFavorite}
+                onFavoriteToggle={onFavoriteToggle}
+                showFavorite={showFavorite}
+                className={cn(className, isProxy && 'h-7')}
+                showHoverState={showHoverState}
+                openRightSide={shouldShowActiveIndicator}
+                height={height}
+              />
+            </div>
+          </HoverCardTrigger>
+          {isProxy && (
+            <ProxyDeployBadgeButton isInDemoMode={isInDemoMode} version={version} tenant={tenant} taskId={taskId} />
+          )}
+        </div>
         {showDetails && !noteHoverCardOpen && (
-          <HoverTaskVersionDetails side={side} align={align} version={version} handleUpdateNotes={handleUpdateNotes} />
+          <HoverTaskVersionDetails
+            side={side}
+            align={align}
+            version={version}
+            handleUpdateNotes={handleUpdateNotes}
+            isProxy={isProxy}
+          />
         )}
         {showNotes && noteHoverCardOpen && (
           <AddNoteCard

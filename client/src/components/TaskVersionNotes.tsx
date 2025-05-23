@@ -27,12 +27,15 @@ export function TaskVersionNotes(props: TaskVersionNotesInputProps) {
 
   return (
     <SimpleTooltip content={!editable ? 'Click to Edit' : undefined}>
-      <div className='flex items-start gap-2 rounded-lg border px-3 py-2 w-full' onClick={activateEdit}>
-        <FileText size={16} className='text-slate-500 translate-y-0.5' />
+      <div
+        className='flex items-start gap-2 rounded-[2px] border border-gray-200 px-3 py-2 w-full'
+        onClick={activateEdit}
+      >
+        <FileText size={16} className='text-gray-500 translate-y-0.5' />
         {editable ? (
           <TaskVersionNotesInput notes={notes} onUpdateNotes={onUpdateNotes} versionId={versionId} />
         ) : (
-          <div className='text-slate-900 text-sm'>{notes || '-'}</div>
+          <div className='text-gray-900 text-[13px]'>{notes || '-'}</div>
         )}
       </div>
     </SimpleTooltip>
