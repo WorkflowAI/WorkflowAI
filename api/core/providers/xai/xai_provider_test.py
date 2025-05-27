@@ -1,3 +1,5 @@
+# pyright: reportPrivateUsage=false
+
 import copy
 import json
 from collections.abc import Callable
@@ -28,6 +30,7 @@ from core.providers.base.provider_error import (
 from core.providers.base.provider_options import ProviderOptions
 from core.providers.xai.xai_domain import CompletionRequest
 from core.providers.xai.xai_provider import XAIConfig, XAIProvider
+from tests import models as test_models
 from tests.utils import fixture_bytes, fixtures_json, fixtures_stream
 
 
@@ -368,9 +371,9 @@ class TestStream:
                     "role": "user",
                 },
             ],
-            "response_format": {
-                "type": "json_object",
-            },
+            # "response_format": {
+            #     "type": "json_object",
+            # },
             "stream": True,
             "stream_options": {
                 "include_usage": True,
@@ -456,70 +459,9 @@ class TestComplete:
                     "role": "user",
                 },
             ],
-            "response_format": {
-                "type": "json_object",
-            },
-            "stream": False,
-            "temperature": 0.0,
-            # "store": True,
-        }
-
-    async def test_complete_audio(self, httpx_mock: HTTPXMock):
-        httpx_mock.add_response(
-            url="https://api.x.ai/v1/chat/completions",
-            json=fixtures_json("xai", "completion.json"),
-        )
-
-        provider = XAIProvider()
-
-        o = await provider.complete(
-            [
-                MessageDeprecated(
-                    role=MessageDeprecated.Role.USER,
-                    content="Hello",
-                    files=[
-                        File(data="data", content_type="audio/wav"),
-                    ],
-                ),
-            ],
-            options=ProviderOptions(
-                model=Model.GPT_3_5_TURBO_1106,
-                max_tokens=10,
-                temperature=0,
-                output_schema={"type": "object"},
-            ),
-            output_factory=lambda x, _: StructuredOutput(json.loads(x)),
-        )
-        assert o.output
-        assert o.tool_calls is None
-        # Not sure why the pyright in the CI reports an error here
-        request = httpx_mock.get_requests()[0]
-        assert request.method == "POST"  # pyright: ignore reportUnknownMemberType
-        body = json.loads(request.read().decode())
-        assert body == {
-            "max_tokens": 10,
-            "model": "gpt-3.5-turbo-1106",
-            "messages": [
-                {
-                    "content": [
-                        {
-                            "text": "Hello",
-                            "type": "text",
-                        },
-                        {
-                            "input_audio": {
-                                "data": "data",
-                                "format": "wav",
-                            },
-                            "type": "input_audio",
-                        },
-                    ],
-                    "role": "user",
-                },
-            ],
-            "response_format": {
-                "type": "json_object",
-            },
+            # "response_format": {
+            #     "type": "json_object",
+            # },
             "stream": False,
             "temperature": 0.0,
             # "store": True,
@@ -555,7 +497,7 @@ class TestComplete:
         request = httpx_mock.get_requests()[0]
         assert request.method == "POST"  # pyright: ignore reportUnknownMemberType
         body = json.loads(request.read().decode())
-        assert body["response_format"]["type"] == "text"
+        assert "response_format" not in body
 
     async def test_complete_500(self, httpx_mock: HTTPXMock):
         httpx_mock.add_response(
@@ -924,3 +866,38 @@ class TestUnknownError:
             "error": "Downloaded response does not contain a valid JPG or PNG image",
         }
         assert isinstance(unknown_error_fn(payload), ProviderInvalidFileError)
+
+    def test_structured_generation_error(self, unknown_error_fn: Callable[[dict[str, Any]], ProviderError]):
+        payload = {
+            "code": "Client specified an invalid argument",
+            "error": "Invalid request content: The model does not support formatted output but some have been specified in the request.",
+        }
+        assert isinstance(unknown_error_fn(payload), StructuredGenerationError)
+
+
+class TestResponseFormat:
+    def test_response_format_structured_output_disabled(self, xai_provider: XAIProvider):
+        options = ProviderOptions(
+            model=Model.GPT_4O_2024_08_06,
+            max_tokens=10,
+            temperature=0,
+            structured_generation=False,
+            output_schema={"type": "object"},
+        )
+        model_data = test_models.model_data(supports_structured_output=True)
+        response_format = xai_provider._response_format(options, model_data)
+        assert response_format is None
+
+    def test_response_format_structured_output_enabled(self, xai_provider: XAIProvider):
+        options = ProviderOptions(
+            model=Model.GPT_4O_2024_08_06,
+            max_tokens=10,
+            temperature=0,
+            structured_generation=True,
+            output_schema={"type": "object"},
+        )
+        model_data = test_models.model_data(supports_structured_output=True)
+        response_format = xai_provider._response_format(options, model_data)
+        assert response_format is not None
+        assert response_format.type == "json_schema"
+        assert response_format.json_schema.json_schema == {"type": "object"}

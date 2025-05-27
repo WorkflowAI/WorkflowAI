@@ -17,6 +17,9 @@ jobs:
     uses: ./.github/workflows/.client-quality.yml
 
   api-build:
+    # We ignore the api build if the release is client specific
+    # Meaning that tag names that contain @client will not trigger the api build
+    if: ${{ !contains(github.ref_name, '@client') }}
     uses: ./.github/workflows/.build.yml
     with:
       env: prod
@@ -32,6 +35,9 @@ jobs:
       SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
 
   client-build:
+    # We ignore the client build if the release is api specific
+    # Meaning that tag names that contain @api will not trigger the client build
+    if: ${{ !contains(github.ref_name, '@api') }}
     uses: ./.github/workflows/.build.yml
     with:
       env: prod

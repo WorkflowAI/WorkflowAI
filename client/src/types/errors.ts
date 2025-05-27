@@ -1,5 +1,4 @@
 import { captureException } from '@sentry/nextjs';
-import { isNullish } from './utils';
 
 export class BaseError extends Error {
   capture: boolean;

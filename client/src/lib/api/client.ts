@@ -43,15 +43,6 @@ export class RequestError extends Error {
     this.rawResponse = await this.response.text();
     return this;
   }
-
-  async humanReadableMessage() {
-    try {
-      const parsed = await this.response.json();
-      return extractErrorMessage(parsed);
-    } catch (e) {
-      return this.message;
-    }
-  }
 }
 
 export enum Method {

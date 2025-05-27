@@ -7,23 +7,36 @@ class IntegrationPartner(str, Enum):
     INSTRUCTOR = "instructor"
     OPENAI_SDK = "openai-sdk"
     OPENAI_SDK_TS = "openai-sdk-ts"
+    LITELLM = "litellm"
+    LANGCHAIN = "langchain"
+    DSPY = "dspy"
+    CURL = "curl"
 
 
 class ProgrammingLanguage(str, Enum):
     PYTHON = "python"
     TYPESCRIPT = "typescript"
+    CURL = "curl"
 
 
 class IntegrationKind(str, Enum):
     INSTRUCTOR_PYTHON = "instructor-python"
     OPENAI_SDK_PYTHON = "openai-sdk-python"
     OPENAI_SDK_TS = "openai-sdk-ts"
+    LITELLM_PYTHON = "litellm-python"
+    LANGCHAIN_PYTHON = "langchain-python"
+    DSPY_PYTHON = "dspy-python"
+    CURL = "curl"
 
 
 class Integration(BaseModel):
     integration_partner: IntegrationPartner
     programming_language: ProgrammingLanguage
+    model_name_prefix: str | None = None
+    completion_client: str
+    completion_client_structured_output: str
     default_for_language: bool
+    use_version_messages: bool = True
     output_class: str
     display_name: str
     slug: IntegrationKind

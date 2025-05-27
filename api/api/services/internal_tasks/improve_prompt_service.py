@@ -25,6 +25,7 @@ from core.storage.backend_storage import BackendStorage
 from core.utils.models.dumps import safe_dump_pydantic_model
 from core.utils.schema_sanitation import streamline_schema
 from core.utils.schemas import strip_json_schema_metadata_keys
+from core.utils.templates import extract_variable_schema
 from core.utils.url_utils import extract_and_fetch_urls
 
 IMPROVE_PROMPT_MODELS = (
@@ -103,6 +104,18 @@ class ImprovePromptService:
             try:
                 res = await run_improve_prompt_agent(improve_prompt_input, model=model)
                 updated_properties = {**properties, "instructions": res.improved_prompt}
+
+                if not self._ensure_no_new_input_variables_added(instructions or "", res.improved_prompt or ""):
+                    # No input variables should be added by the improve prompt agent, if that happens, we return the original properties
+                    self._logger.warning(
+                        "New input variables were added by improve prompt agent",
+                        extra={
+                            "original_instructions": instructions,
+                            "improved_instructions": res.improved_prompt,
+                        },
+                    )
+                    return TaskGroupProperties.model_validate(properties), ["Failed to improve prompt"]
+
                 if created := await self._safe_handle_improved_output_schema(
                     variant,
                     res.input_field_updates,
@@ -117,6 +130,11 @@ class ImprovePromptService:
                 )
         # If all model have failed, there is something weird with the use case, we return the original properties
         return TaskGroupProperties.model_validate(properties), ["Failed to improve prompt"]
+
+    def _ensure_no_new_input_variables_added(self, original_instructions: str, improved_instructions: str) -> bool:
+        original_variables = extract_variable_schema(original_instructions)
+        improved_variables = extract_variable_schema(improved_instructions)
+        return original_variables == improved_variables
 
     async def stream(
         self,
@@ -146,6 +164,28 @@ class ImprovePromptService:
                         ),
                         chunk.changelog,
                     )
+
+                if (
+                    chunk
+                    and chunk.improved_prompt
+                    and not self._ensure_no_new_input_variables_added(instructions or "", chunk.improved_prompt)
+                ):
+                    # No input variables should be added by the improve prompt agent, if that happens, we return the original properties
+                    self._logger.warning(
+                        "New input variables were added by improve prompt agent",
+                        extra={
+                            "original_instructions": instructions,
+                            "improved_instructions": chunk.improved_prompt,
+                        },
+                    )
+                    yield (
+                        TaskGroupProperties.model_validate(
+                            {**properties, "instructions": instructions},
+                        ),
+                        [],
+                    )
+                    return
+
                 if chunk:
                     if created_variant := await self._safe_handle_improved_output_schema(
                         variant,
@@ -163,6 +203,7 @@ class ImprovePromptService:
                             ),
                             chunk.changelog,
                         )
+
                 return
             except Exception as e:
                 self._logger.exception(

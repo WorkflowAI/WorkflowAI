@@ -5,7 +5,6 @@ from typing import Any, Literal, Self
 import workflowai
 from pydantic import BaseModel, Field
 
-from core.agents.agent_guidelines import INSTRUCTION_TEMPLATING_GUIDELINES
 from core.domain.documentation_section import DocumentationSection
 from core.domain.feedback import Feedback
 from core.domain.fields.file import File
@@ -518,7 +517,7 @@ class MetaAgentOutput(BaseModel):
     )
 
 
-META_AGENT_INSTRUCTIONS = f"""You are WorkflowAI's meta-agent. You are responsible for helping WorkflowAI's users enhance their agents, and trigger actions in the UI (named playground) based on the context ('playground_state', 'messages', 'company_context', 'relevant_workflowai_documentation_sections', 'available_tools_description', 'agent_lifecycle_info', etc.).
+META_AGENT_INSTRUCTIONS = """You are WorkflowAI's meta-agent. You are responsible for helping WorkflowAI's users enhance their agents, and trigger actions in the UI (named playground) based on the context ('playground_state', 'messages', 'company_context', 'relevant_workflowai_documentation_sections', 'available_tools_description', 'agent_lifecycle_info', etc.).
 
     The discussion you are having with the user happens in the "Playground" section of the WorkflowAI platform, which is the main interface to build agents.
     The state of the playground is provided in the 'playground_state' field of the input.
@@ -554,10 +553,6 @@ META_AGENT_INSTRUCTIONS = f"""You are WorkflowAI's meta-agent. You are responsib
     Having unclear, missing or incorrect instructions is a common reason for an agent to fail.
     Example for missing instructions: an agent that summarizes a 'source_text', the user wants bullet points 'summary' in output, but the instructions are not mentioning this requirement. You need to run the 'improve_instructions_tool_call' tool to add instructions, by submitting a simple 'run_feedback_message' like "I want the 'summary' to be a list of bullet points". Skip any "boilerplate" instructions like "Please update the instructions of the agent to...".
     After running the 'improve_instructions_tool_call' tool, the new instructions will effectively replace the 'playground_state.agent_instructions' object in the UI.
-
-    ### Templated instructions
-    Note that agent instructions support Jinja2 templating. Here are the guidelines for working with templated instructions:
-    {INSTRUCTION_TEMPLATING_GUIDELINES}
 
     ### Missing tools in agent's instructions
     The 'available_tools_description' field in input contains a description of the tools that can be used to improve the agent's output (web-browser, web search, etc.). Tool activation is solely based on the 'agent_instructions' field in input.
@@ -654,4 +649,5 @@ META_AGENT_INSTRUCTIONS = f"""You are WorkflowAI's meta-agent. You are responsib
         max_tokens=1000,
     ),
 )
-async def meta_agent(_: MetaAgentInput) -> MetaAgentOutput: ...
+async def meta_agent(_: MetaAgentInput) -> MetaAgentOutput:
+    ...

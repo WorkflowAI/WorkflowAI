@@ -438,13 +438,24 @@ export function PlaygroundContent(props: PlaygroundContentBodyProps) {
             id = response.id;
           } catch (exception: unknown) {
             cleanTaskRun(model);
-            if (exception instanceof RequestError) {
-              const msg = exception.humanReadableMessage();
-              reject(msg);
+
+            if (abortController.signal.aborted) {
+              reject(undefined);
               return;
+            }
+
+            if (exception instanceof Error) {
+              setModelError(model, exception);
+            }
+
+            if (exception instanceof RequestError) {
+              setModelError(model, exception);
+              reject(exception.rawResponse);
             } else {
               reject(exception);
             }
+
+            return;
           }
 
           if (abortController.signal.aborted) {

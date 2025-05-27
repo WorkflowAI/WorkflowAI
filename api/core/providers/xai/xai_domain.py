@@ -379,7 +379,7 @@ class CompletionRequest(BaseModel):
     max_tokens: int | None
     model: str
     messages: list[XAIMessage | XAIToolMessage]
-    response_format: ResponseFormat = JSONResponseFormat()
+    response_format: ResponseFormat | None = JSONResponseFormat()
     stream: bool
     stream_options: StreamOptions | None = None
     reasoning_effort: str | None = None

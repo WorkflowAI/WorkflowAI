@@ -23,6 +23,7 @@ from core.providers.base.provider_error import (
     ProviderError,
     ProviderInternalError,
     ProviderInvalidFileError,
+    StructuredGenerationError,
     UnknownProviderError,
 )
 from core.providers.base.provider_options import ProviderOptions
@@ -38,11 +39,9 @@ from core.providers.xai.xai_config import THINKING_MODEL_MAP, XAIConfig
 from core.providers.xai.xai_domain import (
     CompletionRequest,
     CompletionResponse,
-    JSONResponseFormat,
     JSONSchemaResponseFormat,
     StreamedResponse,
     StreamOptions,
-    TextResponseFormat,
     Tool,
     ToolFunction,
     XAIError,
@@ -54,10 +53,15 @@ from core.providers.xai.xai_domain import (
 
 class XAIProvider(HTTPXProvider[XAIConfig, CompletionResponse]):
     def _response_format(self, options: ProviderOptions, model_data: ModelData):
-        if not options.output_schema:
-            return TextResponseFormat()
+        if options.output_schema is None:
+            return None
+
         if not should_use_structured_output(options, model_data) or not options.output_schema:
-            return JSONResponseFormat()
+            # TODO: at the time of writing, xAI does not support
+            # any response format, so we return None when structured generation is disabled
+            # to be able to use the structured output
+            return None
+            # return JSONResponseFormat()
 
         return JSONSchemaResponseFormat(
             json_schema=XAISchema(
@@ -335,6 +339,8 @@ class XAIProvider(HTTPXProvider[XAIConfig, CompletionResponse]):
                 error_cls = ProviderInvalidFileError
             case m if "prefill bootstrap failed for request" in m:
                 error_cls = ProviderInternalError
+            case m if "model does not support formatted output" in m:
+                error_cls = StructuredGenerationError
             case _:
                 error_cls = UnknownProviderError
         return error_cls(msg=message, response=response)

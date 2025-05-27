@@ -2,7 +2,7 @@ import asyncio
 import datetime
 import logging
 import re
-from typing import Any, AsyncIterator, NamedTuple, TypeAlias
+from typing import Any, AsyncIterator, NamedTuple, TypeAlias, cast
 
 import workflowai
 from pydantic import BaseModel, Field, model_validator
@@ -44,9 +44,11 @@ from core.agents.meta_agent_proxy import (
     GENERIC_INSTRUCTIONS,
     PROPOSE_DEPLOYMENT_INSTRUCTIONS,
     PROPOSE_INPUT_VARIABLES_INSTRUCTIONS,
+    PROPOSE_INPUT_VARIABLES_INSTRUCTIONS_NO_VERSION_MESSAGES,
     PROPOSE_NON_OPENAI_MODELS_INSTRUCTIONS,
     PROPOSE_STRUCTURED_OUTPUT_INSTRUCTIONS,
     ProxyMetaAgentInput,
+    ProxyMetaAgentOutput,
     proxy_meta_agent,
 )
 from core.agents.meta_agent_proxy import (
@@ -120,6 +122,7 @@ class ProxyMetaAgentContext(NamedTuple):
     feedback_page: Page[ProxyMetaAgentInput.AgentLifecycleInfo.FeedbackInfo.AgentFeedback] | None
     has_active_runs: HasActiveRunAndDate | None
     reviewed_input_count: int | None
+    playground_agent_runs: list[AgentRun] | None
 
 
 def get_programming_language_for_user_agent(user_agent: str) -> ProgrammingLanguage:
@@ -302,8 +305,28 @@ class UpdateVersionMessagesToolCall(MetaAgentToolCall):
         description="The messages to update the version with.",
     )
 
-    input_variables: dict[str, Any] = Field(
-        description="The input variables to update the version with.",
+    input_variables: dict[str, Any] | None = Field(
+        default=None,
+        description="The input variables to update the version with, to fill only in case the version message contain {{input_variables}}",
+    )
+
+    def to_domain(self) -> None:
+        return None
+
+
+class AddToolToolCall(MetaAgentToolCall):
+    tool_name: str = "create_custom_tool"
+
+    tool_name: str = Field(
+        description="The name of the tool to add.",
+    )
+
+    tool_description: str = Field(
+        description="The description of the tool to add.",
+    )
+
+    tool_parameters: dict[str, Any] = Field(
+        description="The parameters of the tool to add.",
     )
 
     def to_domain(self) -> None:
@@ -316,6 +339,7 @@ MetaAgentToolCallType: TypeAlias = (
     | RunCurrentAgentOnModelsToolCall
     | GenerateAgentInputToolCall
     | UpdateVersionMessagesToolCall
+    | AddToolToolCall
 )
 
 
@@ -1069,6 +1093,7 @@ class MetaAgentService:
         task_tuple: TaskTuple,
         agent_schema_id: int,
         user_email: str | None,
+        playground_state: PlaygroundState,
     ) -> ProxyMetaAgentContext:
         """
         Fetch all context data needed for the meta agent input, handling exceptions.
@@ -1076,7 +1101,15 @@ class MetaAgentService:
         If any individual fetch fails, it returns None for that part of the context
         instead of failing the entire operation.
         """
-        context_results = await asyncio.gather(
+        (
+            company_description,
+            existing_agents,
+            agent_runs,
+            feedback_page,
+            has_active_runs,
+            reviewed_input_count,
+            playground_agent_runs,
+        ) = await asyncio.gather(
             safe_generate_company_description_from_email(user_email),
             list_agent_summaries(self.storage, limit=10),
             self._fetch_latest_agent_runs(task_tuple, agent_schema_id),
@@ -1089,45 +1122,52 @@ class MetaAgentService:
             ),
             self.has_active_agent_runs(task_tuple, agent_schema_id),
             self.get_reviewed_input_count(task_tuple, agent_schema_id),
+            self.fetch_agent_runs(task_tuple, playground_state.agent_run_ids),
             return_exceptions=True,
         )
 
         # Process each result - for each item, either use the value or log and return a default value
-        if isinstance(context_results[0], BaseException):
-            self._logger.warning("Failed to fetch company_description", exc_info=context_results[0])
+        if isinstance(company_description, BaseException):
+            self._logger.warning("Failed to fetch company_description", exc_info=company_description)
             company_description = None
         else:
-            company_description = context_results[0]
+            company_description = cast(ExtractCompanyInfoFromDomainTaskOutput, company_description)
 
-        if isinstance(context_results[1], BaseException):
-            self._logger.warning("Failed to fetch existing_agents", exc_info=context_results[1])
+        if isinstance(existing_agents, BaseException):
+            self._logger.warning("Failed to fetch existing_agents", exc_info=existing_agents)
             existing_agents = None
         else:
-            existing_agents = [str(agent) for agent in context_results[1] or []]
+            existing_agents = [str(agent) for agent in existing_agents or []]  # type: ignore
 
-        if isinstance(context_results[2], BaseException):
-            self._logger.warning("Failed to fetch agent_runs", exc_info=context_results[2])
+        if isinstance(agent_runs, BaseException):
+            self._logger.warning("Failed to fetch agent_runs", exc_info=agent_runs)
             agent_runs = None
         else:
-            agent_runs = context_results[2]
+            agent_runs = cast(list[AgentRun], agent_runs)
 
-        if isinstance(context_results[3], BaseException):
-            self._logger.warning("Failed to fetch feedback_page", exc_info=context_results[3])
+        if isinstance(feedback_page, BaseException):
+            self._logger.warning("Failed to fetch feedback_page", exc_info=feedback_page)
             feedback_page = None
         else:
-            feedback_page = context_results[3]
+            feedback_page = cast(Page[ProxyMetaAgentInput.AgentLifecycleInfo.FeedbackInfo.AgentFeedback], feedback_page)
 
-        if isinstance(context_results[4], BaseException):
-            self._logger.warning("Failed to fetch has_active_runs", exc_info=context_results[4])
+        if isinstance(has_active_runs, BaseException):
+            self._logger.warning("Failed to fetch has_active_runs", exc_info=has_active_runs)
             has_active_runs = None
         else:
-            has_active_runs = context_results[4]
+            has_active_runs = cast(HasActiveRunAndDate, has_active_runs)
 
-        if isinstance(context_results[5], BaseException):
-            self._logger.warning("Failed to fetch reviewed_input_count", exc_info=context_results[5])
+        if isinstance(reviewed_input_count, BaseException):
+            self._logger.warning("Failed to fetch reviewed_input_count", exc_info=reviewed_input_count)
             reviewed_input_count = None
         else:
-            reviewed_input_count = context_results[5]
+            reviewed_input_count = cast(int, reviewed_input_count)
+
+        if isinstance(playground_agent_runs, BaseException):
+            self._logger.warning("Failed to fetch playground agent_runs", exc_info=playground_agent_runs)
+            playground_agent_runs = None
+        else:
+            playground_agent_runs = cast(list[AgentRun], playground_agent_runs)
 
         return ProxyMetaAgentContext(
             company_description=company_description,
@@ -1136,6 +1176,27 @@ class MetaAgentService:
             feedback_page=feedback_page,
             has_active_runs=has_active_runs,
             reviewed_input_count=reviewed_input_count,
+            playground_agent_runs=playground_agent_runs,
+        )
+
+    def _build_proxy_agent_runs(self, agent_run: AgentRun) -> ProxyAgentRun:
+        return ProxyAgentRun(
+            id=agent_run.id,
+            model=agent_run.group.properties.model or "",
+            input=str(agent_run.task_input),
+            output=str(agent_run.task_output),  # Handle both dict output and str
+            error=agent_run.error.model_dump() if agent_run.error else None,
+            cost_usd=agent_run.cost_usd,
+            duration_seconds=agent_run.duration_seconds,
+            user_evaluation=agent_run.user_review,
+            tool_calls=[
+                ProxyAgentRun.ToolCall(
+                    name=tool_call.tool_name,
+                    input=tool_call.tool_input_dict,
+                )
+                for llm_completion in agent_run.llm_completions or []
+                for tool_call in llm_completion.tool_calls or []
+            ],
         )
 
     async def _build_proxy_meta_agent_input(
@@ -1152,6 +1213,7 @@ class MetaAgentService:
             task_tuple,
             agent_schema_id,
             user_email,
+            playground_state,
         )
 
         # Extract files from agent_input
@@ -1162,28 +1224,14 @@ class MetaAgentService:
         )
 
         agent_runs: list[ProxyAgentRun] | None = (
-            [
-                ProxyAgentRun(
-                    id=agent_run.id,
-                    model=agent_run.group.properties.model or "",
-                    input=str(agent_run.task_input),
-                    output=str(agent_run.task_output),  # Handle both dict output and str
-                    error=agent_run.error.model_dump() if agent_run.error else None,
-                    cost_usd=agent_run.cost_usd,
-                    duration_seconds=agent_run.duration_seconds,
-                    user_evaluation=agent_run.user_review,
-                    tool_calls=[
-                        ProxyAgentRun.ToolCall(
-                            name=tool_call.tool_name,
-                            input=tool_call.tool_input_dict,
-                        )
-                        for llm_completion in agent_run.llm_completions or []
-                        for tool_call in llm_completion.tool_calls or []
-                    ],
-                )
-                for agent_run in context.agent_runs
-            ]
+            [self._build_proxy_agent_runs(agent_run) for agent_run in context.agent_runs]
             if context.agent_runs
+            else None
+        )
+
+        playground_agent_runs: list[ProxyAgentRun] | None = (
+            [self._build_proxy_agent_runs(agent_run) for agent_run in context.playground_agent_runs]
+            if context.playground_agent_runs
             else None
         )
 
@@ -1214,7 +1262,7 @@ class MetaAgentService:
                 agent_instructions=GENERIC_INSTRUCTIONS or "",
             ),
             integration_documentation=[],  # Will be filled in later
-            available_tools_description=internal_tools_description(
+            available_hosted_tools_description=internal_tools_description(
                 include={ToolKind.WEB_BROWSER_TEXT, ToolKind.WEB_SEARCH_PERPLEXITY_SONAR_PRO},
             ),
             playground_state=ProxyPlaygroundStateDomain(
@@ -1224,6 +1272,7 @@ class MetaAgentService:
                 agent_temperature=playground_state.agent_temperature,
                 available_models=await self._proxy_build_model_list("", current_agent),  # TODO: add instructions
                 selected_models=playground_state.selected_models.to_domain(),
+                playground_agent_runs=playground_agent_runs,
             ),
             agent_lifecycle_info=ProxyMetaAgentInput.AgentLifecycleInfo(
                 deployment_info=ProxyMetaAgentInput.AgentLifecycleInfo.DeploymentInfo(
@@ -1301,10 +1350,19 @@ class MetaAgentService:
         self,
         agent: SerializableTaskVariant,
         agent_runs: list[AgentRun],
+        task_tuple: TaskTuple,
+        agent_schema_id: int,
     ) -> Integration:
         if agent.used_integration_kind:
             # If integration is registered for the agent, use it
             return get_integration_by_kind(agent.used_integration_kind)
+
+        if agent.task_schema_id > 1:
+            schema_id_to_explore = list(range(1, agent.task_schema_id))[::-1]  # reverse order
+            for schema_id in schema_id_to_explore:
+                agent_to_check = await self.storage.task_variant_latest_by_schema_id(task_tuple[0], schema_id)
+                if agent_to_check.used_integration_kind:
+                    return get_integration_by_kind(agent_to_check.used_integration_kind)
 
         # Else, pick the default integration for the programming language based on the user agent of the latest run
         user_agent = ""
@@ -1323,21 +1381,26 @@ class MetaAgentService:
         self,
         proxy_meta_agent_input: ProxyMetaAgentInput,
         agent_runs: list[AgentRun],
+        integration: Integration,
     ) -> ProxyMetaAgentAgentPayload:
         # "Migrate to input variables" use case
-        input_variables_extractor_agent_run = await input_variables_extractor_agent(
-            InputVariablesExtractorInput(
-                agent_inputs=[agent_run.task_input for agent_run in agent_runs],
-            ),
-        )
-        proxy_meta_agent_input.suggested_messages_with_input_variables = [
-            message.model_dump() for message in input_variables_extractor_agent_run.messages_with_input_variables
-        ]
-        proxy_meta_agent_input.suggested_input_variables_example = (
-            input_variables_extractor_agent_run.input_variables_example
-        )
-        instructions = PROPOSE_INPUT_VARIABLES_INSTRUCTIONS
-        message_kind = "setup_input_variables_assistant_proposal"
+        if integration.use_version_messages:
+            input_variables_extractor_agent_run = await input_variables_extractor_agent(
+                InputVariablesExtractorInput(
+                    agent_inputs=[agent_run.task_input for agent_run in agent_runs],
+                ),
+            )
+            proxy_meta_agent_input.suggested_messages_with_input_variables = [
+                message.model_dump() for message in input_variables_extractor_agent_run.messages_with_input_variables
+            ]
+            proxy_meta_agent_input.suggested_input_variables_example = (
+                input_variables_extractor_agent_run.input_variables_example
+            )
+            instructions = PROPOSE_INPUT_VARIABLES_INSTRUCTIONS
+            message_kind = "setup_input_variables_assistant_proposal"
+        else:
+            instructions = PROPOSE_INPUT_VARIABLES_INSTRUCTIONS_NO_VERSION_MESSAGES
+            message_kind = "setup_input_variables_assistant_proposal"
 
         return ProxyMetaAgentAgentPayload(
             input=proxy_meta_agent_input,
@@ -1448,7 +1511,7 @@ class MetaAgentService:
             playground_state,
         )
 
-        integration = await self._resolve_integration_for_agent(current_agent, agent_runs)
+        integration = await self._resolve_integration_for_agent(current_agent, agent_runs, task_tuple, agent_schema_id)
 
         # Fill the agent input with the right documentations
         proxy_meta_agent_input.integration_documentation = DocumentationService().get_documentation_by_path(
@@ -1468,6 +1531,8 @@ class MetaAgentService:
 
         tool_call: MetaAgentToolCallType | None = None
         fixed_messages: list[MetaAgentChatMessage] = []
+
+        completion_client = integration.completion_client
 
         use_tools = False
         if messages[-1].kind == "user_deployed_agent_in_playground":
@@ -1512,11 +1577,16 @@ class MetaAgentService:
                     proxy_meta_agent_input,
                     instructions,
                     message_kind,
-                ) = await self._get_proxy_agent_input_variables_proposal_paylaod(proxy_meta_agent_input, agent_runs)
-                tool_call = UpdateVersionMessagesToolCall(
-                    updated_version_messages=proxy_meta_agent_input.suggested_messages_with_input_variables or [],
-                    input_variables=proxy_meta_agent_input.suggested_input_variables_example or {},
+                ) = await self._get_proxy_agent_input_variables_proposal_paylaod(
+                    proxy_meta_agent_input,
+                    agent_runs,
+                    integration,
                 )
+                if integration.use_version_messages:
+                    tool_call = UpdateVersionMessagesToolCall(
+                        updated_version_messages=proxy_meta_agent_input.suggested_messages_with_input_variables or [],
+                        input_variables=proxy_meta_agent_input.suggested_input_variables_example or {},
+                    )
             elif (
                 agent_runs
                 and has_tried_other_models
@@ -1529,7 +1599,7 @@ class MetaAgentService:
                     instructions,
                     message_kind,
                 ) = await self._get_structured_output_proposal_payload(proxy_meta_agent_input, agent_runs, integration)
-
+                completion_client = integration.completion_client_structured_output
             elif (
                 agent_runs
                 and has_tried_other_models
@@ -1606,7 +1676,6 @@ Please double check:
                     ]
                     return
                 else:
-                    # User confirmed input variables
                     fixed_messages.append(
                         MetaAgentChatMessage(
                             role="ASSISTANT",
@@ -1620,11 +1689,17 @@ Please double check:
                         proxy_meta_agent_input,
                         instructions,
                         message_kind,
-                    ) = await self._get_proxy_agent_input_variables_proposal_paylaod(proxy_meta_agent_input, agent_runs)
-                    tool_call = UpdateVersionMessagesToolCall(
-                        updated_version_messages=proxy_meta_agent_input.suggested_messages_with_input_variables or [],
-                        input_variables=proxy_meta_agent_input.suggested_input_variables_example or {},
+                    ) = await self._get_proxy_agent_input_variables_proposal_paylaod(
+                        proxy_meta_agent_input,
+                        agent_runs,
+                        integration,
                     )
+                    if integration.use_version_messages:
+                        tool_call = UpdateVersionMessagesToolCall(
+                            updated_version_messages=proxy_meta_agent_input.suggested_messages_with_input_variables
+                            or [],
+                            input_variables=proxy_meta_agent_input.suggested_input_variables_example or {},
+                        )
             elif messages[-1].kind == "setup_input_variables_user_confirmation":
                 if not is_using_instruction_variables:
                     yield [
@@ -1660,6 +1735,8 @@ Please double check:
                         agent_runs,
                         integration,
                     )
+                    completion_client = integration.completion_client_structured_output
+
             elif messages[-1].kind == "setup_structured_output_user_confirmation":
                 if not is_using_structured_generation:
                     yield [
@@ -1737,10 +1814,16 @@ Please double check:
         accumulator = ""
         updated_version_messages: list[dict[str, Any]] | None = None
         example_input: dict[str, Any] | None = None
+        new_tool: ProxyMetaAgentOutput.NewTool | None = None
+        run_trigger_config: ProxyMetaAgentOutput.RunTriggerConfig | None = None
+        tool_call_to_return: MetaAgentToolCallType | None = None
         async for chunk in proxy_meta_agent(
-            proxy_meta_agent_input,
-            instructions,
-            use_tools,
+            input=proxy_meta_agent_input,
+            instructions=instructions,
+            model_name_prefix=integration.model_name_prefix or "",
+            completion_client=completion_client,
+            is_using_version_messages=integration.use_version_messages,
+            use_tool_calls=use_tools,
         ):
             if chunk.assistant_answer:
                 accumulator = await self._sanitize_output_string(accumulator + chunk.assistant_answer, integration)
@@ -1765,18 +1848,55 @@ Please double check:
                 updated_version_messages = chunk.updated_version_messages
             if chunk.example_input:
                 example_input = chunk.example_input
+            if chunk.new_tool:
+                new_tool = chunk.new_tool
+            if chunk.run_trigger_config:
+                run_trigger_config = chunk.run_trigger_config
 
-        if updated_version_messages and example_input:
+        if updated_version_messages:
+            tool_call_to_return = UpdateVersionMessagesToolCall(
+                updated_version_messages=updated_version_messages,
+                input_variables=example_input,
+            )
+
+        if new_tool:
+            tool_call_to_return = AddToolToolCall(
+                tool_name=new_tool.name,
+                tool_description=new_tool.description,
+                tool_parameters=new_tool.parameters,
+            )
+
+        if run_trigger_config:
+            run_configs = [
+                RunCurrentAgentOnModelsToolCall.RunConfig(
+                    run_on_column="column_1",
+                    model=run_trigger_config.model_1,
+                ),
+            ]
+            if run_trigger_config.model_2:
+                run_configs.append(
+                    RunCurrentAgentOnModelsToolCall.RunConfig(
+                        run_on_column="column_2",
+                        model=run_trigger_config.model_2,
+                    ),
+                )
+            if run_trigger_config.model_3:
+                run_configs.append(
+                    RunCurrentAgentOnModelsToolCall.RunConfig(
+                        run_on_column="column_3",
+                        model=run_trigger_config.model_3,
+                    ),
+                )
+            tool_call_to_return = RunCurrentAgentOnModelsToolCall(run_configs=run_configs)
+
+        if tool_call_to_return:
             ret = fixed_messages + [
                 MetaAgentChatMessage(
                     role="ASSISTANT",
                     content=accumulator,
                     sent_at=now,
                     kind=message_kind,
-                    tool_call=UpdateVersionMessagesToolCall(
-                        updated_version_messages=updated_version_messages,
-                        input_variables=example_input,
-                    ),
+                    tool_call=tool_call_to_return,
                     switch_to_schema_id=current_agent.task_schema_id,
                 ),
             ]

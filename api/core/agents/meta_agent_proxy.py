@@ -251,6 +251,10 @@ class PlaygroundState(BaseModel):
         default=None,
         description="The temperature for the agent",
     )
+    playground_agent_runs: list[AgentRun] | None = Field(
+        default=None,
+        description="The agent runs that were made in the playground",
+    )
 
     class PlaygroundModel(BaseModel):
         id: str = Field(
@@ -362,8 +366,8 @@ class ProxyMetaAgentInput(BaseModel):
         description="The documentation of the integration that the user is using, if any",
     )
 
-    available_tools_description: str = Field(
-        description="The description of the available tools, that can be potientially added to the 'agent_instructions' in order to improve the agent's output",
+    available_hosted_tools_description: str = Field(
+        description="The description of the available hosted tools, that can be potientially added to the agent 'messages' in order to improve the agent's output.",
     )
 
     playground_state: PlaygroundState
@@ -499,6 +503,26 @@ class ProxyMetaAgentOutput(BaseModel):
         description="The example input to update the current agent version with.",
     )
 
+    class NewTool(BaseModel):
+        name: str
+        description: str
+        parameters: dict[str, Any]
+
+    new_tool: NewTool | None = Field(
+        default=None,
+        description="The new tool to add to the current agent, if any",
+    )
+
+    class RunTriggerConfig(BaseModel):
+        model_1: str
+        model_2: str | None = None
+        model_3: str | None = None
+
+    run_trigger_config: RunTriggerConfig | None = Field(
+        default=None,
+        description="The run trigger config to use for the agent, if any",
+    )
+
 
 _PROXY_META_AGENT_COMMON_INSTRUCTIONS = """Your WorkflowAI proxy playground agent's role is to make the user succeed in the WorkflowAI platform, having performant and reliable agents.
 
@@ -532,7 +556,7 @@ The reason to use different models is mostly: having better performing models, c
 Your answer MUST include:
 - a brief explaination that one of the benefits of WorkflowAI is the ability to use different models from different providers to optimize either performance, cost or latency of agents.
 - Pick two models to suggest to the user: one that has higher quality index that the current model, and one that is cheaper that the current model.
-- then you MUST only pass to the user the suggested models string in the code block, ex: model="<agent_name>/<suggested_model_name>". No other code block is needed. Ex: "To try out Claude 3.7 Sonnet, you can simply replace your existing model with: model="agent-name/claude-3-7-sonnet-20250219", (add a comma at the end of the line, to allow the user to copy paste it easily in his code).
+- then you MUST only pass to the user the suggested models string in the code block, ex: model="MODEL_NAME_PREFIX_PLACEHOLDER<agent_name>/<suggested_model_name>". No other code block is needed. Ex: "To try out Claude 3.7 Sonnet, you can simply replace your existing model with: model="MODEL_NAME_PREFIX_PLACEHOLDERagent-name/claude-3-7-sonnet-20250219", (add a comma at the end of the line, to allow the user to copy paste it easily in his code).
 """
 
 PROPOSE_NON_OPENAI_MODELS_INSTRUCTIONS = f"""
@@ -565,14 +589,31 @@ PROPOSE_INPUT_VARIABLES_INSTRUCTIONS = f"""
 {_PROPOSE_INPUT_VARIABLES_INSTRUCTIONS}
 """
 
+PROPOSE_INPUT_VARIABLES_INSTRUCTIONS_NO_VERSION_MESSAGES = f"""
+{_PROXY_META_AGENT_COMMON_INSTRUCTIONS}
+
+# Goal
+Your goal here is to make the user migrate to input variables. You can check the documentation to see why it's a good idea to use input variables.
+
+Your answer must include:
+- a brief rationale (100 words max.) of why using input variables is a good idea (clearer separation between the agent's instructions and the data it uses, better observability, enabled benchmarking and deployments), based on the documentation in 'workflowai_documentation_sections' and 'integration_documentation'
+- a code example to show how to use input variables in instructions and how to pass the input variables in the completion request.
+
+Your answer must NOT include:
+- the parts where the user is setting its API keys
+- the initialization of the client (ex: client=openai.OpenAI())
+- do not talk about deployments at this stage
+- any other content
+"""
+
 _PROPOSE_STRUCTURED_OUTPUT_INSTRUCTIONS = """
-Your goal here is to make the user migrate to structured output. You can check the documentation to see why it's a good idea to use structured output.
+Your goal where is to make tee user migrate to structured output. You can check the documentation to see why it's a good idea to use structured output.
 
 Your answer MUST include, different code blocks that show the following:
 - a brief explanation (50 words max.) of why you are stuctured output is useful, based on the documentation in 'workflowai_documentation_sections' and 'integration_documentation' and the user context
 - 'suggested_output_class_code' that shows the output class to use, including eventual description and examples.
-- when needed, update the 'client.chat.completions.create' to 'client.beta.chat.completions.parse' WARNING: for OpenAI SDK, the method to use for structured output is 'client.beta.chat.completions.parse' NOT 'client.chat.completions.create' NOR 'client.chat.completions.parse'.
 - pass the right response_format in the completion request
+- completion client MUST ALWAYS be: COMPLETION_CLIENT_PLACEHOLDER
 - the "messages" without the parts that are not needed anymore for structured generation (see: 'suggested_instructions_parts_to_remove') but DO NOT REMOVED INPUT VARIABLES if they were present before in the messages, since those are also needed for the structured output
 
 Your answer must NOT include:
@@ -595,10 +636,12 @@ Check in the 'agent_lifecycle_info.deployment_info.deployments' to see if the 'c
 You answer MUST include:
 - Before talking about code update explains about how to deploy the agent based on the docs (200 words max.) in 'features/deployments.md'
 - Add a link to https://docs.workflowai.com/features/deployments for the user to read more about deployments.
-- Then, you can talk about the model parameter update needed:  <current_agent.slug>/#<current_agent.schema_id>/<deployment env (production, staging, dev)>
-ex: model="my-agent/#1/production" You can explain the format above to the user: (model="my-agent/#1/production")
+- Then, you can talk about the model parameter update needed:  MODEL_NAME_PREFIX_PLACEHOLDER<current_agent.slug>/#<current_agent.schema_id>/<deployment env (production, staging, dev)>
+ex: model="MODEL_NAME_PREFIX_PLACEHOLDERmy-agent/#1/production" You can explain the format above to the user: (model="MODEL_NAME_PREFIX_PLACEHOLDERmy-agent/#1/production")
+{% if is_using_version_messages %}
 - A Note that the 'messages' array will be empty if the when using deployments because the messages are registered in the WorkflowAI deployment. So user can pass messages=[] but NOT OMITTED. Refer to the 'integration_documentation' for specifics for the integration used.
 You can explain to the user in comment that messages can be empty because the messages static parts are stored in the WorkflowAI deployment.
+{% endif %}
 
 You answer MUST NOT INCLUDE:
 - A repetition of the whole code from previous answers. You ONLY need to show the "model=..." parameters and the "messages=[]".
@@ -639,6 +682,28 @@ You MUST end your message with the 'setup_structured_output_assistant_proposal' 
 You MUST end your message with the 'setup_deployment_assistant_proposal' in this cases
 </setup_deployment>
 
+<tools>
+<hosted_tools>
+You can enhance the agent capabilities by using hosted tools that will run inside the workflow AI platform when the user makes an agent run, those tools are detailled in 'available_hosted_tools_description'. Hosted tools can directly be added to the agent's message, so to add an hosted tool, you can call the 'update_version_messages' tool call with the new message containing the hosted tool (@....)
+</hosted_tools>
+
+<custom_tools>
+In case the tools are not enough to endure the task the agent must do, you can propose the user to add a custom tool by making a 'create_custom_tool' tool call. In this case, the user will have to implement the actual tool in their codebase.
+</custom_tools>
+</tools>
+
+<adjusting agent's results>
+<updating agent's messages>
+The main way to alter the agent's behavior is to alter on the version messages you pass to it. You can do this by calling the 'update_version_messages' tool call with the updated messages.
+When you recommend version message update, always do so by calling the 'update_version_messages'.
+</updating_agent's_messages>
+
+<running agent on different models>
+You can also run the agent on different models to see which one is the best for the task. You can do this by calling the 'run_agent_on_model' tool call with the models you want to run the agent on.
+Note that these changes only affect the playground, and the user will still need to update its code in order for its agent to use the new model.
+</running_agent_on_different_models>
+
+</adjusting_agent's_results>
 
 # All other cases:
 You must answer users' questions, but what you know from all the documentation in 'workflowai_documentation_sections' and 'integration_documentation' is not enough to answer the question.
@@ -648,20 +713,30 @@ You must answer users' questions, but what you know from all the documentation i
 async def proxy_meta_agent(
     input: ProxyMetaAgentInput,
     instructions: str,
+    model_name_prefix: str,
+    completion_client: str,
+    is_using_version_messages: bool,
     use_tool_calls: bool = False,
 ) -> AsyncIterator[ProxyMetaAgentOutput]:
     client = AsyncOpenAI(
         api_key=os.environ["WORKFLOWAI_API_KEY"],
         base_url=f"{os.environ['WORKFLOWAI_API_URL']}/v1",
     )
+
+    instructions = instructions.replace("MODEL_NAME_PREFIX_PLACEHOLDER", model_name_prefix)
+    instructions = instructions.replace("COMPLETION_CLIENT_PLACEHOLDER", completion_client)
+
     response = await client.chat.completions.create(
-        model="proxy-meta-agent/claude-3-7-sonnet-20250219",
+        model="proxy-meta-agent/claude-sonnet-4-20250514",
         messages=[
             {"role": "system", "content": instructions},
             {"role": "user", "content": "{% raw %}" + input.model_dump_json() + "{% endraw %}"},
         ],
         stream=True,
         temperature=0.0,
+        extra_body={
+            "is_using_version_messages": is_using_version_messages,
+        },
         tools=[
             {
                 "type": "function",
@@ -677,13 +752,61 @@ async def proxy_meta_agent(
                             },
                             "example_input": {
                                 "type": "object",
-                                "description": "The example input to update the current agent version with.",
+                                "description": "The example input to update the current agent version with, to fill only in case the version message contain {{input_variables}}",
                             },
                         },
                         "required": [
                             "updated_version_messages",
-                            "example_input",
                         ],
+                        "additionalProperties": False,
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "create_custom_tool",
+                    "description": "Adds a custom tool to the current agent to enhance its capabilities. When proposing a tool, be mindful of what is the realistic needed parameters, for example for a translation tool, the parameters will be 'source_text' and 'target_language'.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "name": {"type": "string", "description": "The name of the tool to add."},
+                            "description": {
+                                "type": "string",
+                                "description": "The description of the tool to add.",
+                            },
+                            "parameters": {
+                                "type": "object",
+                                "description": "The parameters of the tool to add.",
+                            },
+                        },
+                        "required": ["name", "description", "parameters"],
+                        "additionalProperties": False,
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "run_agent_on_model",
+                    "description": "A lot to run the agent on new models (for better performance, speed or cost). The runs will effectively replace the 'playground_agent_runs' must be existing models from 'available_models'",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "model_1": {
+                                "type": "string",
+                                "description": "The model to run the agent on, in the first column of the playground, ex: 'gpt-4o-mini-latest', etc",
+                            },
+                            "model_2": {
+                                "type": "string",
+                                "description": "The model to run the agent on, in the second column of the playground",
+                            },
+                            "model_3": {
+                                "type": "string",
+                                "description": "The model to run the agent on, in the third column of the playground",
+                            },
+                        },
+                        "required": ["model_1"],
                         "additionalProperties": False,
                     },
                 },
@@ -696,6 +819,10 @@ async def proxy_meta_agent(
     async for chunk in response:
         updated_version_messages = None
         example_input = None
+        tool_name = None
+        tool_description = None
+        tool_parameters = None
+        run_trigger_config: ProxyMetaAgentOutput.RunTriggerConfig | None = None
         if chunk.choices[0].delta.tool_calls:
             tool_call = chunk.choices[0].delta.tool_calls[0]
             if (
@@ -704,10 +831,35 @@ async def proxy_meta_agent(
                 and tool_call.function.arguments
             ):
                 updated_version_messages = json.loads(tool_call.function.arguments)["updated_version_messages"]
-                example_input = json.loads(tool_call.function.arguments)["example_input"]
+                example_input = json.loads(tool_call.function.arguments).get("example_input", {})
+            elif (
+                tool_call.function and tool_call.function.name == "create_custom_tool" and tool_call.function.arguments
+            ):
+                tool_name = json.loads(tool_call.function.arguments)["name"]
+                tool_description = json.loads(tool_call.function.arguments)["description"]
+                tool_parameters = json.loads(tool_call.function.arguments)["parameters"]
+            elif (
+                tool_call.function and tool_call.function.name == "run_agent_on_model" and tool_call.function.arguments
+            ):
+                model_1 = json.loads(tool_call.function.arguments).get("model_1")
+                model_2 = json.loads(tool_call.function.arguments).get("model_2")
+                model_3 = json.loads(tool_call.function.arguments).get("model_3")
+                run_trigger_config = ProxyMetaAgentOutput.RunTriggerConfig(
+                    model_1=model_1,
+                    model_2=model_2,
+                    model_3=model_3,
+                )
 
         yield ProxyMetaAgentOutput(
             assistant_answer=chunk.choices[0].delta.content,
             updated_version_messages=updated_version_messages,
             example_input=example_input,
+            new_tool=ProxyMetaAgentOutput.NewTool(
+                name=tool_name,
+                description=tool_description,
+                parameters=tool_parameters,
+            )
+            if tool_name and tool_description and tool_parameters
+            else None,
+            run_trigger_config=run_trigger_config,
         )
