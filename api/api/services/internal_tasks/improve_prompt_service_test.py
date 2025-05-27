@@ -581,3 +581,318 @@ class TestImprovePrompt:
             assert chunk[0].instructions == expected[0]
             assert chunk[1] == expected[1]
         assert patched_improve_prompt_stream.call_count == len([r for r in model_responses if r is not None])
+
+    async def test_run_new_input_variables_added_returns_original_properties(
+        self,
+        improve_prompt_service: ImprovePromptService,
+        mock_storage: Mock,
+        patched_improve_prompt_run: Mock,
+        patched_logger: Mock,
+        fetched_properties: TaskGroupProperties,
+    ):
+        """Test that when new input variables are added, we return original properties and log warning"""
+        # Mock the improved prompt to have new variables
+        patched_improve_prompt_run.return_value = _improve_task_output(
+            improved_prompt="Hello {{name}}, please process {{new_variable}} and return the result.",
+        )
+
+        # Mock the original instructions to have fewer variables
+        with patch.object(
+            improve_prompt_service,
+            "_ensure_no_new_input_variables_added",
+            return_value=False,
+        ) as mock_check:
+            result = await improve_prompt_service.run(
+                task_tuple=("", 1),
+                run_id="1",
+                variant_id=None,
+                instructions="Hello {{name}}, please process the input.",
+                user_evaluation="This is a user evaluation.",
+            )
+
+            # Assert that the check was called
+            mock_check.assert_called_once_with(
+                "Hello {{name}}, please process the input.",
+                "Hello {{name}}, please process {{new_variable}} and return the result.",
+            )
+
+        # Should return original properties, not the improved ones
+        assert result == (
+            fetched_properties,  # Original properties unchanged
+            ["Failed to improve prompt"],
+        )
+
+        # Should log a warning
+        patched_logger.warning.assert_called_once_with(
+            "New input variables were added by improve prompt agent",
+            extra={
+                "original_instructions": "Hello {{name}}, please process the input.",
+                "improved_instructions": "Hello {{name}}, please process {{new_variable}} and return the result.",
+            },
+        )
+
+        # Should not store a new task variant
+        mock_storage.store_task_resource.assert_not_called()
+
+    async def test_run_no_new_input_variables_proceeds_normally(
+        self,
+        improve_prompt_service: ImprovePromptService,
+        mock_storage: Mock,
+        patched_improve_prompt_run: Mock,
+        patched_logger: Mock,
+        fetched_properties: TaskGroupProperties,
+    ):
+        """Test that when no new input variables are added, processing continues normally"""
+        patched_improve_prompt_run.return_value = _improve_task_output(
+            improved_prompt="Hello {{name}}, please process the input with better clarity.",
+        )
+
+        with patch.object(
+            improve_prompt_service,
+            "_ensure_no_new_input_variables_added",
+            return_value=True,
+        ) as mock_check:
+            result = await improve_prompt_service.run(
+                task_tuple=("", 1),
+                run_id="1",
+                variant_id=None,
+                instructions="Hello {{name}}, please process the input.",
+                user_evaluation="This is a user evaluation.",
+            )
+
+            mock_check.assert_called_once_with(
+                "Hello {{name}}, please process the input.",
+                "Hello {{name}}, please process the input with better clarity.",
+            )
+
+        # Should return improved properties
+        assert result == (
+            fetched_properties.model_copy(
+                update={"instructions": "Hello {{name}}, please process the input with better clarity."},
+            ),
+            ["Minor tweaks"],
+        )
+
+        # Should not log a warning
+        patched_logger.warning.assert_not_called()
+
+    async def test_stream_new_input_variables_added_returns_original_and_stops(
+        self,
+        improve_prompt_service: ImprovePromptService,
+        mock_storage: Mock,
+        patched_improve_prompt_stream: Mock,
+        patched_logger: Mock,
+        fetched_properties: TaskGroupProperties,
+    ):
+        """Test that in stream mode, when new input variables are detected, we return original instructions and stop"""
+        patched_improve_prompt_stream.return_value = mock_aiter(
+            _run(_improve_task_output(improved_prompt="Hello {{name}}")),
+            _run(_improve_task_output(improved_prompt="Hello {{name}}, process {{new_var}}")),
+        )
+
+        with patch.object(
+            improve_prompt_service,
+            "_ensure_no_new_input_variables_added",
+            return_value=False,  # Return False to indicate new variables were added
+        ) as mock_check:
+            chunks = [
+                c
+                async for c in improve_prompt_service.stream(
+                    task_tuple=("", 1),
+                    run_id="1",
+                    variant_id=None,
+                    instructions="Hello {{name}}",
+                    user_evaluation="This is a user evaluation.",
+                )
+            ]
+
+        # Should have 3 chunks: 2 from streaming + 1 final chunk with original instructions
+        assert len(chunks) == 3
+
+        # First chunk should have the first improved prompt
+        assert chunks[0][0].instructions == "Hello {{name}}"
+        assert chunks[0][1] == ["Minor tweaks"]
+
+        # Second chunk should have the second improved prompt
+        assert chunks[1][0].instructions == "Hello {{name}}, process {{new_var}}"
+        assert chunks[1][1] == ["Minor tweaks"]
+
+        # Final chunk should revert to original instructions with empty changelog
+        assert chunks[2][0].instructions == "Hello {{name}}"
+        assert chunks[2][1] == []
+
+        # Should be called once with the final improved prompt
+        mock_check.assert_called_once_with(
+            "Hello {{name}}",
+            "Hello {{name}}, process {{new_var}}",
+        )
+
+        # Should log a warning
+        patched_logger.warning.assert_called_once_with(
+            "New input variables were added by improve prompt agent",
+            extra={
+                "original_instructions": "Hello {{name}}",
+                "improved_instructions": "Hello {{name}}, process {{new_var}}",
+            },
+        )
+
+        # Should not store a new task variant
+        mock_storage.store_task_resource.assert_not_called()
+
+    async def test_stream_no_new_input_variables_proceeds_normally(
+        self,
+        improve_prompt_service: ImprovePromptService,
+        mock_storage: Mock,
+        patched_improve_prompt_stream: Mock,
+        patched_logger: Mock,
+    ):
+        """Test that in stream mode, when no new input variables are detected, processing continues normally"""
+        patched_improve_prompt_stream.return_value = mock_aiter(
+            _run(_improve_task_output(improved_prompt="Hello {{name}}")),
+            _run(_improve_task_output(improved_prompt="Hello {{name}}, with improvements")),
+        )
+
+        with patch.object(
+            improve_prompt_service,
+            "_ensure_no_new_input_variables_added",
+            return_value=True,
+        ):
+            chunks = [
+                c
+                async for c in improve_prompt_service.stream(
+                    task_tuple=("", 1),
+                    run_id="1",
+                    variant_id=None,
+                    instructions="Hello {{name}}",
+                    user_evaluation="This is a user evaluation.",
+                )
+            ]
+
+        # Should have 2 chunks from normal streaming
+        assert len(chunks) == 2
+
+        assert chunks[0][0].instructions == "Hello {{name}}"
+        assert chunks[1][0].instructions == "Hello {{name}}, with improvements"
+
+        # Should not log a warning
+        patched_logger.warning.assert_not_called()
+
+    async def test_run_with_variable_validation_integration(
+        self,
+        improve_prompt_service: ImprovePromptService,
+        mock_storage: Mock,
+        patched_improve_prompt_run: Mock,
+        patched_logger: Mock,
+        fetched_properties: TaskGroupProperties,
+    ):
+        """Integration test for variable validation with real extract_variable_schema"""
+        # Test case where improved prompt adds new variables
+        patched_improve_prompt_run.return_value = _improve_task_output(
+            improved_prompt="Hello {{name}}, process {{input}} and also handle {{new_variable}}",
+        )
+
+        result = await improve_prompt_service.run(
+            task_tuple=("", 1),
+            run_id="1",
+            variant_id=None,
+            instructions="Hello {{name}}, process {{input}}",
+            user_evaluation="This is a user evaluation.",
+        )
+
+        # Should return original properties due to new variable detection
+        assert result == (
+            fetched_properties,
+            ["Failed to improve prompt"],
+        )
+
+        # Should log a warning
+        patched_logger.warning.assert_called_once_with(
+            "New input variables were added by improve prompt agent",
+            extra={
+                "original_instructions": "Hello {{name}}, process {{input}}",
+                "improved_instructions": "Hello {{name}}, process {{input}} and also handle {{new_variable}}",
+            },
+        )
+
+    async def test_run_with_same_variables_integration(
+        self,
+        improve_prompt_service: ImprovePromptService,
+        mock_storage: Mock,
+        patched_improve_prompt_run: Mock,
+        patched_logger: Mock,
+        fetched_properties: TaskGroupProperties,
+    ):
+        """Integration test for variable validation when variables remain the same"""
+        # Test case where improved prompt keeps same variables
+        patched_improve_prompt_run.return_value = _improve_task_output(
+            improved_prompt="Hello {{name}}, please carefully process {{input}} with attention to detail",
+        )
+
+        result = await improve_prompt_service.run(
+            task_tuple=("", 1),
+            run_id="1",
+            variant_id=None,
+            instructions="Hello {{name}}, process {{input}}",
+            user_evaluation="This is a user evaluation.",
+        )
+
+        # Should return improved properties since variables are the same
+        assert result == (
+            fetched_properties.model_copy(
+                update={
+                    "instructions": "Hello {{name}}, please carefully process {{input}} with attention to detail",
+                },
+            ),
+            ["Minor tweaks"],
+        )
+
+        # Should not log a warning
+        patched_logger.warning.assert_not_called()
+
+    async def test_stream_with_variable_validation_integration(
+        self,
+        improve_prompt_service: ImprovePromptService,
+        mock_storage: Mock,
+        patched_improve_prompt_stream: Mock,
+        patched_logger: Mock,
+        fetched_properties: TaskGroupProperties,
+    ):
+        """Integration test for variable validation in stream mode"""
+        # Stream that eventually adds new variables
+        patched_improve_prompt_stream.return_value = mock_aiter(
+            _run(_improve_task_output(improved_prompt="Hello {{name}}, process {{input}}")),
+            _run(_improve_task_output(improved_prompt="Hello {{name}}, process {{input}} carefully")),
+            _run(_improve_task_output(improved_prompt="Hello {{name}}, process {{input}} and {{new_var}}")),
+        )
+
+        chunks = [
+            c
+            async for c in improve_prompt_service.stream(
+                task_tuple=("", 1),
+                run_id="1",
+                variant_id=None,
+                instructions="Hello {{name}}, process {{input}}",
+                user_evaluation="This is a user evaluation.",
+            )
+        ]
+
+        # Should have 4 chunks: 3 from streaming + 1 final chunk reverting to original
+        assert len(chunks) == 4
+
+        # First two chunks should proceed normally
+        assert chunks[0][0].instructions == "Hello {{name}}, process {{input}}"
+        assert chunks[1][0].instructions == "Hello {{name}}, process {{input}} carefully"
+        assert chunks[2][0].instructions == "Hello {{name}}, process {{input}} and {{new_var}}"
+
+        # Final chunk should revert to original instructions
+        assert chunks[3][0].instructions == "Hello {{name}}, process {{input}}"
+        assert chunks[3][1] == []
+
+        # Should log a warning
+        patched_logger.warning.assert_called_once_with(
+            "New input variables were added by improve prompt agent",
+            extra={
+                "original_instructions": "Hello {{name}}, process {{input}}",
+                "improved_instructions": "Hello {{name}}, process {{input}} and {{new_var}}",
+            },
+        )

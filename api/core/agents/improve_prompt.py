@@ -113,5 +113,8 @@ async def run_improve_prompt_agent(_: ImprovePromptAgentInput) -> ImprovePromptA
 
     Only include field updates where changes to descriptions or examples will improve the schema's clarity or effectiveness. Ensure that any changes to the description or examples align with the improvements made to the prompt and address any relevant issues from the user evaluation.
 
-    Provide a 'changelog' that lists the specific changes made to the original promp. Each item should briefly describe a modification or addition made to improve the prompt. This also includes the 'field_updates'"""
+    Provide a 'changelog' that lists the specific changes made to the original promp. Each item should briefly describe a modification or addition made to improve the prompt. This also includes the 'field_updates'
+
+    You must NEVER add new input variables ex: {% raw %}{{example_variables}}{% endraw %}
+    """
     ...
