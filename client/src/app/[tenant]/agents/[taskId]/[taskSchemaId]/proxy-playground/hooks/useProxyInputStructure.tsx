@@ -4,7 +4,7 @@ import { ProxyMessage } from '@/types/workflowAI';
 
 type Props = {
   input: GeneralizedTaskInput | undefined;
-  setInput: (input: GeneralizedTaskInput) => void;
+  setInput?: (input: GeneralizedTaskInput) => void;
 };
 
 export function useProxyInputStructure(props: Props) {
@@ -38,6 +38,10 @@ export function useProxyInputStructure(props: Props) {
 
   const setMessages = useCallback(
     (messages: ProxyMessage[] | undefined) => {
+      if (!setInput) {
+        return;
+      }
+
       const taskInput = {
         ['workflowai.replies']: messages,
         ...cleanInputRef.current,
@@ -50,6 +54,10 @@ export function useProxyInputStructure(props: Props) {
 
   const setCleanInput = useCallback(
     (cleanInput: Record<string, unknown>) => {
+      if (!setInput) {
+        return;
+      }
+
       setInput({ ...cleanInput, ['workflowai.replies']: messagesRef.current });
     },
     [setInput]

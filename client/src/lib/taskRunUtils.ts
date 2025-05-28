@@ -20,7 +20,12 @@ export function getContextWindowInformation(
     return undefined;
   }
 
-  const usage = runCompletions[0].usage;
+  const usage = runCompletions.find(
+    (completion) =>
+      !!completion.usage.prompt_token_count &&
+      !!completion.usage.completion_token_count &&
+      !!completion.usage.model_context_window_size
+  )?.usage;
 
   if (!usage || !usage.prompt_token_count || !usage.completion_token_count || !usage.model_context_window_size) {
     return undefined;

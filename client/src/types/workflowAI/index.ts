@@ -29,6 +29,7 @@ export type ProxyMessageContent = {
 
 export type ProxyMessage = {
   role: 'user' | 'system' | 'assistant';
+  run_id?: string;
   content: ProxyMessageContent[];
 };
 

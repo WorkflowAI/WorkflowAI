@@ -1,9 +1,17 @@
-import { Add12Regular } from '@fluentui/react-icons';
+import { Add12Regular, Open16Regular } from '@fluentui/react-icons';
+import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/Button';
+import { taskSchemaRoute } from '@/lib/routeFormatter';
+import { cn } from '@/lib/utils';
+import { useOrFetchRunV1 } from '@/store/fetchers';
+import { useOrFetchRunCompletions } from '@/store/fetchers';
+import { TaskSchemaID, TenantID } from '@/types/aliases';
+import { TaskID } from '@/types/aliases';
 import { ProxyMessage, ProxyMessageContent } from '@/types/workflowAI';
 import { ProxyMessageViewHeader } from './ProxyMessageViewHeader';
 import { ProxyFile } from './components/ProxyFile';
+import { ProxyMessageRunFooter } from './components/ProxyMessageRunFooter';
 import { ProxyTextarea } from './components/ProxyTextarea';
 import { ProxyToolCallRequest } from './components/ProxyToolCallRequest';
 import { ProxyToolCallResultView } from './components/ProxyToolCallResult';
@@ -49,6 +57,10 @@ export function ProxyMessageView(props: Props) {
     inputVariblesKeys,
     supportInputVaribles = true,
   } = props;
+
+  const { tenant, taskId } = useParams();
+  const { run } = useOrFetchRunV1(tenant as TenantID, taskId as TaskID, message.run_id);
+  const { completions } = useOrFetchRunCompletions(tenant as TenantID, taskId as TaskID, message.run_id);
 
   const onMessageChange = useCallback(
     (index: number, content: ProxyMessageContent) => {
@@ -160,70 +172,99 @@ export function ProxyMessageView(props: Props) {
     return message.role === 'system';
   }, [message.role, onMoveToVersion, readonly]);
 
+  const showRunDetails = useMemo(() => {
+    return !!message.run_id && message.role === 'assistant';
+  }, [message.run_id, message.role]);
+
+  const router = useRouter();
+
+  const onTryInPlayground = useCallback(() => {
+    if (!run) {
+      return;
+    }
+
+    const route = taskSchemaRoute(tenant as TenantID, taskId as TaskID, `${run.task_schema_id}` as TaskSchemaID, {
+      versionId: run.version.id,
+      taskRunId1: message.run_id,
+    });
+
+    router.push(route);
+  }, [run, tenant, taskId, message.run_id, router]);
+
   return (
     <div
-      className='flex flex-col border border-gray-200 rounded-[2px] min-h-[50px] bg-white pb-3 relative'
+      className='flex flex-col relative'
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
     >
-      <ProxyMessageViewHeader
-        type={getExtendedMessageType(message.role, message.content)}
-        isHovering={isHovering}
-        avaibleTypes={avaibleTypes}
-        onRemove={oneMessageMode || isLastMessage ? undefined : onRemove}
-        onChangeType={(type) => onChangeType(type)}
-        onAddContentEntry={onAddContentEntry}
-        readonly={readonly}
-      />
-      <div className='flex flex-col gap-[10px]'>
-        {message.content.map((content, index) => {
-          return (
-            <div key={index} className='flex flex-col gap-[10px]'>
-              {content.text !== undefined && (
-                <div className='flex w-full'>
-                  <ProxyTextarea
-                    key={index}
-                    content={content}
-                    setContent={(content) => onMessageChange(index, content)}
-                    placeholder='Message text content'
-                    readOnly={readonly}
-                    inputVariblesKeys={inputVariblesKeys}
-                    supportInputVaribles={supportInputVaribles}
-                  />
-                </div>
-              )}
-              {content.file && (
-                <div className='flex w-full px-3'>
-                  <ProxyFile
-                    content={content}
-                    setContent={(content) => onMessageChange(index, content)}
-                    readonly={readonly}
-                    onRemoveContentEntry={() => onRemoveContentEntry(index)}
-                  />
-                </div>
-              )}
-              {content.tool_call_request && (
-                <div className='flex w-full px-3'>
-                  <ProxyToolCallRequest
-                    content={content}
-                    setContent={(content) => onMessageChange(index, content)}
-                    readonly={readonly}
-                  />
-                </div>
-              )}
-              {content.tool_call_result && (
-                <div className='flex w-full px-3'>
-                  <ProxyToolCallResultView
-                    result={content.tool_call_result}
-                    setContent={(content) => onMessageChange(index, content)}
-                    readonly={readonly}
-                  />
-                </div>
-              )}
-            </div>
-          );
-        })}
+      <div
+        className={cn(
+          'flex flex-col border border-gray-200 min-h-[50px] bg-white pb-3',
+          showRunDetails ? 'rounded-t-[2px]' : 'rounded-[2px]'
+        )}
+      >
+        <ProxyMessageViewHeader
+          type={getExtendedMessageType(message.role, message.content)}
+          isHovering={isHovering}
+          avaibleTypes={avaibleTypes}
+          onRemove={oneMessageMode || isLastMessage ? undefined : onRemove}
+          onChangeType={(type) => onChangeType(type)}
+          onAddContentEntry={onAddContentEntry}
+          readonly={readonly}
+        />
+        <div className='flex flex-col gap-[10px]'>
+          {message.content.map((content, index) => {
+            return (
+              <div key={index} className='flex flex-col gap-[10px]'>
+                {content.text !== undefined && (
+                  <div className='flex w-full'>
+                    <ProxyTextarea
+                      key={index}
+                      content={content}
+                      setContent={(content) => onMessageChange(index, content)}
+                      placeholder='Message text content'
+                      readOnly={readonly}
+                      inputVariblesKeys={inputVariblesKeys}
+                      supportInputVaribles={supportInputVaribles}
+                      supportObjectViewerIfPossible={message.role === 'assistant'}
+                    />
+                  </div>
+                )}
+                {content.file && (
+                  <div className='flex w-full px-3'>
+                    <ProxyFile
+                      content={content}
+                      setContent={(content) => onMessageChange(index, content)}
+                      readonly={readonly}
+                      onRemoveContentEntry={() => onRemoveContentEntry(index)}
+                    />
+                  </div>
+                )}
+                {content.tool_call_request && (
+                  <div className='flex w-full px-3'>
+                    <ProxyToolCallRequest
+                      content={content}
+                      setContent={(content) => onMessageChange(index, content)}
+                      readonly={readonly}
+                    />
+                  </div>
+                )}
+                {content.tool_call_result && (
+                  <div className='flex w-full px-3'>
+                    <ProxyToolCallResultView
+                      result={content.tool_call_result}
+                      setContent={(content) => onMessageChange(index, content)}
+                      readonly={readonly}
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
+
+      {showRunDetails && !!message.run_id && <ProxyMessageRunFooter run={run} completions={completions} />}
 
       {isHovering && !readonly && !oneMessageMode && (
         <>
@@ -247,6 +288,19 @@ export function ProxyMessageView(props: Props) {
             />
           </div>
         </>
+      )}
+
+      {!!message.run_id && isHovering && (
+        <div className='absolute top-0 right-0 translate-x-2 -translate-y-[14px] items-center justify-center'>
+          <Button
+            variant='newDesign'
+            size='sm'
+            icon={<Open16Regular className='w-4 h-4' />}
+            onClick={onTryInPlayground}
+          >
+            Try From Here In Playground
+          </Button>
+        </div>
       )}
 
       {showMoveButton && (

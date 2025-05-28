@@ -12,10 +12,11 @@ type Props = {
   output: TaskOutputDict;
   toolCalls: ToolCallPreview[] | undefined;
   updateInputAndRun: (input: TaskInputDict) => Promise<void>;
+  runId?: string;
 };
 
 export function ProxyReplyView(props: Props) {
-  const { input, output, toolCalls, updateInputAndRun } = props;
+  const { input, output, toolCalls, updateInputAndRun, runId } = props;
   const [isLoading, setIsLoading] = useState(false);
 
   const toolCallRequest: ToolCallRequestWithID | undefined = useMemo(() => {
@@ -86,8 +87,9 @@ export function ProxyReplyView(props: Props) {
     return {
       role: 'assistant',
       content: requestContent,
+      run_id: runId,
     };
-  }, [toolCallRequest, output]);
+  }, [toolCallRequest, output, runId]);
 
   const [newMessage, setNewMessage] = useState<ProxyMessage>(blankMessage);
 

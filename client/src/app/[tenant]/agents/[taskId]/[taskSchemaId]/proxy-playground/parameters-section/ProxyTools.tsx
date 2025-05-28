@@ -10,11 +10,12 @@ import { ProxyToolDetails } from './ProxyToolDetails';
 
 type ProxyToolsProps = {
   toolCalls: (ToolKind | Tool_Output)[] | undefined;
-  setToolCalls: (toolCalls: (ToolKind | Tool_Output)[]) => void;
+  setToolCalls?: (toolCalls: (ToolKind | Tool_Output)[]) => void;
+  isReadonly?: boolean;
 };
 
 export function ProxyTools(props: ProxyToolsProps) {
-  const { toolCalls } = props;
+  const { toolCalls, isReadonly = false } = props;
 
   const filteredTools: Tool_Output[] | undefined = useMemo(() => {
     if (!toolCalls) return undefined;
@@ -47,7 +48,9 @@ export function ProxyTools(props: ProxyToolsProps) {
               {getToolName(tool.name)}
             </Button>
           ))}
-          <Button variant='newDesign' size='none' icon={<Add16Filled />} className='w-7 h-7' disabled />
+          {!isReadonly && (
+            <Button variant='newDesign' size='none' icon={<Add16Filled />} className='w-7 h-7' disabled />
+          )}
         </>
       ) : (
         <div className='flex flex-row gap-[10px] items-center'>

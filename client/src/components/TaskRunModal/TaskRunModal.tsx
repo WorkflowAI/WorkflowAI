@@ -2,7 +2,9 @@
 
 import { redirect, useSearchParams } from 'next/navigation';
 import { useCallback, useMemo } from 'react';
+import { checkSchemaForProxy } from '@/app/[tenant]/agents/[taskId]/[taskSchemaId]/proxy-playground/utils';
 import { Dialog, DialogContent } from '@/components/ui/Dialog';
+import { Loader } from '@/components/ui/Loader';
 import { TASK_RUN_ID_PARAM } from '@/lib/constants';
 import { useFavoriteToggle } from '@/lib/hooks/useFavoriteToggle';
 import { useRedirectWithParams } from '@/lib/queryString';
@@ -10,12 +12,12 @@ import { taskSchemaRoute } from '@/lib/routeFormatter';
 import {
   useOrFetchCurrentTaskSchema,
   useOrFetchRunV1,
-  useOrFetchTaskRun,
   useOrFetchTaskRunTranscriptions,
   useOrFetchVersion,
 } from '@/store';
 import { TaskID, TaskSchemaID, TenantID } from '@/types/aliases';
 import { TaskRunView } from './TaskRunView';
+import { ProxyRunView } from './proxy/ProxyRunView';
 
 type TaskRunModalProps = {
   taskId: TaskID;
@@ -31,16 +33,31 @@ type TaskRunModalProps = {
 export default function TaskRunModal(props: TaskRunModalProps) {
   const { onClose, open, showPlaygroundButton, taskId, taskRunId, taskSchemaIdFromParams, taskRunIds, tenant } = props;
   const { run: taskRun, isInitialized } = useOrFetchRunV1(tenant, taskId, taskRunId);
+  const { version } = useOrFetchVersion(tenant, taskId, taskRun?.version.id);
 
   const taskSchemaId = (taskRun?.task_schema_id ?? taskSchemaIdFromParams) as TaskSchemaID;
 
-  const { taskSchema: currentTaskSchema } = useOrFetchCurrentTaskSchema(tenant, taskId, taskSchemaId);
+  const { taskSchema: schema } = useOrFetchCurrentTaskSchema(tenant, taskId, taskSchemaId);
 
   const taskRunIndex = useMemo(() => taskRunIds?.findIndex((id) => id === taskRunId) || 0, [taskRunId, taskRunIds]);
   const runsLength = taskRunIds?.length ?? 0;
 
-  useOrFetchTaskRun(tenant, taskId, taskRunIds?.[taskRunIndex - 1] || '');
-  useOrFetchTaskRun(tenant, taskId, taskRunIds?.[taskRunIndex + 1] || '');
+  const { run: prevTaskRun } = useOrFetchRunV1(tenant, taskId, taskRunIds?.[taskRunIndex - 1]);
+  const { run: nextTaskRun } = useOrFetchRunV1(tenant, taskId, taskRunIds?.[taskRunIndex + 1]);
+
+  const {} = useOrFetchCurrentTaskSchema(
+    tenant,
+    taskId,
+    !!prevTaskRun?.task_schema_id ? (`${prevTaskRun.task_schema_id}` as TaskSchemaID) : undefined
+  );
+  const {} = useOrFetchCurrentTaskSchema(
+    tenant,
+    taskId,
+    !!nextTaskRun?.task_schema_id ? (`${nextTaskRun.task_schema_id}` as TaskSchemaID) : undefined
+  );
+
+  useOrFetchVersion(tenant, taskId, prevTaskRun?.version.id);
+  useOrFetchVersion(tenant, taskId, nextTaskRun?.version.id);
 
   const { transcriptions } = useOrFetchTaskRunTranscriptions(tenant, taskId, taskRunId);
 
@@ -48,8 +65,6 @@ export default function TaskRunModal(props: TaskRunModalProps) {
     tenant,
     taskId,
   });
-
-  const { version } = useOrFetchVersion(tenant, taskId, taskRun?.version.id);
 
   const onFavoriteToggle = useCallback(() => {
     if (!version) {
@@ -104,6 +119,13 @@ export default function TaskRunModal(props: TaskRunModalProps) {
     });
   }, [showPlaygroundButton, tenant, taskId, taskSchemaId, taskRunId, version]);
 
+  const isProxy = useMemo(() => {
+    if (!schema) {
+      return false;
+    }
+    return checkSchemaForProxy(schema);
+  }, [schema]);
+
   if (taskRun && taskRun.task_id !== taskId) {
     return redirect(taskSchemaRoute(tenant, taskId, taskSchemaId));
   }
@@ -111,24 +133,41 @@ export default function TaskRunModal(props: TaskRunModalProps) {
   return (
     <div>
       <Dialog open={open} onOpenChange={onClose}>
-        <DialogContent className='min-w-[90vw] min-h-[90vh] p-0 rounded-[2px]'>
-          <TaskRunView
-            tenant={tenant}
-            isInitialized={isInitialized}
-            onClose={onClose}
-            onFavoriteToggle={onFavoriteToggle}
-            onNext={onNext}
-            onPrev={onPrev}
-            playgroundInputRoute={playgroundInputRoute}
-            playgroundFullRoute={playgroundFullRoute}
-            schemaInput={currentTaskSchema?.input_schema}
-            schemaOutput={currentTaskSchema?.output_schema}
-            version={version}
-            taskRun={taskRun}
-            taskRunIndex={taskRunIndex}
-            totalModalRuns={runsLength}
-            transcriptions={transcriptions}
-          />
+        <DialogContent className='min-w-[90vw] min-h-[90vh] max-h-[90vh] h-[90vh] p-0 rounded-[2px]'>
+          {!taskRun || !schema || !version ? (
+            <Loader centered />
+          ) : isProxy ? (
+            <ProxyRunView
+              onClose={onClose}
+              onNext={onNext}
+              onPrev={onPrev}
+              runIndex={taskRunIndex}
+              totalModalRuns={runsLength}
+              tenant={tenant}
+              run={taskRun}
+              schema={schema}
+              playgroundFullRoute={playgroundFullRoute}
+              version={version}
+            />
+          ) : (
+            <TaskRunView
+              tenant={tenant}
+              isInitialized={isInitialized}
+              onClose={onClose}
+              onFavoriteToggle={onFavoriteToggle}
+              onNext={onNext}
+              onPrev={onPrev}
+              playgroundInputRoute={playgroundInputRoute}
+              playgroundFullRoute={playgroundFullRoute}
+              schemaInput={schema?.input_schema}
+              schemaOutput={schema?.output_schema}
+              version={version}
+              taskRun={taskRun}
+              taskRunIndex={taskRunIndex}
+              totalModalRuns={runsLength}
+              transcriptions={transcriptions}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </div>

@@ -4,6 +4,7 @@ import {
   ProxyMessage,
   ProxyMessageContent,
   ProxyMessageWithID,
+  RunV1,
   ToolCallRequestWithID,
   ToolCallResult,
 } from '@/types/workflowAI';
@@ -384,4 +385,28 @@ export function removeIdsFromMessages(messages: ProxyMessageWithID[]): ProxyMess
     const { internal_id, ...rest } = message;
     return rest;
   });
+}
+
+export function createAssistantMessageFromRun(run: RunV1): ProxyMessage {
+  const toolCallRequests = run.tool_call_requests ?? [];
+
+  const content: ProxyMessageContent[] = [];
+
+  toolCallRequests.forEach((toolCallRequest) => {
+    content.push({
+      tool_call_request: {
+        tool_name: toolCallRequest.name,
+        tool_input_dict: toolCallRequest.input,
+        id: toolCallRequest.id,
+      },
+    });
+  });
+
+  const assistantText = JSON.stringify(run.task_output);
+
+  return {
+    role: 'assistant',
+    run_id: run.id,
+    content: [...content, { text: assistantText }],
+  };
 }

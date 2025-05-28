@@ -276,7 +276,8 @@ function parseSSEEvent(eventData: string) {
 
   try {
     parsed = JSON.parse(eventData);
-  } catch (e) {
+  } catch (error) {
+    console.error(error);
     throw new StreamError('Failed to parse event source message', true, {
       eventData,
     });
