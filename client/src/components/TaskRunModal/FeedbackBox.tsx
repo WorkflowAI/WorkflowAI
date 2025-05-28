@@ -14,24 +14,27 @@ export function FeedbackBox(props: FeedbackBoxProps) {
   const { feedbackList, isLoading } = props;
 
   return (
-    <div className='bordered-box flex flex-col px-4'>
-      <div className='bordered-box-title'>
+    <div className='flex flex-col px-4 py-3 bg-white rounded-[2px] border border-gray-200 gap-2'>
+      <div className='text-[13px] text-gray-500'>
         User Feedback
         {isLoading && <Loader className='ml-auto w-4 h-4' />}
       </div>
 
       {feedbackList?.map((feedback) => (
-        <div className='bordered-box flex flex-col mb-2 max-h-28 overflow-y-auto' key={feedback.id}>
+        <div className='flex flex-col max-h-28 overflow-y-auto border border-gray-200 rounded-[2px]' key={feedback.id}>
           <div className='flex flex-row items-center h-9 bg-gray-50 gap-1 px-3 flex-none'>
             <div
               className={cn(
-                'capitalize text-sm font-bold',
+                'capitalize text-[13px] font-semibold',
                 feedback.outcome === 'positive' ? 'text-green-500' : 'text-red-500'
               )}
             >
               {feedback.outcome}
             </div>
-            ·<div className='text-sm font-normal text-gray-500'>{dayjs(feedback.created_at).format('MMM D, YYYY')}</div>
+            ·
+            <div className='text-[13px] font-normal text-gray-500'>
+              {dayjs(feedback.created_at).format('MMM D, YYYY')}
+            </div>
           </div>
 
           {feedback.comment && (
@@ -43,7 +46,7 @@ export function FeedbackBox(props: FeedbackBoxProps) {
       ))}
 
       {!isLoading && !feedbackList?.length && (
-        <div className='flex flex-col items-center justify-center p-4'>No feedback yet</div>
+        <div className='flex items-center text-[13px] text-gray-400'>No feedback yet</div>
       )}
     </div>
   );

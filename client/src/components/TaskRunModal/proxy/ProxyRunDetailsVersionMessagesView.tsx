@@ -4,15 +4,19 @@ import { ProxyMessagesView } from '@/app/[tenant]/agents/[taskId]/[taskSchemaId]
 import { TaskVersionBadgeContainer } from '@/components/TaskIterationBadge/TaskVersionBadgeContainer';
 import { TaskModelBadge } from '@/components/v2/TaskModelBadge';
 import { TaskTemperatureBadge } from '@/components/v2/TaskTemperatureBadge';
-import { ProxyMessage, VersionV1 } from '@/types/workflowAI';
+import { TaskID, TenantID } from '@/types/aliases';
+import { ProxyMessage, RunV1, VersionV1 } from '@/types/workflowAI';
+import { FeedbackBoxContainer } from '../FeedbackBox';
 import { ProxyRunDetailsParameterEntry } from './ProxyRunDetailsParameterEntry';
 
 type Props = {
   version: VersionV1;
+  run: RunV1;
+  tenant: TenantID | undefined;
 };
 
 export function ProxyRunDetailsVersionMessagesView(props: Props) {
-  const { version } = props;
+  const { version, run, tenant } = props;
 
   const messages = useMemo(() => {
     if (!version) {
@@ -26,7 +30,7 @@ export function ProxyRunDetailsVersionMessagesView(props: Props) {
       <div className='flex w-full h-12 border-b border-dashed border-gray-200 items-center px-4'>
         <div className='text-[16px] font-semibold text-gray-700'>Version Details</div>
       </div>
-      <div className='flex w-full max-h-[calc(100%-48px)] overflow-hidden p-4'>
+      <div className='flex flex-col gap-2 w-full max-h-[calc(100%-48px)] overflow-hidden p-4'>
         <div className='flex flex-col w-full h-full overflow-hidden bg-white rounded-[2px] border border-gray-200'>
           <ProxyRunDetailsParameterEntry title='Version' className='border-b border-gray-100'>
             <TaskVersionBadgeContainer version={version} side='top' showDetails={false} />
@@ -78,6 +82,8 @@ export function ProxyRunDetailsVersionMessagesView(props: Props) {
             )}
           </div>
         </div>
+
+        <FeedbackBoxContainer taskRunId={run.id} tenant={tenant} taskId={run.task_id as TaskID} />
       </div>
     </div>
   );
