@@ -16,7 +16,7 @@ type Props = {
 };
 
 export function ProxyReplyView(props: Props) {
-  const { input, output, toolCalls, updateInputAndRun, runId } = props;
+  const { input, output, toolCalls, updateInputAndRun } = props;
   const [isLoading, setIsLoading] = useState(false);
 
   const toolCallRequest: ToolCallRequestWithID | undefined = useMemo(() => {
@@ -87,9 +87,8 @@ export function ProxyReplyView(props: Props) {
     return {
       role: 'assistant',
       content: requestContent,
-      run_id: runId,
     };
-  }, [toolCallRequest, output, runId]);
+  }, [toolCallRequest, output]);
 
   const [newMessage, setNewMessage] = useState<ProxyMessage>(blankMessage);
 
