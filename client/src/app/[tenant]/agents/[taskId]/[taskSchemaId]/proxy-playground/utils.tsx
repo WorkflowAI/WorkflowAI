@@ -58,3 +58,35 @@ export function repairMessageKeyInInput(input: GeneralizedTaskInput | undefined)
 
   return input;
 }
+
+export function moveInputMessagesToVersionIfRequired(
+  input: GeneralizedTaskInput | undefined,
+  messages: ProxyMessage[] | undefined
+) {
+  if (!input) {
+    return { input, messages };
+  }
+
+  if (!!messages && messages.length > 0) {
+    return { input, messages };
+  }
+
+  // There are no messages in the version, so we need to move some of the messages from the input to the version
+
+  const inputMessages = (input as Record<string, unknown>)['workflowai.replies'] as ProxyMessage[];
+  if (!inputMessages || inputMessages.length === 0) {
+    return { input, messages };
+  }
+
+  // There are messages in the input, so we need to move some of them to the version
+
+  const lastSystemMessageIndex = inputMessages.findLastIndex((message) => message.role === 'system');
+  const lastIndexOfMessagesToMove = lastSystemMessageIndex === -1 ? 0 : lastSystemMessageIndex;
+
+  const messagesToMove = inputMessages.slice(0, lastIndexOfMessagesToMove + 1);
+  const messagesToKeep = inputMessages.slice(lastIndexOfMessagesToMove + 1);
+
+  const newInput = { ...input, 'workflowai.replies': messagesToKeep };
+
+  return { input: newInput, messages: messagesToMove };
+}

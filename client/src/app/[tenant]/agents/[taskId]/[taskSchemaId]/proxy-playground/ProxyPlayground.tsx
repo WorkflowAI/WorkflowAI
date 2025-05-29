@@ -43,7 +43,7 @@ import { useProxyMatchVersion } from './hooks/useProxyMatchVersion';
 import { useProxyPerformRuns } from './hooks/useProxyPerformRuns';
 import { useProxyPlaygroundStates } from './hooks/useProxyPlaygroundStates';
 import { useProxyRunners } from './hooks/useProxyRunners';
-import { findMessagesInVersion, repairMessageKeyInInput } from './utils';
+import { findMessagesInVersion, moveInputMessagesToVersionIfRequired, repairMessageKeyInInput } from './utils';
 
 export type Props = {
   taskId: TaskID;
@@ -112,16 +112,25 @@ export function ProxyPlayground(props: Props) {
   useSaveToProxyHistory(historyId, 'proxy-tool-calls', proxyToolCalls);
 
   useEffect(() => {
-    setProxyMessages(getFromProxyHistory(historyId, 'proxy-messages') ?? findMessagesInVersion(version));
-    setProxyToolCalls(
-      getFromProxyHistory(historyId, 'proxy-tool-calls') ?? version?.properties.enabled_tools ?? undefined
-    );
-  }, [version, historyId]);
+    if (!version || !baseRun) {
+      return;
+    }
 
-  useEffect(() => {
-    const input = repairMessageKeyInInput(baseRun?.task_input);
-    setInput(getFromProxyHistory(historyId, 'input') ?? input);
-  }, [baseRun, historyId]);
+    const input: GeneralizedTaskInput | undefined =
+      getFromProxyHistory(historyId, 'input') ?? repairMessageKeyInInput(baseRun.task_input);
+
+    const messages: ProxyMessage[] | undefined =
+      getFromProxyHistory(historyId, 'proxy-messages') ?? findMessagesInVersion(version);
+
+    const toolCalls: (ToolKind | Tool_Output)[] | undefined =
+      getFromProxyHistory(historyId, 'proxy-tool-calls') ?? version?.properties.enabled_tools ?? undefined;
+
+    const { input: modifiedInput, messages: modifiedMessages } = moveInputMessagesToVersionIfRequired(input, messages);
+
+    setInput(modifiedInput);
+    setProxyMessages(modifiedMessages);
+    setProxyToolCalls(toolCalls);
+  }, [version, baseRun, historyId]);
 
   const {
     schema: extractedInputSchema,

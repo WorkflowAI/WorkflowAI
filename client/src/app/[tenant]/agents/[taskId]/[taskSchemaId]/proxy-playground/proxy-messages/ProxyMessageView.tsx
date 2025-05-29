@@ -164,13 +164,7 @@ export function ProxyMessageView(props: Props) {
 
   const [isHovering, setIsHovering] = useState(false);
 
-  const showMoveButton = useMemo(() => {
-    if (!onMoveToVersion || readonly) {
-      return false;
-    }
-
-    return message.role === 'system';
-  }, [message.role, onMoveToVersion, readonly]);
+  const showMoveButton = false;
 
   const showRunDetails = useMemo(() => {
     return !!message.run_id && message.role === 'assistant';
