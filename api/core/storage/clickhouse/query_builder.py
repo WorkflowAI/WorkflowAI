@@ -311,10 +311,12 @@ def Q(
     offset: int | None = None,
     order_by: Sequence[str] | None = None,
     distincts: Sequence[str] | None = None,
+    limit_by: tuple[str, int] | None = None,
 ):
     components = ["SELECT"]
     if distincts:
         components.append(f"DISTINCT ON ({', '.join(distincts)})")
+
     components.append(f"{', '.join(select) if select else '*'} FROM {f}")
 
     if where and (s := where.to_sql()):
@@ -325,8 +327,11 @@ def Q(
         parameters = None
     if order_by:
         components.append(f"ORDER BY {', '.join(order_by)}")
+    if limit_by:
+        components.append(f"LIMIT {limit_by[1]} BY {limit_by[0]}")
     if limit:
         components.append(f"LIMIT {limit}")
     if offset:
         components.append(f"OFFSET {offset}")
+
     return " ".join(components), parameters

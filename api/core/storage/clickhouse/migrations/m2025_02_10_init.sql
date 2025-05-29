@@ -105,3 +105,4 @@ ALTER TABLE runs ADD INDEX cache_hash_index cache_hash TYPE bloom_filter(0.01);
 ALTER TABLE runs ADD INDEX eval_hash_index eval_hash TYPE bloom_filter(0.01);
 ALTER TABLE runs ADD INDEX input_hash_index input_hash TYPE bloom_filter(0.01);
 
+ALTER TABLE runs ADD COLUMN conversation_id UInt128 DEFAULT reinterpretAsUInt128(generateUUIDv7());

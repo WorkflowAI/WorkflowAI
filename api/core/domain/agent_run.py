@@ -123,6 +123,8 @@ class AgentRun(AgentRunBase):
 
     is_external: bool | None = None
 
+    conversation_id: str | None = None
+
     @property
     def used_environment(self) -> str | None:
         if not self.metadata:

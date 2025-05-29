@@ -36,6 +36,7 @@ from core.storage.clickhouse.models.utils import (
     MAX_UINT_8,
     MAX_UINT_16,
     MAX_UINT_32,
+    UUID_AS_INT,
     RoundedFloat,
     clickhouse_query,
     dump_ck_str_list,
@@ -147,21 +148,9 @@ class ClickhouseRun(BaseModel):
     tenant_uid: Annotated[int, validate_int(MAX_UINT_32)] = 0
     task_uid: Annotated[int, validate_int(MAX_UINT_32)] = 0
     created_at_date: date = Field(default_factory=date_zero)
-    run_uuid: UUID = Field(default_factory=uuid_zero)
 
-    @field_serializer("run_uuid")
-    def serialize_run_uuid(self, run_uuid: UUID):
-        return run_uuid.int
-
-    @field_validator("run_uuid", mode="before")
-    def parse_run_uuid(cls, value: Any) -> UUID:
-        if isinstance(value, int):
-            return UUID(int=value)
-        if isinstance(value, UUID):
-            return value
-        if isinstance(value, str):
-            return UUID(value)
-        raise ValueError("Invalid run_uuid")
+    run_uuid: UUID_AS_INT = Field(default_factory=uuid_zero)
+    conversation_id: UUID_AS_INT = Field(default_factory=uuid_zero)
 
     @classmethod
     def from_cost_millionth_usd(cls, cost: int) -> float:
@@ -531,6 +520,9 @@ class ClickhouseRun(BaseModel):
             task_uid=run.task_uid,
             created_at_date=run.created_at.date(),
             run_uuid=cls.sanitize_id(run.id, run.created_at),
+            conversation_id=cls.sanitize_id(run.conversation_id, run.created_at)
+            if run.conversation_id
+            else uuid7(ms=lambda: int(run.created_at.timestamp() * 1000)),
             task_schema_id=run.task_schema_id,
             # Version
             version_id=run.group.id,
@@ -585,6 +577,7 @@ class ClickhouseRun(BaseModel):
             # IDs
             task_id=task_id,
             task_uid=self.task_uid,
+            conversation_id=str(self.conversation_id) if self.conversation_id else None,
             id=str(self.run_uuid),
             created_at=uuid7_generation_time(self.run_uuid),
             task_schema_id=self.task_schema_id,

@@ -125,6 +125,7 @@ class ClickhouseClient(TaskRunStorage):
         limit: int,
         offset: int,
         timeout_ms: int = 60_000,
+        unique_by_conversation: bool = True,
     ):
         columns = ClickhouseRun.select_in_search()
         where = await self._search_where(task_uid, search_fields)
@@ -136,6 +137,7 @@ class ClickhouseClient(TaskRunStorage):
                 where=where,
                 limit=limit,
                 offset=offset,
+                unique_by_conversation=unique_by_conversation,
             )
 
             for row in result:
@@ -179,6 +181,7 @@ class ClickhouseClient(TaskRunStorage):
         offset: int | None = None,
         order_by: Sequence[str] | None = None,
         distincts: Sequence[str] | None = None,
+        unique_by_conversation: bool = False,
     ):
         q, parameters = Q(
             "runs",
@@ -188,6 +191,9 @@ class ClickhouseClient(TaskRunStorage):
             offset=offset,
             order_by=order_by if order_by is not None else self._default_order_by(),
             distincts=distincts,
+            # We use a limit by and not distinct to preserve order.
+            # The returned run will be the first in a given conversation
+            limit_by=("conversation_id", 1) if unique_by_conversation else None,
         )
 
         # print("\n", q, parameters, "\n")

@@ -91,6 +91,9 @@ async def fresh_clickhouse_client(dsn: str | None = None):
     ), "sanity check"
     await client.command(setup_commands[1])
 
+    for cmd in setup_commands[2:]:
+        await client.command(cmd)
+
     return client
 
 
@@ -193,6 +196,13 @@ class TestSearchTaskRun:
 
         r = await self._search(clickhouse_client, [], task_uid=2)
         assert r == [str(_uuid7(2))]
+
+    async def test_unique_by_conversation(self, clickhouse_client: ClickhouseClient):
+        await self._insert_runs(
+            clickhouse_client,
+            task_run_ser(),
+            task_run_ser(task_uid=2),
+        )
 
     async def test_count(self, clickhouse_client: ClickhouseClient):
         await self._insert_runs(

@@ -2,8 +2,9 @@ import logging
 from collections.abc import Callable, Sequence
 from datetime import datetime, timedelta
 from typing import Annotated, Any
+from uuid import UUID
 
-from pydantic import AfterValidator, BaseModel
+from pydantic import AfterValidator, BaseModel, BeforeValidator, PlainSerializer
 
 from core.domain.errors import BadRequestError, InternalError
 from core.domain.search_query import SearchOperation, SearchOperationBetween, SearchOperator
@@ -184,3 +185,20 @@ def id_upper_bound(value: datetime):
     # As an upper bound, we need to add a second to the id
     time_ms = int((value + timedelta(seconds=1)).timestamp() * 1000)
     return uuid7(ms=lambda: time_ms, rand=lambda: 0).int
+
+
+def serialize_uuid_as_int(uuid: UUID):
+    return uuid.int
+
+
+def parse_uuid_as_int(value: Any):
+    if isinstance(value, int):
+        return UUID(int=value)
+    if isinstance(value, UUID):
+        return value
+    if isinstance(value, str):
+        return UUID(value)
+    raise ValueError("Invalid run_uuid")
+
+
+UUID_AS_INT = Annotated[UUID, BeforeValidator(parse_uuid_as_int), PlainSerializer(serialize_uuid_as_int)]
