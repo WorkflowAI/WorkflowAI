@@ -12,11 +12,13 @@ import {
   useOrFetchCurrentTaskSchema,
   useOrFetchTask,
   useOrFetchTaskRuns,
+  useOrFetchVersion,
   useOrFetchVersions,
 } from '@/store';
+import { useOrFetchIntegrations } from '@/store/integrations';
 import { TaskID, TaskSchemaID } from '@/types/aliases';
 import { CodeLanguage } from '@/types/snippets';
-import { VersionEnvironment, VersionV1 } from '@/types/workflowAI';
+import { VersionEnvironment } from '@/types/workflowAI';
 import { ApiContent } from './ApiContent';
 import { useTaskRunWithSecondaryInput } from './utils';
 
@@ -30,15 +32,25 @@ export function ApiContainer() {
     {}
   );
 
+  const [selectedIntegrationIdForTaskIds, setSelectedIntegrationIdForTaskIds] = useLocalStorage<Record<TaskID, string>>(
+    'selectedIntegrationIdForTaskIds',
+    {}
+  );
+
   const redirectWithParams = useRedirectWithParams();
+
+  const { integrations } = useOrFetchIntegrations();
 
   const {
     selectedVersionId: selectedVersionIdValue,
     selectedEnvironment: selectedEnvironmentValue,
     selectedLanguage: selectedLanguageValue,
-  } = useParsedSearchParams('selectedVersionId', 'selectedEnvironment', 'selectedLanguage');
+    selectedIntegrationId: selectedIntegrationIdValue,
+  } = useParsedSearchParams('selectedVersionId', 'selectedEnvironment', 'selectedLanguage', 'selectedIntegrationId');
 
   const preselectedLanguage = languagesForTaskIds[taskId] ?? CodeLanguage.TYPESCRIPT;
+
+  const preselectedIntegrationId = selectedIntegrationIdForTaskIds[taskId] ?? integrations?.[0]?.id;
 
   const setSelectedVersionId = useCallback(
     (newVersionId: string | undefined) => {
@@ -84,14 +96,7 @@ export function ApiContainer() {
     (selectedEnvironmentValue as VersionEnvironment | undefined) ??
     (!selectedVersionIdValue ? preselectedEnvironment : undefined);
 
-  const selectedVersion: VersionV1 | undefined = useMemo(() => {
-    return versions.find((version) => {
-      if (version.id === undefined) {
-        return false;
-      }
-      return selectedVersionId === version.id;
-    });
-  }, [versions, selectedVersionId]);
+  const { version: selectedVersion } = useOrFetchVersion(tenant, taskId, selectedVersionId);
 
   const setSelectedEnvironment = useCallback(
     (newSelectedEnvironment: VersionEnvironment | undefined, newSelectedVersionId: string | undefined) => {
@@ -129,6 +134,8 @@ export function ApiContainer() {
     ? preselectedLanguage
     : (selectedLanguageValue as CodeLanguage | undefined);
 
+  const selectedIntegrationId = selectedIntegrationIdValue ?? preselectedIntegrationId;
+
   const setSelectedLanguage = useCallback(
     (language: CodeLanguage) => {
       setLanguagesForTaskIds((prev) => ({
@@ -146,9 +153,26 @@ export function ApiContainer() {
     [redirectWithParams, setLanguagesForTaskIds, taskId]
   );
 
+  const setSelectedIntegrationId = useCallback(
+    (integrationId: string | undefined) => {
+      setSelectedIntegrationIdForTaskIds((prev) => ({
+        ...prev,
+        [taskId]: integrationId,
+      }));
+
+      redirectWithParams({
+        params: {
+          selectedIntegrationId: integrationId,
+        },
+        scroll: false,
+      });
+    },
+    [redirectWithParams, setSelectedIntegrationIdForTaskIds, taskId]
+  );
+
   const apiUrl = API_URL === 'https://api.workflowai.com' ? undefined : RUN_URL;
 
-  if (!isVersionsInitialized) {
+  if (!isVersionsInitialized || !taskSchemaId) {
     return <Loader centered />;
   }
 
@@ -198,6 +222,9 @@ export function ApiContainer() {
       apiUrl={apiUrl}
       secondaryInput={secondaryInput}
       selectedVersionForAPI={selectedVersion}
+      selectedIntegrationId={selectedIntegrationId}
+      setSelectedIntegrationId={setSelectedIntegrationId}
+      integrations={integrations}
     />
   );
 }

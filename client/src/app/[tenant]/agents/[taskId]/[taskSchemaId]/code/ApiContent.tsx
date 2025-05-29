@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
+import { IntegrationCombobox } from '@/components/NewTaskModal/Import/IntegrationCombobox';
 import { Button } from '@/components/ui/Button';
 import { PageContainer } from '@/components/v2/PageContainer';
 import { PageSection } from '@/components/v2/PageSection';
@@ -11,13 +12,15 @@ import { VersionsPerEnvironment } from '@/store/versions';
 import { CodeLanguage } from '@/types/snippets';
 import { TaskSchemaResponseWithSchema } from '@/types/task';
 import { TaskRun } from '@/types/task_run';
-import { APIKeyResponse, SerializableTask, VersionEnvironment, VersionV1 } from '@/types/workflowAI';
+import { APIKeyResponse, Integration, SerializableTask, VersionEnvironment, VersionV1 } from '@/types/workflowAI';
+import { checkVersionForProxy } from '../proxy-playground/utils';
 import { APILanguageSelection } from './APILanguageSelection';
 import { ApiContentSectionItem } from './ApiContentSectionItem';
 import { ApiTabsContent } from './ApiTabsContent';
 import { DeployBanner } from './DeployBanner';
 import { ManageApiKeysButton } from './ManageApiKeyButton';
 import { VersionPopover } from './VersionPopover';
+import { ProxyApiTabsContent } from './proxy/ProxyApiTabsContent';
 
 export enum APIKeyOption {
   Own = 'Own',
@@ -42,6 +45,9 @@ type ApiContentProps = TaskSchemaParams & {
   task: SerializableTask;
   taskRun: TaskRun | undefined;
   taskSchema: TaskSchemaResponseWithSchema | undefined;
+  selectedIntegrationId: string | undefined;
+  setSelectedIntegrationId: (integrationId: string | undefined) => void;
+  integrations: Integration[] | undefined;
 };
 
 export function ApiContent(props: ApiContentProps) {
@@ -66,9 +72,16 @@ export function ApiContent(props: ApiContentProps) {
     taskSchema,
     taskSchemaId,
     tenant,
+    selectedIntegrationId,
+    setSelectedIntegrationId,
+    integrations,
   } = props;
 
   const { openOrganizationProfile: rawOpenOrganizationProfile } = useAuthUI();
+
+  const isProxy = useMemo(() => {
+    return checkVersionForProxy(selectedVersionForAPI);
+  }, [selectedVersionForAPI]);
 
   const openOrganizationProfile = useCallback(() => {
     if (!rawOpenOrganizationProfile) {
@@ -118,13 +131,26 @@ export function ApiContent(props: ApiContentProps) {
         <div className='h-full border-r border-dashed border-gray-200 w-[308px] flex-shrink-0'>
           <PageSection title='Settings' />
           <div className='flex flex-col gap-4 px-4 py-3'>
-            <ApiContentSectionItem title='Language'>
-              <APILanguageSelection
-                languages={languages}
-                selectedLanguage={selectedLanguage}
-                setSelectedLanguage={setSelectedLanguage}
-              />
-            </ApiContentSectionItem>
+            {isProxy ? (
+              <ApiContentSectionItem title='Integration'>
+                <IntegrationCombobox
+                  integrations={integrations}
+                  integrationId={selectedIntegrationId}
+                  setIntegrationId={setSelectedIntegrationId}
+                  className='border-gray-300 text-[12px] py-[3px]'
+                  entryClassName='text-[12px]'
+                />
+              </ApiContentSectionItem>
+            ) : (
+              <ApiContentSectionItem title='Language'>
+                <APILanguageSelection
+                  languages={languages}
+                  selectedLanguage={selectedLanguage}
+                  setSelectedLanguage={setSelectedLanguage}
+                />
+              </ApiContentSectionItem>
+            )}
+
             <ApiContentSectionItem title='Version'>
               <VersionPopover
                 versions={versions}
@@ -141,18 +167,29 @@ export function ApiContent(props: ApiContentProps) {
 
         <div className='flex flex-col h-full flex-1 overflow-hidden'>
           <DeployBanner version={selectedVersionForAPI} isEnvironmentShown={selectedEnvironment !== undefined} />
-          <ApiTabsContent
-            tenant={tenant}
-            taskId={taskId}
-            taskSchemaId={taskSchemaId}
-            taskSchema={taskSchema}
-            taskRun={taskRun}
-            version={selectedVersionForAPI}
-            environment={selectedEnvironment}
-            language={selectedLanguage}
-            apiUrl={apiUrl}
-            secondaryInput={secondaryInput}
-          />
+          {isProxy ? (
+            <ProxyApiTabsContent
+              tenant={tenant}
+              taskId={taskId}
+              taskSchemaId={taskSchemaId}
+              versionId={selectedVersionForAPI?.id}
+              integrationId={selectedIntegrationId}
+              integrations={integrations}
+            />
+          ) : (
+            <ApiTabsContent
+              tenant={tenant}
+              taskId={taskId}
+              taskSchemaId={taskSchemaId}
+              taskSchema={taskSchema}
+              taskRun={taskRun}
+              version={selectedVersionForAPI}
+              environment={selectedEnvironment}
+              language={selectedLanguage}
+              apiUrl={apiUrl}
+              secondaryInput={secondaryInput}
+            />
+          )}
         </div>
       </div>
     </PageContainer>

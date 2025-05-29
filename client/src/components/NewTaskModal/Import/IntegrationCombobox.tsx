@@ -1,5 +1,4 @@
 import { Checkmark16Filled, ChevronUpDownFilled } from '@fluentui/react-icons';
-import { cx } from 'class-variance-authority';
 import Image from 'next/image';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useMemo } from 'react';
@@ -8,6 +7,7 @@ import { CommandList } from '@/components/ui/Command';
 import { Command } from '@/components/ui/Command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/Popover';
 import { ScrollArea } from '@/components/ui/ScrollArea';
+import { cn } from '@/lib/utils';
 import { Integration } from '@/types/workflowAI/models';
 
 function searchValueForIntegration(integration: Integration | undefined) {
@@ -22,10 +22,11 @@ type IntegrationComboboxEntryProps = {
   trigger: boolean;
   isSelected: boolean;
   onClick?: () => void;
+  className?: string;
 };
 
 function IntegrationComboboxEntry(props: IntegrationComboboxEntryProps) {
-  const { integration, trigger, isSelected, onClick } = props;
+  const { integration, trigger, isSelected, onClick, className } = props;
 
   if (!integration) {
     return (
@@ -41,7 +42,7 @@ function IntegrationComboboxEntry(props: IntegrationComboboxEntryProps) {
         <div className='flex items-center justify-center w-6 h-6 rounded-[2px] border border-gray-200 bg-white overflow-hidden'>
           <Image src={integration.logo_url} alt={integration.display_name} width={16} height={16} />
         </div>
-        <div className='text-gray-800 text-[14px] font-medium'>{integration.display_name}</div>
+        <div className={cn('text-gray-800 text-[14px] font-medium', className)}>{integration.display_name}</div>
       </div>
     );
   }
@@ -50,12 +51,12 @@ function IntegrationComboboxEntry(props: IntegrationComboboxEntryProps) {
     <div className='flex relative w-full cursor-pointer hover:bg-gray-100 rounded-[2px] px-2' onClick={onClick}>
       <div className='flex flex-row gap-2 items-center w-full py-2'>
         <Checkmark16Filled
-          className={cx('h-4 w-4 shrink-0 text-indigo-600', isSelected ? 'opacity-100' : 'opacity-0')}
+          className={cn('h-4 w-4 shrink-0 text-indigo-600', isSelected ? 'opacity-100' : 'opacity-0')}
         />
         <div className='flex items-center justify-center w-6 h-6 rounded-[2px] border border-gray-200 bg-white overflow-hidden'>
           <Image src={integration.logo_url} alt={integration.display_name} width={16} height={16} />
         </div>
-        <div className='text-gray-800 text-[14px] font-medium'>{integration.display_name}</div>
+        <div className={cn('text-gray-800 text-[14px] font-medium', className)}>{integration.display_name}</div>
       </div>
     </div>
   );
@@ -65,10 +66,12 @@ type IntegrationComboboxProps = {
   integrations: Integration[] | undefined;
   integrationId: string | undefined;
   setIntegrationId: (integrationId: string | undefined) => void;
+  className?: string;
+  entryClassName?: string;
 };
 
 export function IntegrationCombobox(props: IntegrationComboboxProps) {
-  const { integrations, integrationId, setIntegrationId } = props;
+  const { integrations, integrationId, setIntegrationId, className, entryClassName } = props;
   const [search, setSearch] = useState('');
 
   const integration = useMemo(() => {
@@ -112,14 +115,20 @@ export function IntegrationCombobox(props: IntegrationComboboxProps) {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <div
-          className={cx(
+          className={cn(
             'flex flex-row py-1.5 pl-3 pr-2.5 cursor-pointer items-center border border-gray-200/50 rounded-[2px] text-sm font-normal font-lato truncate min-w-[75px] justify-between',
             open
               ? 'border-gray-300 bg-gray-100 shadow-inner'
-              : 'bg-white text-gray-900 border-gray-300 shadow-sm border border-input bg-background hover:bg-gray-100'
+              : 'bg-white text-gray-900 border-gray-300 shadow-sm border border-input bg-background hover:bg-gray-100',
+            className
           )}
         >
-          <IntegrationComboboxEntry integration={integration} trigger={true} isSelected={false} />
+          <IntegrationComboboxEntry
+            integration={integration}
+            trigger={true}
+            isSelected={false}
+            className={entryClassName}
+          />
           <ChevronUpDownFilled className='h-4 w-4 shrink-0 text-gray-500 ml-2' />
         </div>
       </PopoverTrigger>
@@ -147,6 +156,7 @@ export function IntegrationCombobox(props: IntegrationComboboxProps) {
                     trigger={false}
                     isSelected={integration.id === integrationId}
                     onClick={() => selectIntegration(integration)}
+                    className={entryClassName}
                   />
                 ))}
               </CommandGroup>

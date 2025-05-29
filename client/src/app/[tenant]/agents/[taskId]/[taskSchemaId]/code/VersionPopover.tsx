@@ -142,7 +142,7 @@ export function VersionPopover(props: VersionPopoverProps) {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <div className='flex flex-row items-center gap-2 w-full border border-gray-300 rounded-[2px] min-h-9 px-3 shadow-sm cursor-pointer hover:bg-accent hover:text-accent-foreground'>
+        <div className='flex flex-row items-center gap-2 w-full border border-gray-300 bg-white rounded-[2px] min-h-10 px-3 shadow-sm cursor-pointer hover:bg-gray-100'>
           <div className='flex-1 min-w-0'>
             {showTriggerVersionItem ? (
               <VersionPopoverItem
@@ -152,7 +152,7 @@ export function VersionPopover(props: VersionPopoverProps) {
                 showFullEnvironmentName={false}
               />
             ) : (
-              <div className='text-sm font-medium text-gray-500 truncate'>Select</div>
+              <div className='text-[12px] font-medium text-gray-500 truncate'>Select</div>
             )}
           </div>
           <ChevronsUpDown className='h-4 w-4 shrink-0 text-gray-500' />
