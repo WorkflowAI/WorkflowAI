@@ -187,14 +187,12 @@ class IntegrationService:
 Replace your OPENAI_API_KEY with your WORKFLOWAI_API_KEY.
 Set the api_base to WorkflowAI's chat completion endpoint URL.
 
-```
 {
             integration.integration_chat_initial_snippet.replace(
                 WORKFLOWAI_API_KEY_PLACEHOLDER,
                 api_key_message,
             )
         }
-```
 
 Then, you will need to actually execute ▶️ this code to make your agent first agent run on WorkflowAI.
 As soon as your first run is received, we'll take you to the Playground so you can start comparing models!
@@ -221,14 +219,12 @@ Looks like you're building a `{
         }` agent, one more step is to update the 'model' in the code to get the agent prefix so that things are
 well organized (by agent) on WorkflowAI (trust me, makes everything easier).
 
-```
 {
             integration.integration_chat_agent_naming_snippet.replace(
                 PROPOSED_AGENT_NAME_AND_MODEL_PLACEHOLDER,
                 f"{proposed_agent_name}/{model}",
             )
         }
-```
 """
         return IntegrationChatMessage(
             sent_at=now,
