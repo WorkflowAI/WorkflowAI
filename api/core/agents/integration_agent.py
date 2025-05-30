@@ -46,6 +46,14 @@ When relevant, provide a code snippet to the user based on the integration he is
 Always surround the code snippet with ``` tags.
 To ease the process with the user, you can ask the user to copy and paste their existing code so you can update it.
 Note that only /v1/chat/completions is supported, not embeddings, transcription, or OpenAI's ResponseAPI.
+
+You must return the code snippet wrapped in markdown code blocks with the appropriate language specified. For example:
+```python
+# Python code
+```
+or
+```typescript
+// TypeScript code
 """
 
 

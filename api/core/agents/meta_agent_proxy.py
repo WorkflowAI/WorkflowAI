@@ -675,6 +675,13 @@ When returning code blocks, always return the smallest chunk possible that reall
 I repeat, you need to consider the code updates the user has made in the previous "messages" and return the smallest chunk possible that really highlight what needs to be changed. Do not repeat code that has not changed from previous messages.
 Please be VERY careful NOT including comments in another language format ex: DO NOT USE '/* */' if 'current_agent.used_integration.programming_language==python' and DO NOT USE '#' if 'current_agent.used_integration.programming_language==typescript'.
 Do NOT provider example for other languages / integration other that the one defined in 'current_agent.used_integration' and 'integration_documentation'.
+You must return the code snippet wrapped in markdown code blocks with the appropriate language specified. For example:
+```python
+# Python code
+```
+or
+```typescript
+// TypeScript code
 </code_blocks_guidelines>
 
 {% if is_using_version_messages or is_using_input_variables or agent_has_output_schema %}

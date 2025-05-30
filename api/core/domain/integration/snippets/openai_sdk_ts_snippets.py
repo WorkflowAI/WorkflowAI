@@ -8,7 +8,8 @@
 
 
 # Landing Page (Basic Usage) --------------------------------------------------
-OPENAI_SDK_TS_LANDING_PAGE_SNIPPET = """import OpenAI from 'openai';
+OPENAI_SDK_TS_LANDING_PAGE_SNIPPET = """```typescript
+import OpenAI from 'openai';
 
 // 1. Configuration – point the OpenAI SDK at WorkflowAI
 const client = new OpenAI({
@@ -27,12 +28,13 @@ const response = await client.chat.completions.create({
 });
 
 console.log(response.choices[0].message.content);
-"""
+```"""
 
 
 # Landing Page (Reliable Structured Output) -----------------------------------
 # Requires openai@^4.55.0 for `beta.chat.completions.parse`.
-OPENAI_SDK_TS_LANDING_PAGE_STRUCTURED_GENERATION_SNIPPET = """import OpenAI from 'openai';
+OPENAI_SDK_TS_LANDING_PAGE_STRUCTURED_GENERATION_SNIPPET = """```typescript
+import OpenAI from 'openai';
 import { z } from 'zod';
 import { zodResponseFormat } from 'openai/helpers/zod';
 
@@ -63,13 +65,14 @@ export async function getCountryInfo(city: string) {
   // The SDK returns a parsed object in `message.parsed`
   return completion.choices[0].message.parsed;
 }
-"""
+```"""
 
 
 # Integration Chat – Initial "How-To" Message ----------------------------------
 # NOTE: The <WORKFLOWAI_API_KEY_PLACEHOLDER> token is dynamically replaced by
 # the backend when sending instructions to the user. Do not rename it.
-OPENAI_SDK_TS_INTEGRATION_CHAT_INITIAL_SNIPPET = """import OpenAI from 'openai';
+OPENAI_SDK_TS_INTEGRATION_CHAT_INITIAL_SNIPPET = """```typescript
+import OpenAI from 'openai';
 
 // After (WorkflowAI Proxy)
 const client = new OpenAI({
@@ -81,12 +84,13 @@ const client = new OpenAI({
 const response = await client.chat.completions.create({
   ...,
 });
-"""
+```"""
 
 
 # Integration Chat – Suggesting Agent-Prefixed Model Name ----------------------
-OPENAI_SDK_TS_INTEGRATION_CHAT_AGENT_NAMING_SNIPPET = """const response = await client.chat.completions.create({
+OPENAI_SDK_TS_INTEGRATION_CHAT_AGENT_NAMING_SNIPPET = """```typescript
+const response = await client.chat.completions.create({
   model: '<PROPOSED_AGENT_NAME_PLACEHOLDER>',
   ...
 });
-"""
+```"""

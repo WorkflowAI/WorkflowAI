@@ -1,4 +1,5 @@
-LANGCHAIN_PYTHON_LANDING_PAGE_SNIPPET = """import os
+LANGCHAIN_PYTHON_LANDING_PAGE_SNIPPET = """```python
+import os
 
 from langchain_openai import ChatOpenAI
 from pydantic import SecretStr
@@ -12,10 +13,11 @@ chat = ChatOpenAI(
 
 response = chat.invoke("Hello, how are you?")
 print(response.content)
-"""
+```"""
 
 
-LANGCHAIN_PYTHON_LANDING_PAGE_STRUCTURED_GENERATION_SNIPPET = """import os
+LANGCHAIN_PYTHON_LANDING_PAGE_STRUCTURED_GENERATION_SNIPPET = """```python
+import os
 from typing import Literal
 
 from langchain_openai import ChatOpenAI
@@ -48,10 +50,11 @@ result: SentimentAnalysis = llm.invoke(
     extra_body={"input": {"text": "I had a wonderful day at the park!"}},
 )
 print(result)
-"""
+```"""
 
 
-LANGCHAIN_PYTHON_INTEGRATION_CHAT_INITIAL_SNIPPET = """from langchain_openai import ChatOpenAI
+LANGCHAIN_PYTHON_INTEGRATION_CHAT_INITIAL_SNIPPET = """```python
+from langchain_openai import ChatOpenAI
 from pydantic import SecretStr
 
 # After (WorkflowAI Proxy)
@@ -62,10 +65,11 @@ chat = ChatOpenAI(
 )
 
 response = chat.invoke("Hello!")
-"""
+```"""
 
 
-LANGCHAIN_PYTHON_INTEGRATION_CHAT_AGENT_NAMING_SNIPPET = """from langchain_openai import ChatOpenAI
+LANGCHAIN_PYTHON_INTEGRATION_CHAT_AGENT_NAMING_SNIPPET = """```python
+from langchain_openai import ChatOpenAI
 from pydantic import SecretStr
 
 chat = ChatOpenAI(
@@ -74,4 +78,4 @@ chat = ChatOpenAI(
 )
 
 response = chat.invoke("Hello!")
-"""
+```"""
