@@ -1,6 +1,6 @@
 import datetime
 import os
-from typing import Any, AsyncIterator
+from typing import Any, AsyncIterator, NamedTuple
 
 import workflowai
 from openai import AsyncOpenAI
@@ -24,11 +24,26 @@ class IntegrationCodeSnippetAgentInput(BaseModel):
     output_schema: dict[str, Any]
 
 
+class IntegrationCodeAgentResponse(NamedTuple):
+    code: str
+    feedback_token: str | None
+
+
 async def integration_code_snippet_agent(
     input: IntegrationCodeSnippetAgentInput,
-) -> AsyncIterator[str]:
+) -> AsyncIterator[IntegrationCodeAgentResponse]:
     system_message = """You are a world class programmer that specializes in generating working code snippets for integrations with WorkflowAI. Use the documentation that will come below as the only source of truth to generate the code block.
-You must only return the code snippet, nothing else.
+
+You must return the code snippet wrapped in markdown code blocks with the appropriate language specified. For example:
+```python
+# Python code
+```
+or
+```typescript
+// TypeScript code
+```
+
+Do not include any text outside of the code block.
 
 The model used is: {{model_used}}
 The agent is named: {{agent_id}}
@@ -73,9 +88,6 @@ The agent's messages to reuse in the code snippet are:
 Integration documentation to base your code snippet on is:
 {{integration_documentation_content}}
 
-
-{{current_datetime}}
-
 Do not include any that what is needed to run the agents (for example, do not display how to display the price of a run, etc.)
 """
 
@@ -115,9 +127,13 @@ Do not include any that what is needed to run the agents (for example, do not di
     )
 
     agg = ""
+    feedback_token: str | None = None
     async for chunk in response:
+        # We use 'gettatr' because 'feedback_token' does not existing in the 'Choice' object from the OpenAI SDK
+        feedback_token: str | None = getattr(chunk.choices[0], "feedback_token", None)
+
         if chunk.choices[0].delta.content:
             agg += chunk.choices[0].delta.content
-            yield agg
+            yield IntegrationCodeAgentResponse(code=agg, feedback_token=feedback_token)
 
-    yield agg
+    yield IntegrationCodeAgentResponse(code=agg, feedback_token=feedback_token)
