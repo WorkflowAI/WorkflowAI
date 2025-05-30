@@ -1,16 +1,29 @@
 'use client';
 
-import { useRef } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Loader } from '@/components/ui/Loader';
 import { useCompatibleAIModels } from '@/lib/hooks/useCompatibleAIModels';
 import { useOrFetchLatestRun, useOrFetchTask, useOrFetchVersions } from '@/store';
 import { useOrFetchCurrentTaskSchema } from '@/store';
-import { PlaygroundContent, PlaygroundContentProps } from './playgroundContent';
+import { TenantID } from '@/types/aliases';
+import { TaskID } from '@/types/aliases';
+import { TaskSchemaID } from '@/types/aliases';
+import { TaskSchemaResponseWithSchema } from '@/types/task';
+import { ProxyPlayground } from '../proxy-playground/ProxyPlayground';
+import { checkSchemaForProxy } from '../proxy-playground/utils';
+import { PlaygroundContent } from './playgroundContent';
 
-export function PlaygroundContentWrapper(props: PlaygroundContentProps) {
-  const { taskId, taskSchemaId, tenant } = props;
+type NonProxyPlaygroundContentWrapperProps = {
+  taskId: TaskID;
+  tenant: TenantID | undefined;
+  taskSchemaId: TaskSchemaID;
+  schema: TaskSchemaResponseWithSchema;
+};
 
-  const { taskSchema } = useOrFetchCurrentTaskSchema(tenant, taskId, taskSchemaId);
+export function NonProxyPlaygroundContentWrapper(props: NonProxyPlaygroundContentWrapperProps) {
+  const { taskId, taskSchemaId, tenant, schema } = props;
+
+  const { task, isInitialized: isTaskInitialized } = useOrFetchTask(tenant, taskId);
 
   const {
     compatibleModels,
@@ -18,28 +31,78 @@ export function PlaygroundContentWrapper(props: PlaygroundContentProps) {
     isInitialized: areModelsInitialized,
   } = useCompatibleAIModels({ tenant, taskId, taskSchemaId });
 
-  const { task, isInitialized: isTaskInitialized } = useOrFetchTask(tenant, taskId);
-
   const { versions, isInitialized: areVersionsInitialized } = useOrFetchVersions(tenant, taskId, taskSchemaId);
   const { latestRun, isInitialized: isLatestRunInitialized } = useOrFetchLatestRun(tenant, taskId, taskSchemaId);
 
-  const playgroundOutputRef = useRef<HTMLDivElement>(null);
-
-  if (!taskSchema || !areModelsInitialized || !isLatestRunInitialized || !task || !areVersionsInitialized) {
+  if (!areModelsInitialized || !isLatestRunInitialized || !task || !areVersionsInitialized) {
     return <Loader centered />;
   }
 
   return (
     <PlaygroundContent
-      {...props}
-      taskSchema={taskSchema}
+      taskId={taskId}
+      tenant={tenant}
+      taskSchemaId={taskSchemaId}
+      taskSchema={schema}
       aiModels={compatibleModels}
       allAIModels={allModels}
       versions={versions}
       latestRun={latestRun}
-      playgroundOutputRef={playgroundOutputRef}
       task={task}
       isTaskInitialized={isTaskInitialized}
+    />
+  );
+}
+
+type Props = {
+  tenant: TenantID | undefined;
+  taskId: TaskID;
+  taskSchemaId: TaskSchemaID;
+};
+
+export function PlaygroundContentWrapper(props: Props) {
+  const { taskId, taskSchemaId, tenant } = props;
+
+  const { taskSchema } = useOrFetchCurrentTaskSchema(tenant, taskId, taskSchemaId);
+  const [lastTaskSchema, setLastTaskSchema] = useState<TaskSchemaResponseWithSchema | undefined>(undefined);
+  useEffect(() => {
+    if (taskSchema) {
+      setLastTaskSchema(taskSchema);
+    }
+  }, [taskSchema]);
+
+  const schema = useMemo(() => {
+    return taskSchema ?? lastTaskSchema;
+  }, [taskSchema, lastTaskSchema]);
+
+  const isProxy = useMemo(() => {
+    if (!schema) {
+      return false;
+    }
+    return checkSchemaForProxy(schema);
+  }, [schema]);
+
+  if (!schema) {
+    return <Loader centered />;
+  }
+
+  if (isProxy) {
+    return (
+      <ProxyPlayground
+        tenant={tenant}
+        taskId={taskId}
+        schemaId={`${schema.schema_id}` as TaskSchemaID}
+        schema={schema}
+      />
+    );
+  }
+
+  return (
+    <NonProxyPlaygroundContentWrapper
+      tenant={tenant}
+      taskId={taskId}
+      taskSchemaId={`${schema.schema_id}` as TaskSchemaID}
+      schema={schema}
     />
   );
 }

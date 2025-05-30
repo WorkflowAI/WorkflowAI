@@ -9,9 +9,6 @@ import { Dialog, DialogContent } from '@/components/ui/Dialog';
 import { Loader } from '@/components/ui/Loader';
 import { formatFractionalCurrency } from '@/lib/formatters/numberFormatters';
 import { useCopy } from '@/lib/hooks/useCopy';
-import { useOrFetchRunCompletions } from '@/store/fetchers';
-import { TaskID } from '@/types/aliases';
-import { TenantID } from '@/types/aliases';
 import { LLMCompletionTypedMessages } from '@/types/workflowAI';
 import { MessagePreparedForDisplay, prepareMessageForDisplay, processResponse } from './utils';
 
@@ -172,15 +169,11 @@ function PromptDialogContent(props: PromptDialogContentProps) {
 type PromptDialogProps = {
   open: boolean;
   onOpenChange: () => void;
-  tenant: TenantID | undefined;
-  taskId: TaskID;
-  taskRunId: string;
+  completions: LLMCompletionTypedMessages[];
 };
 
 export function PromptDialog(props: PromptDialogProps) {
-  const { open, onOpenChange, taskId, tenant, taskRunId } = props;
-
-  const { completions, isInitialized } = useOrFetchRunCompletions(tenant, taskId, taskRunId);
+  const { open, onOpenChange, completions } = props;
 
   const llmCompletions = useMemo(() => {
     if (!completions || !completions.length) {
@@ -228,7 +221,7 @@ export function PromptDialog(props: PromptDialogProps) {
             <h1 className='text-gray-900 text-[16px] font-semibold px-2'>Prompt details</h1>
           </div>
           <PromptDialogContent
-            isInitialized={isInitialized}
+            isInitialized={true}
             llmCompletions={llmCompletions}
             selectedCompletion={selectedCompletion}
             selectedCompletionIndex={selectedCompletionIndex}

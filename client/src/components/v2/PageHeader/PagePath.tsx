@@ -36,6 +36,7 @@ export function PagePath(props: PagePathProps) {
     documentationLink,
     name,
   } = props;
+
   return (
     <div className='flex sm:w-fit w-full flex-row items-center pl-4 sm:pr-0 pr-4'>
       <TaskSwitcherContainer

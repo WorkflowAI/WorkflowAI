@@ -975,15 +975,22 @@ export const useOrFetchEvaluation = (tenant: TenantID | undefined, taskId: TaskI
   };
 };
 
-export const useOrFetchRunCompletions = (tenant: TenantID | undefined, taskId: TaskID, taskRunId: string) => {
-  const completions = useRunCompletions((state) => state.runCompletionsById.get(taskRunId));
+export const useOrFetchRunCompletions = (
+  tenant: TenantID | undefined,
+  taskId: TaskID | undefined,
+  taskRunId: string | undefined
+) => {
+  const completions = useRunCompletions((state) => (taskRunId ? state.runCompletionsById.get(taskRunId) : undefined));
 
-  const isLoading = useRunCompletions((state) => state.isLoadingById.get(taskRunId) ?? false);
-  const isInitialized = useRunCompletions((state) => state.isInitializedById.get(taskRunId) ?? false);
+  const isLoading = useRunCompletions((state) => (taskRunId ? state.isLoadingById.get(taskRunId) : false));
+  const isInitialized = useRunCompletions((state) => (taskRunId ? state.isInitializedById.get(taskRunId) : false));
 
   const fetchRunCompletions = useRunCompletions((state) => state.fetchRunCompletion);
 
   useEffect(() => {
+    if (!taskId || !taskRunId) {
+      return;
+    }
     fetchRunCompletions(tenant, taskId, taskRunId);
   }, [fetchRunCompletions, tenant, taskId, taskRunId]);
 

@@ -1,6 +1,5 @@
 import { formatFractionalCurrency, formatFractionalCurrencyAsNumber } from '@/lib/formatters/numberFormatters';
-import { TaskRun } from '@/types/task_run';
-import { ModelResponse } from '@/types/workflowAI';
+import { ModelResponse, RunV1 } from '@/types/workflowAI';
 import { BaseOutputValueRow, TBaseOutputValueRowVariant } from './BaseOutputValueRow';
 
 function getScaleDisplayValue(value: number, minimumValue: number) {
@@ -10,8 +9,8 @@ function getScaleDisplayValue(value: number, minimumValue: number) {
 type HoverTextProps = {
   currentAIModel: ModelResponse | undefined;
   minimumCostAIModel: ModelResponse | undefined;
-  taskRun?: TaskRun;
-  minimumCostTaskRun?: TaskRun;
+  taskRun?: RunV1;
+  minimumCostTaskRun?: RunV1;
 };
 function PriceOutputNote(props: HoverTextProps) {
   const { currentAIModel, minimumCostAIModel, taskRun, minimumCostTaskRun } = props;
@@ -36,8 +35,8 @@ function PriceOutputNote(props: HoverTextProps) {
 type PriceOutputValueRowProps = {
   currentAIModel: ModelResponse | undefined;
   minimumCostAIModel: ModelResponse | undefined;
-  taskRun: TaskRun | undefined;
-  minimumCostTaskRun: TaskRun | undefined;
+  taskRun: RunV1 | undefined;
+  minimumCostTaskRun: RunV1 | undefined;
   hideLabel?: boolean;
 };
 export function PriceOutputValueRow(props: PriceOutputValueRowProps) {

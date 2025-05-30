@@ -1,9 +1,9 @@
 import { useMemo } from 'react';
-import { TaskRun } from '@/types';
+import { RunV1 } from '@/types/workflowAI';
 
-export function useMinimumLatencyTaskRun(taskRuns: (TaskRun | undefined)[]) {
-  return useMemo<TaskRun | undefined>(() => {
-    let result: TaskRun | undefined = undefined;
+export function useMinimumLatencyTaskRun(taskRuns: (RunV1 | undefined)[]) {
+  return useMemo<RunV1 | undefined>(() => {
+    let result: RunV1 | undefined = undefined;
     for (const taskRun of taskRuns) {
       const value = taskRun?.duration_seconds;
       const resultValue = result?.duration_seconds;

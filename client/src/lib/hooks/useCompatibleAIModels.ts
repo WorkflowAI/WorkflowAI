@@ -13,8 +13,13 @@ export function filterSupportedModels(models: ModelResponse[]) {
   return models.filter((model) => !model.is_not_supported_reason);
 }
 
+export function filterDefaultModels(models: ModelResponse[]) {
+  return models.filter((model) => model.is_default && !model.is_not_supported_reason);
+}
+
 export function useCompatibleAIModels(props: TModeAiModelsProps) {
   const { tenant, taskId, taskSchemaId } = props;
+
   const { models, isInitialized, isLoading } = useOrFetchAllAiModels({
     tenant,
     taskId,
@@ -22,9 +27,11 @@ export function useCompatibleAIModels(props: TModeAiModelsProps) {
   });
 
   const compatibleModels = useMemo(() => filterSupportedModels(models), [models]);
+  const defaultModels = useMemo(() => filterDefaultModels(models), [models]);
 
   return {
     compatibleModels,
+    defaultModels,
     isLoading,
     isInitialized,
     allModels: models,

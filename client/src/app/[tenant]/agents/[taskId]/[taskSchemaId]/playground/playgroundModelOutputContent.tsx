@@ -19,21 +19,22 @@ import { taskApiRoute } from '@/lib/routeFormatter';
 import { getContextWindowInformation } from '@/lib/taskRunUtils';
 import { cn } from '@/lib/utils';
 import { isVersionSaved } from '@/lib/versionUtils';
+import { useOrFetchRunCompletions } from '@/store/fetchers';
 import { useVersions } from '@/store/versions';
-import { JsonSchema, TaskOutput, TaskRun, ToolCallPreview } from '@/types';
+import { JsonSchema, TaskOutput, ToolCallPreview } from '@/types';
 import { TaskID, TaskSchemaID, TenantID } from '@/types/aliases';
-import { ModelResponse, ReasoningStep, VersionV1 } from '@/types/workflowAI';
+import { ModelResponse, ReasoningStep, RunV1, VersionV1 } from '@/types/workflowAI';
 import { TaskInputDict } from '@/types/workflowAI';
+import { ProxyReplyView } from '../proxy-playground/proxy-messages/ProxyReplyView';
 import { AIEvaluationReview } from './components/AIEvaluation/AIEvaluationReview';
 import { TaskRunOutputRows } from './components/TaskRunOutputRows/TaskRunOutputRows';
-import { ProxyReplyView } from './proxy/ProxyReplyView';
 
 type ModelOutputContentProps = {
   currentAIModel: ModelResponse | undefined;
   minimumCostAIModel: ModelResponse | undefined;
   hasInputChanged: boolean;
-  minimumCostTaskRun: TaskRun | undefined;
-  minimumLatencyTaskRun: TaskRun | undefined;
+  minimumCostTaskRun: RunV1 | undefined;
+  minimumLatencyTaskRun: RunV1 | undefined;
   onOpenTaskRun: () => void;
   onImprovePrompt: (evaluation: string) => Promise<void>;
   outputSchema: JsonSchema | undefined;
@@ -42,7 +43,7 @@ type ModelOutputContentProps = {
   streamLoading: boolean;
   version: VersionV1 | undefined;
   taskOutput: TaskOutput | undefined;
-  taskRun: TaskRun | undefined;
+  taskRun: RunV1 | undefined;
   tenant: TenantID | undefined;
   taskId: TaskID | undefined;
   taskSchemaId: TaskSchemaID | undefined;
@@ -51,9 +52,8 @@ type ModelOutputContentProps = {
   isInDemoMode: boolean;
   isHideModelColumnAvaible: boolean;
   hideModelColumn: () => void;
-  isProxy: boolean;
-  hasProxyInput: boolean;
   updateInputAndRun: (input: TaskInputDict) => Promise<void>;
+  isProxy: boolean;
 };
 
 export function PlaygroundModelOutputContent(props: ModelOutputContentProps) {
@@ -80,16 +80,17 @@ export function PlaygroundModelOutputContent(props: ModelOutputContentProps) {
     isInDemoMode,
     isHideModelColumnAvaible,
     hideModelColumn,
-    isProxy,
-    hasProxyInput,
     updateInputAndRun,
+    isProxy,
   } = props;
 
   const onCopyTaskRunUrl = useCopyRunURL(tenant, taskId, taskRun?.id);
 
+  const { completions: runCompletions } = useOrFetchRunCompletions(tenant, taskId, taskRun?.id);
+
   const contextWindowInformation = useMemo(() => {
-    return getContextWindowInformation(taskRun);
-  }, [taskRun]);
+    return getContextWindowInformation(runCompletions);
+  }, [runCompletions]);
 
   const router = useRouter();
   const saveVersion = useVersions((state) => state.saveVersion);
@@ -214,32 +215,30 @@ export function PlaygroundModelOutputContent(props: ModelOutputContentProps) {
           showVersion={true}
           contextWindowInformation={contextWindowInformation}
           showTaskIterationDetails={true}
-          isProxy={isProxy}
-          hasProxyInput={hasProxyInput}
         />
         {showReplyView && !!taskRun && (
           <ProxyReplyView
-            hasProxyInput={hasProxyInput}
             toolCalls={toolCallsPreview}
             input={taskRun.task_input}
             output={taskRun.task_output}
             updateInputAndRun={updateInputAndRun}
+            runId={taskRun.id}
           />
         )}
-      </div>
 
-      {showReplyButton && (
-        <div className='flex w-full overflow-hidden pb-2'>
-          <Button
-            variant='newDesignGray'
-            size='sm'
-            onClick={onShowReplyView}
-            icon={<Add16Filled className='h-3.5 w-3.5' />}
-          >
-            User Message
-          </Button>
-        </div>
-      )}
+        {showReplyButton && (
+          <div className='flex w-full overflow-hidden py-3 px-4'>
+            <Button
+              variant='newDesignGray'
+              size='sm'
+              onClick={onShowReplyView}
+              icon={<Add16Filled className='h-3.5 w-3.5' />}
+            >
+              Reply with {toolCallsPreview && toolCallsPreview.length > 0 ? 'Tool Call Result' : 'User Message'}
+            </Button>
+          </div>
+        )}
+      </div>
 
       <div className={cn('sm:flex hidden items-center justify-between', isHovering ? 'opacity-100' : 'opacity-0')}>
         <div className='flex items-center gap-2'>
@@ -263,28 +262,32 @@ export function PlaygroundModelOutputContent(props: ModelOutputContentProps) {
               disabled={!taskRun}
             />
           </SimpleTooltip>
-          <SimpleTooltip content='View Code'>
-            <Button
-              variant='newDesignGray'
-              size='none'
-              onClick={onOpenTaskCode}
-              icon={<Code16Regular className='h-4 w-4' />}
-              className='h-7 w-7 border-none shadow-sm shadow-gray-400/30'
-              disabled={!taskRun}
-              loading={isOpeningCode}
-            />
-          </SimpleTooltip>
-          <SimpleTooltip content='Deploy Version'>
-            <Button
-              variant='newDesignGray'
-              size='none'
-              onClick={onDeployToClick}
-              icon={<ArrowCircleUp16Regular className='h-4 w-4' />}
-              className='h-7 w-7 border-none shadow-sm shadow-gray-400/30'
-              disabled={!taskRun || isInDemoMode}
-              loading={isOpeningDeploy}
-            />
-          </SimpleTooltip>
+          {!isProxy && (
+            <>
+              <SimpleTooltip content='View Code'>
+                <Button
+                  variant='newDesignGray'
+                  size='none'
+                  onClick={onOpenTaskCode}
+                  icon={<Code16Regular className='h-4 w-4' />}
+                  className='h-7 w-7 border-none shadow-sm shadow-gray-400/30'
+                  disabled={!taskRun}
+                  loading={isOpeningCode}
+                />
+              </SimpleTooltip>
+              <SimpleTooltip content='Deploy Version'>
+                <Button
+                  variant='newDesignGray'
+                  size='none'
+                  onClick={onDeployToClick}
+                  icon={<ArrowCircleUp16Regular className='h-4 w-4' />}
+                  className='h-7 w-7 border-none shadow-sm shadow-gray-400/30'
+                  disabled={!taskRun || isInDemoMode}
+                  loading={isOpeningDeploy}
+                />
+              </SimpleTooltip>
+            </>
+          )}
         </div>
 
         {isHideModelColumnAvaible && (

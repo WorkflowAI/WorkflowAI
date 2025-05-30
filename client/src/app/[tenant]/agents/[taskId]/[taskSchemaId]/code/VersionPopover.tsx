@@ -2,11 +2,11 @@ import { ChevronsUpDown } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { ModelBadge } from '@/components/ModelBadge/ModelBadge';
 import { TaskEnvironmentBadge } from '@/components/TaskEnvironmentBadge';
+import { HoverTaskVersionDetails } from '@/components/TaskIterationBadge/HoverTaskVersionDetails';
 import { TaskVersionBadgeContainer } from '@/components/TaskIterationBadge/TaskVersionBadgeContainer';
 import { CustomCommandInput } from '@/components/ui/Command';
-import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/HoverCard';
+import { HoverCard, HoverCardTrigger } from '@/components/ui/HoverCard';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/Popover';
-import { TaskVersionDetails } from '@/components/v2/TaskVersionDetails';
 import { cn } from '@/lib/utils';
 import { formatSemverVersion, sortVersions } from '@/lib/versionUtils';
 import { VersionsPerEnvironment } from '@/store/versions';
@@ -56,11 +56,7 @@ function VersionPopoverItem(props: VersionPopoverItemProps) {
           )}
         </div>
       </HoverCardTrigger>
-      {!!version && (
-        <HoverCardContent className='w-fit max-w-[660px] p-0 rounded-[2px] border-gray-200' side='right'>
-          <TaskVersionDetails version={version} className='w-[350px]' />
-        </HoverCardContent>
-      )}
+      {!!version && <HoverTaskVersionDetails versionId={version.id} side='right' />}
     </HoverCard>
   );
 }
@@ -142,7 +138,7 @@ export function VersionPopover(props: VersionPopoverProps) {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <div className='flex flex-row items-center gap-2 w-full border border-gray-300 rounded-[2px] min-h-9 px-3 shadow-sm cursor-pointer hover:bg-accent hover:text-accent-foreground'>
+        <div className='flex flex-row items-center gap-2 w-full border border-gray-300 bg-white rounded-[2px] min-h-10 px-3 shadow-sm cursor-pointer hover:bg-gray-100'>
           <div className='flex-1 min-w-0'>
             {showTriggerVersionItem ? (
               <VersionPopoverItem
@@ -152,7 +148,7 @@ export function VersionPopover(props: VersionPopoverProps) {
                 showFullEnvironmentName={false}
               />
             ) : (
-              <div className='text-sm font-medium text-gray-500 truncate'>Select</div>
+              <div className='text-[12px] font-medium text-gray-500 truncate'>Select</div>
             )}
           </div>
           <ChevronsUpDown className='h-4 w-4 shrink-0 text-gray-500' />

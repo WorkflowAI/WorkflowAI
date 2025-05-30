@@ -21,10 +21,21 @@ type UniversalImageValueViewerProps = {
   onEdit: ((keyPath: string, newVal: FileValueType | undefined, triggerSave?: boolean | undefined) => void) | undefined;
   keyPath: string;
   readonly?: boolean;
+  hideCloseButton?: boolean;
+  hideMagnification?: boolean;
 };
 
 export function UniversalImageValueViewer(props: UniversalImageValueViewerProps) {
-  const { value, className, editable, onEdit, keyPath, readonly } = props;
+  const {
+    value,
+    className,
+    editable,
+    onEdit,
+    keyPath,
+    readonly,
+    hideCloseButton = false,
+    hideMagnification = false,
+  } = props;
 
   const [zoomPosition, setZoomPosition] = useState<{
     x: number;
@@ -110,7 +121,7 @@ export function UniversalImageValueViewer(props: UniversalImageValueViewerProps)
       <DocumentPreviewControls
         onEdit={onValueEdit}
         className={cx(className, '!p-0')}
-        readonly={readonly}
+        readonly={readonly || hideCloseButton}
         dialogContent={
           <div className='flex items-center justify-center overflow-hidden p-1'>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -125,10 +136,10 @@ export function UniversalImageValueViewer(props: UniversalImageValueViewerProps)
           onMouseLeave={handleMouseLeave}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={src} alt={alt} className='w-auto max-w-[250px] rounded-md shadow cursor-zoom-in' />
+          <img src={src} alt={alt} className='w-auto max-w-[250px] rounded-md shadow' />
         </div>
       </DocumentPreviewControls>
-      {isRealImage && zoomPosition && !!imgRef.current && (
+      {isRealImage && zoomPosition && !!imgRef.current && !hideMagnification && (
         <div
           className='rounded-md shadow z-[100] fixed'
           style={{

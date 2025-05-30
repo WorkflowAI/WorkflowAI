@@ -1,11 +1,8 @@
 import { HoverCardContentProps } from '@radix-ui/react-hover-card';
-import { useMemo } from 'react';
 import { TaskModelBadge } from '@/components/TaskModelBadge';
 import { TaskTemperatureBadge } from '@/components/v2/TaskTemperatureBadge';
-import { LEGACY_TASK_RUN_RUN_BY_METADATA_KEY, WORKFLOW_AI_METADATA_PREFIX } from '@/lib/constants';
 import { ContextWindowInformation } from '@/lib/taskRunUtils';
-import { TaskRun } from '@/types/task_run';
-import { ModelResponse, VersionV1 } from '@/types/workflowAI';
+import { ModelResponse, RunV1, VersionV1 } from '@/types/workflowAI';
 import { BaseOutputValueRow } from './BaseOutputValueRow';
 import { ContextWindowOutputValueRow } from './ContextWindowOutputValueRow';
 import { LatencyOutputValueRow } from './LatencyOutputValueRow';
@@ -17,18 +14,9 @@ type AdditionalFieldsProps = {
   model?: string | null;
   provider?: string | null;
   temperature?: number | null;
-  filteredMetadata?: [string, unknown][];
-  taskRun?: TaskRun;
 };
 
-function AdditionalFields({
-  showAllFields,
-  model,
-  provider,
-  temperature,
-  filteredMetadata,
-  taskRun,
-}: AdditionalFieldsProps) {
+function AdditionalFields({ showAllFields, model, provider, temperature }: AdditionalFieldsProps) {
   if (!showAllFields) return null;
 
   return (
@@ -44,18 +32,6 @@ function AdditionalFields({
           <BaseOutputValueRow label='Temperature' value={<TaskTemperatureBadge temperature={temperature} />} />
         </div>
       )}
-
-      {filteredMetadata?.map(([key, value]) => (
-        <div className='flex h-10' key={key}>
-          <BaseOutputValueRow label={key} value={`${value}`} />
-        </div>
-      ))}
-
-      {taskRun?.labels?.map((label) => (
-        <div className='flex h-10' key={label}>
-          <BaseOutputValueRow label={label} value={label} />
-        </div>
-      ))}
     </>
   );
 }
@@ -63,17 +39,16 @@ function AdditionalFields({
 type TaskRunOutputRowsProps = {
   currentAIModel: ModelResponse | undefined;
   minimumCostAIModel: ModelResponse | undefined;
-  taskRun: TaskRun | undefined;
+  taskRun: RunV1 | undefined;
   contextWindowInformation: ContextWindowInformation | undefined;
-  minimumLatencyTaskRun: TaskRun | undefined;
-  minimumCostTaskRun: TaskRun | undefined;
+  minimumLatencyTaskRun: RunV1 | undefined;
+  minimumCostTaskRun: RunV1 | undefined;
   showVersion?: boolean;
   showAllFields?: boolean;
   side?: HoverCardContentProps['side'];
   showTaskIterationDetails?: boolean;
   version: VersionV1 | undefined;
-  isProxy?: boolean;
-  hasProxyInput?: boolean;
+  setVersionIdForCode?: (versionId: string | undefined) => void;
 };
 
 export function TaskRunOutputRows({
@@ -88,33 +63,21 @@ export function TaskRunOutputRows({
   showAllFields = false,
   side,
   showTaskIterationDetails = false,
-  isProxy = false,
-  hasProxyInput = false,
+  setVersionIdForCode,
 }: TaskRunOutputRowsProps) {
-  const filteredMetadata = useMemo(() => {
-    if (!taskRun?.metadata) {
-      return undefined;
-    }
-    const filtered = Object.entries(taskRun.metadata).filter(
-      ([key]) => !key.startsWith(WORKFLOW_AI_METADATA_PREFIX) && !key.startsWith(LEGACY_TASK_RUN_RUN_BY_METADATA_KEY)
-    );
-    return filtered.length > 0 ? filtered : undefined;
-  }, [taskRun?.metadata]);
-
   const properties = version?.properties;
   const { temperature, instructions, model, provider } = properties ?? {};
 
   return (
     <div className='flex flex-col'>
-      <div className='grid grid-cols-2 [&>*]:border-gray-100 [&>*]:border-b [&>*:nth-child(odd)]:border-r'>
+      <div className='grid grid-cols-[repeat(auto-fit,minmax(max(160px,50%),1fr))] [&>*]:border-gray-100 [&>*]:border-b [&>*:nth-child(odd)]:border-r'>
         {showVersion && (
           <div className='flex h-10'>
             <VersionOutputValueRow
               version={version}
               side={side}
               showTaskIterationDetails={showTaskIterationDetails}
-              isProxy={isProxy}
-              hasProxyInput={hasProxyInput}
+              setVersionIdForCode={setVersionIdForCode}
             />
           </div>
         )}
@@ -137,14 +100,7 @@ export function TaskRunOutputRows({
         <div className='flex h-10'>
           <ContextWindowOutputValueRow isInitialized={!!taskRun} contextWindowInformation={contextWindowInformation} />
         </div>
-        <AdditionalFields
-          showAllFields={showAllFields}
-          model={model}
-          provider={provider}
-          temperature={temperature}
-          filteredMetadata={filteredMetadata}
-          taskRun={taskRun}
-        />
+        <AdditionalFields showAllFields={showAllFields} model={model} provider={provider} temperature={temperature} />
       </div>
 
       {showAllFields && !!instructions && (

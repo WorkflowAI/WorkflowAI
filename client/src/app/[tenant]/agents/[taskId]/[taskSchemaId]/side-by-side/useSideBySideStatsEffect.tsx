@@ -4,8 +4,7 @@ import { useTaskRunReviews } from '@/store/task_run_reviews';
 import { useTaskRuns } from '@/store/task_runs';
 import { buildScopeKey } from '@/store/utils';
 import { TaskID, TaskSchemaID, TenantID } from '@/types/aliases';
-import { TaskRun } from '@/types/task_run';
-import { Review } from '@/types/workflowAI';
+import { Review, RunV1 } from '@/types/workflowAI';
 
 function getReviewsForEntries(state: { reviewsById: Map<string, Review[]> }, entries: SideBySideEntry[] | undefined) {
   if (!entries) {
@@ -121,7 +120,7 @@ function getMaximalValue(leftValue: number | undefined, rightValue: number | und
 }
 
 function calculateAverage<T extends 'cost_usd' | 'duration_seconds'>(
-  runs: TaskRun[] | undefined,
+  runs: RunV1[] | undefined,
   property: T
 ): number | undefined {
   if (!runs) {
@@ -139,16 +138,16 @@ function calculateAverage<T extends 'cost_usd' | 'duration_seconds'>(
 }
 
 function getRunsForEntries(
-  state: { taskRunsById: Map<string, TaskRun> },
+  state: { runV1ById: Map<string, RunV1> },
   entries: SideBySideEntry[] | undefined
-): TaskRun[] | undefined {
+): RunV1[] | undefined {
   if (!entries) {
     return undefined;
   }
 
-  const runs: TaskRun[] = [];
+  const runs: RunV1[] = [];
   for (const entry of entries) {
-    const run = state.taskRunsById.get(entry.runId);
+    const run = state.runV1ById.get(entry.runId);
     if (run) {
       runs.push(run);
     }
@@ -196,9 +195,9 @@ export function useSideBySideStatsEffect(
     [runs, inputHashes, rightVersionId, rightModelId]
   );
 
-  const leftRuns: TaskRun[] | undefined = useTaskRuns((state) => getRunsForEntries(state, leftEntries));
+  const leftRuns: RunV1[] | undefined = useTaskRuns((state) => getRunsForEntries(state, leftEntries));
 
-  const rightRuns: TaskRun[] | undefined = useTaskRuns((state) => getRunsForEntries(state, rightEntries));
+  const rightRuns: RunV1[] | undefined = useTaskRuns((state) => getRunsForEntries(state, rightEntries));
 
   const leftAverageCost = useMemo(() => {
     return calculateAverage(leftRuns, 'cost_usd');

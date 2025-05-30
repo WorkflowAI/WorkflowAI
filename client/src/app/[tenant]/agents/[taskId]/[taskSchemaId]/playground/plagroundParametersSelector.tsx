@@ -84,7 +84,7 @@ export function PlagroundParametersSelector(props: PlaygroundParametersSelectorP
         <MajorVersionCombobox
           majorVersions={majorVersions}
           matchedMajorVersion={matchedMajorVersion}
-          useInstructionsAndTemperatureFromMajorVersion={useInstructionsAndTemperatureFromMajorVersion}
+          useParametersFromMajorVersion={useInstructionsAndTemperatureFromMajorVersion}
         />
       </div>
       <div className='flex flex-col gap-3 px-4 py-2 text-gray-900 text-[13px] font-medium h-full overflow-hidden'>

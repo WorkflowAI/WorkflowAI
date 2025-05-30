@@ -7,11 +7,11 @@ type VersionOutputValueRowProps = {
   version: VersionV1 | undefined;
   side?: HoverCardContentProps['side'];
   showTaskIterationDetails?: boolean;
-  isProxy?: boolean;
-  hasProxyInput?: boolean;
+  setVersionIdForCode?: (versionId: string | undefined) => void;
 };
+
 export function VersionOutputValueRow(props: VersionOutputValueRowProps) {
-  const { version, side, showTaskIterationDetails, isProxy, hasProxyInput } = props;
+  const { version, side, showTaskIterationDetails, setVersionIdForCode } = props;
 
   if (version === undefined) {
     return <BaseOutputValueRow label='Version' variant='empty' value='-' />;
@@ -25,8 +25,7 @@ export function VersionOutputValueRow(props: VersionOutputValueRowProps) {
           version={version}
           side={side}
           showDetails={showTaskIterationDetails}
-          isProxy={isProxy}
-          hasProxyInput={hasProxyInput}
+          setVersionIdForCode={setVersionIdForCode}
         />
       }
     />

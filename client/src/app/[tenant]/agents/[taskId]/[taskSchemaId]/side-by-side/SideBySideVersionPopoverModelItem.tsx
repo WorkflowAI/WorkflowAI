@@ -9,10 +9,11 @@ type SideBySideVersionPopoverModelItemProps = {
   onClick?: () => void;
   className?: string;
   baseVersion?: VersionV1;
+  hidePrice?: boolean;
 };
 
 export function SideBySideVersionPopoverModelItem(props: SideBySideVersionPopoverModelItemProps) {
-  const { model, onClick, className, baseVersion } = props;
+  const { model, onClick, className, baseVersion, hidePrice = false } = props;
 
   if (!model) {
     return null;
@@ -44,11 +45,13 @@ export function SideBySideVersionPopoverModelItem(props: SideBySideVersionPopove
             <ModelBadge model={model} />
           </div>
 
-          <TaskCostBadge
-            cost={model.average_cost_per_run_usd}
-            className=' border-gray-200 bg-gray-50 rounded-[2px] text-gray-500 text-[13px] font-medium py-0 px-[5px]'
-            supportTooltip={true}
-          />
+          {!hidePrice && (
+            <TaskCostBadge
+              cost={model.average_cost_per_run_usd}
+              className=' border-gray-200 bg-gray-50 rounded-[2px] text-gray-500 text-[13px] font-medium py-0 px-[5px]'
+              supportTooltip={true}
+            />
+          )}
         </div>
       )}
     </div>

@@ -1,3 +1,4 @@
+import { getSearchParamsFromHistory } from '@/app/[tenant]/agents/[taskId]/[taskSchemaId]/proxy-playground/hooks/useProxyHistory';
 import { TaskID, TaskSchemaID, TenantID } from '@/types/aliases';
 import { QueryParam, stringifyQueryParams } from './queryString';
 
@@ -61,6 +62,10 @@ export const taskSchemaRoute = (
   taskSchemaId: TaskSchemaID,
   params?: Params
 ) => `${taskRoute(tenant, taskId)}/${taskSchemaId}${stringifyQueryParams(params)}`;
+
+export function playgroundFromHistoryRouteBuilder(tenant: TenantID, taskId: TaskID, taskSchemaId: TaskSchemaID) {
+  return taskSchemaRoute(tenant, taskId, taskSchemaId, getSearchParamsFromHistory(tenant, taskId, taskSchemaId));
+}
 
 export const taskSchemasRoute = (tenant: TenantID, taskId: TaskID, taskSchemaId: TaskSchemaID) =>
   `${taskSchemaRoute(tenant, taskId, taskSchemaId)}/schemas`;
