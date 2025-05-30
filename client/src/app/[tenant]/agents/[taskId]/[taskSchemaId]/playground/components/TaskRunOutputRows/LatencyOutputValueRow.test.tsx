@@ -1,15 +1,14 @@
 import { render } from '@testing-library/react';
-import { TaskRun } from '@/types';
-import { ModelResponse } from '@/types/workflowAI';
+import { ModelResponse, RunV1 } from '@/types/workflowAI';
 import { LatencyOutputValueRow } from './LatencyOutputValueRow';
 
 describe('LatencyOutputValueRow', () => {
   const MINIMUM_TASK_RUN = {
     duration_seconds: 5.001,
-  } as TaskRun;
+  } as RunV1;
   const MAXIMUM_TASK_RUN = {
     duration_seconds: 10.009,
-  } as TaskRun;
+  } as RunV1;
   const CURRENT_AI_MODEL = {
     name: 'gpt-4-turbo-2024-04-09',
   } as ModelResponse;

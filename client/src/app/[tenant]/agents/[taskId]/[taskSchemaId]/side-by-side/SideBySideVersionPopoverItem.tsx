@@ -1,10 +1,11 @@
 import { useMemo } from 'react';
 import { ModelBadge } from '@/components/ModelBadge/ModelBadge';
+import { HoverTaskVersionDetails } from '@/components/TaskIterationBadge/HoverTaskVersionDetails';
 import { TaskVersionBadgeContainer } from '@/components/TaskIterationBadge/TaskVersionBadgeContainer';
-import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/HoverCard';
-import { TaskVersionDetails } from '@/components/v2/TaskVersionDetails';
+import { HoverCard, HoverCardTrigger } from '@/components/ui/HoverCard';
 import { cn } from '@/lib/utils';
 import { environmentsForVersion } from '@/lib/versionUtils';
+import { isVersionSaved } from '@/lib/versionUtils';
 import { VersionV1 } from '@/types/workflowAI';
 import { TaskRunEnvironments } from '../runs/taskRunTable/TaskRunEnvironments';
 
@@ -13,13 +14,18 @@ type SideBySideVersionPopoverItemProps = {
   onClick?: () => void;
   className?: string;
   showDetails?: boolean;
+  setVersionIdForCode?: (versionId: string | undefined) => void;
 };
 
 export function SideBySideVersionPopoverItem(props: SideBySideVersionPopoverItemProps) {
-  const { version, onClick, className, showDetails = true } = props;
+  const { version, onClick, className, showDetails = true, setVersionIdForCode } = props;
 
   const environments = useMemo(() => {
     return environmentsForVersion(version);
+  }, [version]);
+
+  const isSaved = useMemo(() => {
+    return version ? isVersionSaved(version) : false;
   }, [version]);
 
   if (!version) {
@@ -39,24 +45,26 @@ export function SideBySideVersionPopoverItem(props: SideBySideVersionPopoverItem
           {!!environments && environments.length > 0 && <TaskRunEnvironments environments={environments} />}
           {version && (
             <>
-              <TaskVersionBadgeContainer
-                version={version}
-                showDetails={false}
-                showNotes={false}
-                showHoverState={false}
-                showSchema={true}
-                interaction={false}
-                showFavorite={false}
-              />
-              <ModelBadge version={version} className='ml-1' />
+              {isSaved && (
+                <TaskVersionBadgeContainer
+                  version={version}
+                  showDetails={false}
+                  showNotes={false}
+                  showHoverState={false}
+                  showSchema={true}
+                  interaction={false}
+                  showFavorite={false}
+                  className='mr-1'
+                  setVersionIdForCode={setVersionIdForCode}
+                />
+              )}
+              <ModelBadge version={version} />
             </>
           )}
         </div>
       </HoverCardTrigger>
-      {!!version && showDetails && (
-        <HoverCardContent className='w-fit max-w-[660px] p-0 rounded-[2px] border-gray-200' side='right'>
-          <TaskVersionDetails version={version} className='w-[350px]' />
-        </HoverCardContent>
+      {!!version && showDetails && isSaved && (
+        <HoverTaskVersionDetails versionId={version.id} side='right' setVersionIdForCode={setVersionIdForCode} />
       )}
     </HoverCard>
   );

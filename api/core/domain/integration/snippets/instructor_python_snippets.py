@@ -1,4 +1,5 @@
-INSTRUCTOR_PYTHON_LANDING_PAGE_SNIPPET = """import os
+INSTRUCTOR_PYTHON_LANDING_PAGE_SNIPPET = """```python
+import os
 
 import instructor
 from openai import OpenAI
@@ -23,11 +24,13 @@ def extract_user_info(user_message: str) -> UserInfo:
 
 if __name__ == "__main__":
     user_info = extract_user_info("John Black is 33 years old.")
-    print("Basic example result:", user_info)  # UserInfo(name='John Black', age=33)"""
+    print("Basic example result:", user_info)  # UserInfo(name='John Black', age=33)
+```"""
 
 INSTRUCTOR_PYTHON_LANDING_PAGE_STRUCTURED_GENERATION_SNIPPET = INSTRUCTOR_PYTHON_LANDING_PAGE_SNIPPET
 
-INSTRUCTOR_PYTHON_INTEGRATION_CHAT_INITIAL_SNIPPET = """import instructor
+INSTRUCTOR_PYTHON_INTEGRATION_CHAT_INITIAL_SNIPPET = """```python
+import instructor
 from openai import OpenAI
 
 # After (WorkflowAI Proxy)
@@ -44,9 +47,11 @@ client = instructor.from_openai(
 response = client.chat.completions.create(
     ...,
 )
-"""
+```"""
 
-INSTRUCTOR_PYTHON_INTEGRATION_CHAT_AGENT_NAMING_SNIPPET = """response = client.chat.completions.create(
+INSTRUCTOR_PYTHON_INTEGRATION_CHAT_AGENT_NAMING_SNIPPET = """```python
+response = client.chat.completions.create(
     model="<PROPOSED_AGENT_NAME_PLACEHOLDER>",
-    ...,
-)"""
+    ...
+)
+```"""

@@ -1,4 +1,5 @@
-DSPY_PYTHON_LANDING_PAGE_SNIPPET = """import os
+DSPY_PYTHON_LANDING_PAGE_SNIPPET = """```python
+import os
 
 import dspy
 
@@ -25,10 +26,12 @@ qa = dspy.Predict(BasicQA)
 
 # Run prediction
 response = qa(question="Hello, how are you?")
-print(response.answer)"""
+print(response.answer)
+```"""
 
 
-DSPY_PYTHON_LANDING_PAGE_STRUCTURED_GENERATION_SNIPPET = """import os
+DSPY_PYTHON_LANDING_PAGE_STRUCTURED_GENERATION_SNIPPET = """```python
+import os
 from typing import Literal
 
 import dspy
@@ -61,10 +64,12 @@ response = classify(
     config={"extra_body": {"input": {"text": "I had a wonderful day at the park!"}}}
 )
 print(f"Sentiment: {response.sentiment}")
-print(f"Confidence: {response.confidence}")"""
+print(f"Confidence: {response.confidence}")
+```"""
 
 
-DSPY_PYTHON_INTEGRATION_CHAT_INITIAL_SNIPPET = """import dspy
+DSPY_PYTHON_INTEGRATION_CHAT_INITIAL_SNIPPET = """```python
+import dspy
 
 # After (WorkflowAI Proxy)
 lm = dspy.LM(
@@ -73,11 +78,12 @@ lm = dspy.LM(
     api_base="https://run.workflowai.com/v1"  # DSPy now uses WorkflowAI's OpenAI-compatible endpoint
 )
 dspy.configure(lm=lm)
-"""
+```"""
 
 
-DSPY_PYTHON_INTEGRATION_CHAT_AGENT_NAMING_SNIPPET = """lm = dspy.LM(
+DSPY_PYTHON_INTEGRATION_CHAT_AGENT_NAMING_SNIPPET = """```python
+lm = dspy.LM(
     "openai/<PROPOSED_AGENT_NAME_PLACEHOLDER>",
     ...
 )
-"""
+```"""

@@ -68,7 +68,13 @@ export function viewerType(
       return viewerType(refSchema, defs, value);
     }
   }
+
   const fieldType = schema?.type ?? typeof value;
+
+  if (schema?.type === undefined && (value === undefined || value === null)) {
+    return 'string';
+  }
+
   if (fieldType === 'string') {
     return 'string';
   }

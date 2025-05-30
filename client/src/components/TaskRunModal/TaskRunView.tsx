@@ -6,11 +6,12 @@ import { ObjectViewer } from '@/components';
 import { PersistantAllotment } from '@/components/PersistantAllotment';
 import { Loader } from '@/components/ui/Loader';
 import { useCopyRunURL } from '@/lib/hooks/useCopy';
-import { JsonSchema, TaskRun, mapReasoningSteps } from '@/types';
+import { useOrFetchRunCompletions } from '@/store/fetchers';
+import { JsonSchema } from '@/types';
 import { TaskID, TenantID } from '@/types/aliases';
 import { SerializableTaskIOWithSchema } from '@/types/task';
-import { toolCallsFromRun } from '@/types/utils';
-import { VersionV1 } from '@/types/workflowAI';
+import { toolCallsFromRunV1 } from '@/types/utils';
+import { RunV1, VersionV1 } from '@/types/workflowAI';
 import { InternalReasoningSteps } from '../ObjectViewer/InternalReasoningSteps';
 import { TaskOutputViewer } from '../ObjectViewer/TaskOutputViewer';
 import { Button } from '../ui/Button';
@@ -32,7 +33,7 @@ type TaskRunViewProps = {
   schemaInput: SerializableTaskIOWithSchema | undefined;
   schemaOutput: SerializableTaskIOWithSchema | undefined;
   version: VersionV1 | undefined;
-  taskRun: TaskRun | undefined;
+  taskRun: RunV1 | undefined;
   taskRunIndex: number;
   totalModalRuns: number;
   transcriptions?: Record<string, string>;
@@ -57,11 +58,13 @@ export function TaskRunView(props: TaskRunViewProps) {
   } = props;
   const [promptModalVisible, togglePromptModal] = useToggle(false);
 
-  const toolCalls = toolCallsFromRun(taskRun);
+  const toolCalls = toolCallsFromRunV1(taskRun);
 
   const schemaInputSchema = (version?.input_schema as JsonSchema) ?? schemaInputFromProps?.json_schema;
 
   const schemaOutputSchema = (version?.output_schema as JsonSchema) ?? schemaOutputFromProps?.json_schema;
+
+  const { completions } = useOrFetchRunCompletions(tenant, taskRun?.task_id as TaskID, taskRun?.id);
 
   const error = useMemo(() => {
     if (!taskRun || !taskRun.error) {
@@ -82,7 +85,7 @@ export function TaskRunView(props: TaskRunViewProps) {
     return otherKeys.length === 0;
   }, [taskRun]);
 
-  const mappedReasoningSteps = useMemo(() => mapReasoningSteps(taskRun?.reasoning_steps), [taskRun?.reasoning_steps]);
+  const mappedReasoningSteps = taskRun?.reasoning_steps;
 
   const copyTaskRunURL = useCopyRunURL(tenant, taskRun?.task_id, taskRun?.id);
 
@@ -153,7 +156,7 @@ export function TaskRunView(props: TaskRunViewProps) {
               {!!error && <ModelOutputErrorInformation errorForModel={error} />}
               {isOutputEmpty ? (
                 <InternalReasoningSteps
-                  steps={mappedReasoningSteps}
+                  steps={mappedReasoningSteps ?? undefined}
                   streamLoading={false}
                   toolCalls={toolCalls}
                   defaultOpen={true}
@@ -168,7 +171,7 @@ export function TaskRunView(props: TaskRunViewProps) {
                     className='h-full w-full overflow-y-auto'
                     errorsByKeypath={undefined}
                     toolCalls={toolCalls}
-                    reasoningSteps={mappedReasoningSteps}
+                    reasoningSteps={mappedReasoningSteps ?? undefined}
                     defaultOpenForSteps={true}
                   />
                 </div>
@@ -176,17 +179,11 @@ export function TaskRunView(props: TaskRunViewProps) {
             </div>
           </div>
         </div>
-        <TaskRunDetails taskRun={taskRun} tenant={tenant} version={version} />
+        <TaskRunDetails taskRun={taskRun} tenant={tenant} version={version} completions={completions} />
       </PersistantAllotment>
 
-      {taskRun && !!version && (
-        <PromptDialog
-          open={promptModalVisible}
-          onOpenChange={togglePromptModal}
-          taskId={taskRun.task_id as TaskID}
-          tenant={tenant}
-          taskRunId={taskRun.id}
-        />
+      {!!completions && (
+        <PromptDialog open={promptModalVisible} onOpenChange={togglePromptModal} completions={completions} />
       )}
     </div>
   );

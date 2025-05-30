@@ -29,6 +29,7 @@ import { SimpleTooltip } from '@/components/ui/Tooltip';
 import { TASK_SETTINGS_MODAL_OPEN, useQueryParamModal } from '@/lib/globalModal';
 import { Page, pageRegexMap } from '@/lib/pageDetection';
 import {
+  playgroundFromHistoryRouteBuilder,
   taskApiRoute,
   taskBenchmarksRoute,
   taskCostRoute,
@@ -36,7 +37,6 @@ import {
   taskFeedbackRoute,
   taskReviewsRoute,
   taskRunsRoute,
-  taskSchemaRoute,
   taskSchemasRoute,
   taskSideBySideRoute,
   taskVersionsRoute,
@@ -93,8 +93,8 @@ export function generateSections(showActivityIndicator: boolean, isInDemoMode: b
           title: 'Playground',
           icon: <PlayCircleRegular className={iconClassName} />,
           iconSelected: <PlayCircleFilled className={iconClassName} />,
-          routeBuilder: taskSchemaRoute,
-          // Should match /tasks/:taskId/:taskSchemaId/
+          routeBuilder: playgroundFromHistoryRouteBuilder,
+          // Should match /tasks/:taskId/:taskSchemaId/ + searchParams from history
           matchRegex: pageRegexMap[Page.Playground],
           isEnabled: true,
           isHidden: false,

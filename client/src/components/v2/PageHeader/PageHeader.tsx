@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useLoggedInTenantID, useTaskParams } from '@/lib/hooks/useTaskParams';
 import { cn } from '@/lib/utils';
 import { useOrFetchClerkOrganization, useOrFetchTasks } from '@/store';
+import { TaskSchemaID } from '@/types/aliases';
 import { SerializableTask } from '@/types/workflowAI';
 import { PagePath } from './PagePath';
 
@@ -12,11 +13,12 @@ type PageHeaderProps = {
   children?: React.ReactNode;
   showSchema: boolean;
   documentationLink?: string;
+  schemaId?: TaskSchemaID;
 };
 
 export function PageHeader(props: PageHeaderProps) {
-  const { task, name, className, children, showSchema, documentationLink } = props;
-  const { tenant, taskSchemaId } = useTaskParams();
+  const { task, name, className, children, showSchema, documentationLink, schemaId } = props;
+  const { tenant, taskSchemaId: urlSchemaId } = useTaskParams();
 
   const [taskPopoverOpen, setTaskPopoverOpen] = useState(false);
 
@@ -38,7 +40,7 @@ export function PageHeader(props: PageHeaderProps) {
         userOrganization={userOrganization}
         showOrganization={showOrganization}
         tenant={tenant}
-        taskSchemaId={taskSchemaId}
+        taskSchemaId={schemaId ?? urlSchemaId}
         showSchema={showSchema}
         documentationLink={documentationLink}
         name={name}

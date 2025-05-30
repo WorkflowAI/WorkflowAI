@@ -1,7 +1,7 @@
 import { cx } from 'class-variance-authority';
 import { useCallback, useMemo } from 'react';
 import { DebouncedState } from 'usehooks-ts';
-import { ProxyReadonlyMessages } from '@/app/[tenant]/agents/[taskId]/[taskSchemaId]/playground/proxy/ProxyReadonlyMessages';
+import { ProxyMessagesView } from '@/app/[tenant]/agents/[taskId]/[taskSchemaId]/proxy-playground/proxy-messages/ProxyMessagesView';
 import { TaskVersionBadgeContainer } from '@/components/TaskIterationBadge/TaskVersionBadgeContainer';
 import { TaskVersionNotes } from '@/components/TaskVersionNotes';
 import { Badge } from '@/components/ui/Badge';
@@ -197,7 +197,7 @@ export function TaskVersionDetails(props: TaskMetadataProps) {
       {!!messages && (
         <div className='flex flex-col w-full items-top pl-4 pr-4 py-1.5 gap-1'>
           <div className='text-[13px] font-medium text-gray-800'>Messages</div>
-          <ProxyReadonlyMessages messages={messages as ProxyMessage[]} />
+          <ProxyMessagesView messages={messages as ProxyMessage[]} />
         </div>
       )}
 

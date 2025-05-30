@@ -1,4 +1,5 @@
-CURL_LANDING_PAGE_SNIPPET = """curl -X POST https://run.workflowai.com/v1/chat/completions \\
+CURL_LANDING_PAGE_SNIPPET = """```bash
+curl -X POST https://run.workflowai.com/v1/chat/completions \\
   -H "Authorization: Bearer $WORKFLOWAI_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -7,9 +8,11 @@ CURL_LANDING_PAGE_SNIPPET = """curl -X POST https://run.workflowai.com/v1/chat/c
       {"role": "system", "content": "You are a helpful assistant."},
       {"role": "user", "content": "What is the capital of France?"}
     ]
-  }'"""
+  }'
+```"""
 
-CURL_LANDING_PAGE_STRUCTURED_GENERATION_SNIPPET = """curl -X POST https://run.workflowai.com/v1/chat/completions \\
+CURL_LANDING_PAGE_STRUCTURED_GENERATION_SNIPPET = """```bash
+curl -X POST https://run.workflowai.com/v1/chat/completions \\
   -H "Authorization: Bearer $WORKFLOWAI_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -44,19 +47,24 @@ CURL_LANDING_PAGE_STRUCTURED_GENERATION_SNIPPET = """curl -X POST https://run.wo
         }
       }
     }
-  }'"""
+  }'
+```"""
 
-CURL_INTEGRATION_CHAT_INITIAL_SNIPPET = """curl -X POST https://run.workflowai.com/v1/chat/completions \\
+CURL_INTEGRATION_CHAT_INITIAL_SNIPPET = """```bash
+curl -X POST https://run.workflowai.com/v1/chat/completions \\
   -H "Authorization: Bearer <WORKFLOWAI_API_KEY_PLACEHOLDER> \\
   -H "Content-Type: application/json" \\
   -d '{
-    ...
-  }'"""
+   ...
+  }'
+```"""
 
 
-CURL_INTEGRATION_CHAT_AGENT_NAMING_SNIPPET = """curl -X POST https://run.workflowai.com/v1/chat/completions \\
+CURL_INTEGRATION_CHAT_AGENT_NAMING_SNIPPET = """```bash
+curl -X POST https://run.workflowai.com/v1/chat/completions \\
   ...
   -d '{
     "model": "<PROPOSED_AGENT_NAME_PLACEHOLDER>",
     ...
-  }'"""
+  }'
+```"""

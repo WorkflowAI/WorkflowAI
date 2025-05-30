@@ -1,5 +1,5 @@
-OPENAI_SDK_PYTHON_LANDING_PAGE_SNIPPET = """import os
-
+OPENAI_SDK_PYTHON_LANDING_PAGE_SNIPPET = """```python
+import os
 import openai
 
 # Configure the OpenAI client to use the WorkflowAI endpoint and API key
@@ -14,12 +14,13 @@ response = openai.chat.completions.create(
     ],
 )
 
-print(response.choices[0].message.content)"""
+print(response.choices[0].message.content)
+```"""
 
 # For integrations that showcase structured generation we reuse the landing page snippet
 # In future this can be swapped for a dedicated structured output example using `.parse()`.
-OPENAI_SDK_PYTHON_LANDING_PAGE_STRUCTURED_GENERATION_SNIPPET = """import os
-
+OPENAI_SDK_PYTHON_LANDING_PAGE_STRUCTURED_GENERATION_SNIPPET = """```python
+import os
 import openai
 from pydantic import BaseModel
 
@@ -54,9 +55,10 @@ def get_country(city: str) -> CountryInfo:
 
     # Access the parsed Pydantic object directly
     return completion.choices[0].message.parsed
-"""
+```"""
 
-OPENAI_SDK_PYTHON_INTEGRATION_CHAT_INITIAL_SNIPPET = """import openai
+OPENAI_SDK_PYTHON_INTEGRATION_CHAT_INITIAL_SNIPPET = """```python
+import openai
 
 # After (WorkflowAI Proxy)
 openai.api_key = <WORKFLOWAI_API_KEY_PLACEHOLDER>
@@ -65,9 +67,12 @@ openai.api_base = "https://run.workflowai.com/v1" # OpenAI SDK now uses Workflow
 # Everything else (model calls, parameters) stays the same
 response = openai.chat.completions.create(
     ...,
-)"""
+)
+```"""
 
-OPENAI_SDK_PYTHON_INTEGRATION_CHAT_AGENT_NAMING_SNIPPET = """response = openai.chat.completions.create(
+OPENAI_SDK_PYTHON_INTEGRATION_CHAT_AGENT_NAMING_SNIPPET = """```python
+response = openai.chat.completions.create(
     model="<PROPOSED_AGENT_NAME_PLACEHOLDER>",
-    ...,
-)"""
+    ...
+)
+```"""

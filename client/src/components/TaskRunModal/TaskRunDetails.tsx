@@ -2,23 +2,23 @@ import { useMemo } from 'react';
 import { AIEvaluationReview } from '@/app/[tenant]/agents/[taskId]/[taskSchemaId]/playground/components/AIEvaluation/AIEvaluationReview';
 import { TaskRunOutputRows } from '@/app/[tenant]/agents/[taskId]/[taskSchemaId]/playground/components/TaskRunOutputRows/TaskRunOutputRows';
 import { getContextWindowInformation } from '@/lib/taskRunUtils';
-import { TaskRun } from '@/types';
 import { TaskID, TenantID } from '@/types/aliases';
-import { VersionV1 } from '@/types/workflowAI';
+import { LLMCompletionTypedMessages, RunV1, VersionV1 } from '@/types/workflowAI';
 import { FeedbackBoxContainer } from './FeedbackBox';
 
 type TaskRunDetailsProps = {
   tenant: TenantID | undefined;
-  taskRun: TaskRun;
+  taskRun: RunV1;
   version: VersionV1 | undefined;
+  completions: LLMCompletionTypedMessages[] | undefined;
 };
 
 export function TaskRunDetails(props: TaskRunDetailsProps) {
-  const { taskRun, tenant, version } = props;
+  const { taskRun, tenant, version, completions } = props;
 
   const contextWindowInformation = useMemo(() => {
-    return getContextWindowInformation(taskRun);
-  }, [taskRun]);
+    return getContextWindowInformation(completions);
+  }, [completions]);
 
   return (
     <div className='h-full flex flex-col bg-white border-l border-gray-200 border-dashed'>

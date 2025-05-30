@@ -4,7 +4,7 @@ import { useRedirectWithParams } from '@/lib/queryString';
 import { buildScopeKey } from '@/store/utils';
 import { GeneralizedTaskInput } from '@/types';
 import { ModelOptional, TaskID, TaskSchemaID, TenantID } from '@/types/aliases';
-import { VersionV1 } from '@/types/workflowAI';
+import { ProxyMessage, VersionV1 } from '@/types/workflowAI';
 import { PlaygroundModels, formatTaskRunIdParam } from './utils';
 
 export type GeneratePlaygroundInputParams = {
@@ -38,6 +38,7 @@ type PlaygroundPersistedState = Record<
     taskRunId2: string | undefined;
     taskRunId3: string | undefined;
     versionId: string | undefined;
+    proxyMessages: ProxyMessage[] | undefined;
   }
 >;
 
@@ -83,10 +84,12 @@ export function usePlaygroundPersistedState(props: Props) {
   const persistedTaskRunId2 = persistedState[schemaScopeKey]?.taskRunId2;
   const persistedTaskRunId3 = persistedState[schemaScopeKey]?.taskRunId3;
   const persistedVersionId = persistedState[schemaScopeKey]?.versionId;
+  const persistedProxyMessages = persistedState[schemaScopeKey]?.proxyMessages;
 
   const [schemaModels, setSchemaModels] = useState<PlaygroundModels>(persistedSchemaModels);
   const [taskModels, setTaskModels] = useState<PlaygroundModels>(persistedTaskModels);
   const [generatedInput, setGeneratedInput] = useState<GeneralizedTaskInput | undefined>(persistedGeneratedInput);
+  const [proxyMessages, setProxyMessages] = useState<ProxyMessage[] | undefined>(persistedProxyMessages);
   const [preGeneratedInput, setPreGeneratedInput] = useState<GeneralizedTaskInput | undefined>(
     persistedPreGeneratedInput
   );
@@ -184,6 +187,20 @@ export function usePlaygroundPersistedState(props: Props) {
     [schemaScopeKey, setSessionPersistedState]
   );
 
+  const handleSetProxyMessages = useCallback(
+    (proxyMessages: ProxyMessage[] | undefined) => {
+      setProxyMessages(proxyMessages);
+      setSessionPersistedState((prev) => ({
+        ...prev,
+        [schemaScopeKey]: {
+          ...prev[schemaScopeKey],
+          proxyMessages,
+        },
+      }));
+    },
+    [schemaScopeKey, setSessionPersistedState]
+  );
+
   const handlePreGeneratedInputChange = useCallback(
     (taskInput: GeneralizedTaskInput | undefined) => {
       setPreGeneratedInput(taskInput);
@@ -249,5 +266,7 @@ export function usePlaygroundPersistedState(props: Props) {
     setTaskRunId: handleSetTaskRunId,
     persistedVersionId,
     setPersistedVersionId: handleSetPersistedVersionId,
+    proxyMessages,
+    setProxyMessages: handleSetProxyMessages,
   };
 }

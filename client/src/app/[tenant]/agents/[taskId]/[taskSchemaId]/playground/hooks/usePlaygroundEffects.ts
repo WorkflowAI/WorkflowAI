@@ -4,7 +4,7 @@ import { isEqual } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useRedirectWithParams } from '@/lib/queryString';
 import { SchemaNodeType } from '@/lib/schemaUtils';
-import { useOrFetchTaskRun } from '@/store';
+import { useOrFetchRunV1, useOrFetchTaskRun } from '@/store';
 import { GeneralizedTaskInput, TaskRun } from '@/types';
 import { Model, ModelOptional, TaskID, TenantID } from '@/types/aliases';
 import { ModelResponse, RunV1, VersionV1 } from '@/types/workflowAI';
@@ -78,21 +78,22 @@ export function usePlaygroundEffects(props: Props) {
   } = props;
 
   const {
-    taskRun: taskRun1,
+    run: taskRun1,
     isInitialized: taskRun1Initialized,
     isLoading: taskRun1Loading,
-  } = useOrFetchTaskRun(tenant, taskId, taskRunId1);
+  } = useOrFetchRunV1(tenant, taskId, taskRunId1);
 
   const {
-    taskRun: taskRun2,
+    run: taskRun2,
     isInitialized: taskRun2Initialized,
     isLoading: taskRun2Loading,
-  } = useOrFetchTaskRun(tenant, taskId, taskRunId2);
+  } = useOrFetchRunV1(tenant, taskId, taskRunId2);
   const {
-    taskRun: taskRun3,
+    run: taskRun3,
     isInitialized: taskRun3Initialized,
     isLoading: taskRun3Loading,
-  } = useOrFetchTaskRun(tenant, taskId, taskRunId3);
+  } = useOrFetchRunV1(tenant, taskId, taskRunId3);
+
   const { taskRun: persistedTaskRun1, isInitialized: persistedTaskRun1Initialized } = useOrFetchTaskRun(
     tenant,
     taskId,
@@ -163,7 +164,7 @@ export function usePlaygroundEffects(props: Props) {
       // If there is a task run, we redirect to its task group
       if (!!taskRun1) {
         redirectWithParams({
-          params: { versionId: taskRun1.group?.id },
+          params: { versionId: taskRun1.version.id },
           scroll: false,
         });
         return;
@@ -284,9 +285,9 @@ export function usePlaygroundEffects(props: Props) {
   }, [currentVersion, setInstructions, setTemperature, setSchemaModels, taskRunId1]);
 
   const handleSetRunModel = useCallback(
-    (index: number, taskRun: TaskRun | undefined) => {
+    (index: number, taskRun: RunV1 | undefined) => {
       if (!taskRun) return;
-      setSchemaModels(index, (taskRun.group?.properties?.model ?? '') as Model);
+      setSchemaModels(index, (taskRun.version.properties?.model ?? '') as Model);
     },
     [setSchemaModels]
   );

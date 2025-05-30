@@ -1,4 +1,4 @@
-import { TaskRun } from '@/types';
+import { LLMCompletionTypedMessages } from '@/types/workflowAI';
 
 export type ContextWindowInformation = {
   inputTokens: string;
@@ -13,12 +13,19 @@ function formatTokenCount(count: number): string {
   return count.toFixed(0).toString();
 }
 
-export function getContextWindowInformation(taskRun: TaskRun | undefined): ContextWindowInformation | undefined {
-  if (!taskRun) {
+export function getContextWindowInformation(
+  runCompletions: LLMCompletionTypedMessages[] | undefined
+): ContextWindowInformation | undefined {
+  if (!runCompletions) {
     return undefined;
   }
 
-  const usage = taskRun.llm_completions?.[0].usage;
+  const usage = runCompletions.find(
+    (completion) =>
+      !!completion.usage.prompt_token_count &&
+      !!completion.usage.completion_token_count &&
+      !!completion.usage.model_context_window_size
+  )?.usage;
 
   if (!usage || !usage.prompt_token_count || !usage.completion_token_count || !usage.model_context_window_size) {
     return undefined;

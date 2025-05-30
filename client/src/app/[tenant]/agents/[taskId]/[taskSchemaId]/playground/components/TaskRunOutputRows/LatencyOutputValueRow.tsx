@@ -1,12 +1,11 @@
-import { TaskRun } from '@/types/task_run';
-import { ModelResponse } from '@/types/workflowAI';
+import { ModelResponse, RunV1 } from '@/types/workflowAI';
 import { BaseOutputValueRow, TBaseOutputValueRowVariant } from './BaseOutputValueRow';
 
 type LatencyOutputValueRowProps = {
   currentAIModel: ModelResponse | undefined;
   minimumCostAIModel: ModelResponse | undefined;
-  taskRun: TaskRun | undefined;
-  minimumLatencyTaskRun: TaskRun | undefined;
+  taskRun: RunV1 | undefined;
+  minimumLatencyTaskRun: RunV1 | undefined;
   hideLabel?: boolean;
 };
 export function LatencyOutputValueRow({

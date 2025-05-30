@@ -16,7 +16,7 @@ import { MajorVersionDetails } from './MajorVersionDetails';
 type MajorVersionComboboxProps = {
   majorVersions: MajorVersion[];
   matchedMajorVersion: MajorVersion | undefined;
-  useInstructionsAndTemperatureFromMajorVersion: (version: MajorVersion) => void;
+  useParametersFromMajorVersion: (version: MajorVersion) => void;
 };
 
 function searchValueForVersion(version: MajorVersion | undefined, newestMajorVersion: number | undefined) {
@@ -104,11 +104,7 @@ function MajorVersionComboboxEntry(props: MajorVersionComboboxEntryProps) {
 }
 
 export function MajorVersionCombobox(props: MajorVersionComboboxProps) {
-  const {
-    majorVersions,
-    matchedMajorVersion,
-    useInstructionsAndTemperatureFromMajorVersion: setInstructionsAndTemperature,
-  } = props;
+  const { majorVersions, matchedMajorVersion, useParametersFromMajorVersion: setParametersFromMajorVersion } = props;
   const [search, setSearch] = useState('');
 
   const sortedMajorVersions: MajorVersion[] = useMemo(() => {
@@ -144,10 +140,10 @@ export function MajorVersionCombobox(props: MajorVersionComboboxProps) {
 
   const selectVersion = useCallback(
     (version: MajorVersion) => {
-      setInstructionsAndTemperature(version);
+      setParametersFromMajorVersion(version);
       setOpen(false);
     },
-    [setInstructionsAndTemperature, setOpen]
+    [setParametersFromMajorVersion, setOpen]
   );
 
   return (

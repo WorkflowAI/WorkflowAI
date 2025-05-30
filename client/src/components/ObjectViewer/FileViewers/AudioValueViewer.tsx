@@ -69,11 +69,21 @@ type UniversalAudioValueViewerProps = {
         onProgress?: ((progress: number) => void) | undefined
       ) => Promise<string | undefined>)
     | undefined;
+  hideCloseButton?: boolean;
 };
 
 export function UniversalAudioValueViewer(props: UniversalAudioValueViewerProps) {
-  const { value, className, editable, onEdit, keyPath, transcriptions, fetchAudioTranscription, handleUploadFile } =
-    props;
+  const {
+    value,
+    className,
+    editable,
+    onEdit,
+    keyPath,
+    transcriptions,
+    fetchAudioTranscription,
+    handleUploadFile,
+    hideCloseButton = false,
+  } = props;
 
   const castedValue = value as FileValueType | undefined;
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -275,7 +285,7 @@ export function UniversalAudioValueViewer(props: UniversalAudioValueViewerProps)
           className='shrink-0'
         />
         <AudioWaveform />
-        {editable && (
+        {editable && !hideCloseButton && (
           <Button
             variant='newDesign'
             size='icon'

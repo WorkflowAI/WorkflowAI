@@ -9,10 +9,20 @@ type PageHeaderRightComponentsProps = {
   showCopyLink?: boolean;
   rightBarChildren?: React.ReactNode;
   copyUrl?: () => void;
+  documentationText?: string;
 };
 
 export function PageHeaderRightComponents(props: PageHeaderRightComponentsProps) {
-  const { name, rightBarText, documentationLink, extraButton, showCopyLink, rightBarChildren, copyUrl } = props;
+  const {
+    name,
+    rightBarText,
+    documentationLink,
+    extraButton,
+    showCopyLink,
+    rightBarChildren,
+    copyUrl,
+    documentationText,
+  } = props;
   return (
     <div className='flex flex-row gap-2 items-center sm:w-fit px-4 w-full justify-between sm:border-t-0 border-t border-gray-100'>
       <div className='flex flex-col gap-[2px] py-2'>
@@ -28,7 +38,7 @@ export function PageHeaderRightComponents(props: PageHeaderRightComponentsProps)
             rel='noopener noreferrer'
             className='sm:block hidden'
           >
-            Documentation
+            {documentationText ?? 'Documentation'}
           </Button>
         )}
         {extraButton}
