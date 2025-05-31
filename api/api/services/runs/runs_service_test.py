@@ -1,6 +1,6 @@
 from base64 import b64encode
 from typing import Any
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from pytest_httpx import HTTPXMock
@@ -427,6 +427,26 @@ class TestStoreTaskRun:
 
         excluded = {"task_input_preview", "task_output_preview"}
         assert result.model_dump(exclude=excluded) == non_legacy_task_run.model_dump(exclude=excluded)
+
+    async def test_compute_preview_error(
+        self,
+        runs_service: RunsService,
+        non_legacy_task: SerializableTaskVariant,
+        non_legacy_task_run: AgentRun,
+    ):
+        non_legacy_task.input_schema.json_schema = {"type": "object", "properties": {"text": {"type": "string"}}}
+        non_legacy_task_run.task_input = {"text": "hello"}
+
+        # Patch the assign_run_previews to raise an error
+        with patch("api.services.runs.runs_service.assign_run_previews", side_effect=Exception("test")):
+            result = await runs_service.store_task_run(
+                task_variant=non_legacy_task,
+                task_run=non_legacy_task_run.model_copy(),
+                trigger="user",
+            )
+
+        assert result.task_input_preview == ""
+        assert result.task_output_preview == ""
 
 
 class TestStripPrivateFields:

@@ -76,3 +76,14 @@ class TestPrivateComputePreview:
             )
             == 'value: "Hello, world!" | messages: Hello, world!'
         )
+
+    def test_reply_empty_object(self):
+        assert (
+            _compute_preview(
+                {"workflowai.replies": [], "value": "bla"},
+                agent_io=SerializableTaskIO.from_json_schema(
+                    {"format": "messages", "type": "object", "properties": {"value": {"type": "string"}}},
+                ),
+            )
+            == 'value: "bla"'
+        )

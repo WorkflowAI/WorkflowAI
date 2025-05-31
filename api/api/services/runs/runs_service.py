@@ -31,6 +31,7 @@ from core.storage import ObjectNotFoundException, TaskTuple
 from core.storage.abstract_storage import AbstractStorage
 from core.storage.azure.azure_blob_file_storage import FileStorage
 from core.storage.backend_storage import BackendStorage
+from core.utils.coroutines import capture_errors
 from core.utils.dicts import delete_at_keypath
 
 from ._run_previews import assign_run_previews
@@ -299,7 +300,8 @@ class RunsService:
         if task_run.private_fields and task_run.llm_completions:
             task_run = cls._strip_llm_completions(task_run)
 
-        assign_run_previews(task_run, task_variant)
+        with capture_errors(logger=_logger, msg="Could not assign run previews"):
+            assign_run_previews(task_run, task_variant)
 
         try:
             # Store task run
