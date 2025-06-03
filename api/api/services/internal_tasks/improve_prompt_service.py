@@ -15,7 +15,13 @@ from core.agents.improve_prompt import (
     ImprovePromptAgentOutput,
     run_improve_prompt_agent,
 )
+from core.agents.improve_version_messages_agent import (
+    ImproveVersionMessagesInput,
+    ImproveVersionMessagesResponse,
+    improve_version_messages_agent,
+)
 from core.domain.agent_run import AgentRun
+from core.domain.message import Message
 from core.domain.task_group import TaskGroup
 from core.domain.task_group_properties import TaskGroupProperties
 from core.domain.task_io import SerializableTaskIO
@@ -39,6 +45,26 @@ class ImprovePromptService:
     def __init__(self, storage: BackendStorage):
         self._logger = logging.getLogger(self.__class__.__name__)
         self._storage = storage
+
+    async def improve_version_messages(
+        self,
+        version_messages: list[Message],
+        run: AgentRun | None = None,
+        improvement_instructions: str | None = None,
+    ) -> AsyncIterator[ImproveVersionMessagesResponse]:
+        agent_input = ImproveVersionMessagesInput(
+            initial_messages=[message.model_dump(exclude_none=True) for message in version_messages or []],
+            run=ImproveVersionMessagesInput.Run(
+                input=json.dumps(run.task_input) if run.task_input else "",
+                output=json.dumps(run.task_output) if run.task_output else "",
+            )
+            if run
+            else None,
+            improvement_instructions=improvement_instructions,
+        )
+
+        async for chunk in improve_version_messages_agent(agent_input):
+            yield chunk
 
     async def _prepare_improve_prompt_input(
         self,
