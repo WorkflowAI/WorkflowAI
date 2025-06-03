@@ -16,7 +16,8 @@ interface IntegrationsCodeState {
     taskId: TaskID,
     taskSchemaId: TaskSchemaID,
     versionId: string,
-    integrationId: string
+    integrationId: string,
+    key: string | undefined
   ) => Promise<void>;
 }
 
@@ -30,9 +31,10 @@ export const useIntegrations = create<IntegrationsCodeState>((set, get) => ({
     taskId: TaskID,
     taskSchemaId: TaskSchemaID,
     versionId: string,
-    integrationId: string
+    integrationId: string,
+    key: string | undefined
   ) => {
-    const scope = `${tenant}-${taskId}-${taskSchemaId}-${versionId}-${integrationId}`;
+    const scope = `${tenant}-${taskId}-${taskSchemaId}-${versionId}-${integrationId}-${key}`;
 
     if (get().isLoadingByScope[scope]) {
       return;
@@ -86,9 +88,10 @@ export const useOrFetchIntegrationsCode = (
   taskId: TaskID,
   taskSchemaId: TaskSchemaID,
   versionId: string | undefined,
-  integrationId: string | undefined
+  integrationId: string | undefined,
+  key: string | undefined
 ) => {
-  const scope = `${tenant}-${taskId}-${taskSchemaId}-${versionId}-${integrationId}`;
+  const scope = `${tenant}-${taskId}-${taskSchemaId}-${versionId}-${integrationId}-${key}`;
 
   const code = useIntegrations((state) => (versionId ? state.codeByScope[scope] : undefined));
   const isLoading = useIntegrations((state) => (versionId ? state.isLoadingByScope[scope] : false));
@@ -97,9 +100,9 @@ export const useOrFetchIntegrationsCode = (
 
   useEffect(() => {
     if (versionId && integrationId) {
-      getIntegrationsCode(tenant, taskId, taskSchemaId, versionId, integrationId);
+      getIntegrationsCode(tenant, taskId, taskSchemaId, versionId, integrationId, key);
     }
-  }, [getIntegrationsCode, tenant, taskId, taskSchemaId, versionId, integrationId]);
+  }, [getIntegrationsCode, tenant, taskId, taskSchemaId, versionId, integrationId, key]);
 
   return {
     code,

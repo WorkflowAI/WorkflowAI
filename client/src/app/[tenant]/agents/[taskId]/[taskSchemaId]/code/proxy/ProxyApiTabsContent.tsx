@@ -1,28 +1,36 @@
 import { useMemo } from 'react';
 import { MarkdownMessageTextView } from '@/components/NewTaskModal/MarkdownMessageTextView';
+import { environmentsForVersion } from '@/lib/versionUtils';
 import { useOrFetchIntegrationsCode } from '@/store/integrations_code';
 import { TenantID } from '@/types/aliases';
 import { TaskID } from '@/types/aliases';
 import { TaskSchemaID } from '@/types/aliases';
-import { Integration } from '@/types/workflowAI';
+import { Integration, VersionV1 } from '@/types/workflowAI';
 
 type Props = {
   tenant: TenantID | undefined;
   taskId: TaskID;
   taskSchemaId: TaskSchemaID;
-  versionId: string | undefined;
+  version: VersionV1 | undefined;
   integrationId: string | undefined;
   integrations: Integration[] | undefined;
 };
 
 export function ProxyApiTabsContent(props: Props) {
-  const { tenant, taskId, taskSchemaId, versionId, integrationId, integrations } = props;
+  const { tenant, taskId, taskSchemaId, version, integrationId, integrations } = props;
 
   const integration = useMemo(() => {
     return integrations?.find((integration) => integration.id === integrationId);
   }, [integrations, integrationId]);
 
-  const { code } = useOrFetchIntegrationsCode(tenant, taskId, taskSchemaId, versionId, integration?.id);
+  const environment = useMemo(() => {
+    if (!version) {
+      return undefined;
+    }
+    return environmentsForVersion(version)?.[0];
+  }, [version]);
+
+  const { code } = useOrFetchIntegrationsCode(tenant, taskId, taskSchemaId, version?.id, integration?.id, environment);
 
   return (
     <div className='flex flex-col w-full flex-1 overflow-hidden'>

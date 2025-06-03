@@ -10,10 +10,11 @@ import { VersionV1 } from '@/types/workflowAI';
 type DeployBannerProps = {
   version: VersionV1 | undefined;
   isEnvironmentShown: boolean;
+  redirectAfterDeploy: boolean;
 };
 
 export function DeployBanner(props: DeployBannerProps) {
-  const { version, isEnvironmentShown } = props;
+  const { version, isEnvironmentShown, redirectAfterDeploy } = props;
 
   const { onDeployToClick } = useDeployVersionModal();
 
@@ -53,7 +54,7 @@ export function DeployBanner(props: DeployBannerProps) {
         </div>
         <Button
           variant='newDesignIndigo'
-          onClick={() => onDeployToClick(version?.id, `${version?.schema_id}` as TaskSchemaID, true)}
+          onClick={() => onDeployToClick(version?.id, `${version?.schema_id}` as TaskSchemaID, redirectAfterDeploy)}
         >
           Deploy Version {badgeText}
         </Button>

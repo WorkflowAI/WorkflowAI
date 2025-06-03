@@ -1,22 +1,26 @@
 import { Dismiss12Regular } from '@fluentui/react-icons';
-import { useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import { useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/Button';
+import { SimpleTooltip } from '@/components/ui/Tooltip';
 import { useRedirectWithParams } from '@/lib/queryString';
+import { tasksRoute } from '@/lib/routeFormatter';
+import { useOrFetchTasks } from '@/store/fetchers';
 import { useIntegrationChat } from '@/store/integrations_messages';
-import { Integration } from '@/types/workflowAI/models';
-import { IntegrationCombobox } from './IntegrationCombobox';
+import { TenantID } from '@/types/aliases';
 import { NewTaskFlowChoiceSection } from './NewTaskFlowChoiceSection';
 
 type NewTaskFlowChoiceProps = {
-  integrationId: string | undefined;
-  integrations: Integration[] | undefined;
+  tenant: TenantID | undefined;
   onClose: () => void;
 };
 
 export function NewTaskFlowChoice(props: NewTaskFlowChoiceProps) {
-  const { integrationId, integrations, onClose } = props;
+  const { onClose, tenant } = props;
 
   const redirectWithParams = useRedirectWithParams();
+  const router = useRouter();
+
   const { clean } = useIntegrationChat();
 
   const onCreateFeatureFlow = useCallback(() => {
@@ -28,31 +32,17 @@ export function NewTaskFlowChoice(props: NewTaskFlowChoiceProps) {
     });
   }, [redirectWithParams]);
 
-  const onImportFeatureFlow = useCallback(() => {
-    if (!integrationId) {
-      return;
-    }
-
+  const onRedirectToAgents = useCallback(() => {
     clean();
+    const path = tasksRoute(tenant ?? ('_' as TenantID));
+    router.push(path);
+  }, [tenant, clean, router]);
 
-    redirectWithParams({
-      params: {
-        flow: 'import',
-        integrationId: integrationId,
-      },
-    });
-  }, [redirectWithParams, integrationId, clean]);
+  const { tasks } = useOrFetchTasks(tenant ?? ('_' as TenantID));
 
-  const setIntegrationId = useCallback(
-    (integrationId: string | undefined) => {
-      redirectWithParams({
-        params: {
-          integrationId,
-        },
-      });
-    },
-    [redirectWithParams]
-  );
+  const areAgentsExisting = useMemo(() => {
+    return tasks.length > 0;
+  }, [tasks]);
 
   return (
     <div className='flex flex-col h-full w-full overflow-hidden'>
@@ -87,25 +77,34 @@ export function NewTaskFlowChoice(props: NewTaskFlowChoiceProps) {
           <NewTaskFlowChoiceSection
             title='Import Existing Feature'
             subtitle='Import existing features built in code with your existing integrations. Great for developers.'
-            imageURL='https://workflowai.blob.core.windows.net/workflowai-public/integrateFlowIllustration.jpg'
+            imageURL='https://workflowai.blob.core.windows.net/workflowai-public/OnboardingImport.jpg'
           >
-            <div className='flex flex-col gap-4 justify-center w-full px-10 pb-10'>
-              <div className='flex flex-col gap-2 p-4 border border-gray-200 rounded-[2px]'>
-                <div className='text-[13px] font-medium text-gray-700'>Integration:</div>
-                <IntegrationCombobox
-                  integrations={integrations}
-                  integrationId={integrationId}
-                  setIntegrationId={setIntegrationId}
-                />
-              </div>
+            <div className='flex flex-row gap-4 justify-center w-full px-10 pb-10'>
               <Button
                 variant='newDesignIndigo'
                 className='w-full'
-                disabled={!integrationId}
-                onClick={onImportFeatureFlow}
+                toRoute='https://docs.workflowai.com/~/revisions/ft4DWNvzz4kdki59uech/get-started/quickstart/existing-agent'
+                openInNewTab={true}
               >
-                Import Existing Feature
+                Read the Documentation
               </Button>
+              <SimpleTooltip
+                content={areAgentsExisting ? undefined : 'Available after at least one feature is imported'}
+                side='top'
+                align='center'
+                tooltipDelay={100}
+              >
+                <div className='w-full'>
+                  <Button
+                    variant='newDesignIndigo'
+                    className='w-full'
+                    disabled={!areAgentsExisting}
+                    onClick={onRedirectToAgents}
+                  >
+                    Go to Dashboard
+                  </Button>
+                </div>
+              </SimpleTooltip>
             </div>
           </NewTaskFlowChoiceSection>
         </div>
