@@ -1,6 +1,5 @@
 from typing import Any, Literal
 
-from httpx import Response
 from pydantic import BaseModel
 from typing_extensions import override
 
@@ -17,13 +16,13 @@ from core.providers.base.provider_error import (
 from core.providers.base.provider_options import ProviderOptions
 from core.providers.base.streaming_context import ParsedResponse, ToolCallRequestBuffer
 from core.providers.base.utils import get_provider_config_env
+from core.utils.token_utils import tokens_from_string
 
 from .cerebras_domain import (
     CerebrasMessage,
     CompletionRequest,
     CompletionResponse,
     StreamedResponse,
-    Usage,
 )
 
 
@@ -100,6 +99,36 @@ class CerebrasProvider(HTTPXProvider[CerebrasConfig, CompletionResponse]):
     @override
     def _extract_usage(self, response: CompletionResponse) -> LLMUsage | None:
         return response.usage.to_domain() if response.usage else None
+
+    def _compute_prompt_token_count(
+        self,
+        messages: list[dict[str, Any]],
+        model: Model,
+    ) -> int:
+        CEREBRAS_BOILERPLATE_TOKENS = 3
+        CEREBRAS_MESSAGE_BOILERPLATE_TOKENS = 4
+
+        token_count = CEREBRAS_BOILERPLATE_TOKENS
+
+        for message in messages:
+            domain_message = CerebrasMessage.model_validate(message)
+            if domain_message.content:
+                token_count += tokens_from_string(domain_message.content, model.value)
+            token_count += CEREBRAS_MESSAGE_BOILERPLATE_TOKENS
+
+        return token_count
+
+    def _compute_prompt_image_count(
+        self,
+        messages: list[dict[str, Any]],
+    ) -> int:
+        return 0
+
+    async def _compute_prompt_audio_token_count(
+        self,
+        messages: list[dict[str, Any]],
+    ) -> tuple[float, float | None]:
+        return 0, None
 
     @override
     @classmethod

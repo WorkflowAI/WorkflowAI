@@ -4,12 +4,11 @@ import unittest
 import pytest
 from pytest_httpx import HTTPXMock, IteratorStream
 
-from core.domain.llm_usage import LLMUsage
 from core.domain.message import MessageDeprecated
 from core.domain.models import Model, Provider
 from core.domain.structured_output import StructuredOutput
 from core.providers.base.provider_options import ProviderOptions
-from core.providers.cerebras.cerebras_domain import CompletionResponse, Choice, ChoiceMessage, Usage
+from core.providers.cerebras.cerebras_domain import Choice, ChoiceMessage, CompletionResponse, Usage
 from core.providers.cerebras.cerebras_provider import CerebrasConfig, CerebrasProvider
 
 
@@ -23,8 +22,7 @@ class TestCerebrasProvider(unittest.TestCase):
 
 @pytest.fixture(scope="function")
 def cerebras_provider():
-    provider = CerebrasProvider(config=CerebrasConfig(api_key="token"))
-    return provider
+    return CerebrasProvider(config=CerebrasConfig(api_key="token"))
 
 
 class TestBuildRequest:
@@ -56,7 +54,7 @@ class TestComplete:
         out = await provider.complete(
             [MessageDeprecated(role=MessageDeprecated.Role.USER, content="hi")],
             options=ProviderOptions(model=Model.LLAMA_3_1_8B, max_tokens=5, temperature=0),
-            output_factory=lambda x, _: StructuredOutput(json.loads(x)),
+            output_factory=lambda x, _: StructuredOutput(x),
         )
 
         assert out.output == "hello"
