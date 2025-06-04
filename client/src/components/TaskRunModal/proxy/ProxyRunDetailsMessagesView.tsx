@@ -24,13 +24,18 @@ export function ProxyRunDetailsMessagesView(props: Props) {
       <div className='flex w-full h-12 border-b border-dashed border-gray-200 items-center px-4'>
         <div className='text-[16px] font-semibold text-gray-700'>Messages</div>
       </div>
-      <div className='flex flex-col w-full max-h-[calc(100%-48px)] overflow-y-auto'>
-        <ProxyMessagesView messages={messages as ProxyMessage[]} className='flex w-full h-max px-4 py-2' />
+      <div className='flex flex-col w-full max-h-[calc(100%-48px)] overflow-y-auto py-2'>
         {!!plainError && (
           <div className='flex flex-col w-full items-center px-4 pb-20 flex-shrink-0'>
             <ModelOutputErrorInformation errorForModel={plainError} />
           </div>
         )}
+        <ProxyMessagesView
+          messages={messages as ProxyMessage[]}
+          className='flex w-full h-max px-4 py-2'
+          supportRunDetails={true}
+          revertOrder={true}
+        />
       </div>
     </div>
   );

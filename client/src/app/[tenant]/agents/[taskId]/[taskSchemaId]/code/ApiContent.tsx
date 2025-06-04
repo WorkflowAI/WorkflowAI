@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { IntegrationCombobox } from '@/components/NewTaskModal/Import/IntegrationCombobox';
 import { PageSection } from '@/components/v2/PageSection';
 import { useDemoMode } from '@/lib/hooks/useDemoMode';
+import { environmentsForVersion } from '@/lib/versionUtils';
 import { VersionsPerEnvironment } from '@/store/versions';
 import { TenantID } from '@/types/aliases';
 import { TaskID } from '@/types/aliases';
@@ -12,7 +13,6 @@ import { CodeLanguage } from '@/types/snippets';
 import { TaskSchemaResponseWithSchema } from '@/types/task';
 import { TaskRun } from '@/types/task_run';
 import { APIKeyResponse, Integration, VersionEnvironment, VersionV1 } from '@/types/workflowAI';
-import { checkVersionForProxy } from '../proxy-playground/utils';
 import { APILanguageSelection } from './APILanguageSelection';
 import { ApiContentSectionItem } from './ApiContentSectionItem';
 import { ApiTabsContent } from './ApiTabsContent';
@@ -20,6 +20,7 @@ import { DeployBanner } from './DeployBanner';
 import { ManageApiKeysButton } from './ManageApiKeyButton';
 import { VersionPopover } from './VersionPopover';
 import { ProxyApiTabsContent } from './proxy/ProxyApiTabsContent';
+import { ProxyVersionPopover } from './proxy/ProxyVersionPopover';
 
 export enum APIKeyOption {
   Own = 'Own',
@@ -30,7 +31,7 @@ type ApiContentProps = {
   tenant: TenantID | undefined;
   taskId: TaskID;
   taskSchemaId: TaskSchemaID;
-  apiKeys: APIKeyResponse[];
+  apiKeys: APIKeyResponse[] | undefined;
   versionsPerEnvironment: VersionsPerEnvironment | undefined;
   apiUrl: string | undefined;
   versions: VersionV1[];
@@ -49,6 +50,7 @@ type ApiContentProps = {
   selectedIntegrationId: string | undefined;
   setSelectedIntegrationId: (integrationId: string | undefined) => void;
   integrations: Integration[] | undefined;
+  isProxy: boolean;
 };
 
 export function ApiContent(props: ApiContentProps) {
@@ -75,16 +77,24 @@ export function ApiContent(props: ApiContentProps) {
     selectedIntegrationId,
     setSelectedIntegrationId,
     integrations,
+    isProxy,
   } = props;
-
-  const isProxy = useMemo(() => {
-    return checkVersionForProxy(selectedVersionForAPI);
-  }, [selectedVersionForAPI]);
 
   const { isInDemoMode } = useDemoMode();
 
+  const environments = useMemo(() => {
+    return environmentsForVersion(selectedVersionForAPI);
+  }, [selectedVersionForAPI]);
+
+  const showBanner = useMemo(() => {
+    if (!isProxy) {
+      return true;
+    }
+    return !environments || environments.length === 0;
+  }, [isProxy, environments]);
+
   const manageKeysButton = (
-    <ManageApiKeysButton apiKeys={apiKeys} openApiKeysModal={openApiKeysModal} disabled={isInDemoMode} />
+    <ManageApiKeysButton apiKeys={apiKeys ?? []} openApiKeysModal={openApiKeysModal} disabled={isInDemoMode} />
   );
 
   return (
@@ -113,27 +123,42 @@ export function ApiContent(props: ApiContentProps) {
           )}
 
           <ApiContentSectionItem title='Version'>
-            <VersionPopover
-              versions={versions}
-              versionsPerEnvironment={versionsPerEnvironment}
-              selectedVersionId={selectedVersionToDeployId}
-              setSelectedVersionId={setSelectedVersionToDeploy}
-              selectedEnvironment={selectedEnvironment}
-              setSelectedEnvironment={setSelectedEnvironment}
-            />
+            {isProxy ? (
+              <ProxyVersionPopover
+                versions={versions}
+                selectedVersionId={selectedVersionToDeployId}
+                selectedEnvironment={selectedEnvironment}
+                setSelectedEnvironmentAndVersionId={setSelectedEnvironment}
+              />
+            ) : (
+              <VersionPopover
+                versions={versions}
+                versionsPerEnvironment={versionsPerEnvironment}
+                selectedVersionId={selectedVersionToDeployId}
+                setSelectedVersionId={setSelectedVersionToDeploy}
+                selectedEnvironment={selectedEnvironment}
+                setSelectedEnvironment={setSelectedEnvironment}
+              />
+            )}
           </ApiContentSectionItem>
           <ApiContentSectionItem title='Secret Keys'>{manageKeysButton}</ApiContentSectionItem>
         </div>
       </div>
 
       <div className='flex flex-col h-full w-[calc(100%-308px)] overflow-hidden'>
-        <DeployBanner version={selectedVersionForAPI} isEnvironmentShown={selectedEnvironment !== undefined} />
+        {showBanner && (
+          <DeployBanner
+            version={selectedVersionForAPI}
+            isEnvironmentShown={selectedEnvironment !== undefined}
+            redirectAfterDeploy={!isProxy}
+          />
+        )}
         {isProxy ? (
           <ProxyApiTabsContent
             tenant={tenant}
             taskId={taskId}
             taskSchemaId={taskSchemaId}
-            versionId={selectedVersionForAPI?.id}
+            version={selectedVersionForAPI}
             integrationId={selectedIntegrationId}
             integrations={integrations}
           />

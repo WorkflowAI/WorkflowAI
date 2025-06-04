@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocalStorage } from 'usehooks-ts';
 import { useApiKeysModal } from '@/components/ApiKeysModal/ApiKeysModal';
 import { Loader } from '@/components/ui/Loader';
@@ -16,6 +16,7 @@ import { useOrFetchIntegrations } from '@/store/integrations';
 import { TaskID, TaskSchemaID, TenantID } from '@/types/aliases';
 import { CodeLanguage } from '@/types/snippets';
 import { VersionEnvironment } from '@/types/workflowAI';
+import { checkSchemaForProxy } from '../proxy-playground/utils';
 import { ApiContent } from './ApiContent';
 import { useTaskRunWithSecondaryInput } from './utils';
 
@@ -69,7 +70,7 @@ export function ApiContainer(props: Props) {
 
   const { versions, versionsPerEnvironment, isInitialized: isVersionsInitialized } = useOrFetchVersions(tenant, taskId);
 
-  const { apiKeys, isInitialized: isApiKeysInitialized } = useOrFetchApiKeys(tenant);
+  const { apiKeys } = useOrFetchApiKeys(tenant);
   const { openModal: openApiKeysModal } = useApiKeysModal();
 
   const preselectedEnvironment = useMemo(() => {
@@ -101,18 +102,17 @@ export function ApiContainer(props: Props) {
 
   const taskSchemaId = selectedVersion?.schema_id as TaskSchemaID | undefined;
 
-  const { taskSchema, isInitialized: isTaskSchemaInitialized } = useOrFetchCurrentTaskSchema(
-    tenant,
-    taskId,
-    taskSchemaId
-  );
+  const { taskSchema } = useOrFetchCurrentTaskSchema(tenant, taskId, taskSchemaId);
 
-  const { taskRuns, isInitialized: isTaskRunsInitialized } = useOrFetchTaskRuns(
-    tenant,
-    taskId,
-    taskSchemaId,
-    'limit=1&sort_by=recent'
-  );
+  const [isProxy, setIsProxy] = useState(false);
+  useEffect(() => {
+    if (!taskSchema) {
+      return;
+    }
+    setIsProxy(checkSchemaForProxy(taskSchema));
+  }, [taskSchema]);
+
+  const { taskRuns } = useOrFetchTaskRuns(tenant, taskId, taskSchemaId, 'limit=1&sort_by=recent');
 
   const [taskRun, secondaryInput] = useTaskRunWithSecondaryInput(taskRuns, taskSchema);
 
@@ -168,10 +168,6 @@ export function ApiContainer(props: Props) {
     );
   }
 
-  if (!isTaskSchemaInitialized || !isTaskRunsInitialized || !isApiKeysInitialized) {
-    return <Loader centered />;
-  }
-
   return (
     <ApiContent
       apiKeys={apiKeys}
@@ -196,6 +192,7 @@ export function ApiContainer(props: Props) {
       selectedIntegrationId={selectedIntegrationId}
       setSelectedIntegrationId={setSelectedIntegrationId}
       integrations={integrations}
+      isProxy={isProxy}
     />
   );
 }

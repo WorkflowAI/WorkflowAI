@@ -163,7 +163,7 @@ export function VersionPopover(props: VersionPopoverProps) {
           {environmentsAndVersions.map(({ environment, version }) => {
             return (
               <VersionPopoverItem
-                key={environment}
+                key={`${environment}-${version.id}`}
                 environment={environment}
                 version={version}
                 onClick={() => onSelectedEnvironment(environment, version.id)}

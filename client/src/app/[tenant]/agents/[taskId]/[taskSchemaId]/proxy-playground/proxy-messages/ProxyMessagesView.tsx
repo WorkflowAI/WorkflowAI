@@ -20,6 +20,8 @@ type Props = {
 
   inputVariblesKeys?: string[];
   supportInputVaribles?: boolean;
+  supportRunDetails?: boolean;
+  revertOrder?: boolean;
 };
 
 export function ProxyMessagesView(props: Props) {
@@ -37,6 +39,8 @@ export function ProxyMessagesView(props: Props) {
 
     inputVariblesKeys,
     supportInputVaribles = true,
+    supportRunDetails = false,
+    revertOrder = false,
   } = props;
 
   const [isHovering, setIsHovering] = useState(false);
@@ -44,8 +48,12 @@ export function ProxyMessagesView(props: Props) {
   const readonly = !setMessages;
 
   const cleanedMessages = useMemo(() => {
-    return cleanMessagesAndAddIDs(messages);
-  }, [messages]);
+    const result = cleanMessagesAndAddIDs(messages);
+    if (revertOrder && result) {
+      return result.reverse();
+    }
+    return result;
+  }, [messages, revertOrder]);
 
   const onMessageChange = useCallback(
     (message: ProxyMessage | undefined, index: number) => {
@@ -128,6 +136,7 @@ export function ProxyMessagesView(props: Props) {
           previouseMessage={cleanedMessages?.[index - 1]}
           inputVariblesKeys={inputVariblesKeys}
           supportInputVaribles={supportInputVaribles}
+          supportRunDetails={supportRunDetails}
         />
       ))}
       {showAddMessageButton && (

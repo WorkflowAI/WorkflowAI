@@ -8,7 +8,9 @@ import { TaskID } from '@/types/aliases';
 import { TaskSchemaID } from '@/types/aliases';
 import { RunItemV1 } from '@/types/workflowAI';
 import { ModelOutputErrorInformation } from '../../playground/components/ModelOutputErrorInformation';
+import { checkSchemaForProxy } from '../../proxy-playground/utils';
 import { PreviewBox } from './PreviewBox';
+import { ProxyTaskRunHoverableInputOutputContent } from './Proxy/ProxyTaskRunHoverableInputOutputContent';
 
 type TaskRunHoverableInputOutputContentProps = {
   runItem: RunItemV1;
@@ -30,6 +32,13 @@ function TaskRunHoverableInputOutputContent(props: TaskRunHoverableInputOutputCo
 
   const inputSchema = taskSchema?.input_schema;
   const outputSchema = taskSchema?.output_schema;
+
+  const isProxy = useMemo(() => {
+    if (!taskSchema) {
+      return false;
+    }
+    return checkSchemaForProxy(taskSchema);
+  }, [taskSchema]);
 
   const error = useMemo(() => {
     if (!runItem || !runItem.error) {
@@ -53,6 +62,9 @@ function TaskRunHoverableInputOutputContent(props: TaskRunHoverableInputOutputCo
 
   if (!inputSchema || !outputSchema || !isTaskSchemaInitialized || !isRunInitialized) {
     return <Loader centered className='my-10 mx-20' />;
+  }
+  if (isProxy && !!run && !!taskSchema) {
+    return <ProxyTaskRunHoverableInputOutputContent run={run} schema={taskSchema} />;
   }
 
   return (
@@ -110,6 +122,7 @@ export function TaskRunHoverableInputOutput(props: TaskRunHoverableInputOutputPr
     <SimpleTooltip
       tooltipClassName='bg-custom-gradient-1 p-0'
       content={<TaskRunHoverableInputOutputContent runItem={runItem} />}
+      tooltipDelay={300}
     >
       <div className='flex flex-row gap-4 ml-2 mr-6 py-3.5'>
         <PreviewBox preview={inputPreview} pretty />

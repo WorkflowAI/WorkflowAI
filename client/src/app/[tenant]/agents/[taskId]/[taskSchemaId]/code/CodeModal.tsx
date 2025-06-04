@@ -1,5 +1,5 @@
 import { Dismiss12Regular } from '@fluentui/react-icons';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Dialog, DialogContent } from '@/components/ui/Dialog';
 import { formatSemverVersion } from '@/lib/versionUtils';
@@ -25,6 +25,22 @@ export function CodeModal(props: Props) {
   const [selectedLanguage, setSelectedLanguage] = useState<CodeLanguage | undefined>(undefined);
   const [selectedIntegrationId, setSelectedIntegrationId] = useState<string | undefined>(undefined);
 
+  const setSelectedEnvironmentAndVersionId = useCallback(
+    (environment: VersionEnvironment | undefined, versionId: string | undefined) => {
+      setSelectedEnvironment(environment);
+      setVersionId(versionId);
+    },
+    [setVersionId, setSelectedEnvironment]
+  );
+
+  const onSelectVersionId = useCallback(
+    (versionId: string | undefined) => {
+      setSelectedEnvironment(undefined);
+      setVersionId(versionId);
+    },
+    [setVersionId]
+  );
+
   if (!versionId) {
     return null;
   }
@@ -49,8 +65,8 @@ export function CodeModal(props: Props) {
             <ApiContainer
               tenant={tenant}
               taskId={taskId}
-              setSelectedVersionId={setVersionId}
-              setSelectedEnvironment={setSelectedEnvironment}
+              setSelectedVersionId={onSelectVersionId}
+              setSelectedEnvironment={setSelectedEnvironmentAndVersionId}
               setSelectedLanguage={setSelectedLanguage}
               setSelectedIntegrationId={setSelectedIntegrationId}
               selectedVersionId={versionId}
