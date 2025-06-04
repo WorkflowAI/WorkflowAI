@@ -14,6 +14,7 @@ from core.providers.anthropic.anthropic_provider import AnthropicProvider
 from core.providers.base.abstract_provider import AbstractProvider, ProviderConfigVar
 from core.providers.factory.abstract_provider_factory import AbstractProviderFactory
 from core.providers.fireworks.fireworks_provider import FireworksAIProvider
+from core.providers.cerebras.cerebras_provider import CerebrasProvider
 from core.providers.google.gemini.gemini_api_provider import GoogleGeminiAPIProvider
 from core.providers.google.google_provider import GoogleProvider
 from core.providers.google_imagen.google_imagen_vertex_provider import (
@@ -36,6 +37,7 @@ _provider_cls: list[type[AbstractProvider[Any, Any]]] = [
     AnthropicProvider,
     GoogleGeminiAPIProvider,
     FireworksAIProvider,
+    CerebrasProvider,
     XAIProvider,
     OpenAIImageProvider,
     GoogleImagenVertexProvider,

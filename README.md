@@ -21,7 +21,7 @@
 
 https://github.com/user-attachments/assets/febf1047-ed85-4af0-b796-5242aef051b4
 
-- **Model-agnostic**: Works with all major AI models including OpenAI, Anthropic, Claude, Google/Gemini, Mistral, DeepSeek, Grok with a unified interface that makes switching between providers seamless. [View all 80+ supported models](https://workflowai.com/docs/agents/flight-info-extractor/1).
+- **Model-agnostic**: Works with all major AI models including OpenAI, Anthropic, Claude, Google/Gemini, Mistral, DeepSeek, Grok, Cerebras with a unified interface that makes switching between providers seamless. [View all 80+ supported models](https://workflowai.com/docs/agents/flight-info-extractor/1).
 
 ![Model-agnostic](https://github.com/user-attachments/assets/fa9ba9bb-4eed-422a-93c0-ccfc02dcdc86)
 
@@ -185,7 +185,7 @@ The [client](./client/README.md) is a NextJS app that serves as a frontend
 
 ### Setting up providers
 
-WorkflowAI supports a variety of LLM providers (OpenAI, Anthropic, Amazon Bedrock, Azure OpenAI, Grok, Gemini, FireworksAI, ...). View all supported providers [here](https://github.com/WorkflowAI/WorkflowAI/tree/main/api/core/providers).
+WorkflowAI supports a variety of LLM providers (OpenAI, Anthropic, Amazon Bedrock, Azure OpenAI, Grok, Gemini, FireworksAI, Cerebras, ...). View all supported providers [here](https://github.com/WorkflowAI/WorkflowAI/tree/main/api/core/providers).
 
 Each provider has a different set of credentials and configuration. Providers that have the required environment
 variables are loaded by default (see the [sample env](.env.sample) for the available variables). Providers can also be configured per tenant through the UI.
