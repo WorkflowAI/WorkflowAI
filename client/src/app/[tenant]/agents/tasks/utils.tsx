@@ -1,5 +1,10 @@
 import { filterActiveTasksIDs } from '@/lib/taskUtils';
-import { SerializableTask } from '@/types/workflowAI';
+import { AgentStat, SerializableTask } from '@/types/workflowAI';
+
+export enum TasksSortKey {
+  Runs = 'runs',
+  Cost = 'cost',
+}
 
 export function filterTasks(tasks: SerializableTask[], searchQuery: string) {
   // If search query is empty, return all tasks
@@ -57,4 +62,31 @@ export function sortTasks(tasks: SerializableTask[]) {
     const bName = b.name.length === 0 ? b.id : b.name;
     return aName.localeCompare(bName);
   });
+}
+
+export function sortTasksByStats(
+  tasks: SerializableTask[],
+  stats: Map<number, AgentStat> | undefined,
+  sortKey: TasksSortKey,
+  revertOrder: boolean
+) {
+  const sorted = tasks
+    .slice()
+    .sort((a, b) => {
+      const aStat = stats?.get(a.uid);
+      const bStat = stats?.get(b.uid);
+
+      const aValue =
+        sortKey === TasksSortKey.Runs
+          ? aStat?.run_count ?? 0
+          : aStat?.total_cost_usd ?? 0;
+      const bValue =
+        sortKey === TasksSortKey.Runs
+          ? bStat?.run_count ?? 0
+          : bStat?.total_cost_usd ?? 0;
+
+      return bValue - aValue;
+    });
+
+  return revertOrder ? sorted.reverse() : sorted;
 }
