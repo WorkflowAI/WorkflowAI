@@ -1302,6 +1302,34 @@ CEREBRAS_PROVIDER_DATA: ProviderDataByModel = {
             source="https://www.cerebras.net/pricing",
         ),
     ),
+    Model.LLAMA_3_3_70B: ModelProviderData(
+        text_price=TextPricePerToken(
+            prompt_cost_per_token=0.20 * ONE_MILLION_TH,
+            completion_cost_per_token=0.20 * ONE_MILLION_TH,
+            source="https://www.cerebras.net/pricing",
+        ),
+    ),
+    Model.LLAMA_4_SCOUT_FAST: ModelProviderData(
+        text_price=TextPricePerToken(
+            prompt_cost_per_token=0.20 * ONE_MILLION_TH,
+            completion_cost_per_token=0.20 * ONE_MILLION_TH,
+            source="https://www.cerebras.net/pricing",
+        ),
+    ),
+    Model.LLAMA_4_SCOUT_BASIC: ModelProviderData(
+        text_price=TextPricePerToken(
+            prompt_cost_per_token=0.20 * ONE_MILLION_TH,
+            completion_cost_per_token=0.20 * ONE_MILLION_TH,
+            source="https://www.cerebras.net/pricing",
+        ),
+    ),
+    Model.QWEN3_32B: ModelProviderData(
+        text_price=TextPricePerToken(
+            prompt_cost_per_token=0.20 * ONE_MILLION_TH,
+            completion_cost_per_token=0.20 * ONE_MILLION_TH,
+            source="https://www.cerebras.net/pricing",
+        ),
+    ),
 }
 
 GOOGLE_IMAGEN_PROVIDER_DATA: ProviderDataByModel = {

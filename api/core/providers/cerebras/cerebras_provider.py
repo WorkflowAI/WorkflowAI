@@ -25,6 +25,14 @@ from .cerebras_domain import (
     StreamedResponse,
 )
 
+_NAME_OVERRIDE_MAP = {
+    Model.LLAMA_3_1_8B: "llama3.1-8b",
+    Model.LLAMA_3_3_70B: "llama-3.3-70b",
+    Model.LLAMA_4_SCOUT_FAST: "llama-4-scout-17b-16e-instruct",
+    Model.LLAMA_4_SCOUT_BASIC: "llama-4-scout-17b-16e-instruct",
+    Model.QWEN3_32B: "qwen-3-32b",
+}
+
 
 class CerebrasConfig(BaseModel):
     provider: Literal[Provider.CEREBRAS] = Provider.CEREBRAS
@@ -53,7 +61,7 @@ class CerebrasProvider(HTTPXProvider[CerebrasConfig, CompletionResponse]):
         return [CerebrasMessage.model_validate(m).to_standard() for m in messages]
 
     def model_str(self, model: Model) -> str:
-        return model.value
+        return _NAME_OVERRIDE_MAP.get(model, model.value)
 
     @override
     def _build_request(self, messages: list[MessageDeprecated], options: ProviderOptions, stream: bool) -> BaseModel:

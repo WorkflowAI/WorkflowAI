@@ -36,6 +36,7 @@ class TestBuildRequest:
         assert dumped["messages"][0]["role"] == "user"
         assert dumped["messages"][0]["content"] == "Hi"
         assert dumped["max_tokens"] == 5
+        assert dumped["model"] == "llama3.1-8b"
 
 
 class TestComplete:
@@ -88,9 +89,19 @@ class TestListModels:
     async def test_list_models(self, httpx_mock: HTTPXMock):
         httpx_mock.add_response(
             url="https://api.cerebras.ai/v1/models",
-            json={"data": [{"id": "llama3-8b"}, {"id": "llama3-70b"}]},
+            json={"data": [
+                {"id": "llama3.1-8b"},
+                {"id": "llama-3.3-70b"},
+                {"id": "llama-4-scout-17b-16e-instruct"},
+                {"id": "qwen-3-32b"},
+            ]},
         )
 
         provider = CerebrasProvider()
         models = await provider.list_models()
-        assert models == ["llama3-8b", "llama3-70b"]
+        assert models == [
+            "llama3.1-8b",
+            "llama-3.3-70b",
+            "llama-4-scout-17b-16e-instruct",
+            "qwen-3-32b",
+        ]
