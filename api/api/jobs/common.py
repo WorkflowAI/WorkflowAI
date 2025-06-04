@@ -68,13 +68,12 @@ def event_router_dep(event: EventDep) -> EventRouter:
 EventRouterDep = Annotated[EventRouter, TaskiqDepends(event_router_dep)]
 
 
-def analytics_service_dep(event: EventDep, event_router: EventRouterDep) -> AnalyticsService:
+def analytics_service_dep(event: EventDep) -> AnalyticsService:
     from api.services.analytics import analytics_service
 
     return analytics_service(
         user_properties=event.user_properties,
         organization_properties=event.organization_properties,
-        event_router=event_router,
         task_properties=event.task_properties,
     )
 

@@ -11,6 +11,7 @@ from pydantic import Field
 
 from api.dependencies.encryption import EncryptionDep
 from api.services import storage
+from api.services.analytics import analytics_service
 from api.services.api_keys import APIKeyService
 from api.services.event_handler import system_event_router
 from api.services.security_service import SecurityService
@@ -172,7 +173,11 @@ OrgSystemStorageDep = Annotated[OrganizationSystemStorage, Depends(system_org_st
 
 
 def security_service_dependency(org_storage: OrgSystemStorageDep) -> SecurityService:
-    return SecurityService(org_storage, system_event_router())
+    return SecurityService(
+        org_storage,
+        system_event_router(),
+        analytics_service(user_properties=None, organization_properties=None, task_properties=None),
+    )
 
 
 SecurityServiceDep = Annotated[SecurityService, Depends(security_service_dependency)]

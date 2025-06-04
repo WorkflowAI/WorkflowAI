@@ -3,12 +3,13 @@ import logging
 from collections.abc import Callable
 from typing import Any, Literal, cast
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from api.services._utils import apply_reviews
 from api.services.analytics import AnalyticsService
 from api.services.runs._run_conversation_handler import RunConversationHandler
 from api.services.runs._run_file_handler import FileHandler
+from api.services.runs._stored_message import StoredMessages
 from core.domain.agent_run import AgentRun
 from core.domain.analytics_events.analytics_events import (
     EventProperties,
@@ -293,25 +294,35 @@ class RunsService:
         except Exception as e:
             _logger.exception("error computing cost for task run", exc_info=e, extra={"task_run": task_run})
 
+        messages: StoredMessages | None = None
         if task_variant.input_schema.uses_messages:
+            try:
+                messages = StoredMessages.model_validate(task_run.task_input)
+            except ValidationError:
+                _logger.exception("error validating messages for task run", extra={"task_run": task_run})
+
+        if messages:
             with capture_errors(logger=_logger, msg="Could not handle conversation"):
                 conversation_handler = RunConversationHandler(
                     task_uid=task_variant.task_uid,
                     schema_id=task_variant.task_schema_id,
                     kv_storage=storage.kv,
                 )
-                await conversation_handler.handle_run(task_run)
+                await conversation_handler.handle_run(task_run, messages)
 
         # Replace base64 and outside urls with storage urls in payloads
         file_handler = FileHandler(file_storage, f"{storage.tenant}/{task_run.task_id}")
-        await file_handler.handle_run(task_run, task_variant)
+        await file_handler.handle_run(task_run, task_variant, messages)
 
         # Removing LLM completions if there are private fields
         if task_run.private_fields:
             cls._strip_llm_completions(task_run.llm_completions)
 
         with capture_errors(logger=_logger, msg="Could not assign run previews"):
-            assign_run_previews(task_run, task_variant)
+            assign_run_previews(task_run, messages)
+
+        if messages:
+            task_run.task_input = messages.dump_for_input()
 
         stored = await storage.store_task_run_resource(task_variant, task_run, user_identifier, source)
 

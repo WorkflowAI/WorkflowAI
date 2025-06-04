@@ -87,6 +87,7 @@ def _jobs():
                 trigger_task_run_jobs.trigger_run,
             ],
         ),
+        # TODO: remove once we no longer use the event (post 2025-06-03 release)
         _JobListing(SendAnalyticsEvent, analytics_jobs.jobs),
         _JobListing(TaskChatStartedEvent, chat_started_jobs.JOBS),
         _JobListing(TaskSchemaGeneratedEvent, task_schema_generated_jobs.JOBS),

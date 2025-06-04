@@ -550,3 +550,51 @@ class TestMapModelString:
     )
     def test_with_reasoning(self, value: str, reasoning: str | None, expected: Model):
         assert OpenAIProxyChatCompletionRequest._map_model_str(value, reasoning) == expected
+
+
+class TestCheckSupportedFields:
+    @pytest.mark.parametrize(
+        ("n", "raises"),
+        [
+            ("unset", False),
+            (None, False),
+            (1, False),
+            (2, True),
+        ],
+    )
+    def test_with_n(self, n: Any, raises: bool):
+        payload: dict[str, Any] = {
+            "messages": [],
+            "model": "gpt-4o",
+        }
+        if n != "unset":
+            payload["n"] = n
+        request = OpenAIProxyChatCompletionRequest.model_validate(payload)
+        if raises:
+            with pytest.raises(BadRequestError):
+                request.check_supported_fields()
+        else:
+            request.check_supported_fields()
+
+    @pytest.mark.parametrize(
+        ("logit_bias", "raises"),
+        [
+            pytest.param("unset", False, id="unset"),
+            pytest.param(None, False, id="none"),
+            pytest.param({}, False, id="empty"),
+            pytest.param({"a": 1}, False, id="single"),
+            pytest.param({"a": 1, "b": 2}, True, id="multiple"),
+        ],
+    )
+    def test_with_logit_bias(self, logit_bias: Any, raises: bool):
+        payload: dict[str, Any] = {
+            "messages": [],
+            "model": "gpt-4o",
+        }
+        if logit_bias != "unset":
+            payload["logit_bias"] = logit_bias
+        request = OpenAIProxyChatCompletionRequest.model_validate(payload)
+        if raises:
+            with pytest.raises(BadRequestError) as e:
+                request.check_supported_fields()
+            assert "logit_bias" in str(e.value)

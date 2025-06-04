@@ -4,14 +4,13 @@ from datetime import datetime, timezone
 
 from fastapi import HTTPException
 
+from api.services.analytics._analytics_service import AnalyticsService
 from core.domain.analytics_events.analytics_events import (
-    AnalyticsEvent,
-    FullAnalyticsEvent,
     OrganizationCreatedProperties,
     OrganizationProperties,
 )
 from core.domain.errors import DuplicateValueError, InvalidToken
-from core.domain.events import Event, EventRouter, SendAnalyticsEvent, TenantCreatedEvent, TenantMigratedEvent
+from core.domain.events import Event, EventRouter, TenantCreatedEvent, TenantMigratedEvent
 from core.domain.tenant_data import TenantData
 from core.domain.users import User
 from core.storage import ObjectNotFoundException
@@ -27,23 +26,21 @@ _logger = logging.getLogger(__name__)
 
 class SecurityService:
     # Can't use the analytics service here since it depends on data provided by this service
-    def __init__(self, org_storage: OrganizationSystemStorage, event_router: EventRouter):
+    def __init__(
+        self,
+        org_storage: OrganizationSystemStorage,
+        event_router: EventRouter,
+        analytics_service: AnalyticsService,
+    ):
         self._org_storage = org_storage
+        self._analytics_service = analytics_service
         self._event_router = event_router
 
     def _send_tenant_created_analytics(self, org: TenantData):
-        # This is annoying, we should not go through
         with capture_errors(_logger, "Error sending created org event"):
-            self._event_router(
-                SendAnalyticsEvent(
-                    event=FullAnalyticsEvent(
-                        event=AnalyticsEvent(event_properties=OrganizationCreatedProperties()),
-                        organization_properties=OrganizationProperties.build(org),
-                        # TODO: set user properties here ?
-                        user_properties=None,
-                        task_properties=None,
-                    ),
-                ),
+            self._analytics_service.send_event(
+                builder=OrganizationCreatedProperties,
+                organization_properties=lambda: OrganizationProperties.build(org),
             )
 
     def _send_event(self, org: TenantData, builder: Callable[[], Event]):

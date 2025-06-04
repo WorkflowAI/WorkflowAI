@@ -15,8 +15,8 @@ class Amplitude:
         self.api_key = api_key
         self.base_url = base_url
 
-    async def send_event(self, event: FullAnalyticsEvent):
-        req = AmplitudeRequest.from_domain(self.api_key, [event])
+    async def send_event(self, events: list[FullAnalyticsEvent]):
+        req = AmplitudeRequest.from_domain(self.api_key, events)
         async with httpx.AsyncClient() as client:
             response = await client.post(self.base_url, json=req.model_dump())
             response.raise_for_status()

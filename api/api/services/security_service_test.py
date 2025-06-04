@@ -4,6 +4,7 @@ import pytest
 from fastapi import HTTPException
 
 from api.dependencies.security import UserClaims
+from api.services.analytics._analytics_service import AnalyticsService
 from api.services.security_service import SecurityService
 from core.domain.errors import InvalidToken
 from core.domain.events import EventRouter
@@ -19,8 +20,13 @@ def mock_org_storage():
 
 
 @pytest.fixture(scope="function")
-def security_service(mock_org_storage: Mock, mock_event_router: EventRouter):
-    return SecurityService(mock_org_storage, mock_event_router)
+def mock_analytics_service():
+    return Mock(spec=AnalyticsService)
+
+
+@pytest.fixture(scope="function")
+def security_service(mock_org_storage: Mock, mock_event_router: EventRouter, mock_analytics_service: Mock):
+    return SecurityService(mock_org_storage, event_router=mock_event_router, analytics_service=mock_analytics_service)
 
 
 @pytest.fixture(scope="function")

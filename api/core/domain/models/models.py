@@ -58,6 +58,7 @@ class Model(StrEnum):
     GPT_41_NANO_LATEST = "gpt-4.1-nano-latest"
     GPT_41_NANO_2025_04_14 = "gpt-4.1-nano-2025-04-14"
     GPT_45_PREVIEW_2025_02_27 = "gpt-4.5-preview-2025-02-27"
+    GPT_4O_AUDIO_PREVIEW_2025_06_03 = "gpt-4o-audio-preview-2025-06-03"
     GPT_4O_AUDIO_PREVIEW_2024_12_17 = "gpt-4o-audio-preview-2024-12-17"
     GPT_40_AUDIO_PREVIEW_2024_10_01 = "gpt-4o-audio-preview-2024-10-01"
     GPT_4_TURBO_2024_04_09 = "gpt-4-turbo-2024-04-09"

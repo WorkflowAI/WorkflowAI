@@ -45,13 +45,11 @@ from core.storage.file_storage import FileStorage
 async def analytics_service_dependency(
     organization_properties: AnalyticsOrganizationPropertiesDep,
     user_properties: UserPropertiesDep,
-    event_router: EventRouterDep,
     task_properties: AnalyticsTaskPropertiesDep,
 ) -> AnalyticsService:
     return analytics_service(
         user_properties=user_properties,
         organization_properties=organization_properties,
-        event_router=event_router,
         task_properties=task_properties,
     )
 

@@ -15,7 +15,7 @@ from tests.integration.common import (
     IntegrationTestClient,
     create_task,
     create_task_without_required_fields,
-    get_amplitude_requests,
+    get_amplitude_events,
     list_groups,
     mock_openai_call,
     mock_vertex_call,
@@ -71,9 +71,9 @@ async def test_run_with_metadata_and_labels(
 
     await wait_for_completed_tasks(patched_broker)
 
-    amplitude_requests = await get_amplitude_requests(httpx_mock)
-    assert len(amplitude_requests) == 1
-    event = amplitude_requests[0]["events"][0]
+    amplitude_events = await get_amplitude_events(httpx_mock)
+    assert len(amplitude_events) == 1
+    event = amplitude_events[0]
 
     org = result_or_raise(await int_api_client.get("/_/organization/settings"))
     assert event["user_id"] == org["tenant"]
@@ -365,9 +365,9 @@ async def test_run_with_500_error(httpx_mock: HTTPXMock, int_api_client: AsyncCl
 
     await wait_for_completed_tasks(patched_broker)
 
-    requests = await get_amplitude_requests(httpx_mock)
-    assert len(requests) == 1
-    assert requests[0]["events"][0]["event_properties"]["error_code"] == "provider_internal_error"
+    events = await get_amplitude_events(httpx_mock)
+    assert len(events) == 1
+    assert events[0]["event_properties"]["error_code"] == "provider_internal_error"
 
 
 async def test_run_schema_insufficient_credits(
@@ -460,9 +460,9 @@ async def test_run_no_tenant_analytics(
 
     await wait_for_completed_tasks(patched_broker)
 
-    requests = await get_amplitude_requests(httpx_mock)
-    assert len(requests) == 1
-    event = requests[0]["events"][0]
+    events = await get_amplitude_events(httpx_mock)
+    assert len(events) == 1
+    event = events[0]
     event_task = event["event_properties"]["task"]
     assert event_task["organization_id"] == "org_2iPlfJ5X4LwiQybM9qeT00YPdBe"
     assert event_task["organization_slug"] == "test-21"

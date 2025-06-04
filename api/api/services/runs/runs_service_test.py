@@ -237,7 +237,7 @@ class TestStoreTaskRun:
             name="test_task",
         )
         non_legacy_task_run.task_input = {
-            "messages": [
+            "workflowai.messages": [
                 {
                     "role": "user",
                     "content": [
@@ -262,7 +262,7 @@ class TestStoreTaskRun:
         # Verify
         assert mock_file_storage.store_file.call_count == 1
         assert result.task_input == {
-            "messages": [
+            "workflowai.messages": [
                 {
                     "role": "user",
                     "content": [

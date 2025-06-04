@@ -5,6 +5,7 @@ from uuid import UUID
 import pytest
 
 from api.services.runs._run_conversation_handler import RunConversationHandler
+from api.services.runs._stored_message import StoredMessages
 from core.domain.message import Message
 from tests import models as test_models
 
@@ -34,26 +35,27 @@ class TestHandleRun:
             },
             task_output="hello",
         )
+        messages = StoredMessages.model_validate(run.task_input)
         assert not run.conversation_id, "sanity check"
-        await handler.handle_run(run)
+        await handler.handle_run(run, messages)
 
         mock_storage.kv.get.assert_not_called()
         assert mock_storage.kv.set.call_count == 2
         call_args_list = sorted(mock_storage.kv.set.call_args_list, key=lambda x: x[0])
         assert call_args_list[0].args == (
-            "1:1:conversation:conversation_id:93fb678742ea460c52fd0475fb9a2adacba6d5bb82f683386ae0d5830c235200",
+            "1:1:conversation:conversation_id:2535ac77ef0eea3b2a5306b42a59f3b6e42f31ee0e14a035033bb0c528068a0a",
             str(UUID(int=1)),
             timedelta(hours=1),
         )
         assert call_args_list[1].args == (
-            "1:1:conversation:run_id:93fb678742ea460c52fd0475fb9a2adacba6d5bb82f683386ae0d5830c235200",
+            "1:1:conversation:run_id:2535ac77ef0eea3b2a5306b42a59f3b6e42f31ee0e14a035033bb0c528068a0a",
             run.id,
             timedelta(hours=1),
         )
         assert run.conversation_id == str(UUID(int=1))
         # Task input should be untouched
-        assert run.task_input == {
-            "messages": [
+        assert messages.dump_for_input() == {
+            "workflowai.messages": [
                 {
                     "role": "user",
                     "content": [{"text": "Hello, world!"}],
@@ -82,9 +84,10 @@ class TestHandleRun:
             },
         )
         mock_storage.kv.get.return_value = str(UUID(int=2))
-        await handler.handle_run(run)
-        assert run.task_input == {
-            "messages": [
+        messages = StoredMessages.model_validate(run.task_input)
+        await handler.handle_run(run, messages)
+        assert messages.dump_for_input() == {
+            "workflowai.messages": [
                 {
                     "role": "user",
                     "content": [{"text": "Hello, world!"}],
@@ -121,13 +124,14 @@ class TestHandleRun:
             },
         )
         mock_storage.kv.get.return_value = str(UUID(int=2))
-        await handler.handle_run(run)
+        messages = StoredMessages.model_validate(run.task_input)
+        await handler.handle_run(run, messages)
         mock_storage.kv.get.assert_called_once()
         assert mock_storage.kv.set.call_count == 2
 
-        assert run.task_input == {
+        assert messages.dump_for_input() == {
             "name": "Cecily",
-            "workflowai.replies": [
+            "workflowai.messages": [
                 {
                     "role": "assistant",
                     "content": [{"text": "Hello, world!"}],
@@ -149,9 +153,10 @@ class TestHandleRun:
             },
         )
         mock_storage.kv.get.return_value = str(UUID(int=2))
-        await handler.handle_run(run)
+        messages = StoredMessages.model_validate(run.task_input)
+        await handler.handle_run(run, messages)
         assert mock_storage.kv.set.call_count == 2
-        assert run.task_input == {
+        assert messages.dump_for_input() == {
             "hello": "world",
             "something_none": None,
         }
@@ -161,14 +166,15 @@ class TestHandleRun:
         run = test_models.task_run_ser(
             task_input={
                 "name": "Cecily",
-                "workflowai.replies": [],
+                "workflowai.messages": [],
             },
         )
-        await handler.handle_run(run)
+        messages = StoredMessages.model_validate(run.task_input)
+        await handler.handle_run(run, messages)
         assert mock_storage.kv.set.call_count == 2
-        assert run.task_input == {
+        assert messages.dump_for_input() == {
             "name": "Cecily",
-            "workflowai.replies": [],
+            "workflowai.messages": [],
         }
 
     async def test_with_version_messages(self, handler: RunConversationHandler, mock_storage: Mock):
@@ -176,25 +182,27 @@ class TestHandleRun:
         run = test_models.task_run_ser(
             task_input={
                 "name": "Cecily",
-                "workflowai.replies": [],
+                "workflowai.messages": [],
             },
         )
+        messages = StoredMessages.model_validate(run.task_input)
         run.group.properties.messages = [
             Message.with_text("Hello, world!", role="system"),
         ]
-        await handler.handle_run(run)
+        await handler.handle_run(run, messages)
         assert mock_storage.kv.set.call_count == 2
 
         run2 = test_models.task_run_ser(
             task_input={
                 "name": "Cecily",
-                "workflowai.replies": [],
+                "workflowai.messages": [],
             },
         )
+        messages2 = StoredMessages.model_validate(run2.task_input)
         run2.group.properties.messages = [
             Message.with_text("Hello, world 2!", role="system"),
         ]
-        await handler.handle_run(run2)
+        await handler.handle_run(run2, messages2)
         assert mock_storage.kv.set.call_count == 4
 
         # Checking that the hashes are different

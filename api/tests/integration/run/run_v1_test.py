@@ -34,7 +34,7 @@ from tests.integration.common import (
     create_version,
     extract_stream_chunks,
     fetch_run,
-    get_amplitude_requests,
+    get_amplitude_events,
     list_groups,
     mock_openai_call,
     mock_vertex_call,
@@ -91,9 +91,9 @@ async def test_run_with_metadata(test_client: IntegrationTestClient):
 
     await test_client.wait_for_completed_tasks()
 
-    amplitude_requests = await get_amplitude_requests(test_client.httpx_mock)
-    assert len(amplitude_requests) == 1
-    event = amplitude_requests[0]["events"][0]
+    amplitude_events = await get_amplitude_events(test_client.httpx_mock)
+    assert len(amplitude_events) == 1
+    event = amplitude_events[0]
 
     org = await test_client.get("/_/organization/settings")
 
@@ -552,9 +552,9 @@ async def test_run_with_500_error(httpx_mock: HTTPXMock, int_api_client: AsyncCl
 
     await wait_for_completed_tasks(patched_broker)
 
-    requests = await get_amplitude_requests(httpx_mock)
-    assert len(requests) == 1
-    assert requests[0]["events"][0]["event_properties"]["error_code"] == "provider_internal_error"
+    events = await get_amplitude_events(httpx_mock)
+    assert len(events) == 1
+    assert events[0]["event_properties"]["error_code"] == "provider_internal_error"
 
 
 async def test_run_schema_insufficient_credits(

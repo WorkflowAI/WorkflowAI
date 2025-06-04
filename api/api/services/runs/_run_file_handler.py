@@ -3,12 +3,10 @@ import logging
 from collections.abc import Iterable
 from typing import Any
 
-from pydantic import ValidationError
-
+from api.services.runs._stored_message import StoredMessages
 from core.domain.agent_run import TaskRunIO
-from core.domain.consts import INPUT_KEY_MESSAGES
-from core.domain.message import Messages
-from core.domain.task_io import RawMessagesSchema, SerializableTaskIO
+from core.domain.fields.file import File
+from core.domain.task_io import SerializableTaskIO
 from core.domain.task_variant import VariantIO
 from core.runners.workflowai.utils import (
     FileWithKeyPath,
@@ -34,25 +32,13 @@ class FileHandler:
         agent_io: SerializableTaskIO,
         payload: Any,
     ) -> list[FileWithKeyPath]:
-        if agent_io.version == RawMessagesSchema.version:
-            messages = Messages.model_validate(payload)
-            return list(messages.file_iterator())
-
         _, _, input_files = extract_files(agent_io.json_schema, payload)
-
-        if agent_io.uses_messages and isinstance(payload, dict) and INPUT_KEY_MESSAGES in payload:
-            try:
-                messages = Messages.model_validate({"messages": payload[INPUT_KEY_MESSAGES]})
-            except ValidationError:
-                _logger.exception("Error validating extra messages")
-                return input_files
-
-            input_files.extend(list(messages.file_iterator(prefix=INPUT_KEY_MESSAGES)))
 
         return input_files
 
-    async def handle_run(self, run: TaskRunIO, task_variant: VariantIO):
-        input_files = self._extract_files(task_variant.input_schema, run.task_input)
+    async def handle_run(self, run: TaskRunIO, task_variant: VariantIO, messages: StoredMessages | None):
+        raw_input_dict = messages.model_extra if messages else run.task_input
+        input_files = self._extract_files(task_variant.input_schema, raw_input_dict)
         output_files = self._extract_files(task_variant.output_schema, run.task_output)
 
         async with asyncio.TaskGroup() as tg:
@@ -60,11 +46,16 @@ class FileHandler:
                 tg.create_task(sentry_wrap(self._handle_file(file)))
             for file in output_files:
                 tg.create_task(sentry_wrap(self._handle_file(file)))
+            if messages:
+                for file in messages.file_iterator():
+                    tg.create_task(sentry_wrap(self._handle_file(file)))
 
-        self._apply_files(run.task_input, input_files, include={"content_type", "url", "storage_url"})
+        # No need to apply the files from the messages, the input will be rewritten later anyway
+        if raw_input_dict:
+            self._apply_files(raw_input_dict, input_files, include={"content_type", "url", "storage_url"})
         self._apply_files(run.task_output, output_files, include={"content_type", "url", "storage_url"})
 
-    async def _handle_file(self, file: FileWithKeyPath):
+    async def _handle_file(self, file: File):
         if not file.url and not file.data:
             # Skipping, only reason a file might not have data is if it's private
             return
@@ -78,13 +69,25 @@ class FileHandler:
             # Skipping, only reason a file might not have data is if it's private
             return
 
-        file.storage_url = await self._file_storage.store_file(
+        # Here we can just set the storage url.
+        # if we have a file with keypath it will be assigned to the model, but if we have a file it will be stored in extras
+        storage_url = await self._file_storage.store_file(
             FileData(contents=bts, content_type=file.content_type),
             folder_path=self._folder_path,
         )
+        file.storage_url = storage_url  # pyright: ignore [reportAttributeAccessIssue]
 
         if file.url and file.url.startswith("data:"):
             file.url = None
+        # Clearing data field
+        if storage_url:
+            file.data = None
+            try:
+                file.model_fields_set.remove("data")
+            except KeyError:
+                pass
+            if not file.url:
+                file.url = storage_url
 
     @classmethod
     def _apply_files(

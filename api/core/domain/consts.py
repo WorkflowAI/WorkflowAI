@@ -13,7 +13,8 @@ METADATA_KEY_DEPLOYMENT_ENVIRONMENT_DEPRECATED = "used_alias"
 METADATA_KEY_INTEGRATION = "workflowai.integration"
 
 
-INPUT_KEY_MESSAGES = "workflowai.replies"
+INPUT_KEY_MESSAGES = "workflowai.messages"
+INPUT_KEY_MESSAGES_DEPRECATED = "workflowai.replies"
 """
 When using the OpenAI proxy and input variables, the extra messages passed
 are appended to the end of the messages list.

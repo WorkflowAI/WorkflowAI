@@ -14,6 +14,7 @@ from sentry_sdk.integrations.logging import ignore_logger
 
 from api.errors import configure_scope_for_error
 from api.routers.openai_proxy import openai_proxy_router
+from api.services.analytics import close_analytics, start_analytics
 from api.services.storage import storage_for_tenant
 from api.tags import RouteTags
 from api.utils import (
@@ -77,6 +78,7 @@ async def _prepare_storage():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     metrics_service = await setup_metrics()
+    await start_analytics()
 
     logger.info("Checking migrations")
 
@@ -96,6 +98,7 @@ async def lifespan(app: FastAPI):
 
     # Closing the metrics service to send whatever is left in the buffer
     await close_metrics(metrics_service)
+    await close_analytics()
     await wait_for_background_tasks()
     await HTTPXProviderBase.close()
 

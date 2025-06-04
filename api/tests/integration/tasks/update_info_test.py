@@ -8,7 +8,7 @@ from taskiq import InMemoryBroker
 from tests.integration.common import (
     IntegrationTestClient,
     create_task,
-    get_amplitude_requests,
+    get_amplitude_events,
     result_or_raise,
     wait_for_completed_tasks,
 )
@@ -106,9 +106,9 @@ async def test_update_info_and_schema(
     await wait_for_completed_tasks(patched_broker)
 
     # Check the analytics event was emitted
-    amplitude_events = await get_amplitude_requests(httpx_mock)
+    amplitude_events = await get_amplitude_events(httpx_mock)
     assert len(amplitude_events) == 1
-    assert amplitude_events[0]["events"][0]["event_type"] == "org.edited.task_schema"
+    assert amplitude_events[0]["event_type"] == "org.edited.task_schema"
 
     schema = result_or_raise(await int_api_client.get(f"/_/agents/{task['task_id']}/schemas/1"))
     assert schema["input_schema"]["json_schema"]["properties"]["name"] == {"type": "string", "description": "A name"}

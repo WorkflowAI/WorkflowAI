@@ -404,16 +404,16 @@ OPENAI_PROVIDER_DATA: ProviderDataByModel = {
             audio_input_cost_per_token=40 * ONE_MILLION_TH,
         ),
     ),
-    # Model.GPT_40_AUDIO_PREVIEW_2024_10_01: ModelProviderData(
-    #     text_price=TextPricePerToken(
-    #         prompt_cost_per_token=2.5 * ONE_MILLION_TH,
-    #         completion_cost_per_token=10 * ONE_MILLION_TH,
-    #         source="https://openai.com/api/pricing/",
-    #     ),
-    #     audio_price=AudioPricePerToken(
-    #         audio_input_cost_per_token=100 * ONE_MILLION_TH,
-    #     ),
-    # ),
+    Model.GPT_4O_AUDIO_PREVIEW_2025_06_03: ModelProviderData(
+        text_price=TextPricePerToken(
+            prompt_cost_per_token=2.5 * ONE_MILLION_TH,
+            completion_cost_per_token=10 * ONE_MILLION_TH,
+            source="https://openai.com/api/pricing/",
+        ),
+        audio_price=AudioPricePerToken(
+            audio_input_cost_per_token=40 * ONE_MILLION_TH,
+        ),
+    ),
 }
 
 OPENAI_IMAGE_PROVIDER_DATA: ProviderDataByModel = {

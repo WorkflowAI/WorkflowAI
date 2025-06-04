@@ -11,18 +11,18 @@ export function useProxyInputStructure(props: Props) {
   const { input, setInput } = props;
 
   const { messages, cleanInput } = useMemo(() => {
-    if (!input || !('workflowai.replies' in input)) {
+    if (!input || !('workflowai.messages' in input)) {
       return { messages: undefined, cleanInput: input as Record<string, unknown> };
     }
 
     const taskInput = input as Record<string, unknown>;
-    const messages = taskInput['workflowai.replies'] as ProxyMessage[];
+    const messages = taskInput['workflowai.messages'] as ProxyMessage[];
 
     const cleanTaskInput: Record<string, unknown> = {
       ...taskInput,
     };
 
-    delete cleanTaskInput['workflowai.replies'];
+    delete cleanTaskInput['workflowai.messages'];
 
     return {
       messages: messages,
@@ -43,7 +43,7 @@ export function useProxyInputStructure(props: Props) {
       }
 
       const taskInput = {
-        ['workflowai.replies']: messages,
+        ['workflowai.messages']: messages,
         ...cleanInputRef.current,
       };
 
@@ -58,7 +58,7 @@ export function useProxyInputStructure(props: Props) {
         return;
       }
 
-      setInput({ ...cleanInput, ['workflowai.replies']: messagesRef.current });
+      setInput({ ...cleanInput, ['workflowai.messages']: messagesRef.current });
     },
     [setInput]
   );

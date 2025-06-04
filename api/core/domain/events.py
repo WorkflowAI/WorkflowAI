@@ -143,8 +143,7 @@ class RecomputeReviewBenchmarkEvent(TaskEvent):
     cached_run_id: str | None = None
 
 
-# TODO: remove, we should not go through an event router to send analytics events
-# We should do the same as metrics instead
+# TODO: remove once we no longer use the event (post 2025-06-03 release)
 class SendAnalyticsEvent(Event):
     event: FullAnalyticsEvent
 

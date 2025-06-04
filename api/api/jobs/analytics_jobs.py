@@ -17,7 +17,7 @@ async def handle_analytics_event(event: SendAnalyticsEvent):
 
     url = os.getenv("AMPLITUDE_URL", "https://api2.amplitude.com/2/httpapi")
     amplitude_client = Amplitude(api_key=api_key, base_url=url)
-    await amplitude_client.send_event(event.event)
+    await amplitude_client.send_event([event.event])
 
 
 jobs = [handle_analytics_event]

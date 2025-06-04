@@ -21,6 +21,7 @@ from typing_extensions import override
 
 from api.common import setup
 from api.errors import configure_scope_for_error
+from api.services.analytics import close_analytics, start_analytics
 from api.utils import close_metrics, setup_metrics
 from core.domain.errors import InternalError
 from core.domain.metrics import Metric
@@ -135,11 +136,12 @@ async def schedule_job(job: AsyncTaskiqDecoratedTask[[Any], Coroutine[Any, Any, 
 
 @broker.on_event(TaskiqEvents.WORKER_STARTUP)
 async def worker_startup(state: TaskiqState):
+    await start_analytics()
     state.metrics_service = await setup_metrics()
 
 
 @broker.on_event(TaskiqEvents.WORKER_SHUTDOWN)
 async def worker_shutdown(state: TaskiqState):
     await close_metrics(state.metrics_service)
-
+    await close_analytics()
     await wait_for_background_tasks()

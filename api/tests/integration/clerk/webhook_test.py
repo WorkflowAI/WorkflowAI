@@ -7,7 +7,7 @@ from taskiq import InMemoryBroker
 
 from tests.integration.common import (
     create_task,
-    get_amplitude_requests,
+    get_amplitude_events,
     result_or_raise,
     wait_for_completed_tasks,
 )
@@ -50,7 +50,7 @@ async def test_clerk_webhook(int_api_client: AsyncClient, patched_broker: InMemo
 
     await wait_for_completed_tasks(patched_broker)
 
-    req = await get_amplitude_requests(httpx_mock)
+    req = await get_amplitude_events(httpx_mock)
     assert len(req) == 0
 
 

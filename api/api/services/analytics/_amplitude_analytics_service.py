@@ -1,8 +1,9 @@
 import logging
 import os
 from datetime import datetime
-from typing import Callable, Protocol, override
+from typing import Callable, override
 
+from api.services.analytics._batched_amplitude import BatchedAmplitude
 from core.domain.analytics_events.analytics_events import (
     AnalyticsEvent,
     EventProperties,
@@ -11,31 +12,26 @@ from core.domain.analytics_events.analytics_events import (
     TaskProperties,
     UserProperties,
 )
-from core.domain.events import EventRouter, SendAnalyticsEvent
+from core.utils.background import add_background_task
 from core.utils.fields import datetime_factory
 
-
-class AnalyticsService(Protocol):
-    def send_event(
-        self,
-        builder: Callable[[], EventProperties],
-        time: datetime | None = None,
-        task_properties: Callable[[], TaskProperties] | None = None,
-        organization_properties: Callable[[], OrganizationProperties] | None = None,
-    ) -> None: ...
+from ._analytics_service import AnalyticsService
 
 
-class DefaultAnalyticsService(AnalyticsService):
+class AmplitudeAnalyticsService(AnalyticsService):
+    batched_amplitude = BatchedAmplitude(
+        api_key=os.getenv("AMPLITUDE_API_KEY", ""),
+        url=os.getenv("AMPLITUDE_URL", "https://api2.amplitude.com/2/httpapi"),
+    )
+
     def __init__(
         self,
         user_properties: UserProperties | None,
         organization_properties: OrganizationProperties | None,
         task_properties: TaskProperties | None,
-        event_router: EventRouter,
     ):
         self.user_properties = user_properties
         self.organization_properties = organization_properties
-        self.event_router = event_router
         self.task_properties = task_properties
         self._logger = logging.getLogger(self.__class__.__name__)
 
@@ -59,40 +55,7 @@ class DefaultAnalyticsService(AnalyticsService):
                 task_properties=task_properties() if task_properties else self.task_properties,
                 event=AnalyticsEvent(event_properties=builder(), time=time or datetime_factory()),
             )
-            self.event_router(SendAnalyticsEvent(event=full))
+            add_background_task(self.batched_amplitude.send_event(full))
         except Exception:
             self._logger.exception("Failed to build analytics event")
             return
-
-
-class NoopAnalyticsService(AnalyticsService):
-    """An analytics service that does nothing. Used when skipping users"""
-
-    def __init__(self):
-        self._logger = logging.getLogger(self.__class__.__name__)
-
-    @override
-    def send_event(
-        self,
-        builder: Callable[[], EventProperties],
-        time: datetime | None = None,
-        task_properties: Callable[[], TaskProperties] | None = None,
-        organization_properties: Callable[[], OrganizationProperties] | None = None,
-    ):
-        self._logger.debug("Skipping analytics event")
-
-
-_BLACKLISTED_ORG_IDS = {
-    *os.getenv("ANALYTICS_BLACKLISTED_ORGS", "").split(","),
-}
-
-
-def analytics_service(
-    user_properties: UserProperties | None,
-    organization_properties: OrganizationProperties | None,
-    task_properties: TaskProperties | None,
-    event_router: EventRouter,
-) -> AnalyticsService:
-    if organization_properties and organization_properties.organization_id in _BLACKLISTED_ORG_IDS:
-        return NoopAnalyticsService()
-    return DefaultAnalyticsService(user_properties, organization_properties, task_properties, event_router)

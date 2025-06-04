@@ -1,63 +1,59 @@
-import logging
-from typing import Any, Sequence, cast
+from typing import Sequence
 
-from pydantic import ValidationError
-
+from api.services.runs._stored_message import StoredMessage, StoredMessages
 from core.domain.agent_run import AgentRun
-from core.domain.consts import INPUT_KEY_MESSAGES
-from core.domain.message import Messages
-from core.domain.task_io import RawMessagesSchema, SerializableTaskIO
-from core.domain.task_variant import SerializableTaskVariant
 from core.domain.tool_call import ToolCallRequest
 from core.utils.models.previews import DEFAULT_PREVIEW_MAX_LEN, compute_preview
 
 
-def _messages_preview(payload: Any, include_roles: set[str] = {"user"}, max_len: int = DEFAULT_PREVIEW_MAX_LEN):
-    try:
-        validated = Messages.model_validate(payload)
-    except ValidationError:
-        logging.getLogger("RunsService").warning("Error validating messages", exc_info=True)
+def _last_message_idx_with_run_id(messages: Sequence[StoredMessage]) -> int | None:
+    for i, m in enumerate(reversed(messages)):
+        if m.run_id:
+            return len(messages) - i - 1
+    return None
+
+
+def _message_preview(message: StoredMessage, max_len: int):
+    if not message.content:
         return None
 
-    if not validated.messages:
-        return None
-
-    first_user_message = next((m for m in validated.messages if m.role in include_roles), validated.messages[0])
-
-    if not first_user_message.content:
-        return None
-
-    content = first_user_message.content[0]
+    content = message.content[0]
     if content.file:
-        return compute_preview(content.file, max_len=max_len)
+        return "User: " + compute_preview(content.file, max_len=max_len)
 
     if content.text:
-        return compute_preview(content.text)
+        return "User: " + compute_preview(content.text, max_len=max_len)
+
+    if content.tool_call_result:
+        return "Tool: " + compute_preview(content.tool_call_result.result, max_len=max_len)
 
     return None
 
 
-def _compute_preview(payload: Any, agent_io: SerializableTaskIO):
-    if agent_io.version == RawMessagesSchema.version:
-        # Then we try and preview the first user message
-        if preview := _messages_preview(payload):
-            return preview
+def _messages_list_preview(
+    messages: Sequence[StoredMessage],
+    include_roles: set[str] = {"user"},
+    max_len: int = DEFAULT_PREVIEW_MAX_LEN,
+):
+    if not messages:
+        return None
 
-    if agent_io.uses_messages and isinstance(payload, dict) and INPUT_KEY_MESSAGES in payload:
-        # That means we are in the case of an input schema in the case of a proxy task
-        # In which case we preview the input, and then the messages in the reply
-        without_messages = {k: v for k, v in cast(dict[str, Any], payload).items() if k != INPUT_KEY_MESSAGES}
-        first_preview = compute_preview(without_messages)
-        if len(first_preview) < DEFAULT_PREVIEW_MAX_LEN:
-            if second_preview := _messages_preview(
-                {"messages": payload[INPUT_KEY_MESSAGES]},
-                include_roles={"user", "assistant"},
-                max_len=DEFAULT_PREVIEW_MAX_LEN - len(first_preview),
-            ):
-                first_preview += f" | messages: {second_preview}"
-        return first_preview
+    # Trying to find the number of messages that were added
+    # This means finding the number of messages after the last run that has a "run_id"
 
-    return compute_preview(payload)
+    first_response_idx = _last_message_idx_with_run_id(messages)
+    if first_response_idx is None:
+        first_msg_idx = 0
+        prefix = ""
+    else:
+        first_msg_idx = first_response_idx + 1
+        prefix = f"💬 {first_msg_idx} msg{'s' if first_msg_idx > 1 else ''}..."
+
+    max_len -= len(prefix)
+    first_message = next((m for m in messages[first_msg_idx:] if m.role in include_roles), messages[0])
+    if preview := _message_preview(first_message, max_len):
+        return f"{prefix}{preview}"
+    return None
 
 
 def _tool_call_request_preview(tool_call_requests: Sequence[ToolCallRequest]):
@@ -67,11 +63,25 @@ def _tool_call_request_preview(tool_call_requests: Sequence[ToolCallRequest]):
     return f"tools: [{', '.join([t.preview for t in tool_call_requests])}]"
 
 
-def assign_run_previews(run: AgentRun, variant: SerializableTaskVariant):
+def _messages_preview(messages: StoredMessages):
+    if extra := messages.model_extra:
+        first_preview = compute_preview(extra)
+        if len(first_preview) < DEFAULT_PREVIEW_MAX_LEN:
+            if second_preview := _messages_list_preview(
+                messages.messages,
+                include_roles={"user", "assistant"},
+                max_len=DEFAULT_PREVIEW_MAX_LEN - len(first_preview),
+            ):
+                first_preview += f" | {second_preview}"
+        return first_preview
+    return _messages_list_preview(messages.messages) or ""
+
+
+def assign_run_previews(run: AgentRun, messages: StoredMessages | None):
     if not run.task_input_preview:
-        run.task_input_preview = _compute_preview(run.task_input, variant.input_schema)
+        run.task_input_preview = _messages_preview(messages) if messages else compute_preview(run.task_input)
     if not run.task_output_preview:
         if run.task_output:
-            run.task_output_preview = _compute_preview(run.task_output, variant.output_schema)
+            run.task_output_preview = compute_preview(run.task_output)
         elif run.tool_call_requests:
             run.task_output_preview = _tool_call_request_preview(run.tool_call_requests)

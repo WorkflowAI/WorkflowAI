@@ -31,7 +31,7 @@ async def test_raw_string_messages(test_client: IntegrationTestClient, openai_cl
     assert run1["conversation_id"] == run2["conversation_id"] == run3["conversation_id"]
 
     assert run2["task_input"] == {
-        "messages": [
+        "workflowai.messages": [
             {"role": "user", "content": [{"text": "Hello, world!"}]},
             {"role": "assistant", "content": [{"text": "Hello James!"}], "run_id": run1["id"]},
             {"role": "user", "content": [{"text": "1"}]},
@@ -39,7 +39,7 @@ async def test_raw_string_messages(test_client: IntegrationTestClient, openai_cl
     }
 
     assert run3["task_input"] == {
-        "messages": [
+        "workflowai.messages": [
             {"role": "user", "content": [{"text": "Hello, world!"}]},
             {"role": "assistant", "content": [{"text": "Hello James!"}], "run_id": run1["id"]},
             {"role": "user", "content": [{"text": "1"}]},
@@ -85,7 +85,7 @@ async def test_with_tool_calls(test_client: IntegrationTestClient, openai_client
     assert run1["conversation_id"] == run2["conversation_id"]
 
     assert run2["task_input"] == {
-        "messages": [
+        "workflowai.messages": [
             {"role": "user", "content": [{"text": "Hello, world!"}]},
             {
                 "role": "assistant",
@@ -156,3 +156,47 @@ async def test_with_deployed_version(test_client: IntegrationTestClient, openai_
     assert run1["conversation_id"] is not None
     run2 = await fetch_run_from_completion(test_client, res2)
     assert run2["conversation_id"] == run1["conversation_id"]
+
+
+async def test_with_different_model(test_client: IntegrationTestClient, openai_client: AsyncOpenAI):
+    # Start a conversation with model 1
+
+    test_client.mock_openai_call(raw_content="Hello James!")
+    messages: list[ChatCompletionMessageParam] = [{"role": "user", "content": "Hello, world!"}]
+    res1 = await openai_client.chat.completions.create(model="gpt-4o", messages=messages)
+
+    # Now switch to model 2
+    test_client.mock_openai_call(raw_content="Hello John!")
+    messages.append(res1.choices[0].message.model_dump(exclude_none=True))  # type: ignore
+    messages.append({"role": "user", "content": "1"})
+    res2 = await openai_client.chat.completions.create(model="gpt-4o-mini", messages=messages)
+
+    # And finally go back to model 1 with the same messages
+    test_client.mock_openai_call(raw_content="Hello Blu!")
+    res3 = await openai_client.chat.completions.create(model="gpt-4o", messages=messages)
+
+    await test_client.wait_for_completed_tasks()
+
+    # Now fetching the runs
+    run1 = await fetch_run_from_completion(test_client, res1)
+    run2 = await fetch_run_from_completion(test_client, res2)
+    run3 = await fetch_run_from_completion(test_client, res3)
+
+    assert run1["conversation_id"] == run3["conversation_id"]
+    assert run1["conversation_id"] != run2["conversation_id"]
+
+    # Check that the run_id is in run3 input but not run2
+    assert run2["task_input"] == {
+        "workflowai.messages": [
+            {"role": "user", "content": [{"text": "Hello, world!"}]},
+            {"role": "assistant", "content": [{"text": "Hello James!"}]},
+            {"role": "user", "content": [{"text": "1"}]},
+        ],
+    }
+    assert run3["task_input"] == {
+        "workflowai.messages": [
+            {"role": "user", "content": [{"text": "Hello, world!"}]},
+            {"role": "assistant", "content": [{"text": "Hello James!"}], "run_id": run1["id"]},
+            {"role": "user", "content": [{"text": "1"}]},
+        ],
+    }

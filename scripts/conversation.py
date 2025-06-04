@@ -46,7 +46,7 @@ class Aggregator:
         self.tool_calls: dict[str, dict[str, Any]] = {}
 
     def add(self, choice_delta: ChoiceDelta):
-        print(choice_delta)
+        # print(choice_delta)
         if choice_delta.content:
             self.content += choice_delta.content
         # Handle tool call streaming - aggregate by tool call ID

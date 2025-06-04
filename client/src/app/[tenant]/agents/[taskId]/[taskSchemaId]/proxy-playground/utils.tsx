@@ -51,8 +51,16 @@ export function repairMessageKeyInInput(input: GeneralizedTaskInput | undefined)
 
   const keys = Object.keys(input);
   if (keys.length === 1 && keys[0] === 'messages') {
-    // change the key from 'messages' to 'workflowai.replies'
-    const newInput = { 'workflowai.replies': (input as Record<string, unknown>)['messages'] };
+    // change the key from 'messages' to 'workflowai.messages'
+    const newInput = { 'workflowai.messages': (input as Record<string, unknown>)['messages'] };
+    delete (newInput as Record<string, unknown>)['messages'];
+    return newInput as GeneralizedTaskInput;
+  }
+
+  if (keys.includes('workflowai.replies')) {
+    // change the key from 'workflowai.replies' to 'workflowai.messages'
+    const newInput = { 'workflowai.messages': (input as Record<string, unknown>)['workflowai.replies'] };
+    delete (newInput as Record<string, unknown>)['workflowai.replies'];
     return newInput as GeneralizedTaskInput;
   }
 
@@ -73,7 +81,7 @@ export function moveInputMessagesToVersionIfRequired(
 
   // There are no messages in the version, so we need to move some of the messages from the input to the version
 
-  const inputMessages = (input as Record<string, unknown>)['workflowai.replies'] as ProxyMessage[];
+  const inputMessages = (input as Record<string, unknown>)['workflowai.messages'] as ProxyMessage[];
   if (!inputMessages || inputMessages.length === 0) {
     return { input, messages };
   }
@@ -86,7 +94,7 @@ export function moveInputMessagesToVersionIfRequired(
   const messagesToMove = inputMessages.slice(0, lastIndexOfMessagesToMove + 1);
   const messagesToKeep = inputMessages.slice(lastIndexOfMessagesToMove + 1);
 
-  const newInput = { ...input, 'workflowai.replies': messagesToKeep };
+  const newInput = { ...input, 'workflowai.messages': messagesToKeep };
 
   return { input: newInput, messages: messagesToMove };
 }

@@ -6,7 +6,7 @@ from typing import Any
 from tests.integration.common import (
     IntegrationTestClient,
     fetch_run,
-    get_amplitude_requests,
+    get_amplitude_events,
     openai_endpoint,
     result_or_raise,
     run_task_v1,
@@ -52,12 +52,12 @@ async def test_deployed_environment(test_client: IntegrationTestClient):
 
     await test_client.wait_for_completed_tasks()
 
-    amplitude_events = await get_amplitude_requests(test_client.httpx_mock)
+    amplitude_events = await get_amplitude_events(test_client.httpx_mock)
     assert len(amplitude_events) == 2
-    event_types = [event["events"][0]["event_type"] for event in amplitude_events]
+    event_types = [event["event_type"] for event in amplitude_events]
     assert event_types == ["org.ran.task", "org.deployed.version"]
 
-    assert amplitude_events[1]["events"][0]["event_properties"]["environment"] == "production"
+    assert amplitude_events[1]["event_properties"]["environment"] == "production"
 
     test_client.mock_vertex_call(parts=[{"text": '{"greeting": "Hello James!"}'}])
 

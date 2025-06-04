@@ -94,14 +94,14 @@ export function ProxyReplyView(props: Props) {
 
   const onSendMessage = useCallback(async () => {
     const taskInput = input as Record<string, unknown>;
-    const oldMessages: ProxyMessage[] = (taskInput['workflowai.replies'] as ProxyMessage[]) ?? [];
+    const oldMessages: ProxyMessage[] = (taskInput['workflowai.messages'] as ProxyMessage[]) ?? [];
 
     const messages = [...oldMessages];
 
     messages.push(assistantMessage);
     messages.push(newMessage);
 
-    const updatedInput: TaskInputDict = { ...input, ['workflowai.replies']: messages };
+    const updatedInput: TaskInputDict = { ...input, ['workflowai.messages']: messages };
 
     setIsLoading(true);
     await updateInputAndRun(updatedInput);

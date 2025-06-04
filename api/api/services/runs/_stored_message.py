@@ -1,10 +1,13 @@
 import hashlib
 import json
+from typing import Iterator
 
-from pydantic import BaseModel, ConfigDict, Field, RootModel
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, RootModel
 
-from core.domain.consts import INPUT_KEY_MESSAGES
+from core.domain.consts import INPUT_KEY_MESSAGES, INPUT_KEY_MESSAGES_DEPRECATED
+from core.domain.fields.file import File
 from core.domain.message import Message, MessageContent
+from core.domain.task_group_properties import TaskGroupProperties
 
 
 def _hash(data: str) -> str:
@@ -58,10 +61,15 @@ class StoredMessage(Message):
 
 
 class StoredMessages(BaseModel):
-    messages: list[StoredMessage] = Field(alias=INPUT_KEY_MESSAGES, default_factory=list)
+    messages: list[StoredMessage] = Field(
+        alias=INPUT_KEY_MESSAGES,
+        default_factory=list,
+        # TODO: remove this once we have removed the deprecated field
+        validation_alias=AliasChoices(INPUT_KEY_MESSAGES, "messages", INPUT_KEY_MESSAGES_DEPRECATED),
+    )
 
     # Any other field will be allowed in stored in extras
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="allow", serialize_by_alias=True)
 
     def _extra_hash(self) -> str:
         # Computes the hash from the model extras
@@ -69,12 +77,16 @@ class StoredMessages(BaseModel):
             return ""
         return _hash(json.dumps(self.model_extra, sort_keys=True))
 
-    def compute_hashes(self, version_messages: list[Message] | None):
+    def compute_hashes(self, properties: TaskGroupProperties):
         """Compute a hash for each message that depends on the previous messages."""
 
-        computed: list[str] = [self._extra_hash()]
-        if version_messages:
-            computed.append(_hash(RootModel(version_messages).model_dump_json()))
+        computed: list[str] = []
+        if properties.model:
+            computed.append(properties.model)
+        if properties.messages:
+            computed.append(_hash(RootModel(properties.messages).model_dump_json()))
+        if extra := self._extra_hash():
+            computed.append(extra)
         for message in self.messages:
             # Add the current message hash to the computed list
             computed.append(message.model_hash())
@@ -86,3 +98,29 @@ class StoredMessages(BaseModel):
     def aggregate_hashes(cls, hashes: list[str]) -> str:
         """Aggregate the hashes of a list of messages"""
         return _hash(str(hashes))
+
+    def file_iterator(self) -> Iterator[File]:
+        for m in self.messages:
+            for c in m.content:
+                if c.file:
+                    yield c.file
+
+    def dump_for_input(self):
+        return self.model_dump(
+            exclude_unset=True,
+            exclude={
+                "messages": {
+                    "__all__": {
+                        # We don't need the agg hash but we want the run id
+                        "agg_hash": True,
+                        "content": {
+                            "__all__": {
+                                "file": {
+                                    "format": True,
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        )

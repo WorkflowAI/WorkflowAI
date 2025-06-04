@@ -44,7 +44,19 @@
   },
   "packageManager": "yarn@4.1.0",
   "resolutions": {
-    "cross-spawn": "7.0.6"
+    "cross-spawn": "7.0.6",
+    "tar-fs": ">=3.0.9",
+    "elliptic": ">=6.6.1",
+    "image-size": ">=1.2.1",
+    "path-to-regexp": ">=0.1.12",
+    "ws": ">=8.17.1",
+    "webpack-dev-middleware": ">=6.1.2",
+    "@babel/runtime": ">=7.26.10",
+    "store2": ">=2.14.4",
+    "ejs": ">=3.1.10",
+    "rollup": ">=4.22.4",
+    "braces": ">=3.0.3",
+    "body-parser": ">=1.20.3"
   },
   "dependencies": {
     "dompurify": "^3.2.5"
