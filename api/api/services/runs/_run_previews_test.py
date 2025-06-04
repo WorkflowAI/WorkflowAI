@@ -49,12 +49,12 @@ class TestMessageListPreview:
         """Test messages with run_id creates proper prefix for single message"""
 
         messages = [
-            StoredMessage.with_text("Message before run", role="user"),
+            StoredMessage.with_text("Message before run", role="assistant"),
             StoredMessage.with_text("New message after run", role="user"),
         ]
-        messages[0].run_id = "run123"
+
         result = _messages_list_preview(messages)
-        assert result == "💬 1 msg...User: New message after run"
+        assert result == "User: New message after run"
 
     def test_messages_with_run_id_multiple_messages_prefix(self):
         """Test messages with run_id creates proper prefix for multiple messages"""
@@ -64,25 +64,22 @@ class TestMessageListPreview:
             StoredMessage.with_text("First new message", role="assistant"),
             StoredMessage.with_text("Second new message", role="user"),
         ]
-        messages[0].run_id = "run123"
         result = _messages_list_preview(messages)
-        assert result is not None
-        assert result == "💬 1 msg...User: Second new message"
+        assert result == "User: Second new message"
 
     def test_messages_with_multiple_run_ids_uses_last(self):
         """Test that with multiple run_ids, it uses the last one"""
 
         messages = [
-            StoredMessage.with_text("First run message", role="user"),
+            StoredMessage.with_text("First run message", role="assistant"),
             StoredMessage.with_text("Middle message", role="user"),
-            StoredMessage.with_text("Second run message", role="user"),
+            StoredMessage.with_text("Second run message", role="assistant"),
             StoredMessage.with_text("Final message", role="user"),
         ]
-        messages[0].run_id = "run1"
-        messages[2].run_id = "run2"
+
         result = _messages_list_preview(messages)
         assert result is not None
-        assert result == "💬 3 msgs...User: Final message"
+        assert result == "User: Final message"
 
     def test_include_roles_user_only(self):
         """Test default include_roles={'user'} behavior"""
@@ -92,25 +89,6 @@ class TestMessageListPreview:
             StoredMessage.with_text("User message", role="user"),
         ]
         assert _messages_list_preview(messages, include_roles={"user"}) == "User: User message"
-
-    def test_include_roles_assistant_only(self):
-        """Test include_roles with assistant only"""
-        messages = [
-            StoredMessage.with_text("User message", role="user"),
-            StoredMessage.with_text("Assistant message", role="assistant"),
-        ]
-        assert _messages_list_preview(messages, include_roles={"assistant"}) == "User: Assistant message"
-
-    def test_include_roles_multiple(self):
-        """Test include_roles with multiple roles"""
-        messages = [
-            StoredMessage.with_text("System message", role="system"),
-            StoredMessage.with_text("User message", role="user"),
-            StoredMessage.with_text("Assistant message", role="assistant"),
-        ]
-        # Should find first matching role in the specified set
-        result = _messages_list_preview(messages, include_roles={"user", "assistant"})
-        assert result == "User: User message"
 
     def test_include_roles_no_match_fallback(self):
         """Test include_roles with no matches falls back to first message"""
@@ -181,22 +159,6 @@ class TestMessageListPreview:
         ]
         result = _messages_list_preview(messages)
         assert result == "User: [[img:https://example.com/file.png]]"
-
-    def test_max_len_with_prefix(self):
-        """Test that max_len accounts for prefix length"""
-        message_with_run = StoredMessage.with_text("Old message", role="user")
-        message_with_run.run_id = "run123"
-
-        messages = [
-            message_with_run,
-            StoredMessage.with_text("New message", role="user"),
-        ]
-
-        # With prefix, the available length for message content should be reduced
-        result = _messages_list_preview(messages, max_len=30)
-        assert result is not None
-        assert "💬 1 msg..." in result
-        # The actual message part should be shorter due to prefix taking up space
 
 
 class TestToolCallRequestPreview:

@@ -47,7 +47,7 @@ async def test_raw_string_output(test_client: IntegrationTestClient, openai_clie
     assert len(runs) == 1
     assert runs[0]["id"] == run_id
     assert runs[0]["task_input_preview"] == "User: Hello, world!"
-    assert runs[0]["task_output_preview"] == "Hello James!"
+    assert runs[0]["task_output_preview"] == "Assistant: Hello James!"
 
     agent = await test_client.get(f"/_/agents/{task_id}/schemas/1")
     assert agent["output_schema"]["json_schema"] == {"type": "string", "format": "message"}

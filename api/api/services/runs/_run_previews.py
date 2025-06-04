@@ -6,9 +6,9 @@ from core.domain.tool_call import ToolCallRequest
 from core.utils.models.previews import DEFAULT_PREVIEW_MAX_LEN, compute_preview
 
 
-def _last_message_idx_with_run_id(messages: Sequence[StoredMessage]) -> int | None:
+def _last_assistant_message_idx(messages: Sequence[StoredMessage]) -> int | None:
     for i, m in enumerate(reversed(messages)):
-        if m.run_id:
+        if m.role == "assistant":
             return len(messages) - i - 1
     return None
 
@@ -41,18 +41,15 @@ def _messages_list_preview(
     # Trying to find the number of messages that were added
     # This means finding the number of messages after the last run that has a "run_id"
 
-    first_response_idx = _last_message_idx_with_run_id(messages)
+    first_response_idx = _last_assistant_message_idx(messages)
     if first_response_idx is None:
         first_msg_idx = 0
-        prefix = ""
     else:
         first_msg_idx = first_response_idx + 1
-        prefix = f"💬 {first_msg_idx} msg{'s' if first_msg_idx > 1 else ''}..."
 
-    max_len -= len(prefix)
     first_message = next((m for m in messages[first_msg_idx:] if m.role in include_roles), messages[0])
     if preview := _message_preview(first_message, max_len):
-        return f"{prefix}{preview}"
+        return f"{preview}"
     return None
 
 
@@ -77,11 +74,19 @@ def _messages_preview(messages: StoredMessages):
     return _messages_list_preview(messages.messages) or ""
 
 
+def _output_preview(run: AgentRun):
+    if run.task_output:
+        return compute_preview(run.task_output)
+    if run.tool_call_requests:
+        return _tool_call_request_preview(run.tool_call_requests)
+    return None
+
+
 def assign_run_previews(run: AgentRun, messages: StoredMessages | None):
     if not run.task_input_preview:
         run.task_input_preview = _messages_preview(messages) if messages else compute_preview(run.task_input)
     if not run.task_output_preview:
-        if run.task_output:
-            run.task_output_preview = compute_preview(run.task_output)
-        elif run.tool_call_requests:
-            run.task_output_preview = _tool_call_request_preview(run.tool_call_requests)
+        if output_preview := _output_preview(run):
+            if isinstance(run.task_output, str):
+                output_preview = f"Assistant: {output_preview}"
+            run.task_output_preview = output_preview
