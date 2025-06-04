@@ -33,7 +33,7 @@ export function filterTasks(tasks: SerializableTask[], searchQuery: string) {
 export function sortTasks(tasks: SerializableTask[]) {
   const activeTasksIds = filterActiveTasksIDs(tasks);
 
-  return tasks.sort((a, b) => {
+  return tasks.toSorted((a, b) => {
     // First priority: run_count
     if (!!a.run_count && !!b.run_count) {
       return b.run_count - a.run_count;
@@ -70,9 +70,7 @@ export function sortTasksByStats(
   sortKey: TasksSortKey,
   revertOrder: boolean
 ) {
-  const sorted = tasks
-    .slice()
-    .sort((a, b) => {
+  const sorted = tasks.toSorted((a, b) => {
       const aStat = stats?.get(a.uid);
       const bStat = stats?.get(b.uid);
 
