@@ -36,3 +36,8 @@ trigger deployments to the production environment. Once everything is ok, the br
 A hotfix allows fixing bugs in production without having to push changes to the development environment first.
 A hotfix branch should be created from the latest tag and a PR targeting main should be created. The flow is then the
 same as the release process.
+
+### Code style
+
+All client code is formatted using Prettier. Run `yarn prettier-check` before committing
+changes to ensure your code follows the repository style.

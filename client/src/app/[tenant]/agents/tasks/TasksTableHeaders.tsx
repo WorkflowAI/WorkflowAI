@@ -15,11 +15,7 @@ export function TasksTableHeaders(props: TasksTableHeadersProps) {
         className='w-[100px]'
         onClick={() => onSortModeChange(TasksSortKey.Runs)}
       />
-      <TableViewHeaderEntry
-        title='Cost'
-        className='w-[57px]'
-        onClick={() => onSortModeChange(TasksSortKey.Cost)}
-      />
+      <TableViewHeaderEntry title='Cost' className='w-[57px]' onClick={() => onSortModeChange(TasksSortKey.Cost)} />
     </>
   );
 }

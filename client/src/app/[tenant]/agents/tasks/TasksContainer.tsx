@@ -13,15 +13,15 @@ import { useIsAllowed } from '@/lib/hooks/useIsAllowed';
 import { useIsSameTenant } from '@/lib/hooks/useTaskParams';
 import { taskApiRoute, taskDeploymentsRoute, taskRunsRoute, taskSchemaRoute } from '@/lib/routeFormatter';
 import { getNewestSchemaId } from '@/lib/taskUtils';
-import { useOrFetchApiKeys, useOrFetchTasks } from '@/store/fetchers';
 import { useOrFetchAgentsStats } from '@/store/agents';
+import { useOrFetchApiKeys, useOrFetchTasks } from '@/store/fetchers';
 import { TaskID, TenantID } from '@/types/aliases';
 import { SerializableTask } from '@/types/workflowAI';
 import { ManageApiKeysButton } from '../[taskId]/[taskSchemaId]/code/ManageApiKeyButton';
 import { LoadingTasksTable } from './LoadingTasksTable';
 import { NoTasksView } from './NoTasksView';
 import { TasksTable } from './TasksTable';
-import { sortTasks, sortTasksByStats, TasksSortKey } from './utils';
+import { TasksSortKey, sortTasks, sortTasksByStats } from './utils';
 
 type TasksContainerProps = {
   tenant: TenantID;

@@ -71,20 +71,14 @@ export function sortTasksByStats(
   revertOrder: boolean
 ) {
   const sorted = tasks.toSorted((a, b) => {
-      const aStat = stats?.get(a.uid);
-      const bStat = stats?.get(b.uid);
+    const aStat = stats?.get(a.uid);
+    const bStat = stats?.get(b.uid);
 
-      const aValue =
-        sortKey === TasksSortKey.Runs
-          ? aStat?.run_count ?? 0
-          : aStat?.total_cost_usd ?? 0;
-      const bValue =
-        sortKey === TasksSortKey.Runs
-          ? bStat?.run_count ?? 0
-          : bStat?.total_cost_usd ?? 0;
+    const aValue = sortKey === TasksSortKey.Runs ? aStat?.run_count ?? 0 : aStat?.total_cost_usd ?? 0;
+    const bValue = sortKey === TasksSortKey.Runs ? bStat?.run_count ?? 0 : bStat?.total_cost_usd ?? 0;
 
-      return bValue - aValue;
-    });
+    return bValue - aValue;
+  });
 
   return revertOrder ? sorted.reverse() : sorted;
 }
