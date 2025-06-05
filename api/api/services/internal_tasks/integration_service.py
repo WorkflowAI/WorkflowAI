@@ -1,10 +1,10 @@
 import datetime
 import logging
 from enum import Enum
-from typing import AsyncIterator, Literal, NamedTuple
+from typing import Any, AsyncIterator, Literal, NamedTuple
 
 import workflowai
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
 from api.services.api_keys import APIKeyService, find_api_key_in_text
 from api.services.documentation_service import DocumentationService
@@ -44,8 +44,10 @@ from core.domain.integration.integration_mapping import (
     get_integration_by_kind,
     safe_get_integration_by_kind,
 )
+from core.domain.message import Message, MessageContent
 from core.domain.task_variant import SerializableTaskVariant
 from core.domain.users import User
+from core.services.integration_template_service import IntegrationTemplateService
 from core.storage import ObjectNotFoundException, TaskTuple
 from core.storage.backend_storage import BackendStorage
 from core.utils.redis_cache import redis_cached
@@ -120,6 +122,7 @@ class IntegrationService:
         runs_service: RunsService,
         api_keys_service: APIKeyService,
         user: User,
+        workflowai_base_url: str = "https://run.workflowai.com/v1",
     ):
         self._logger = logging.getLogger(self.__class__.__name__)
         self.storage = storage
@@ -128,6 +131,7 @@ class IntegrationService:
         self.api_keys_service = api_keys_service
         self.user = user
         self.obfuscated_strings: set[ObfuscatedString] = set()
+        self.template_service = IntegrationTemplateService(base_url=workflowai_base_url)
 
     def _get_integration_for_slug(self, slug: IntegrationKind) -> Integration:
         integration = next(
@@ -410,11 +414,9 @@ well organized (by agent) on WorkflowAI (trust me, makes everything easier).
         version: VersionsService.EnrichedVersion,
         task_tuple: TaskTuple,
         task_schema_id: int,
-    ) -> str:
+    ) -> list[Message]:
         if version.group.properties.messages:
-            return str(
-                [m.model_dump() for m in version.group.properties.messages],
-            )
+            return version.group.properties.messages
 
         # Then we'll need to fetch the messages from the latest task run, if any.
         try:
@@ -424,7 +426,16 @@ well organized (by agent) on WorkflowAI (trust me, makes everything easier).
                 is_success=True,
                 exclude_fields=set(),  # We do want the 'llm_completions'
             )
-            version_messages_payload = str(latest_run.task_input)
+
+            # Extract messages from task_input if it contains workflowai.messages structure
+            task_input = latest_run.task_input
+            if isinstance(task_input, dict) and "workflowai.messages" in task_input:
+                # Extract just the messages array
+                messages_list: list[dict[str, Any]] = task_input["workflowai.messages"]  # type: ignore[reportUnknownMemberType]
+                version_messages_payload = [Message(**m) for m in messages_list]  # type: ignore[reportUnknownMemberType]
+            else:
+                # Fallback to the full task_input if structure is unexpected
+                version_messages_payload = [Message(**m) for m in task_input]  # type: ignore[reportUnknownMemberType]
 
         except ObjectNotFoundException:
             self._logger.warning(
@@ -433,14 +444,15 @@ well organized (by agent) on WorkflowAI (trust me, makes everything easier).
                 task_schema_id,
             )
             # Fallback to a default system message if no successful run is found
-            version_messages_payload = str(
-                [
-                    {
-                        "role": "system",
-                        "content": "You're a helpful assistant.",
-                    },
-                ],
-            )
+            version_messages_payload = [
+                Message(role="system", content=[MessageContent(text="You're a helpful assistant.")]),
+            ]
+        except ValidationError as e:
+            self._logger.exception("Error parsing messages", exc_info=e)
+            # Fallback to a default system message if no successful run is found
+            version_messages_payload = [
+                Message(role="system", content=[MessageContent(text="You're a helpful assistant.")]),
+            ]
 
         return version_messages_payload
 
@@ -461,19 +473,64 @@ well organized (by agent) on WorkflowAI (trust me, makes everything easier).
         ) or get_integration_by_kind(IntegrationKind.OPENAI_SDK_PYTHON)
 
         version_messages = await self._get_messages_payload_for_code_snippet(version, task_tuple, agent.task_schema_id)
+
+        # Extract common parameters for both template and AI generation
+        is_using_instruction_variables = agent.input_schema.json_schema.get("properties", None) is not None
+        is_using_structured_generation = not agent.output_schema.json_schema.get("format") == "message"
+        deployment_environment = version.deployments[0].environment if version.deployments else None
+        model_used = version.group.properties.model or workflowai.DEFAULT_MODEL
+        enabled_tools = version.group.properties.enabled_tools
+
+        # Try template generation first if supported
+        try:
+            if self.template_service.supports_integration(integration):
+                self._logger.info("Using template-based code generation for integration %s", integration.slug)
+
+                template_code = await self.template_service.generate_code(
+                    integration=integration,
+                    agent_id=agent.task_id,
+                    agent_schema_id=agent.task_schema_id,
+                    model_used=model_used,
+                    version_messages=version_messages,
+                    version_deployment_environment=deployment_environment,
+                    is_using_instruction_variables=is_using_instruction_variables,
+                    input_schema=agent.input_schema.json_schema if is_using_instruction_variables else None,
+                    is_using_structured_generation=is_using_structured_generation,
+                    output_schema=agent.output_schema.json_schema if is_using_structured_generation else None,
+                    enabled_tools=enabled_tools,
+                )
+
+                # Yield the template-generated code
+                yield VersionCode(
+                    code=template_code,
+                    integration=integration,
+                    feedback_token=None,  # No feedback token for template-generated code
+                )
+                return
+
+        except Exception as e:
+            self._logger.warning(
+                "Template generation failed for integration %s, falling back to AI generation: %s",
+                integration.slug,
+                str(e),
+            )
+
+        # Fallback to AI generation
+        self._logger.info("Using AI-based code generation for integration %s", integration.slug)
+
         doc_gen_input = IntegrationCodeSnippetAgentInput(
             integration=integration,
             agent_id=agent.task_id,
             agent_schema_id=agent.task_schema_id,
-            model_used=version.group.properties.model or workflowai.DEFAULT_MODEL,
-            version_messages=version_messages,
+            model_used=model_used,
+            version_messages=str([m.model_dump() for m in version_messages]),
             integration_documentations=DocumentationService().get_documentation_by_path(
                 integration.documentation_filepaths,
             ),
-            version_deployment_environment=version.deployments[0].environment if version.deployments else None,
-            is_using_instruction_variables=agent.input_schema.json_schema.get("properties", None) is not None,
+            version_deployment_environment=deployment_environment,
+            is_using_instruction_variables=is_using_instruction_variables,
             input_schema=agent.input_schema.json_schema,
-            is_using_structured_generation=not agent.output_schema.json_schema.get("format") == "message",
+            is_using_structured_generation=is_using_structured_generation,
             output_schema=agent.output_schema.json_schema,
         )
 

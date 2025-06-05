@@ -2,7 +2,7 @@
 
 import asyncio
 import os
-from typing import Any
+from typing import Any, Generator
 from unittest import mock
 from unittest.mock import Mock, patch
 
@@ -15,6 +15,9 @@ from taskiq import InMemoryBroker
 from tests.asgi_transport import patch_asgi_transport
 from tests.integration.common import IntegrationTestClient
 from tests.pausable_memory_broker import PausableInMemoryBroker
+
+WORKFLOWAI_API_URL = "http://localhost:8000/v1"
+WORKFLOWAI_API_KEY = ""
 
 
 @pytest.fixture
@@ -283,3 +286,73 @@ async def test_client(int_api_client: AsyncClient, httpx_mock: HTTPXMock, patche
     clt = IntegrationTestClient(int_api_client, httpx_mock, patched_broker)
     await clt.refresh_org_data()
     return clt
+
+
+@pytest.fixture(autouse=True)
+def disable_httpx_mock(httpx_mock: HTTPXMock) -> Generator[None, None, None]:
+    """
+    Disable httpx mocking for integration tests to allow real API calls.
+
+    This fixture runs automatically for all tests in the integration directory
+    and ensures that HTTP requests are not intercepted by pytest-httpx.
+    """
+    # Clear any existing mocks
+    httpx_mock.reset(assert_all_responses_were_requested=False)
+
+    # Don't add any mock responses - let real HTTP calls through
+    yield
+
+    # Clean up after test
+    httpx_mock.reset(assert_all_responses_were_requested=False)
+
+
+@pytest.fixture(autouse=True)
+def setup_real_environment() -> Generator[None, None, None]:
+    """
+    Set up real environment variables for integration tests.
+
+    This ensures tests have access to real API keys and URLs needed for
+    making actual API calls to WorkflowAI or other services.
+    """
+    # Store original environment
+    original_env = dict(os.environ)
+
+    # Set up integration test environment
+    integration_env = {
+        # WorkflowAI configuration
+        "WORKFLOWAI_API_URL": WORKFLOWAI_API_URL,
+        "WORKFLOWAI_API_KEY": "wai-ptk8CbSJoJNpJHpEXbrporXlNdYcS1voQF1QXhent2I",
+        # Ensure test environment
+        "TESTING": "true",
+        "INTEGRATION_TESTING": "true",
+    }
+
+    # Update environment
+    for key, value in integration_env.items():
+        os.environ[key] = value
+
+    yield
+
+    # Restore original environment
+    os.environ.clear()
+    os.environ.update(original_env)
+
+
+@pytest.fixture
+def real_api_config() -> dict[str, str | None]:
+    """
+    Provide real API configuration for tests that need it.
+
+    Returns a dictionary with API URLs and keys that tests can use
+    to make real API calls.
+    """
+    return {
+        "base_url": os.environ.get("WORKFLOWAI_API_URL", "https://run.workflowai.com/v1"),
+        "api_key": os.environ.get("WORKFLOWAI_API_KEY", "test-api-key"),
+        "openai_key": os.environ.get("OPENAI_API_KEY"),
+        "anthropic_key": os.environ.get("ANTHROPIC_API_KEY"),
+    }
+
+
+# Integration-specific configuration
+# The pytest_configure function is already defined above, so we don't need to override it here

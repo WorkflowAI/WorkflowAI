@@ -154,3 +154,9 @@ bandit = "^1.8.2"
 safety = "^3.2.4"
 taskiq = { extras = ["reload"], version = "^0.11.6" }
 vulture = "^2.11"
+# Integration testing packages
+instructor = "^1.6.4"
+dspy = "^2.5.0"
+langchain = "^0.3.25"
+langchain-openai = "^0.2.14"
+litellm = "^1.55.10"
