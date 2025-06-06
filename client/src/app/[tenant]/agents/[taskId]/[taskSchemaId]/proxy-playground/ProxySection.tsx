@@ -8,10 +8,11 @@ import { useProxyInputStructure } from './hooks/useProxyInputStructure';
 import { ProxyInput } from './input-section/ProxyInput';
 import { ProxyParameters } from './parameters-section/ProxyParameters';
 import { createEmptyMessage } from './proxy-messages/utils';
+import { removeInputEntriesNotMatchingSchema } from './utils';
 
 interface Props {
-  inputSchema: JsonSchema | undefined;
   extractedInputSchema: JsonSchema | undefined;
+  setExtractedInputSchema: (inputSchema: JsonSchema | undefined) => void;
   inputVariblesKeys: string[] | undefined;
   error: ExtractTempleteError | undefined;
 
@@ -45,6 +46,7 @@ interface Props {
 export function ProxySection(props: Props) {
   const {
     extractedInputSchema,
+    setExtractedInputSchema,
     inputVariblesKeys,
     error,
     input,
@@ -99,6 +101,14 @@ export function ProxySection(props: Props) {
     setInput,
   });
 
+  const cleanMatchingInput: Record<string, unknown> = useMemo(() => {
+    const result = removeInputEntriesNotMatchingSchema(cleanInput, extractedInputSchema);
+    if (Array.isArray(result)) {
+      return cleanInput;
+    }
+    return result;
+  }, [cleanInput, extractedInputSchema]);
+
   return (
     <div
       className='flex w-full items-stretch border-b border-gray-200 border-dashed overflow-hidden'
@@ -111,7 +121,8 @@ export function ProxySection(props: Props) {
           tenant={tenant}
           taskId={taskId}
           inputSchema={extractedInputSchema}
-          input={cleanInput}
+          setInputSchema={setExtractedInputSchema}
+          input={cleanMatchingInput}
           setInput={setCleanInput}
           onMoveToVersion={onMoveToVersion}
           inputVariblesKeys={inputVariblesKeys}

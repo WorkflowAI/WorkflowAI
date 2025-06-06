@@ -16,6 +16,7 @@ type Props = {
   tenant: TenantID | undefined;
   taskId: TaskID;
   inputSchema: JsonSchema | undefined;
+  setInputSchema: (inputSchema: JsonSchema | undefined) => void;
   input: Record<string, unknown> | undefined;
   setInput: (input: Record<string, unknown>) => void;
   onMoveToVersion: (message: ProxyMessage) => void;
@@ -27,6 +28,7 @@ export function ProxyInput(props: Props) {
     inputMessages,
     setInputMessages,
     inputSchema,
+    setInputSchema,
     input,
     setInput,
     tenant,
@@ -80,6 +82,7 @@ export function ProxyInput(props: Props) {
           {areVariablesVisible && (
             <ProxyInputVariables
               inputSchema={inputSchema}
+              setInputSchema={setInputSchema}
               input={input as Record<string, unknown>}
               setInput={setInput}
               tenant={tenant}

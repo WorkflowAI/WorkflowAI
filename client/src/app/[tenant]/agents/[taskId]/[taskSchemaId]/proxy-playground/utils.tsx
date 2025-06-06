@@ -98,3 +98,113 @@ export function moveInputMessagesToVersionIfRequired(
 
   return { input: newInput, messages: messagesToMove };
 }
+
+export function removeInputEntriesNotMatchingSchema(
+  input: Record<string, unknown>,
+  schema: JsonSchema | undefined
+): Record<string, unknown> | unknown[] {
+  if (!schema) {
+    return input;
+  }
+
+  // Handle array type
+  if (schema.type === 'array' && Array.isArray(input)) {
+    if (!schema.items) {
+      return [];
+    }
+
+    // Handle tuple validation (items is an array of schemas)
+    if (Array.isArray(schema.items)) {
+      const itemsArray = schema.items as JsonSchema[];
+      return input.map((item, index) => {
+        const itemSchema = index < itemsArray.length ? itemsArray[index] : undefined;
+        if (typeof item === 'object' && item !== null && itemSchema) {
+          return removeInputEntriesNotMatchingSchema(item as Record<string, unknown>, itemSchema);
+        }
+        return item;
+      });
+    }
+
+    // Handle single schema for all items
+    return input.map((item) => {
+      if (typeof item === 'object' && item !== null) {
+        return removeInputEntriesNotMatchingSchema(item as Record<string, unknown>, schema.items as JsonSchema);
+      }
+      return item;
+    });
+  }
+
+  // Handle object type
+  if (schema.type === 'object' && typeof input === 'object' && input !== null && !Array.isArray(input)) {
+    if (!('properties' in schema) || !schema.properties) {
+      return input;
+    }
+
+    const schemaProperties = Object.keys(schema.properties);
+    const filteredInput: Record<string, unknown> = {};
+
+    for (const key of Object.keys(input)) {
+      if (schemaProperties.includes(key)) {
+        const propertySchema = schema.properties[key] as JsonSchema;
+        const value = input[key];
+
+        if (propertySchema.type === 'array' && Array.isArray(value)) {
+          if (propertySchema.items && Array.isArray(propertySchema.items)) {
+            // Handle tuple validation
+            const itemsArray = propertySchema.items as JsonSchema[];
+            filteredInput[key] = value.map((item, index) => {
+              const itemSchema = index < itemsArray.length ? itemsArray[index] : undefined;
+              if (typeof item === 'object' && item !== null && itemSchema) {
+                return removeInputEntriesNotMatchingSchema(item as Record<string, unknown>, itemSchema);
+              }
+              return item;
+            });
+          } else if (propertySchema.items) {
+            // Handle single schema for all items
+            filteredInput[key] = value.map((item) => {
+              if (typeof item === 'object' && item !== null) {
+                return removeInputEntriesNotMatchingSchema(
+                  item as Record<string, unknown>,
+                  propertySchema.items as JsonSchema
+                );
+              }
+              return item;
+            });
+          } else {
+            filteredInput[key] = value;
+          }
+        } else if (propertySchema.type === 'object' && typeof value === 'object' && value !== null) {
+          filteredInput[key] = removeInputEntriesNotMatchingSchema(value as Record<string, unknown>, propertySchema);
+        } else {
+          filteredInput[key] = value;
+        }
+      }
+    }
+
+    return filteredInput;
+  }
+
+  return input;
+}
+
+export function removeInputEntriesNotMatchingSchemaAndKeepMessages(
+  input: Record<string, unknown>,
+  schema: JsonSchema | undefined
+): Record<string, unknown> {
+  if (!schema) {
+    return input;
+  }
+
+  const inputMessages = input['workflowai.messages'] as ProxyMessage[] | undefined;
+  const cleanedInput = removeInputEntriesNotMatchingSchema(input, schema);
+
+  if (Array.isArray(cleanedInput)) {
+    return input;
+  }
+
+  if (!!inputMessages) {
+    return { ...cleanedInput, 'workflowai.messages': inputMessages };
+  }
+
+  return cleanedInput;
+}
