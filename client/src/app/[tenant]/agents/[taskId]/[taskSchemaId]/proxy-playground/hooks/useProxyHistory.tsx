@@ -4,6 +4,21 @@ import { TaskID } from '@/types/aliases';
 import { TenantID } from '@/types/aliases';
 import { TaskSchemaID } from '@/types/aliases';
 
+// Helper function to safely store data
+function safeSetItem(key: string, value: string): boolean {
+  try {
+    sessionStorage.setItem(key, value);
+    return true;
+  } catch (error) {
+    if (error instanceof Error && error.name === 'QuotaExceededError') {
+      console.warn('Storage quota exceeded for key:', key);
+      return false;
+    }
+    console.error('Error storing data:', error);
+    return false;
+  }
+}
+
 export function getFromProxyHistory<T>(historyId: string | undefined, key: string): T | undefined {
   if (!historyId) {
     return undefined;
@@ -27,19 +42,37 @@ export function getFromProxyHistory<T>(historyId: string | undefined, key: strin
 
 export function useSaveToProxyHistory<T>(historyId: string | undefined, key: string, value: T | undefined) {
   useEffect(() => {
+    if (!historyId) return;
+
+    const fullKey = historyId + '-' + key;
     if (value === undefined) {
-      sessionStorage.removeItem(historyId + '-' + key);
+      sessionStorage.removeItem(fullKey);
     } else {
-      sessionStorage.setItem(historyId + '-' + key, JSON.stringify(value));
+      const stringValue = JSON.stringify(value);
+      // Check if the value is too large (e.g., > 1MB)
+      if (stringValue.length > 1024 * 1024) {
+        console.warn('Value too large to store in sessionStorage:', key);
+        return;
+      }
+      safeSetItem(fullKey, stringValue);
     }
   }, [value, historyId, key]);
 }
 
 export function saveToProxyHistory<T>(historyId: string | undefined, key: string, value: T | undefined) {
+  if (!historyId) return;
+
+  const fullKey = historyId + '-' + key;
   if (value === undefined) {
-    sessionStorage.removeItem(historyId + '-' + key);
+    sessionStorage.removeItem(fullKey);
   } else {
-    sessionStorage.setItem(historyId + '-' + key, JSON.stringify(value));
+    const stringValue = JSON.stringify(value);
+    // Check if the value is too large (e.g., > 1MB)
+    if (stringValue.length > 1024 * 1024) {
+      console.warn('Value too large to store in sessionStorage:', key);
+      return;
+    }
+    safeSetItem(fullKey, stringValue);
   }
 }
 

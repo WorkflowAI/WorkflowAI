@@ -40,6 +40,7 @@ import { ProxySection } from './ProxySection';
 import { ProxyCodeButton } from './code/ProxyCodeButton';
 import { performScroll } from './components/performScroll';
 import { getFromProxyHistory, useSaveToProxyHistory } from './hooks/useProxyHistory';
+import { ProxyImproveMessagesControls, useProxyImproveMessages } from './hooks/useProxyImproveMessages';
 import { useProxyMatchVersion } from './hooks/useProxyMatchVersion';
 import { useProxyPerformRuns } from './hooks/useProxyPerformRuns';
 import { useProxyPlaygroundStates } from './hooks/useProxyPlaygroundStates';
@@ -136,10 +137,11 @@ export function ProxyPlayground(props: Props) {
 
   const {
     schema: extractedInputSchema,
+    setSchema: setExtractedInputSchema,
     inputVariblesKeys,
     error: extractedInputSchemaError,
     areThereChangesInInputSchema,
-  } = useOrExtractTemplete(tenant, taskId, proxyMessages, inputSchema, historyId);
+  } = useOrExtractTemplete(tenant, taskId, schema?.schema_id, proxyMessages, inputSchema, historyId);
 
   const playgroundOutputRef = useRef<HTMLDivElement>(null);
   const [scheduledPlaygroundStateMessage, setScheduledPlaygroundStateMessage] = useState<string | undefined>(undefined);
@@ -176,6 +178,7 @@ export function ProxyPlayground(props: Props) {
       extractedInputSchema,
       outputSchema,
       setSchemaId,
+      setScheduledPlaygroundStateMessage,
     });
 
   const onPerformRuns = useCallback(
@@ -262,7 +265,7 @@ export function ProxyPlayground(props: Props) {
 
   const markToolCallAsDone = usePlaygroundChatStore((state) => state.markToolCallAsDone);
 
-  useScheduledMetaAgentMessages(
+  const { cancelScheduledPlaygroundMessage } = useScheduledMetaAgentMessages(
     tenant,
     taskId,
     schemaId,
@@ -294,13 +297,6 @@ export function ProxyPlayground(props: Props) {
     },
     [setOutputModels, markToolCallAsDone, taskId, onPerformRuns]
   );
-
-  const onCancelChatRequest = useCallback(() => {
-    stopAllRuns();
-    setTimeout(() => {
-      stopAllRuns();
-    }, 1000);
-  }, [stopAllRuns]);
 
   const isMobile = useIsMobile();
 
@@ -360,6 +356,31 @@ export function ProxyPlayground(props: Props) {
     [setInput, onPerformRuns]
   );
 
+  const improveMessagesControls: ProxyImproveMessagesControls = useProxyImproveMessages({
+    taskId,
+    tenant,
+    versionId: version?.id,
+    proxyMessages,
+    setProxyMessages,
+  });
+
+  const onImproveVersionMessagesFromChat = useCallback(
+    async (improvementInstructions: string) => {
+      performScroll('playground-scroll', 'top', 'smooth');
+      await improveMessagesControls.improveVersionMessages(improvementInstructions);
+    },
+    [improveMessagesControls]
+  );
+
+  const onCancelChatRequest = useCallback(() => {
+    improveMessagesControls.cancelImprovement();
+    cancelScheduledPlaygroundMessage();
+    stopAllRuns();
+    setTimeout(() => {
+      stopAllRuns();
+    }, 1000);
+  }, [cancelScheduledPlaygroundMessage, improveMessagesControls, stopAllRuns]);
+
   return (
     <div className='flex flex-row h-full w-full'>
       <div className='flex h-full flex-1 overflow-hidden'>
@@ -413,8 +434,8 @@ export function ProxyPlayground(props: Props) {
           >
             <div className='flex flex-col w-full sm:pb-0 pb-20'>
               <ProxySection
-                inputSchema={inputSchema}
                 extractedInputSchema={extractedInputSchema}
+                setExtractedInputSchema={setExtractedInputSchema}
                 inputVariblesKeys={inputVariblesKeys}
                 error={extractedInputSchemaError}
                 input={input}
@@ -434,6 +455,7 @@ export function ProxyPlayground(props: Props) {
                 showSaveAllVersions={showSaveAllVersions && !noCreditsLeft && !isInDemoMode}
                 onSaveAllVersions={onSaveAllVersions}
                 versionsForRuns={versionsForRuns}
+                improveMessagesControls={improveMessagesControls}
               />
               <div ref={playgroundOutputRef} className='flex w-full'>
                 <ProxyOutput
@@ -493,11 +515,13 @@ export function ProxyPlayground(props: Props) {
           playgroundState={playgroundState}
           onShowEditSchemaModal={() => {}}
           improveInstructions={() => Promise.resolve()}
+          improveVersionMessages={onImproveVersionMessagesFromChat}
           changeModels={onChatRequestToChangeModels}
           generateNewInput={() => Promise.resolve()}
           onCancelChatToolCallOnPlayground={onCancelChatRequest}
           scrollToInput={() => performScroll('proxy-scroll-view', 'top')}
           scrollToOutput={() => performScroll('proxy-scroll-view', 'bottom')}
+          isProxy={true}
         />
       )}
       <CodeModal tenant={tenant} taskId={taskId} versionId={versionIdForCode} setVersionId={setVersionIdForCode} />

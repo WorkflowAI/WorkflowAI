@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMap } from 'usehooks-ts';
 import { useAIModels } from '@/store/ai_models';
 import { useOrganizationSettings } from '@/store/organization_settings';
+import { usePlaygroundChatStore } from '@/store/playgroundChatStore';
 import { useTasks } from '@/store/task';
 import { useTaskSchemas } from '@/store/task_schemas';
 import { useVersions } from '@/store/versions';
@@ -14,6 +15,7 @@ import { GeneralizedTaskInput } from '@/types/task_run';
 import { ProxyMessage, RunRequest, TaskGroupProperties_Input, ToolKind, Tool_Output } from '@/types/workflowAI';
 import { useFetchTaskRunUntilCreated } from '../../playground/hooks/useFetchTaskRunUntilCreated';
 import { PlaygroundModels } from '../../playground/hooks/utils';
+import { removeInputEntriesNotMatchingSchemaAndKeepMessages } from '../utils';
 import { useProxyStreamedChunks } from './useProxyStreamedChunks';
 
 type Props = {
@@ -35,6 +37,7 @@ type Props = {
   outputModels: PlaygroundModels;
   temperature: number | undefined;
   input: GeneralizedTaskInput | undefined;
+  setScheduledPlaygroundStateMessage: (message: string | undefined) => void;
 };
 
 export function useProxyPerformRuns(props: Props) {
@@ -57,6 +60,7 @@ export function useProxyPerformRuns(props: Props) {
     outputModels,
     temperature,
     input,
+    setScheduledPlaygroundStateMessage,
   } = props;
 
   const schemaIdRef = useRef<TaskSchemaID>(schemaId);
@@ -101,6 +105,12 @@ export function useProxyPerformRuns(props: Props) {
     areThereChangesInInputSchemaRef.current = areThereChangesInInputSchema;
   }, [areThereChangesInInputSchema]);
 
+  const extractedInputSchemaRef = useRef<JsonSchema | undefined>(extractedInputSchema);
+  extractedInputSchemaRef.current = extractedInputSchema;
+  useEffect(() => {
+    extractedInputSchemaRef.current = extractedInputSchema;
+  }, [extractedInputSchema]);
+
   const { streamedChunks, setStreamedChunk } = useProxyStreamedChunks(taskRunId1, taskRunId2, taskRunId3);
   const [inProgressIndexes, setInProgressIndexes] = useState<number[]>([]);
   const [errorsForModels, { set: setModelError, remove: removeModelError }] = useMap<string, Error>(
@@ -138,7 +148,7 @@ export function useProxyPerformRuns(props: Props) {
     }
 
     const updatedTask = await updateTaskSchema(tenant, taskId, {
-      input_schema: extractedInputSchema as Record<string, unknown>,
+      input_schema: extractedInputSchemaRef.current as Record<string, unknown>,
       output_schema: outputSchema as Record<string, unknown>,
     });
 
@@ -154,7 +164,7 @@ export function useProxyPerformRuns(props: Props) {
     setSchemaId(newSchema);
 
     return newSchema;
-  }, [extractedInputSchema, outputSchema, updateTaskSchema, tenant, taskId, setSchemaId, fetchTaskSchema, fetchModels]);
+  }, [outputSchema, updateTaskSchema, tenant, taskId, setSchemaId, fetchTaskSchema, fetchModels]);
 
   const abortControllerRun0 = useRef<AbortController | null>(null);
   const abortControllerRun1 = useRef<AbortController | null>(null);
@@ -227,8 +237,13 @@ export function useProxyPerformRuns(props: Props) {
         //const useCache = !!temperatureRef.current && temperatureRef.current === 0 ? 'never' : undefined;
         const useCache = 'never';
 
+        const cleanedInput = removeInputEntriesNotMatchingSchemaAndKeepMessages(
+          inputRef.current as Record<string, unknown>,
+          extractedInputSchemaRef.current
+        );
+
         const request: RunRequest = {
-          task_input: inputRef.current as Record<string, unknown>,
+          task_input: cleanedInput,
           version: versionId,
           use_cache: useCache,
         };
@@ -314,6 +329,8 @@ export function useProxyPerformRuns(props: Props) {
     abortControllerRun2.current?.abort();
   }, []);
 
+  const { getScheduledPlaygroundStateMessageToSendAfterRuns } = usePlaygroundChatStore();
+
   const performRuns = useCallback(
     async (indexes?: number[]) => {
       const indexesToRun = indexes ?? defaultIndexes;
@@ -336,6 +353,11 @@ export function useProxyPerformRuns(props: Props) {
       if (newSchema) {
         changeURLSchemaId(newSchema, true);
       }
+
+      const message = getScheduledPlaygroundStateMessageToSendAfterRuns();
+      if (message) {
+        setScheduledPlaygroundStateMessage(message);
+      }
     },
     [
       setTaskRunId,
@@ -349,6 +371,8 @@ export function useProxyPerformRuns(props: Props) {
       fetchModels,
       tenant,
       taskId,
+      getScheduledPlaygroundStateMessageToSendAfterRuns,
+      setScheduledPlaygroundStateMessage,
     ]
   );
 

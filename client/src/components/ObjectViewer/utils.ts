@@ -10,6 +10,7 @@ export interface ValueViewerProps<T, S extends JsonValueSchema = JsonValueSchema
   className?: string;
   editable?: boolean;
   onEdit?(keyPath: string, newVal: T, triggerSave?: boolean): void;
+  onTypeChange?(keyPath: string, newType: string): void;
   schema?: S;
   defs: JsonSchemaDefinitions | undefined;
   keyPath: string;

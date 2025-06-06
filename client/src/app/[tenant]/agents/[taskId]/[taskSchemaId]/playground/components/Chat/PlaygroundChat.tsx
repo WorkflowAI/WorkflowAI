@@ -22,6 +22,7 @@ type Props = {
   playgroundState: PlaygroundState;
   onShowEditSchemaModal: (message?: string) => void;
   improveInstructions: (text: string, runId: string | undefined) => Promise<void>;
+  improveVersionMessages?: (improvementInstructions: string) => Promise<void>;
   changeModels: (
     columnsAndModels: {
       column: number;
@@ -32,6 +33,7 @@ type Props = {
   onCancelChatToolCallOnPlayground: () => void;
   scrollToInput: () => void;
   scrollToOutput: () => void;
+  isProxy?: boolean;
 };
 
 export function PlaygroundChat(props: Props) {
@@ -42,11 +44,13 @@ export function PlaygroundChat(props: Props) {
     playgroundState,
     onShowEditSchemaModal,
     improveInstructions,
+    improveVersionMessages,
     changeModels,
     generateNewInput,
     onCancelChatToolCallOnPlayground,
     scrollToInput,
     scrollToOutput,
+    isProxy = false,
   } = props;
 
   const [open, setOpen] = useLocalStorage('playground-chat-open', true);
@@ -106,6 +110,7 @@ export function PlaygroundChat(props: Props) {
     inProgressToolCallIds,
     onEditSchema,
     onImproveInstructions,
+    onImproveVersionMessages,
     onChangeModels,
     onGenerateNewInput,
     onIgnoreToolCall,
@@ -120,10 +125,12 @@ export function PlaygroundChat(props: Props) {
     playgroundState,
     onShowEditSchemaModal,
     improveInstructions,
+    improveVersionMessages,
     changeModels,
     generateNewInput,
     onCancelChatToolCallOnPlayground,
     isAutoRunOn: true,
+    isProxy,
   });
 
   const convertedMessages: ConversationMessage[] = useMemo(() => {
@@ -156,6 +163,24 @@ export function PlaygroundChat(props: Props) {
                   isArchived={isIgnored}
                   wasUsed={wasUsed}
                   onAction={() => onImproveInstructions(toolCall)}
+                  onIgnore={() => onIgnoreToolCall(toolCall.tool_call_id)}
+                  onInactiveAction={scrollToInput}
+                />
+              );
+            }
+            break;
+          case ToolCallName.IMPROVE_VERSION_MESSAGES:
+            if ('improvement_instructions' in toolCall) {
+              component = (
+                <UniversalToolCallMessage
+                  title='Improve Prompt?'
+                  titleInProgress='Improving prompt...'
+                  titleArchived='Prompt was not improved'
+                  titleUsed='Prompt was improved'
+                  isInProgress={isInProgress}
+                  isArchived={isIgnored}
+                  wasUsed={wasUsed}
+                  onAction={() => onImproveVersionMessages(toolCall)}
                   onIgnore={() => onIgnoreToolCall(toolCall.tool_call_id)}
                   onInactiveAction={scrollToInput}
                 />
@@ -233,6 +258,7 @@ export function PlaygroundChat(props: Props) {
     isLoading,
     onEditSchema,
     onImproveInstructions,
+    onImproveVersionMessages,
     inProgressToolCallIds,
     onChangeModels,
     onGenerateNewInput,
