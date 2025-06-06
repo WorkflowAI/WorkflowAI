@@ -1,21 +1,13 @@
-"""
-World-Class Integration Tests: Real API Code Execution
-
-These tests actually execute the generated Python code with REAL API calls.
-This is the ultimate validation of our templating system.
-
-If the code runs successfully and produces real responses, our templates are perfect!
-"""
-
+import hashlib
 import logging
 import os
 import re
 import subprocess
 import sys
 import tempfile
+from pathlib import Path
 from typing import Any, Dict, NamedTuple, Optional
 
-import httpx
 import pytest
 
 from core.domain.integration.integration_domain import (
@@ -31,7 +23,50 @@ from core.tools import ToolKind
 _logger = logging.getLogger(__name__)
 
 WORKFLOWAI_API_URL = "http://localhost:8000/v1"
-WORKFLOWAI_API_KEY = ""
+WORKFLOWAI_API_KEY = "wai-ptk8CbSJoJNpJHpEXbrporXlNdYcS1voQF1QXhent2I"
+
+# To store generated code for debugging
+DEBUG_DIR = Path("debug_generated_code")
+DEBUG_DIR.mkdir(exist_ok=True)
+
+
+def save_extracted_code(save_to_filename: str, code: str, file_ext: str) -> str:
+    """
+    Save extracted code (Python, TypeScript, etc.) to a file for debugging
+
+    Args:
+        save_to_filename: Name of the test
+        code: The extracted code content
+        file_ext: File extension (py, ts, sh, etc.)
+
+    Returns:
+        Path to the saved file
+    """
+    # Generate content hash
+    content_hash = hashlib.md5(code.encode()).hexdigest()[:8]
+
+    # Clean names for filesystem
+    clean_test_name = re.sub(r"[^\w\-_]", "_", save_to_filename)
+
+    # Create filename with "extracted" prefix
+    filename = f"{clean_test_name}_{content_hash}.{file_ext}"
+    filepath = DEBUG_DIR / filename
+
+    # Save the file
+    with open(filepath, "w", encoding="utf-8") as f:
+        f.write(code)
+
+    _logger.info("💾 Saved extracted code to: %s", filepath)
+    return str(filepath)
+
+
+def get_file_extension(integration_kind: IntegrationKind) -> str:
+    """Get appropriate file extension for integration type"""
+    if integration_kind == IntegrationKind.CURL:
+        return "sh"
+    if integration_kind == IntegrationKind.OPENAI_SDK_TS:
+        return "ts"
+    return "py"
 
 
 def extract_python_code(generated_code: str) -> str:
@@ -42,17 +77,160 @@ def extract_python_code(generated_code: str) -> str:
     raise ValueError("No Python code block found in generated code")
 
 
-async def check_server_health() -> bool:
-    """Check if WorkflowAI server is running"""
-    base_url = os.environ.get("WORKFLOWAI_API_URL", "https://run.workflowai.com/v1")
-    health_url = base_url.replace("/v1", "/health")
+def run_generated_code(
+    generated_code: str,
+    save_to_filename: str | None = None,
+) -> Dict[str, Any]:
+    """
+    Unified function to extract, optionally save, and run generated code
+
+    Automatically detects language from markdown code blocks and handles:
+    - Python: extraction, saving, and execution
+    - Bash/Shell/Curl: extraction, saving, and execution
+    - TypeScript/JavaScript: extraction and saving (no execution yet)
+
+    Usage Examples:
+        # Extract and run Python code with saving
+        result = run_generated_code(code, save_to="enabled", test_name="openai_python_test")
+        if result["execution_result"]["success"]:
+            print(result["execution_result"]["stdout"])
+
+        # Extract and run bash/curl command
+        result = run_generated_code(curl_code, test_name="curl_test")
+        if result["execution_result"]["success"]:
+            print(result["execution_result"]["stdout"])
+
+        # Extract TypeScript code with saving
+        result = run_generated_code(ts_code, save_to="enabled", test_name="openai_ts_test")
+        typescript_code = result["extracted_code"]
+
+    Args:
+        generated_code: The full generated code with markdown blocks
+        save_to: Optional path info for saving - if provided, extracted code will be saved
+        test_name: Name for the test (used in file naming and integration name if saving)
+
+    Returns:
+        Dict containing:
+        - language: detected language ("python", "typescript", "bash", etc.)
+        - extracted_code: the extracted code content
+        - execution_result: execution results (for Python and bash/shell, None for others)
+        - saved_file: path to saved file if save_to was provided, None otherwise
+    """
+    result: Dict[str, Any] = {
+        "language": None,
+        "extracted_code": None,
+        "execution_result": None,
+        "saved_file": None,
+    }
+
+    # Language detection patterns - order matters for specificity
+    language_patterns = [
+        (r"```python\n(.*?)\n```", "python", "py"),
+        (r"```typescript\n(.*?)\n```", "typescript", "ts"),
+        (r"```javascript\n(.*?)\n```", "javascript", "js"),
+        (r"```bash\n(.*?)\n```", "bash", "sh"),
+        (r"```shell\n(.*?)\n```", "shell", "sh"),
+        (r"```sh\n(.*?)\n```", "sh", "sh"),
+    ]
+
+    # Try to detect and extract code
+    for pattern, language, file_ext in language_patterns:
+        match = re.search(pattern, generated_code, re.DOTALL)
+        if match:
+            result["language"] = language
+            result["extracted_code"] = match.group(1)
+
+            # Save extracted code if requested
+            if save_to_filename:
+                saved_path = save_extracted_code(
+                    save_to_filename,
+                    result["extracted_code"],
+                    file_ext,
+                )
+                result["saved_file"] = saved_path
+
+            # Execute code based on language
+            if language == "python":
+                result["execution_result"] = execute_python_code(result["extracted_code"])
+            elif language in ["bash", "shell", "sh"]:
+                result["execution_result"] = execute_bash_code(result["extracted_code"])
+            else:
+                _logger.info("🔄 Code extraction successful for %s, but execution not supported yet", language)
+
+            return result
+
+    # If no code block found, raise error
+    raise ValueError(
+        f"No supported code block found in generated code. Supported: {[lang for _, lang, _ in language_patterns]}",
+    )
+
+
+def execute_bash_code(code: str, env_vars: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
+    """
+    Execute bash/shell code in a controlled environment and capture results
+
+    Returns:
+        Dict containing execution results, any exceptions, and captured output
+    """
+    if env_vars is None:
+        env_vars = {}
+
+    # Set up environment
+    env = os.environ.copy()
+    env.update(env_vars)
+    env.update(
+        {
+            "WORKFLOWAI_API_URL": WORKFLOWAI_API_URL,
+            "WORKFLOWAI_API_KEY": WORKFLOWAI_API_KEY,
+        },
+    )
+
+    # Create a temporary file with the bash script
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".sh", delete=False) as f:
+        # Add shebang for proper execution
+        f.write("#!/bin/bash\nset -e\n")
+        f.write(code)
+        temp_file = f.name
 
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            response = await client.get(health_url, follow_redirects=True)
-            return response.status_code == 200
-    except Exception:
-        return False
+        # Make the script executable
+        os.chmod(temp_file, 0o755)
+
+        # Execute the bash script
+        result = subprocess.run(
+            ["/bin/bash", temp_file],
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=30,  # 30 second timeout
+        )
+
+        return {
+            "success": result.returncode == 0 and "error" not in result.stdout,
+            "stdout": result.stdout,
+            "stderr": result.stderr,
+            "returncode": result.returncode,
+        }
+    except subprocess.TimeoutExpired:
+        return {
+            "success": False,
+            "stdout": "",
+            "stderr": "Execution timed out after 30 seconds",
+            "returncode": -1,
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "stdout": "",
+            "stderr": f"Execution failed: {str(e)}",
+            "returncode": -1,
+        }
+    finally:
+        # Clean up temporary file
+        try:
+            os.unlink(temp_file)
+        except Exception:
+            pass
 
 
 def execute_python_code(code: str, env_vars: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
@@ -183,7 +361,7 @@ def weather_info_schema():
 @pytest.fixture
 def template_service():
     """Template service using environment-based configuration"""
-    base_url = os.environ.get("WORKFLOWAI_API_URL", "https://run.workflowai.com/v1")
+    base_url = WORKFLOWAI_API_URL
     return IntegrationTemplateService(base_url=base_url)
 
 
@@ -358,6 +536,14 @@ class Scenario(NamedTuple):
 class TestRealCodeExecution:
     """World-class tests that execute generated Python code with REAL API calls"""
 
+    RUNNABLE_INTEGRATIONS = [
+        IntegrationKind.OPENAI_SDK_PYTHON,
+        IntegrationKind.LANGCHAIN_PYTHON,
+        IntegrationKind.LITELLM_PYTHON,
+        IntegrationKind.INSTRUCTOR_PYTHON,
+        IntegrationKind.CURL,
+    ]
+
     # Define integration test parameters
     # Basic integrations that work without structured output
     BASIC_INTEGRATIONS = [
@@ -370,16 +556,15 @@ class TestRealCodeExecution:
         (
             IntegrationKind.OPENAI_SDK_PYTHON,
             "OpenAI SDK",
-            "Create a sample user with name John Doe, age 30, email john@example.com, status active",
+            "Create a sample user with {{user_text}}",
         ),
         (
             IntegrationKind.INSTRUCTOR_PYTHON,
             "Instructor",
-            "Extract: Jane Smith, 25 years old, jane@test.com, active user",
+            "Extract: {{user_text}}",
         ),
-        (IntegrationKind.DSPY_PYTHON, "DSPy", "Process user data: {{user_text}}"),
-        (IntegrationKind.LANGCHAIN_PYTHON, "LangChain", "Create user data: Bob Wilson, 35, bob@example.com, active"),
-        (IntegrationKind.LITELLM_PYTHON, "LiteLLM", "Generate: Alice Brown, 28, alice@test.com, active"),
+        (IntegrationKind.LANGCHAIN_PYTHON, "LangChain", "Create user data: {{user_text}}"),
+        (IntegrationKind.LITELLM_PYTHON, "LiteLLM", "Generate: {{user_text}}"),
     ]
 
     # Curl test scenarios based on documentation examples
@@ -464,47 +649,142 @@ class TestRealCodeExecution:
         ),
     ]
 
-    @pytest.mark.skip("Skipping real code execution tests")
-    @pytest.mark.parametrize("integration_kind,display_name", BASIC_INTEGRATIONS)
+    # @pytest.mark.skip("Skipping real code execution tests")
+    @pytest.mark.parametrize("integration_kind", RUNNABLE_INTEGRATIONS)
     @pytest.mark.asyncio
-    async def test_basic_execution(
+    async def test_raw_text(
         self,
         integration_kind: IntegrationKind,
-        display_name: str,
         template_service: IntegrationTemplateService,
     ):
         """Test basic execution of all integrations with real API calls"""
         integration = get_integration_by_kind(integration_kind)
 
+        if integration.only_support_structured_generation:
+            pytest.skip(f"{integration.display_name} only supports structured generation, skipping test")
+
         # Generate the code
         code = await template_service.generate_code(
             integration=integration,
-            agent_id="code-gen-test-integration-test",
+            agent_id="code-gen-test-raw-text",
             agent_schema_id=1,
-            model_used="gpt-4o-mini",
+            model_used="gemini-2.0-flash-001",
             version_messages=[
                 Message(
                     role="user",
-                    content=[MessageContent(text="Say hello and tell me you are working correctly")],
+                    content=[MessageContent(text="Say hello")],
                 ),
             ],
         )
 
-        # Extract and execute Python code
-        python_code = extract_python_code(code)
-        result = execute_python_code(python_code)
+        # Use unified code runner with optional saving
+        code_result = run_generated_code(
+            code,
+            save_to_filename=f"test_basic_execution_{integration_kind.value}",
+        )
 
         # Verify execution was successful
-        if not result["success"]:
-            _logger.error("STDOUT: %s", result["stdout"])
-            _logger.error("STDERR: %s", result["stderr"])
-            pytest.fail(f"{display_name} execution failed: {result['stderr']}")
+        execution_result = code_result["execution_result"]
+        if not execution_result["success"]:
+            _logger.error("STDOUT: %s", execution_result["stdout"])
+            _logger.error("STDERR: %s", execution_result["stderr"])
+            pytest.fail(f"{integration_kind.value} execution failed: {execution_result['stderr']}")
 
-        # Verify there was output (response from API)
-        assert result["stdout"].strip(), f"No output from {display_name} execution"
-        _logger.info("✅ %s Basic Execution Output: %s...", display_name, result["stdout"][:100])
+        assert "hello" in execution_result["stdout"].lower()
 
-    @pytest.mark.skip("Skipping real code execution tests")
+        # @pytest.mark.skip("Skipping real code execution tests")
+
+    @pytest.mark.parametrize("integration_kind", RUNNABLE_INTEGRATIONS)
+    @pytest.mark.asyncio
+    async def test_raw_text_input_variables(
+        self,
+        integration_kind: IntegrationKind,
+        template_service: IntegrationTemplateService,
+    ):
+        """Test basic execution of all integrations with real API calls"""
+        integration = get_integration_by_kind(integration_kind)
+
+        if integration.only_support_structured_generation:
+            pytest.skip(f"{integration.display_name} only supports structured generation, skipping test")
+
+        # Generate the code
+        code = await template_service.generate_code(
+            integration=integration,
+            agent_id="code-gen-test-raw-text-input-variables",
+            agent_schema_id=1,
+            model_used="gemini-2.0-flash-001",
+            version_messages=[
+                Message(
+                    role="system",
+                    content=[MessageContent(text="Say hello to the user and mention")],
+                ),
+                Message(
+                    role="user",
+                    content=[MessageContent(text="The user name is {{user_name}}")],
+                ),
+            ],
+            is_using_instruction_variables=True,
+            input_variables={"user_name": "Maxime"},
+        )
+
+        # Use unified code runner with optional saving
+        code_result = run_generated_code(
+            code,
+            save_to_filename=f"test_raw_text_input_variables_{integration_kind.value}",
+        )
+
+        # Verify execution was successful
+        execution_result = code_result["execution_result"]
+        if not execution_result["success"]:
+            _logger.error("STDOUT: %s", execution_result["stdout"])
+            _logger.error("STDERR: %s", execution_result["stderr"])
+            pytest.fail(f"{integration_kind.value} execution failed: {execution_result['stderr']}")
+
+        assert "hello" in execution_result["stdout"].lower()
+        assert "maxime" in execution_result["stdout"].lower()
+
+    @pytest.mark.parametrize("integration_kind", RUNNABLE_INTEGRATIONS)
+    @pytest.mark.asyncio
+    async def test_raw_text_input_variables_deployment(
+        self,
+        integration_kind: IntegrationKind,
+        template_service: IntegrationTemplateService,
+    ):
+        """Test basic execution of all integrations with real API calls"""
+        integration = get_integration_by_kind(integration_kind)
+
+        if integration.only_support_structured_generation:
+            pytest.skip(f"{integration.display_name} only supports structured generation, skipping test")
+
+        # Generate the code
+        code = await template_service.generate_code(
+            integration=integration,
+            agent_id="code-gen-test-raw-text-input-variables",
+            agent_schema_id=2,
+            model_used="gemini-2.0-flash-001",
+            version_messages=[],
+            is_using_instruction_variables=True,
+            input_variables={"user_name": "Maxime"},
+            version_deployment_environment="production",
+        )
+
+        # Use unified code runner with optional saving
+        code_result = run_generated_code(
+            code,
+            save_to_filename=f"test_raw_text_input_variables_deployment_{integration_kind.value}",
+        )
+
+        # Verify execution was successful
+        execution_result = code_result["execution_result"]
+        if not execution_result["success"]:
+            _logger.error("STDOUT: %s", execution_result["stdout"])
+            _logger.error("STDERR: %s", execution_result["stderr"])
+            pytest.fail(f"{integration_kind.value} execution failed: {execution_result['stderr']}")
+
+        assert "hello" in execution_result["stdout"].lower()
+        assert "maxime" in execution_result["stdout"].lower()
+
+    # @pytest.mark.skip("Skipping real code execution tests")
     @pytest.mark.parametrize("integration_kind,display_name,test_message", STRUCTURED_INTEGRATIONS)
     @pytest.mark.asyncio
     async def test_structured_output_execution(
@@ -519,14 +799,107 @@ class TestRealCodeExecution:
         integration = get_integration_by_kind(integration_kind)
         input_schema, output_schema = user_info_extraction_schemas
 
-        # DSPy uses input variables, others don't for this test
-        use_input_vars = integration_kind == IntegrationKind.DSPY_PYTHON
+        code = await template_service.generate_code(
+            integration=integration,
+            agent_id="code-gen-test-structured-test",
+            agent_schema_id=1,
+            model_used="gemini-2.0-flash-001",
+            version_messages=[
+                Message(
+                    role="user",
+                    content=[MessageContent(text=test_message)],
+                ),
+            ],
+            is_using_instruction_variables=True,
+            input_schema=input_schema,
+            is_using_structured_generation=True,
+            output_schema=output_schema,
+        )
+
+        result = run_generated_code(
+            code,
+            save_to_filename=f"test_structured_output_execution_{display_name}",
+        )
+
+        assert result["execution_result"]["success"], {result["execution_result"]["stderr"]}
+
+        output = result["execution_result"]["stdout"]
+        assert output.strip(), f"No output from {display_name} structured execution"
+        _logger.info("✅ %s Structured Output: %s...", display_name, output[:100])
+
+        # @pytest.mark.skip("Skipping real code execution tests")
+
+    @pytest.mark.parametrize("integration_kind", RUNNABLE_INTEGRATIONS)
+    @pytest.mark.asyncio
+    async def test_structured_output_execution_with_input_variables(
+        self,
+        integration_kind: IntegrationKind,
+        template_service: IntegrationTemplateService,
+        user_info_extraction_schemas: tuple[Dict[str, Any], Dict[str, Any]],
+    ):
+        """Test structured output execution of all integrations with real API calls"""
+        integration = get_integration_by_kind(integration_kind)
+        input_schema, output_schema = user_info_extraction_schemas
+
+        use_input_vars = True
 
         code = await template_service.generate_code(
             integration=integration,
-            agent_id=f"code-gen-test-{display_name.lower()}-structured-test",
+            agent_id="code-gen-struct-gen-input-vars",
             agent_schema_id=1,
-            model_used="gpt-4o-mini",
+            model_used="gemini-2.0-flash-001",
+            version_messages=[
+                Message(
+                    role="system",
+                    content=[MessageContent(text="You goal is to extract user information from a message")],
+                ),
+                Message(
+                    role="user",
+                    content=[MessageContent(text="The message is {{message}}")],
+                ),
+            ],
+            is_using_instruction_variables=use_input_vars,
+            input_schema=input_schema if use_input_vars else None,
+            is_using_structured_generation=True,
+            output_schema=output_schema,
+            input_variables={"message": "Hello ! I'm Tom, I'm 26, my email is tom@gmail.com"},
+        )
+
+        result = run_generated_code(
+            code,
+            save_to_filename=f"code-gen-struct-gen-input-vars_{integration_kind.value}",
+        )
+
+        assert result["execution_result"]["success"], {result["execution_result"]["stderr"]}
+
+        output = result["execution_result"]["stdout"]
+
+        assert "tom" in output.lower()
+        assert "26" in output.lower()
+        assert "tom@gmail.com" in output.lower()
+
+    # @pytest.mark.skip("Skipping real code execution tests")
+    @pytest.mark.parametrize("integration_kind,display_name,test_message", STRUCTURED_INTEGRATIONS)
+    @pytest.mark.asyncio
+    async def test_structured_output_execution_with_deployment(
+        self,
+        integration_kind: IntegrationKind,
+        display_name: str,
+        test_message: str,
+        template_service: IntegrationTemplateService,
+        user_info_extraction_schemas: tuple[Dict[str, Any], Dict[str, Any]],
+    ):
+        """Test structured output execution of all integrations with real API calls"""
+        integration = get_integration_by_kind(integration_kind)
+        input_schema, output_schema = user_info_extraction_schemas
+
+        use_input_vars = True
+
+        code = await template_service.generate_code(
+            integration=integration,
+            agent_id="code-gen-test-structured-test",
+            agent_schema_id=1,
+            model_used="gemini-2.0-flash-001",
             version_messages=[
                 Message(
                     role="user",
@@ -537,21 +910,20 @@ class TestRealCodeExecution:
             input_schema=input_schema if use_input_vars else None,
             is_using_structured_generation=True,
             output_schema=output_schema,
+            version_deployment_environment="production",
         )
 
-        python_code = extract_python_code(code)
-        result = execute_python_code(python_code)
+        result = run_generated_code(
+            code,
+            save_to_filename=f"test_structured_output_execution_with_deployment_{display_name}",
+        )
 
-        if not result["success"]:
-            _logger.error("STDOUT: %s", result["stdout"])
-            _logger.error("STDERR: %s", result["stderr"])
-            pytest.fail(f"{display_name} structured execution failed: {result['stderr']}")
+        assert result["execution_result"]["success"], {result["execution_result"]["stderr"]}
 
-        output = result["stdout"]
+        output = result["execution_result"]["stdout"]
         assert output.strip(), f"No output from {display_name} structured execution"
         _logger.info("✅ %s Structured Output: %s...", display_name, output[:100])
 
-    @pytest.mark.skip("Skipping real code execution tests")
     @pytest.mark.asyncio
     async def test_all_integrations_syntax_validation(
         self,
@@ -574,7 +946,7 @@ class TestRealCodeExecution:
                 integration=integration,
                 agent_id="code-gen-test-syntax-test",
                 agent_schema_id=1,
-                model_used="gpt-4o-mini",
+                model_used="gemini-2.0-flash-001",
                 version_messages=[
                     Message(
                         role="user",
@@ -596,7 +968,6 @@ class TestRealCodeExecution:
             except SyntaxError as e:
                 pytest.fail(f"Generated {integration.display_name} code has syntax error: {e}\n\nCode:\n{python_code}")
 
-    @pytest.mark.skip("Skipping real code execution tests")
     @pytest.mark.asyncio
     async def test_environment_variable_configuration(
         self,
@@ -609,7 +980,7 @@ class TestRealCodeExecution:
             integration=integration,
             agent_id="code-gen-test-env-test",
             agent_schema_id=1,
-            model_used="gpt-4o-mini",
+            model_used="gemini-2.0-flash-001",
             version_messages=[
                 Message(
                     role="user",
@@ -630,7 +1001,6 @@ class TestRealCodeExecution:
 
         _logger.info("✅ Environment variables correctly configured in generated code")
 
-    @pytest.mark.skip("Skipping real code execution tests")
     @pytest.mark.asyncio
     async def test_deployment_environment_configuration(
         self,
@@ -645,7 +1015,7 @@ class TestRealCodeExecution:
             integration=integration,
             agent_id="code-gen-test-deployment-test",
             agent_schema_id=5,
-            model_used="gpt-4o-mini",
+            model_used="gemini-2.0-flash-001",
             version_messages=[
                 Message(
                     role="user",
@@ -665,7 +1035,6 @@ class TestRealCodeExecution:
         assert "code-gen-test-deployment-test/#5/production" in python_code
         _logger.info("✅ Deployment environment correctly configured")
 
-    @pytest.mark.skip("Skipping real code execution tests")
     @pytest.mark.asyncio
     async def test_input_variables_configuration(
         self,
@@ -680,7 +1049,7 @@ class TestRealCodeExecution:
             integration=integration,
             agent_id="code-gen-test-variables-test",
             agent_schema_id=1,
-            model_used="gpt-4o-mini",
+            model_used="gemini-2.0-flash-001",
             version_messages=[
                 Message(
                     role="user",
@@ -710,7 +1079,7 @@ class TestRealCodeExecution:
             return bash_match.group(1)
         raise ValueError("No bash code block found in generated code")
 
-    @pytest.mark.skip("Skipping real code execution tests")
+    # @pytest.mark.skip("Skipping real code execution tests")
     @pytest.mark.parametrize(
         "scenario,model,messages,use_input_vars,use_structured,deployment_env",
         CURL_SCENARIOS,
@@ -755,13 +1124,16 @@ class TestRealCodeExecution:
             output_schema=output_schema if use_structured else None,
         )
 
-        curl_command = self.extract_curl_command(code)
+        # Use unified code runner for curl (bash/shell) extraction and saving
+        code_result = run_generated_code(
+            code,
+            save_to_filename=f"test_curl_generation_{scenario}_curl",
+        )
 
-        # Validate curl command structure
-        assert "curl -X POST" in curl_command
-        assert "https://run.workflowai.com/v1/chat/completions" in curl_command
-        assert "Authorization: Bearer $WORKFLOWAI_API_KEY" in curl_command
-        assert "Content-Type: application/json" in curl_command
+        assert code_result["execution_result"]["success"], code_result["execution_result"]["stdout"]
+
+        curl_command = code_result["extracted_code"]
+        _logger.info("🔧 Extracted %s code from generated content", code_result["language"])
 
         # Scenario-specific validations
         if scenario == "basic":
@@ -780,7 +1152,7 @@ class TestRealCodeExecution:
             assert '"model": "code-gen-test-sentiment-analyzer/gemini-2.0-flash-001"' in curl_command
             assert '"input":' in curl_command
             # Test actual schema fields that get generated
-            assert '"user_text":' in curl_command or '"extract_email":' in curl_command
+            assert "user_text" in curl_command
 
         elif scenario == "structured_output":
             assert '"response_format":' in curl_command
@@ -792,7 +1164,7 @@ class TestRealCodeExecution:
             assert '"model": "code-gen-test-sentiment-analyzer/#3/production"' in curl_command
             assert '"messages": []' in curl_command
 
-    @pytest.mark.skip("Skipping real code execution tests")
+    # @pytest.mark.skip("Skipping real code execution tests")
     @pytest.mark.asyncio
     async def test_curl_syntax_validation(
         self,
@@ -835,7 +1207,7 @@ class TestRealCodeExecution:
             assert "-H" in curl_command
             assert "-d" in curl_command
 
-    @pytest.mark.skip("Skipping real code execution tests")
+    # @pytest.mark.skip("Skipping real code execution tests")
     @pytest.mark.asyncio
     async def test_curl_documentation_compatibility(
         self,
@@ -869,7 +1241,6 @@ class TestRealCodeExecution:
 
         # Verify it matches the documentation pattern
         expected_elements = [
-            "curl -X POST https://run.workflowai.com/v1/chat/completions",
             '"Authorization: Bearer $WORKFLOWAI_API_KEY"',
             '"Content-Type: application/json"',
             '"model": "code-gen-test-sentiment-analyzer/gemini-2.0-flash-001"',
@@ -881,7 +1252,7 @@ class TestRealCodeExecution:
         for element in expected_elements:
             assert element in curl_command, f"Missing expected element: {element}"
 
-    @pytest.mark.skip("Skipping real code execution tests")
+    # @pytest.mark.skip("Skipping real code execution tests")
     @pytest.mark.asyncio
     async def test_curl_environment_variables(
         self,
@@ -920,29 +1291,30 @@ class TestRealCodeExecution:
     TOOLS_WITH_STRUCTURED_OUTPUT_INTEGRATIONS = [
         (IntegrationKind.INSTRUCTOR_PYTHON, "Instructor Python"),
         (IntegrationKind.OPENAI_SDK_PYTHON, "OpenAI SDK Python"),
-        (IntegrationKind.DSPY_PYTHON, "DSPy Python"),
         (IntegrationKind.LANGCHAIN_PYTHON, "LangChain Python"),
         (IntegrationKind.LITELLM_PYTHON, "LiteLLM Python"),
     ]
 
     @pytest.mark.skip("Skipping real code execution tests")
-    @pytest.mark.parametrize("integration_kind,display_name", TOOLS_INTEGRATIONS)
+    @pytest.mark.parametrize("integration_kind", RUNNABLE_INTEGRATIONS)
     @pytest.mark.asyncio
     async def test_tools_execution(
         self,
         integration_kind: IntegrationKind,
-        display_name: str,
         template_service: IntegrationTemplateService,
         sample_tools_list: list[Tool | ToolKind],
     ):
         """Test actual execution of integrations with tools - should call tools when appropriate"""
         integration = get_integration_by_kind(integration_kind)
 
+        if integration.only_support_structured_generation:
+            pytest.skip("Skipping tools execution for integrations that only support structured output")
+
         code = await template_service.generate_code(
             integration=integration,
             agent_id="code-gen-test-weather-agent",
             agent_schema_id=1,
-            model_used="gpt-4o-mini",
+            model_used="gemini-2.0-flash-001",
             version_messages=[
                 Message(
                     role="user",
@@ -956,30 +1328,15 @@ class TestRealCodeExecution:
             enabled_tools=sample_tools_list,
         )
 
-        python_code = extract_python_code(code)
-        result = execute_python_code(python_code)
+        result = run_generated_code(
+            code,
+            save_to_filename=f"test_tools_execution_{integration_kind.value}",
+        )
 
-        # Verify execution was successful
-        if not result["success"]:
-            _logger.error("STDOUT: %s", result["stdout"])
-            _logger.error("STDERR: %s", result["stderr"])
-            pytest.fail(f"{display_name} tools execution failed: {result['stderr']}")
+        assert result["execution_result"]["success"], {result["execution_result"]["stderr"]}
+        assert "get_weather" in result["execution_result"]["stdout"]
 
-        # Verify there was output (response from API)
-        assert result["stdout"].strip(), f"No output from {display_name} tools execution"
-
-        # Check if tools were called (should appear in output based on our templates)
-        output = result["stdout"]
-
-        # Log the full output for inspection
-        _logger.info("✅ %s Tools Execution Output: %s", display_name, output)
-
-        # The templates include tool call handling, so we should see either:
-        # 1. Tool calls being detected and logged
-        # 2. Regular response content if no tools were called
-        # This is a success as long as the code executed without errors
-
-    @pytest.mark.skip("Skipping real code execution tests")
+    # @pytest.mark.skip("Skipping real code execution tests")
     @pytest.mark.asyncio
     async def test_tools_syntax_validation(
         self,
@@ -1006,7 +1363,7 @@ class TestRealCodeExecution:
                 integration=integration,
                 agent_id="code-gen-test-syntax-test",
                 agent_schema_id=1,
-                model_used="gpt-4o-mini",
+                model_used="gemini-2.0-flash-001",
                 version_messages=[
                     Message(
                         role="user",
@@ -1033,7 +1390,7 @@ class TestRealCodeExecution:
             else:
                 _logger.info("⚠️  %s does not support tools - skipping tool content check", integration.display_name)
 
-    @pytest.mark.skip("Skipping real code execution tests")
+    # @pytest.mark.skip("Skipping real code execution tests")
     @pytest.mark.asyncio
     async def test_curl_tools_format(
         self,
@@ -1047,7 +1404,7 @@ class TestRealCodeExecution:
             integration=integration,
             agent_id="code-gen-test-weather-agent",
             agent_schema_id=1,
-            model_used="gpt-4o-mini",
+            model_used="gemini-2.0-flash-001",
             version_messages=[
                 Message(
                     role="user",
@@ -1061,7 +1418,6 @@ class TestRealCodeExecution:
 
         # Validate curl command structure
         assert "curl -X POST" in curl_command
-        assert "https://run.workflowai.com/v1/chat/completions" in curl_command
         assert '"tools":' in curl_command
         assert '"get_weather"' in curl_command
         assert "Get the current weather for a given location" in curl_command
@@ -1073,7 +1429,7 @@ class TestRealCodeExecution:
 
         _logger.info("✅ curl with tools: Format valid")
 
-    @pytest.mark.skip("Skipping real code execution tests")
+    # @pytest.mark.skip("Skipping real code execution tests")
     @pytest.mark.parametrize("integration_kind,display_name", TOOLS_WITH_STRUCTURED_OUTPUT_INTEGRATIONS)
     @pytest.mark.asyncio
     async def test_tools_with_structured_output_execution(
@@ -1098,7 +1454,7 @@ class TestRealCodeExecution:
             integration=integration,
             agent_id=f"code-gen-test-{display_name.lower().replace(' ', '-')}-weather-user-agent",
             agent_schema_id=1,
-            model_used="gpt-4o-mini",
+            model_used="gemini-2.0-flash-001",
             version_messages=[
                 Message(
                     role="user",
@@ -1112,21 +1468,25 @@ class TestRealCodeExecution:
             enabled_tools=sample_tools_list,
         )
 
-        python_code = extract_python_code(code)
-        result = execute_python_code(python_code)
+        result = run_generated_code(
+            code,
+            save_to_filename=f"test_tools_with_structured_output_execution_{display_name}",
+        )
 
-        # Verify execution was successful
-        if not result["success"]:
-            _logger.error("STDOUT: %s", result["stdout"])
-            _logger.error("STDERR: %s", result["stderr"])
-            pytest.fail(f"{display_name} Tools + Structured Output execution failed: {result['stderr']}")
+        assert result["execution_result"]["success"], {result["execution_result"]["stderr"]}
 
         # Verify there was output
-        assert result["stdout"].strip(), f"No output from {display_name} Tools + Structured Output execution"
+        assert result["execution_result"]["stdout"].strip(), (
+            f"No output from {display_name} Tools + Structured Output execution"
+        )
 
-        _logger.info("✅ %s Tools + Structured Output Execution Output: %s", display_name, result["stdout"])
+        _logger.info(
+            "✅ %s Tools + Structured Output Execution Output: %s",
+            display_name,
+            result["execution_result"]["stdout"],
+        )
 
-    @pytest.mark.skip("Skipping real code execution tests")
+    # @pytest.mark.skip("Skipping real code execution tests")
     @pytest.mark.asyncio
     async def test_nested_schema_execution(
         self,
@@ -1143,7 +1503,7 @@ class TestRealCodeExecution:
             integration=integration,
             agent_id="code-gen-test-nested-schema-test",
             agent_schema_id=1,
-            model_used="gpt-4o-mini",
+            model_used="gemini-2.0-flash-001",
             version_messages=[
                 Message(
                     role="user",
@@ -1156,33 +1516,30 @@ class TestRealCodeExecution:
             output_schema=output_schema,
         )
 
-        python_code = extract_python_code(code)
+        result = run_generated_code(
+            code,
+            save_to_filename="test_nested_schema_execution",
+        )
 
-        # Verify that the code contains proper nested class definitions
-        assert "class ExtractedData(BaseModel):" in python_code
-
-        # Check for nested class handling - should have proper typing for nested objects
-        # The enhanced parser should generate proper nested classes or at least proper type hints
-        assert "person:" in python_code
-        assert "company:" in python_code
-        assert "metadata:" in python_code
+        assert "person:" in code
+        assert "company:" in code
+        assert "metadata:" in code
 
         # Verify the code has proper imports for complex types
-        assert "from pydantic import" in python_code and "BaseModel" in python_code
+        assert "from pydantic import" in code and "BaseModel" in code
 
-        # Test execution
-        result = execute_python_code(python_code)
+        result = run_generated_code(
+            code,
+            save_to_filename="test_nested_schema_execution",
+        )
 
-        if not result["success"]:
-            _logger.error("STDOUT: %s", result["stdout"])
-            _logger.error("STDERR: %s", result["stderr"])
-            pytest.fail(f"Nested schema execution failed: {result['stderr']}")
+        assert result["execution_result"]["success"], {result["execution_result"]["stderr"]}
 
-        output = result["stdout"]
+        output = result["execution_result"]["stdout"]
         assert output.strip(), "No output from nested schema execution"
         _logger.info("✅ Nested Schema Execution Output: %s...", output[:200])
 
-    @pytest.mark.skip("Skipping real code execution tests")
+    # @pytest.mark.skip("Skipping real code execution tests")
     @pytest.mark.asyncio
     async def test_nested_schema_syntax_validation(
         self,
@@ -1207,7 +1564,7 @@ class TestRealCodeExecution:
                 integration=integration,
                 agent_id="code-gen-test-nested-syntax-test",
                 agent_schema_id=1,
-                model_used="gpt-4o-mini",
+                model_used="gemini-2.0-flash-001",
                 version_messages=[
                     Message(
                         role="user",
@@ -1231,7 +1588,7 @@ class TestRealCodeExecution:
                     f"Generated {integration.display_name} code with nested schema has syntax error: {e}\n\nCode:\n{python_code}",
                 )
 
-    @pytest.mark.skip("Skipping real code execution tests")
+    # @pytest.mark.skip("Skipping real code execution tests")
     @pytest.mark.asyncio
     async def test_typescript_nested_schema_generation(
         self,
@@ -1247,7 +1604,7 @@ class TestRealCodeExecution:
             integration=integration,
             agent_id="code-gen-test-typescript-nested-test",
             agent_schema_id=1,
-            model_used="gpt-4o-mini",
+            model_used="gemini-2.0-flash-001",
             version_messages=[
                 Message(
                     role="user",
@@ -1260,11 +1617,26 @@ class TestRealCodeExecution:
             output_schema=output_schema,
         )
 
+        # Save generated code for debugging
+        file_ext = get_file_extension(integration.slug)
+        save_extracted_code(
+            "test_typescript_nested_schema_generation" + integration.display_name,
+            code,
+            file_ext,
+        )
+
         # Extract TypeScript code from markdown
         ts_match = re.search(r"```typescript\n(.*?)\n```", code, re.DOTALL)
         assert ts_match, "No TypeScript code block found in generated code"
 
         typescript_code = ts_match.group(1)
+
+        # Save extracted TypeScript code for debugging
+        save_extracted_code(
+            "test_typescript_nested_schema_generation" + integration.display_name,
+            typescript_code,
+            "ts",
+        )
 
         # Verify TypeScript contains proper nested types
         assert "const ExtractedDataSchema = z.object({" in typescript_code

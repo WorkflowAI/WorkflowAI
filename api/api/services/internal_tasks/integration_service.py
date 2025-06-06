@@ -456,6 +456,19 @@ well organized (by agent) on WorkflowAI (trust me, makes everything easier).
 
         return version_messages_payload
 
+    async def _compute_exclusion_message(
+        self,
+        integration: Integration,
+        is_using_structured_generation: bool,
+    ) -> VersionCode | None:
+        if not is_using_structured_generation and integration.only_support_structured_generation:
+            return VersionCode(
+                code="This integration only supports structured generation, please switch to a schema with structured generation activated",
+                integration=integration,
+                feedback_token=None,
+            )
+        return None
+
     async def stream_code_for_version(
         self,
         task_tuple: TaskTuple,
@@ -480,6 +493,11 @@ well organized (by agent) on WorkflowAI (trust me, makes everything easier).
         deployment_environment = version.deployments[0].environment if version.deployments else None
         model_used = version.group.properties.model or workflowai.DEFAULT_MODEL
         enabled_tools = version.group.properties.enabled_tools
+
+        exclusion_message = await self._compute_exclusion_message(integration, is_using_structured_generation)
+        if exclusion_message:
+            yield exclusion_message
+            return
 
         # Try template generation first if supported
         try:

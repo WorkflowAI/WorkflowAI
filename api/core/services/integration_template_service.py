@@ -868,6 +868,7 @@ class IntegrationTemplateService:
         is_using_structured_generation: bool = False,
         output_schema: dict[str, Any] | None = None,
         enabled_tools: list[ToolKind | Tool] | None = None,
+        input_variables: dict[str, Any] | None = None,
     ) -> CodeComponents:
         """Build all components needed for code generation"""
         integration_kind = self._get_integration_kind_from_integration(integration)
@@ -981,23 +982,23 @@ class IntegrationTemplateService:
                     components.response_format = self._create_json_schema_for_curl(output_schema)
 
         # Handle input variables
-        if is_using_instruction_variables and input_schema:
+        if is_using_instruction_variables:
             components.has_input_variables = True
 
-            if integration_kind in [
-                "openai-sdk-python",
-                "openai-sdk-ts",
-                "instructor-python",
-                "dspy-python",
-                "langchain-python",
-                "litellm-python",
-            ]:
-                components.extra_body = self._create_input_example(
-                    input_schema,
-                    "python" if integration_kind != "openai-sdk-ts" else "typescript",
-                )
-            elif integration_kind == "curl":
-                components.input_data = self._create_input_example(input_schema, "curl")
+            if input_variables:
+                # Use the input variables passed in the request, if present
+                components.extra_body = json.dumps(input_variables, indent=2)
+            else:
+                if input_schema:
+                    # If no input variables are passed, use the input schema to create an example input variable
+                    components.extra_body = self._create_input_example(
+                        input_schema,
+                        "python" if integration_kind != "openai-sdk-ts" else "typescript",
+                    )
+                else:
+                    components.extra_body = json.dumps({"example_field": "example_value"}, indent=2)
+
+            components.input_data = components.extra_body
 
         return components
 
@@ -1019,6 +1020,7 @@ class IntegrationTemplateService:
         is_using_structured_generation: bool = False,
         output_schema: dict[str, Any] | None = None,
         enabled_tools: list[ToolKind | Tool] | None = None,
+        input_variables: dict[str, Any] | None = None,
     ) -> str:
         """Generate code for any supported integration using component templates"""
 
@@ -1042,6 +1044,7 @@ class IntegrationTemplateService:
                 is_using_structured_generation=is_using_structured_generation,
                 output_schema=output_schema,
                 enabled_tools=enabled_tools,
+                input_variables=input_variables,
             )
 
             # Convert components to template data
@@ -1062,6 +1065,8 @@ class IntegrationTemplateService:
                 "extra_body": components.extra_body,
                 "input_data": components.input_data,
                 "base_url": components.base_url,
+                # Input variables support
+                "has_input_variables": components.has_input_variables,
                 # Tools support
                 "has_tools": components.has_tools,
                 "tools_definitions": components.tools_definitions,

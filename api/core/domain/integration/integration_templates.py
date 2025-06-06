@@ -12,7 +12,7 @@ import os
 OPENAI_PYTHON_CLIENT_SETUP_TEMPLATE = """
 # Configure the OpenAI client to use the WorkflowAI endpoint and API key
 client = openai.OpenAI(
-    api_key=os.environ.get("WORKFLOWAI_API_KEY"),  # Use your WorkflowAI API key
+    api_key=os.environ.get("WORKFLOWAI_API_KEY"),  # workflowai.com/keys
     base_url="{{ base_url }}"
 )
 
@@ -33,15 +33,15 @@ response = client.{{ method }}(
     messages=[],  # Your messages are already registered in the WorkflowAI platform, you don't need to pass those here.
 {%- endif %}
 {%- if response_format %}
-    response_format={{ response_format }},
+    response_format={{ response_format }},  # pass the structured output format to enforce
 {%- endif %}
 {%- if has_tools %}
     {{ tools_parameter }},
 {%- endif %}
-{%- if extra_body %}
+{%- if has_input_variables %}
     extra_body={
         "input": {{ extra_body }}
-    }
+    },
 {%- endif %}
 )
 
@@ -85,8 +85,8 @@ import { z } from 'zod';
 OPENAI_TS_CLIENT_SETUP_TEMPLATE = """
 // Configure the OpenAI client to use the WorkflowAI endpoint and API key
 const client = new OpenAI({
-  apiKey: process.env.WORKFLOWAI_API_KEY || 'YOUR_WORKFLOWAI_API_KEY',
-  baseURL: 'https://run.workflowai.com/v1',
+  apiKey: process.env.WORKFLOWAI_API_KEY // workflowai.com/keys
+  baseURL: '{{ base_url }}',
 });
 
 """
@@ -119,12 +119,12 @@ const response = await client.{{ method }}({
   messages: [], // Your messages are already registered in the WorkflowAI platform
 {%- endif %}
 {%- if response_format %}
-  response_format: zodResponseFormat({{ response_format }}, "{{ response_format_name }}"),
+  response_format: zodResponseFormat({{ response_format }}, "{{ response_format_name }}"), // pass the structured output format to enforce
 {%- endif %}
 {%- if has_tools %}
   {{ tools_parameter }},
 {%- endif %}
-{%- if extra_body %}
+{%- if has_input_variables %}
   // @ts-expect-error input is specific to the WorkflowAI implementation
   input: {{ extra_body }},
 {%- endif %}
@@ -171,8 +171,8 @@ INSTRUCTOR_CLIENT_SETUP_TEMPLATE = """
 # Configure the Instructor client with WorkflowAI
 client = instructor.from_openai(
     OpenAI(
-        base_url=os.environ["WORKFLOWAI_API_URL"],
-        api_key=os.environ["WORKFLOWAI_API_KEY"],
+        base_url="{{ base_url }}",
+        api_key=os.environ["WORKFLOWAI_API_KEY"],  # workflowai.com/keys
     ),
     mode=instructor.Mode.OPENROUTER_STRUCTURED_OUTPUTS,
 )
@@ -188,9 +188,9 @@ response = client.chat.completions.create(
     messages=[],  # Your messages are already registered in the WorkflowAI platform
 {%- endif %}
 {%- if response_model %}
-    response_model={{ response_model }},
+    response_model={{ response_model }},  # pass the structured output format to enforce
 {%- endif %}
-{%- if extra_body %}
+{%- if has_input_variables %}
     extra_body={"input": {{ extra_body }}},
 {%- endif %}
 )
@@ -211,10 +211,12 @@ print(response.choices[0].message.content)
 # CURL TEMPLATES
 # =============================================================================
 
-CURL_REQUEST_TEMPLATE = """curl -X POST https://run.workflowai.com/v1/chat/completions \\
+CURL_REQUEST_TEMPLATE = """curl -X POST {{ base_url }}/chat/completions \\
   -H "Authorization: Bearer $WORKFLOWAI_API_KEY" \\
   -H "Content-Type: application/json" \\
-  -d '{{ json_body }}'"""
+  -d @- << 'EOF'
+{{ json_body }}
+EOF"""
 
 # =============================================================================
 # SHARED TEMPLATES
@@ -336,14 +338,11 @@ from typing import {{ structured_imports }}
 
 DSPY_CLIENT_SETUP_TEMPLATE = """
 # Configure DSPy to use the WorkflowAI API
-WORKFLOWAI_API_URL = os.environ.get("WORKFLOWAI_API_URL", "{{ base_url }}")
-WORKFLOWAI_API_KEY = os.environ.get("WORKFLOWAI_API_KEY")
-
 lm = dspy.LM(
     "openai/{{ model }}",
-    api_key=WORKFLOWAI_API_KEY,
-    api_base=WORKFLOWAI_API_URL{% if response_format %},
-    response_format={{ response_format }}{% endif %}
+    api_key=os.environ.get("WORKFLOWAI_API_KEY"), # workflowai.com/keys
+    api_base="{{ base_url }}"{% if response_format %},
+    response_format={{ response_format }}  # pass the structured output format to enforce{% endif %}
 )
 dspy.configure(lm=lm)
 
@@ -402,14 +401,11 @@ from pydantic import SecretStr
 
 LANGCHAIN_CLIENT_SETUP_TEMPLATE = """
 # Configure LangChain to use WorkflowAI
-WORKFLOWAI_API_URL = os.environ.get("WORKFLOWAI_API_URL", "{{ base_url }}")
-WORKFLOWAI_API_KEY = os.environ.get("WORKFLOWAI_API_KEY")
-
 llm = ChatOpenAI(
-    base_url=WORKFLOWAI_API_URL,
-    api_key=SecretStr(WORKFLOWAI_API_KEY),
+    base_url="{{ base_url }}",
+    api_key=SecretStr(os.environ.get("WORKFLOWAI_API_KEY")),
     model="{{ model }}",
-){% if is_structured %}.with_structured_output({{ class_name }}){% endif %}
+){% if is_structured %}.with_structured_output({{ class_name }}, method="json_schema")  # pass the structured output format to enforce{% endif %}
 
 """
 
@@ -430,11 +426,11 @@ messages = []  # Messages are managed server-side in the deployment
 # Bind tools to the LLM
 llm_with_tools = llm.bind_tools(tools)
 result = llm_with_tools.invoke(
-    messages{% if extra_body %},
+    messages{% if has_input_variables %},
     extra_body={"input": {{ extra_body }}}{% endif %}
 )
 {%- else %}
-{%- if extra_body %}
+{%- if has_input_variables %}
 result = llm.invoke(
     messages,
     extra_body={"input": {{ extra_body }}},
@@ -479,8 +475,8 @@ import litellm
 
 LITELLM_CLIENT_SETUP_TEMPLATE = """
 # Configure LiteLLM to use WorkflowAI
-litellm.api_base = os.environ.get("WORKFLOWAI_API_URL", "{{ base_url }}")
-litellm.api_key = os.environ.get("WORKFLOWAI_API_KEY")
+litellm.api_base = "{{ base_url }}"
+litellm.api_key = os.environ.get("WORKFLOWAI_API_KEY")  # workflowai.com/keys
 {%- if is_structured and not has_tools %}
 # Enable automatic JSON schema validation only when tools are not used
 litellm.enable_json_schema_validation = True
@@ -503,12 +499,12 @@ response = litellm.completion(  # type: ignore
     messages=[],  # Messages are managed server-side in the deployment
 {%- endif %}
 {%- if response_format %}
-    response_format={{ response_format }},
+    response_format={{ response_format }},  # pass the structured output format to enforce
 {%- endif %}
 {%- if has_tools %}
     {{ tools_parameter }},
 {%- endif %}
-{%- if extra_body %}
+{%- if has_input_variables %}
     extra_body={"input": {{ extra_body }}},
 {%- endif %}
 )

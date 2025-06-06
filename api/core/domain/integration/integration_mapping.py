@@ -12,12 +12,6 @@ from core.domain.integration.snippets.curl_snippets import (
     CURL_LANDING_PAGE_SNIPPET,
     CURL_LANDING_PAGE_STRUCTURED_GENERATION_SNIPPET,
 )
-from core.domain.integration.snippets.dspy_python_snippets import (
-    DSPY_PYTHON_INTEGRATION_CHAT_AGENT_NAMING_SNIPPET,
-    DSPY_PYTHON_INTEGRATION_CHAT_INITIAL_SNIPPET,
-    DSPY_PYTHON_LANDING_PAGE_SNIPPET,
-    DSPY_PYTHON_LANDING_PAGE_STRUCTURED_GENERATION_SNIPPET,
-)
 from core.domain.integration.snippets.instructor_python_snippets import (
     INSTRUCTOR_PYTHON_INTEGRATION_CHAT_AGENT_NAMING_SNIPPET,
     INSTRUCTOR_PYTHON_INTEGRATION_CHAT_INITIAL_SNIPPET,
@@ -51,6 +45,31 @@ from core.domain.integration.snippets.openai_sdk_ts_snippets import (
 
 WORKFLOWAI_API_KEY_PLACEHOLDER = "<WORKFLOWAI_API_KEY_PLACEHOLDER>"
 PROPOSED_AGENT_NAME_AND_MODEL_PLACEHOLDER = "<PROPOSED_AGENT_NAME_PLACEHOLDER>"
+
+# DSPY is too far from our paradigm for now and slowing us down in the integration work so better deactivate it rather than kind of supporting it
+"""
+Integration(
+    integration_partner=IntegrationPartner.DSPY,
+    programming_language=ProgrammingLanguage.PYTHON,
+    default_for_language=False,
+    use_version_messages=False,
+    only_support_structured_generation=True,
+    output_class="dspy.Signature",
+    display_name="DSPy (Python)",
+    model_name_prefix="openai/",
+    completion_client="dspy.Predict",
+    completion_client_structured_output="dspy.Predict",
+    slug=IntegrationKind.DSPY_PYTHON,
+    logo_url="https://workflowai.blob.core.windows.net/workflowai-public/python.png",
+    landing_page_snippet=DSPY_PYTHON_LANDING_PAGE_SNIPPET,
+    landing_page_structured_generation_snippet=DSPY_PYTHON_LANDING_PAGE_STRUCTURED_GENERATION_SNIPPET,
+    integration_chat_initial_snippet=DSPY_PYTHON_INTEGRATION_CHAT_INITIAL_SNIPPET,
+    integration_chat_agent_naming_snippet=DSPY_PYTHON_INTEGRATION_CHAT_AGENT_NAMING_SNIPPET,
+    documentation_filepaths=[
+        "developers/python/dspy.md",
+    ],
+),
+"""
 
 
 OFFICIAL_INTEGRATIONS = [
@@ -94,6 +113,7 @@ OFFICIAL_INTEGRATIONS = [
         integration_partner=IntegrationPartner.INSTRUCTOR,
         programming_language=ProgrammingLanguage.PYTHON,
         default_for_language=False,
+        only_support_structured_generation=True,
         output_class="pydantic.BaseModel",
         display_name="Instructor (Python)",
         completion_client="client.chat.completions.create",
@@ -143,26 +163,6 @@ OFFICIAL_INTEGRATIONS = [
         integration_chat_agent_naming_snippet=LANGCHAIN_PYTHON_INTEGRATION_CHAT_AGENT_NAMING_SNIPPET,
         documentation_filepaths=[
             "developers/python/langchain.md",
-        ],
-    ),
-    Integration(
-        integration_partner=IntegrationPartner.DSPY,
-        programming_language=ProgrammingLanguage.PYTHON,
-        default_for_language=False,
-        use_version_messages=False,
-        output_class="dspy.Signature",
-        display_name="DSPy (Python)",
-        model_name_prefix="openai/",
-        completion_client="dspy.Predict",
-        completion_client_structured_output="dspy.Predict",
-        slug=IntegrationKind.DSPY_PYTHON,
-        logo_url="https://workflowai.blob.core.windows.net/workflowai-public/python.png",
-        landing_page_snippet=DSPY_PYTHON_LANDING_PAGE_SNIPPET,
-        landing_page_structured_generation_snippet=DSPY_PYTHON_LANDING_PAGE_STRUCTURED_GENERATION_SNIPPET,
-        integration_chat_initial_snippet=DSPY_PYTHON_INTEGRATION_CHAT_INITIAL_SNIPPET,
-        integration_chat_agent_naming_snippet=DSPY_PYTHON_INTEGRATION_CHAT_AGENT_NAMING_SNIPPET,
-        documentation_filepaths=[
-            "developers/python/dspy.md",
         ],
     ),
     Integration(

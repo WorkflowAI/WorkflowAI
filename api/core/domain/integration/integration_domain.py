@@ -37,6 +37,7 @@ class Integration(BaseModel):
     completion_client_structured_output: str
     default_for_language: bool
     use_version_messages: bool = True
+    only_support_structured_generation: bool = False
     output_class: str
     display_name: str
     slug: IntegrationKind
