@@ -18682,6 +18682,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"node@workspace:tests/frameworks/node":
+  version: 0.0.0-use.local
+  resolution: "node@workspace:tests/frameworks/node"
+  dependencies:
+    dotenv-cli: "npm:^8.0.0"
+    openai: "npm:^5.1.1"
+    tsx: "npm:^4.19.4"
+    zod: "npm:^3.25.55"
+  languageName: unknown
+  linkType: soft
+
 "nopt@npm:^7.0.0":
   version: 7.2.0
   resolution: "nopt@npm:7.2.0"
@@ -18961,6 +18972,23 @@ __metadata:
     is-docker: "npm:^2.1.1"
     is-wsl: "npm:^2.2.0"
   checksum: 10c0/bb6b3a58401dacdb0aad14360626faf3fb7fba4b77816b373495988b724fb48941cad80c1b65d62bb31a17609b2cd91c41a181602caea597ca80dfbcc27e84c9
+  languageName: node
+  linkType: hard
+
+"openai@npm:^5.1.1":
+  version: 5.1.1
+  resolution: "openai@npm:5.1.1"
+  peerDependencies:
+    ws: ^8.18.0
+    zod: ^3.23.8
+  peerDependenciesMeta:
+    ws:
+      optional: true
+    zod:
+      optional: true
+  bin:
+    openai: bin/cli
+  checksum: 10c0/5cb0223768ae3cb847e4f6d237f32761bf4091a569ebf4cec3b20a3a14be747d7735e4c683f8bc3358cf969423bd9f5935ce9b5e9f5edd6c2f30cf605be22b0a
   languageName: node
   linkType: hard
 
@@ -23278,6 +23306,22 @@ __metadata:
   languageName: node
   linkType: hard
 
+"tsx@npm:^4.19.4":
+  version: 4.19.4
+  resolution: "tsx@npm:4.19.4"
+  dependencies:
+    esbuild: "npm:~0.25.0"
+    fsevents: "npm:~2.3.3"
+    get-tsconfig: "npm:^4.7.5"
+  dependenciesMeta:
+    fsevents:
+      optional: true
+  bin:
+    tsx: dist/cli.mjs
+  checksum: 10c0/f7b8d44362343fbde1f2ecc9832d243a450e1168dd09702a545ebe5f699aa6912e45b431a54b885466db414cceda48e5067b36d182027c43b2c02a4f99d8721e
+  languageName: node
+  linkType: hard
+
 "tty-browserify@npm:^0.0.1":
   version: 0.0.1
   resolution: "tty-browserify@npm:0.0.1"
@@ -24740,6 +24784,13 @@ __metadata:
   version: 3.23.8
   resolution: "zod@npm:3.23.8"
   checksum: 10c0/8f14c87d6b1b53c944c25ce7a28616896319d95bc46a9660fe441adc0ed0a81253b02b5abdaeffedbeb23bdd25a0bf1c29d2c12dd919aef6447652dd295e3e69
+  languageName: node
+  linkType: hard
+
+"zod@npm:^3.25.55":
+  version: 3.25.55
+  resolution: "zod@npm:3.25.55"
+  checksum: 10c0/6c6bed4b233e1bd9074e90a1742e98195f9a1112d2ea5b0b7df7227258f024e35fb142c35c662598a3ab19a20163ad9668ac9dfbec8cfaaa31cddea76b27579e
   languageName: node
   linkType: hard
 

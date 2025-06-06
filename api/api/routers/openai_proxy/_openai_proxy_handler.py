@@ -324,7 +324,7 @@ class OpenAIProxyHandler:
         input_io.enforce(final_input, files_as_strings=True)
 
     async def _prepare_run(self, body: OpenAIProxyChatCompletionRequest, tenant_data: PublicOrganizationData):
-        messages = Messages(messages=[m.to_domain() for m in body.messages])
+        messages = Messages(messages=list(body.domain_messages()))
 
         # First we need to locate the agent
         try:
@@ -409,6 +409,13 @@ class OpenAIProxyHandler:
         trigger = "user"
         source = SourceType.PROXY
 
+        def _feedback_generator(run_id: str) -> str:
+            return self._feedback_generator.generate_token(
+                prepared_run.variant.task_uid,
+                prepared_run.variant.task_schema_id,
+                run_id,
+            )
+
         if not body.stream:
             task_run = await self._run_service.run_from_builder(
                 builder=builder,
@@ -423,11 +430,7 @@ class OpenAIProxyHandler:
                 output_mapper=output_mapper,
                 model=body.model,
                 deprecated_function=body.uses_deprecated_functions,
-                feedback_generator=lambda run_id: self._feedback_generator.generate_token(
-                    prepared_run.variant.task_uid,
-                    prepared_run.variant.task_schema_id,
-                    run_id,
-                ),
+                feedback_generator=_feedback_generator,
             )
             return JSONResponse(content=response_object.model_dump(mode="json", exclude_none=True))
 
@@ -446,6 +449,7 @@ class OpenAIProxyHandler:
                     model=body.model,
                     deprecated_function=body.uses_deprecated_functions,
                     output_mapper=output_mapper,
+                    feedback_generator=_feedback_generator,
                 ),
                 source=source,
             ),

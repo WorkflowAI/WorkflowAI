@@ -39,7 +39,7 @@ Temporary Items
 
 ### NextJS ###
 # dependencies
-/node_modules
+node_modules
 /.pnp
 .pnp.js
 
