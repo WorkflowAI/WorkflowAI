@@ -16,7 +16,11 @@ using WorkflowAI:
 give me 3 options (models) from choose from with pros and cons.
 ```
 
-how well can the agent in Cursor do?
+notes:
+- for the authentication, we can use a API key passed as a configuration of the MCP server on Cursor, to start simple. we know there is **no** UX risk on the install/authentication process.
+
+how well can the agent in Cursor perform this goal??
+should we assume the agent run independantly in the background, or the user is coding with the agent? i think we should try the background agent first, since the agent can write code and also run the code or the unit tests if the repo setup is simple (which is the case for this demo).
 
 what tools needs to be exposed in the MCP?
 - `chat` to interact with our own AI agent, or maybe `search_documentation` to search the documentation of WorkflowAI?
