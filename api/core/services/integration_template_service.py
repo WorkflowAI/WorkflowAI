@@ -7,7 +7,7 @@ from datamodel_code_generator import DataModelType, PythonVersion
 from datamodel_code_generator.model import get_data_model_types
 from datamodel_code_generator.parser.jsonschema import JsonSchemaParser
 
-from core.domain.integration.integration_domain import Integration, IntegrationKind
+from core.domain.integration.integration_domain import Integration, IntegrationKind, ProgrammingLanguage
 from core.domain.integration.integration_templates import get_templates_for_integration
 from core.domain.message import Message
 from core.domain.tool import Tool
@@ -32,6 +32,9 @@ class CodeComponents:
     model: str = ""
     messages: str = ""
     base_url: str = "https://run.workflowai.com/v1"  # Default WorkflowAI URL
+
+    # Streaming configuration
+    is_streaming: bool = False
 
     # Structured output
     is_structured: bool = False
@@ -600,47 +603,102 @@ class IntegrationTemplateService:
 
         return input_fields, output_fields, imports, input_example
 
-    def _create_input_example(self, input_schema: dict[str, Any], format_type: str = "python") -> str:  # noqa: C901
-        """Create an example input dictionary based on the input schema"""
-        properties = input_schema.get("properties", {})
-        example: dict[str, Any] = {}
-
-        for field_name, field_def in properties.items():
-            field_type = field_def.get("type", "string")
-            examples = field_def.get("examples", [])
-
-            if examples:
-                example[field_name] = examples[0]
-            elif field_type == "string":
-                example[field_name] = f"example_{field_name}"
-            elif field_type == "integer":
-                example[field_name] = 42
-            elif field_type == "number":
-                example[field_name] = 3.14
-            elif field_type == "boolean":
-                example[field_name] = True
-            elif field_type == "array":
-                example[field_name] = ["example_item"]
-            else:
-                example[field_name] = f"example_{field_name}"
-
-        if format_type == "python":
-            # For Python, manually format to ensure proper Python literals (True vs true)
-            lines: list[str] = []
-            for key, value in example.items():
-                key_str = str(key)
-                if isinstance(value, bool):
-                    formatted_value = "True" if value else "False"
-                elif isinstance(value, str):
-                    formatted_value = f'"{value}"'
-                else:
-                    formatted_value = str(value)
-                lines.append(f'        "{key_str}": {formatted_value}')
-            return "{\n" + ",\n".join(lines) + "\n        }"
-        if format_type == "typescript":
+    def _format_input_example(self, example: Any, programming_language: ProgrammingLanguage) -> str:
+        """Format an input example based on the programming language"""
+        if programming_language == ProgrammingLanguage.PYTHON:
+            return self._format_python_value(example, indent_level=2)
+        if programming_language == ProgrammingLanguage.TYPESCRIPT:
             return json.dumps(example, indent=2)
-        # curl
-        return json.dumps(example)
+        if programming_language == ProgrammingLanguage.CURL:
+            return json.dumps(example)
+        raise ValueError(f"Unsupported programming language: {programming_language}")
+
+    def _create_input_example(
+        self,
+        input_schema: dict[str, Any],
+        programming_language: ProgrammingLanguage,
+    ) -> str:  # noqa: C901
+        """Create an example input dictionary based on the input schema"""
+        example = self._create_example_value_from_schema(input_schema)
+
+        return self._format_input_example(example, programming_language)
+
+    def _create_example_value_from_schema(self, schema: dict[str, Any], field_name: str = "example") -> Any:  # noqa: C901
+        """Recursively create an example value from a JSON schema definition"""
+        schema_type = schema.get("type", "string")
+        examples = schema.get("examples", [])
+
+        # Use provided examples if available
+        if examples:
+            return examples[0]
+
+        # Handle different schema types
+        if schema_type == "string":
+            enum_values = schema.get("enum")
+            if enum_values:
+                return enum_values[0]
+            return f"example_{field_name}"
+
+        if schema_type == "integer":
+            return 42
+
+        if schema_type == "number":
+            return 3.14
+
+        if schema_type == "boolean":
+            return True
+
+        if schema_type == "array":
+            items_schema = schema.get("items", {})
+            # Create an example array with one item
+            example_item = self._create_example_value_from_schema(items_schema, f"{field_name}_item")
+            return [example_item]
+
+        if schema_type == "object":
+            properties = schema.get("properties", {})
+            example_obj: dict[str, Any] = {}
+
+            for prop_name, prop_schema in properties.items():
+                example_obj[prop_name] = self._create_example_value_from_schema(prop_schema, prop_name)
+
+            return example_obj
+
+        # Default fallback
+        return f"example_{field_name}"
+
+    def _format_python_value(self, value: Any, indent_level: int = 0) -> str:
+        """Format a Python value with proper indentation and boolean literals"""
+        indent = "    " * indent_level
+
+        if isinstance(value, bool):
+            return "True" if value else "False"
+        if isinstance(value, str):
+            return f'"{value}"'
+        if isinstance(value, (int, float)):
+            return str(value)
+        if isinstance(value, list):
+            if not value:
+                return "[]"
+
+            # Format list items
+            formatted_items: list[str] = []
+            for item in value:  # type: ignore
+                formatted_item = self._format_python_value(item, indent_level + 1)
+                formatted_items.append(f"{indent}    {formatted_item}")
+
+            return "[\n" + ",\n".join(formatted_items) + f"\n{indent}]"
+        if isinstance(value, dict):
+            if not value:
+                return "{}"
+
+            # Format dict items
+            formatted_items: list[str] = []
+            for key, val in value.items():  # type: ignore
+                formatted_val = self._format_python_value(val, indent_level + 1)
+                formatted_items.append(f'{indent}    "{key}": {formatted_val}')
+
+            return "{\n" + ",\n".join(formatted_items) + f"\n{indent}}}"
+        return str(value)
 
     def _create_json_schema_for_curl(self, output_schema: dict[str, Any]) -> str:
         """Create JSON schema format for curl response_format"""
@@ -855,6 +913,33 @@ class IntegrationTemplateService:
             ]
         return json.dumps(payload, indent=2)
 
+    def _to_langchain_messages(self, messages: list[Message]) -> str:
+        """Convert messages to LangChain format using proper message classes"""
+        if not messages:
+            return "[]"
+
+        message_lines: list[str] = []
+        for message in messages:
+            deprecated_message = message.to_deprecated()
+            role = deprecated_message.role.value
+            content = deprecated_message.content
+
+            # Properly escape the content for Python string literals
+            escaped_content = json.dumps(content)
+
+            if role == "system":
+                message_lines.append(f"    SystemMessage(content={escaped_content}),")
+            elif role == "user":
+                message_lines.append(f"    HumanMessage(content={escaped_content}),")
+            elif role == "assistant":
+                # LangChain uses AIMessage for assistant messages
+                message_lines.append(f"    AIMessage(content={escaped_content}),")
+            else:
+                # Fallback to HumanMessage for unknown roles
+                message_lines.append(f"    HumanMessage(content={escaped_content}),")
+
+        return "[\n" + "\n".join(message_lines) + "\n]"
+
     def _build_code_components(  # noqa: C901
         self,
         integration: Integration,
@@ -869,6 +954,7 @@ class IntegrationTemplateService:
         output_schema: dict[str, Any] | None = None,
         enabled_tools: list[ToolKind | Tool] | None = None,
         input_variables: dict[str, Any] | None = None,
+        is_streaming: bool = False,
     ) -> CodeComponents:
         """Build all components needed for code generation"""
         integration_kind = self._get_integration_kind_from_integration(integration)
@@ -876,6 +962,7 @@ class IntegrationTemplateService:
         components = CodeComponents(
             integration_kind=integration_kind,
             base_url=self.base_url,
+            is_streaming=is_streaming,
         )
 
         # Set language
@@ -892,13 +979,17 @@ class IntegrationTemplateService:
             components.messages = ""  # Empty for deployments
         else:
             components.model = f"{agent_id}/{model_used}"
-            components.messages = (
-                "["
-                + ",".join(
-                    [self._to_codeblock_messages(m) for m in version_messages],
+            # Use LangChain-specific message formatting for LangChain integrations
+            if integration_kind == "langchain-python":
+                components.messages = self._to_langchain_messages(version_messages)
+            else:
+                components.messages = (
+                    "["
+                    + ",".join(
+                        [self._to_codeblock_messages(m) for m in version_messages],
+                    )
+                    + "]"
                 )
-                + "]"
-            )
 
         # Set method based on integration and structured output
         if integration_kind == "openai-sdk-python":
@@ -987,13 +1078,13 @@ class IntegrationTemplateService:
 
             if input_variables:
                 # Use the input variables passed in the request, if present
-                components.extra_body = json.dumps(input_variables, indent=2)
+                components.extra_body = self._format_input_example(input_variables, integration.programming_language)
             else:
                 if input_schema:
                     # If no input variables are passed, use the input schema to create an example input variable
                     components.extra_body = self._create_input_example(
                         input_schema,
-                        "python" if integration_kind != "openai-sdk-ts" else "typescript",
+                        integration.programming_language,
                     )
                 else:
                     components.extra_body = json.dumps({"example_field": "example_value"}, indent=2)
@@ -1021,6 +1112,7 @@ class IntegrationTemplateService:
         output_schema: dict[str, Any] | None = None,
         enabled_tools: list[ToolKind | Tool] | None = None,
         input_variables: dict[str, Any] | None = None,
+        is_streaming: bool = False,
     ) -> str:
         """Generate code for any supported integration using component templates"""
 
@@ -1045,6 +1137,7 @@ class IntegrationTemplateService:
                 output_schema=output_schema,
                 enabled_tools=enabled_tools,
                 input_variables=input_variables,
+                is_streaming=is_streaming,
             )
 
             # Convert components to template data
@@ -1053,6 +1146,7 @@ class IntegrationTemplateService:
                 "messages": components.messages,
                 "method": components.method,
                 "is_structured": components.is_structured,
+                "is_streaming": components.is_streaming,
                 "class_name": components.class_name,
                 "schema_name": components.schema_name,
                 "fields": components.fields,
@@ -1116,8 +1210,13 @@ class IntegrationTemplateService:
                         json_body_dict["input"] = json.loads(components.input_data)
                     except Exception:
                         json_body_dict["input"] = components.input_data
+                if components.is_streaming:
+                    json_body_dict["stream"] = True
                 template_data["json_body"] = json.dumps(json_body_dict, indent=2)
-                request = await self._render_component(templates["request"], template_data)
+
+                # Use streaming template if streaming is enabled
+                template_key = "streaming_request" if components.is_streaming else "request"
+                request = await self._render_component(templates[template_key], template_data)
                 return f"```bash\n{request}\n```"
 
             # Handle other integrations (multi-component)
@@ -1172,14 +1271,16 @@ class IntegrationTemplateService:
                     # Fallback: use the generated class definitions directly if no specific template
                     code_parts.append(components.class_definitions)
 
-            # Response call
-            if "response_call" in templates:
-                response_call = await self._render_component(templates["response_call"], template_data)
+            # Response call - use streaming template if streaming is enabled
+            response_call_key = "streaming_response_call" if components.is_streaming else "response_call"
+            if response_call_key in templates:
+                response_call = await self._render_component(templates[response_call_key], template_data)
                 code_parts.append(response_call)
 
-            # Output handling
-            if "output_handling" in templates:
-                output_handling = await self._render_component(templates["output_handling"], template_data)
+            # Output handling - use streaming template if streaming is enabled
+            output_handling_key = "streaming_output_handling" if components.is_streaming else "output_handling"
+            if output_handling_key in templates:
+                output_handling = await self._render_component(templates[output_handling_key], template_data)
                 code_parts.append(output_handling)
 
             # Combine all parts

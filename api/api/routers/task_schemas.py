@@ -691,6 +691,7 @@ async def update_task_instructions(
 class IntegrationCodeRequest(BaseModel):
     version_id: str
     integration_kind: IntegrationKind | None = None
+    stream: bool = False
 
 
 class IntegrationCodeResponse(BaseModel):
@@ -727,5 +728,6 @@ async def get_integration_code(
             task_schema_id,
             version,
             request.integration_kind,
+            request.stream,
         ),
     )

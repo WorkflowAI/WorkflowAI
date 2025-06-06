@@ -857,6 +857,36 @@ class TestIntegrationTemplateService:
         assert "print(result)" in code  # Direct structured output
 
     @pytest.mark.asyncio
+    async def test_langchain_message_format(
+        self,
+        template_service: IntegrationTemplateService,
+        langchain_integration: Integration,
+    ) -> None:
+        """Test that LangChain uses proper message classes (HumanMessage, SystemMessage) instead of raw dictionaries"""
+        code = await template_service.generate_code(
+            integration=langchain_integration,
+            agent_id="test-agent",
+            agent_schema_id=1,
+            model_used="gpt-4o",
+            version_messages=[
+                Message(role="system", content=[MessageContent(text="You are a helpful assistant.")]),
+                Message(role="user", content=[MessageContent(text="Analyze the sentiment of: {{text}}")]),
+            ],
+        )
+
+        assert "```python" in code
+        # Should import proper message classes
+        assert "from langchain_core.messages import AIMessage, HumanMessage, SystemMessage" in code
+        # Should use proper message classes instead of raw dictionaries
+        assert "SystemMessage(content=" in code
+        assert "HumanMessage(content=" in code
+        # Should NOT use raw dictionary format
+        assert '"role": "system"' not in code
+        assert '"role": "user"' not in code
+        # Check that messages are formatted as a proper Python list
+        assert "messages = [" in code
+
+    @pytest.mark.asyncio
     async def test_litellm_structured_output(
         self,
         template_service: IntegrationTemplateService,

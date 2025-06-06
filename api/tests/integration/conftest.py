@@ -321,7 +321,7 @@ def setup_real_environment() -> Generator[None, None, None]:
     integration_env = {
         # WorkflowAI configuration
         "WORKFLOWAI_API_URL": WORKFLOWAI_API_URL,
-        "WORKFLOWAI_API_KEY": "wai-ptk8CbSJoJNpJHpEXbrporXlNdYcS1voQF1QXhent2I",
+        "WORKFLOWAI_API_KEY": "",
         # Ensure test environment
         "TESTING": "true",
         "INTEGRATION_TESTING": "true",

@@ -122,7 +122,7 @@ class IntegrationService:
         runs_service: RunsService,
         api_keys_service: APIKeyService,
         user: User,
-        workflowai_base_url: str = "https://run.workflowai.com/v1",
+        workflowai_base_url: str = "http://localhost:8000/v1",
     ):
         self._logger = logging.getLogger(self.__class__.__name__)
         self.storage = storage
@@ -460,6 +460,7 @@ well organized (by agent) on WorkflowAI (trust me, makes everything easier).
         self,
         integration: Integration,
         is_using_structured_generation: bool,
+        is_streaming: bool,
     ) -> VersionCode | None:
         if not is_using_structured_generation and integration.only_support_structured_generation:
             return VersionCode(
@@ -467,6 +468,14 @@ well organized (by agent) on WorkflowAI (trust me, makes everything easier).
                 integration=integration,
                 feedback_token=None,
             )
+
+        if is_streaming and integration.slug == IntegrationKind.INSTRUCTOR_PYTHON:
+            return VersionCode(
+                code="Instructor does not support streaming with Pydantic 'response_format'.",
+                integration=integration,
+                feedback_token=None,
+            )
+
         return None
 
     async def stream_code_for_version(
@@ -475,6 +484,7 @@ well organized (by agent) on WorkflowAI (trust me, makes everything easier).
         task_schema_id: int,
         version: VersionsService.EnrichedVersion,
         forced_integration_kind: IntegrationKind | None = None,
+        stream: bool = False,
     ) -> AsyncIterator[VersionCode]:
         if not version.variant:
             raise ObjectNotFoundError(f"Can't resolve the agent for version {version.group.id}")
@@ -494,7 +504,11 @@ well organized (by agent) on WorkflowAI (trust me, makes everything easier).
         model_used = version.group.properties.model or workflowai.DEFAULT_MODEL
         enabled_tools = version.group.properties.enabled_tools
 
-        exclusion_message = await self._compute_exclusion_message(integration, is_using_structured_generation)
+        exclusion_message = await self._compute_exclusion_message(
+            integration,
+            is_using_structured_generation,
+            stream,
+        )
         if exclusion_message:
             yield exclusion_message
             return
@@ -503,6 +517,23 @@ well organized (by agent) on WorkflowAI (trust me, makes everything easier).
         try:
             if self.template_service.supports_integration(integration):
                 self._logger.info("Using template-based code generation for integration %s", integration.slug)
+
+                input_variables: dict[str, Any] | None = None
+                if is_using_instruction_variables:
+                    try:
+                        # Fetch the input variables from the latest run
+                        latest_run = await self.runs_service.latest_run(
+                            task_uid=task_tuple,
+                            schema_id=agent.task_schema_id,
+                            is_success=True,
+                        )
+                        input_variables = latest_run.task_input
+                    except Exception as e:
+                        self._logger.warning(
+                            "Error fetching input variables from latest run for integration %s, falling back to AI generation: %s",
+                            integration.slug,
+                            str(e),
+                        )
 
                 template_code = await self.template_service.generate_code(
                     integration=integration,
@@ -516,6 +547,8 @@ well organized (by agent) on WorkflowAI (trust me, makes everything easier).
                     is_using_structured_generation=is_using_structured_generation,
                     output_schema=agent.output_schema.json_schema if is_using_structured_generation else None,
                     enabled_tools=enabled_tools,
+                    input_variables=input_variables,
+                    is_streaming=stream,
                 )
 
                 # Yield the template-generated code

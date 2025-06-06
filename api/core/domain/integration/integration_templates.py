@@ -47,6 +47,36 @@ response = client.{{ method }}(
 
 """
 
+OPENAI_PYTHON_STREAMING_RESPONSE_CALL_TEMPLATE = """
+{%- if is_structured %}
+response = client.beta.chat.completions.stream(
+{%- else %}
+response = client.{{ method }}(
+{%- endif %}
+    model="{{ model }}",
+{%- if messages %}
+    messages={{ messages }},
+{%- else %}
+    messages=[],  # Your messages are already registered in the WorkflowAI platform, you don't need to pass those here.
+{%- endif %}
+{%- if response_format %}
+    response_format={{ response_format }},  # pass the structured output format to enforce
+{%- endif %}
+{%- if has_tools %}
+    {{ tools_parameter }},
+{%- endif %}
+{%- if has_input_variables %}
+    extra_body={
+        "input": {{ extra_body }}
+    },
+{%- endif %}
+{%- if not is_structured %}
+    stream=True,
+{%- endif %}
+)
+
+"""
+
 OPENAI_PYTHON_OUTPUT_HANDLING_TEMPLATE = """
 {%- if is_structured %}
 # Access the parsed Pydantic object
@@ -65,6 +95,37 @@ else:
     print(response.choices[0].message.content)
 {%- else %}
 print(response.choices[0].message.content)
+{%- endif %}
+{%- endif %}
+
+"""
+
+OPENAI_PYTHON_STREAMING_OUTPUT_HANDLING_TEMPLATE = """
+{%- if is_structured %}
+# Handle streaming structured output
+with response as stream:
+    for event in stream:
+        if parsed := event.model_dump().get("parsed"):
+            print(parsed)
+{%- else %}
+{%- if has_tools %}
+# Handle streaming with potential tool calls
+for chunk in response:
+    if chunk.choices[0].delta.tool_calls:
+        # Tool calls in streaming mode
+        for tool_call in chunk.choices[0].delta.tool_calls:
+            if tool_call.function.name:
+                print(f"Tool called: {tool_call.function.name}")
+            if tool_call.function.arguments:
+                print(f"Arguments: {tool_call.function.arguments}")
+    elif chunk.choices[0].delta.content:
+        print(chunk.choices[0].delta.content, end="", flush=True)
+{%- else %}
+# Handle streaming text output
+for chunk in response:
+    if chunk.choices[0].delta.content:
+        print(chunk.choices[0].delta.content, end="", flush=True)
+print()  # Add newline at the end
 {%- endif %}
 {%- endif %}
 
@@ -132,6 +193,29 @@ const response = await client.{{ method }}({
 
 """
 
+OPENAI_TS_STREAMING_RESPONSE_CALL_TEMPLATE = """
+const response = await client.{{ method }}({
+  model: "{{ model }}",
+{%- if messages %}
+  messages: {{ messages }},
+{%- else %}
+  messages: [], // Your messages are already registered in the WorkflowAI platform
+{%- endif %}
+{%- if response_format %}
+  response_format: zodResponseFormat({{ response_format }}, "{{ response_format_name }}"), // pass the structured output format to enforce
+{%- endif %}
+{%- if has_tools %}
+  {{ tools_parameter }},
+{%- endif %}
+{%- if has_input_variables %}
+  // @ts-expect-error input is specific to the WorkflowAI implementation
+  input: {{ extra_body }},
+{%- endif %}
+  stream: true,
+});
+
+"""
+
 OPENAI_TS_OUTPUT_HANDLING_TEMPLATE = """
 {%- if is_structured %}
 // Access the parsed object
@@ -152,6 +236,53 @@ if (response.choices[0].message.tool_calls) {
 }
 {%- else %}
 console.log(response.choices[0].message.content);
+{%- endif %}
+{%- endif %}
+
+"""
+
+OPENAI_TS_STREAMING_OUTPUT_HANDLING_TEMPLATE = """
+{%- if is_structured %}
+// Handle streaming structured output
+for await (const chunk of response) {
+  if (chunk.choices[0]?.delta?.parsed) {
+    // Partial structured output - you can accumulate or process incrementally
+    console.log("Partial result:", chunk.choices[0].delta.parsed);
+  } else if (chunk.choices[0]?.finish_reason === "stop") {
+    // Final structured output
+    if (chunk.choices[0]?.message?.parsed) {
+      const finalResult: z.infer<typeof {{ schema_name }}Schema> = chunk.choices[0].message.parsed;
+      console.log("Final result:", finalResult);
+    }
+  }
+}
+{%- else %}
+{%- if has_tools %}
+// Handle streaming with potential tool calls
+for await (const chunk of response) {
+  if (chunk.choices[0]?.delta?.tool_calls) {
+    // Tool calls in streaming mode
+    for (const toolCall of chunk.choices[0].delta.tool_calls) {
+      if (toolCall.function?.name) {
+        console.log(`Tool called: ${toolCall.function.name}`);
+      }
+      if (toolCall.function?.arguments) {
+        console.log(`Arguments: ${toolCall.function.arguments}`);
+      }
+    }
+  } else if (chunk.choices[0]?.delta?.content) {
+    process.stdout.write(chunk.choices[0].delta.content);
+  }
+}
+console.log(); // Add newline at the end
+{%- else %}
+// Handle streaming text output
+for await (const chunk of response) {
+  if (chunk.choices[0]?.delta?.content) {
+    process.stdout.write(chunk.choices[0].delta.content);
+  }
+}
+console.log(); // Add newline at the end
 {%- endif %}
 {%- endif %}
 
@@ -197,12 +328,47 @@ response = client.chat.completions.create(
 
 """
 
+INSTRUCTOR_STREAMING_RESPONSE_CALL_TEMPLATE = """
+response = client.chat.completions.create(
+    model="{{ model }}",
+{%- if messages %}
+    messages={{ messages }},
+{%- else %}
+    messages=[],  # Your messages are already registered in the WorkflowAI platform
+{%- endif %}
+{%- if response_model %}
+    response_model={{ response_model }},  # pass the structured output format to enforce
+{%- endif %}
+{%- if has_input_variables %}
+    extra_body={"input": {{ extra_body }}},
+{%- endif %}
+    stream=True,
+)
+
+"""
+
 INSTRUCTOR_OUTPUT_HANDLING_TEMPLATE = """
 {%- if is_structured %}
 # The response is already parsed as the Pydantic model
 print(response)
 {%- else %}
 print(response.choices[0].message.content)
+{%- endif %}
+
+"""
+
+INSTRUCTOR_STREAMING_OUTPUT_HANDLING_TEMPLATE = """
+{%- if is_structured %}
+# Handle streaming structured output with Instructor
+for partial_response in response:
+    # Instructor provides partial objects during streaming
+    print(f"Partial result: {partial_response}")
+{%- else %}
+# Handle streaming text output
+for chunk in response:
+    if chunk.choices[0].delta.content:
+        print(chunk.choices[0].delta.content, end="", flush=True)
+print()  # Add newline at the end
 {%- endif %}
 
 """
@@ -214,6 +380,14 @@ print(response.choices[0].message.content)
 CURL_REQUEST_TEMPLATE = """curl -X POST {{ base_url }}/chat/completions \\
   -H "Authorization: Bearer $WORKFLOWAI_API_KEY" \\
   -H "Content-Type: application/json" \\
+  -d @- << 'EOF'
+{{ json_body }}
+EOF"""
+
+CURL_STREAMING_REQUEST_TEMPLATE = """curl -X POST {{ base_url }}/chat/completions \\
+  -H "Authorization: Bearer $WORKFLOWAI_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -N \\
   -d @- << 'EOF'
 {{ json_body }}
 EOF"""
@@ -249,7 +423,9 @@ def get_templates_for_integration(integration_kind: str) -> Dict[str, str]:
             "client_setup": OPENAI_PYTHON_CLIENT_SETUP_TEMPLATE,
             "tools_definitions": OPENAI_PYTHON_TOOLS_DEFINITIONS_TEMPLATE,
             "response_call": OPENAI_PYTHON_RESPONSE_CALL_TEMPLATE,
+            "streaming_response_call": OPENAI_PYTHON_STREAMING_RESPONSE_CALL_TEMPLATE,
             "output_handling": OPENAI_PYTHON_OUTPUT_HANDLING_TEMPLATE,
+            "streaming_output_handling": OPENAI_PYTHON_STREAMING_OUTPUT_HANDLING_TEMPLATE,
             "structured_class": STRUCTURED_OUTPUT_CLASS_TEMPLATE,
         },
         "openai-sdk-ts": {
@@ -257,14 +433,18 @@ def get_templates_for_integration(integration_kind: str) -> Dict[str, str]:
             "client_setup": OPENAI_TS_CLIENT_SETUP_TEMPLATE,
             "tools_definitions": OPENAI_TS_TOOLS_DEFINITIONS_TEMPLATE,
             "response_call": OPENAI_TS_RESPONSE_CALL_TEMPLATE,
+            "streaming_response_call": OPENAI_TS_STREAMING_RESPONSE_CALL_TEMPLATE,
             "output_handling": OPENAI_TS_OUTPUT_HANDLING_TEMPLATE,
+            "streaming_output_handling": OPENAI_TS_STREAMING_OUTPUT_HANDLING_TEMPLATE,
             "structured_schema": OPENAI_TS_SCHEMA_TEMPLATE,
         },
         "instructor-python": {
             "imports": INSTRUCTOR_IMPORTS_TEMPLATE,
             "client_setup": INSTRUCTOR_CLIENT_SETUP_TEMPLATE,
             "response_call": INSTRUCTOR_RESPONSE_CALL_TEMPLATE,
+            "streaming_response_call": INSTRUCTOR_STREAMING_RESPONSE_CALL_TEMPLATE,
             "output_handling": INSTRUCTOR_OUTPUT_HANDLING_TEMPLATE,
+            "streaming_output_handling": INSTRUCTOR_STREAMING_OUTPUT_HANDLING_TEMPLATE,
             "structured_class": STRUCTURED_OUTPUT_CLASS_TEMPLATE,
         },
         "dspy-python": {
@@ -272,7 +452,9 @@ def get_templates_for_integration(integration_kind: str) -> Dict[str, str]:
             "client_setup": DSPY_CLIENT_SETUP_TEMPLATE,
             "tools_definitions": DSPY_TOOLS_DEFINITIONS_TEMPLATE,
             "response_call": DSPY_RESPONSE_CALL_TEMPLATE,
+            "streaming_response_call": DSPY_STREAMING_RESPONSE_CALL_TEMPLATE,
             "output_handling": DSPY_OUTPUT_HANDLING_TEMPLATE,
+            "streaming_output_handling": DSPY_STREAMING_OUTPUT_HANDLING_TEMPLATE,
             "structured_signature": DSPY_SIGNATURE_TEMPLATE,
         },
         "langchain-python": {
@@ -280,7 +462,9 @@ def get_templates_for_integration(integration_kind: str) -> Dict[str, str]:
             "client_setup": LANGCHAIN_CLIENT_SETUP_TEMPLATE,
             "tools_definitions": LANGCHAIN_TOOLS_DEFINITIONS_TEMPLATE,
             "response_call": LANGCHAIN_RESPONSE_CALL_TEMPLATE,
+            "streaming_response_call": LANGCHAIN_STREAMING_RESPONSE_CALL_TEMPLATE,
             "output_handling": LANGCHAIN_OUTPUT_HANDLING_TEMPLATE,
+            "streaming_output_handling": LANGCHAIN_STREAMING_OUTPUT_HANDLING_TEMPLATE,
             "structured_class": STRUCTURED_OUTPUT_CLASS_TEMPLATE,
         },
         "litellm-python": {
@@ -288,11 +472,14 @@ def get_templates_for_integration(integration_kind: str) -> Dict[str, str]:
             "client_setup": LITELLM_CLIENT_SETUP_TEMPLATE,
             "tools_definitions": LITELLM_TOOLS_DEFINITIONS_TEMPLATE,
             "response_call": LITELLM_RESPONSE_CALL_TEMPLATE,
+            "streaming_response_call": LITELLM_STREAMING_RESPONSE_CALL_TEMPLATE,
             "output_handling": LITELLM_OUTPUT_HANDLING_TEMPLATE,
+            "streaming_output_handling": LITELLM_STREAMING_OUTPUT_HANDLING_TEMPLATE,
             "structured_class": STRUCTURED_OUTPUT_CLASS_TEMPLATE,
         },
         "curl": {
             "request": CURL_REQUEST_TEMPLATE,
+            "streaming_request": CURL_STREAMING_REQUEST_TEMPLATE,
         },
     }
 
@@ -376,9 +563,34 @@ result = predict(
 
 """
 
+DSPY_STREAMING_RESPONSE_CALL_TEMPLATE = """
+# DSPy doesn't have native streaming support, but we can configure the underlying LM for streaming
+# Note: This may not work with all DSPy signatures, consider using OpenAI SDK directly for streaming
+predict = dspy.Predict({{ class_name }})
+result = predict(
+{%- for field_name, value in input_example.items() %}
+    {{ field_name }}={{ value }}{% if not loop.last %},{% endif %}
+{%- endfor %}
+)
+
+"""
+
 DSPY_OUTPUT_HANDLING_TEMPLATE = """
 {%- if is_structured %}
 # Access the structured output
+{%- for field_name, field_info in output_fields.items() %}
+print(f"{{ field_name.title() }}: {result.{{ field_name }}}")
+{%- endfor %}
+{%- else %}
+print(result)
+{%- endif %}
+
+"""
+
+DSPY_STREAMING_OUTPUT_HANDLING_TEMPLATE = """
+{%- if is_structured %}
+# DSPy doesn't natively support streaming for structured output
+# The result is returned once complete
 {%- for field_name, field_info in output_fields.items() %}
 print(f"{{ field_name.title() }}: {result.{{ field_name }}}")
 {%- endfor %}
@@ -394,7 +606,7 @@ print(result)
 
 LANGCHAIN_IMPORTS_TEMPLATE = """import os
 from langchain_openai import ChatOpenAI
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from pydantic import SecretStr
 
 """
@@ -442,6 +654,33 @@ result = llm.invoke(messages)
 
 """
 
+LANGCHAIN_STREAMING_RESPONSE_CALL_TEMPLATE = """
+{%- if messages %}
+messages = {{ messages }}
+{%- else %}
+messages = []  # Messages are managed server-side in the deployment
+{%- endif %}
+
+{%- if has_tools %}
+# Bind tools to the LLM
+llm_with_tools = llm.bind_tools(tools)
+result = llm_with_tools.stream(
+    messages{% if has_input_variables %},
+    extra_body={"input": {{ extra_body }}}{% endif %}
+)
+{%- else %}
+{%- if has_input_variables %}
+result = llm.stream(
+    messages,
+    extra_body={"input": {{ extra_body }}},
+)
+{%- else %}
+result = llm.stream(messages)
+{%- endif %}
+{%- endif %}
+
+"""
+
 LANGCHAIN_OUTPUT_HANDLING_TEMPLATE = """
 {%- if is_structured %}
 # The result is already parsed as the Pydantic model
@@ -459,6 +698,34 @@ else:
     print(result.content)
 {%- else %}
 print(result.content)
+{%- endif %}
+{%- endif %}
+
+"""
+
+LANGCHAIN_STREAMING_OUTPUT_HANDLING_TEMPLATE = """
+{%- if is_structured %}
+# Handle streaming structured output with LangChain
+for chunk in result:
+    # LangChain provides incremental chunks for structured output
+    print(f"Chunk: {chunk}")
+{%- else %}
+{%- if has_tools %}
+# Handle streaming with potential tool calls
+for chunk in result:
+    if hasattr(chunk, 'tool_calls') and chunk.tool_calls:
+        for tool_call in chunk.tool_calls:
+            print(f"Tool called: {tool_call['name']}")
+            print(f"Arguments: {tool_call['args']}")
+    elif hasattr(chunk, 'content') and chunk.content:
+        print(chunk.content, end="", flush=True)
+print()  # Add newline at the end
+{%- else %}
+# Handle streaming text output
+for chunk in result:
+    if hasattr(chunk, 'content') and chunk.content:
+        print(chunk.content, end="", flush=True)
+print()  # Add newline at the end
 {%- endif %}
 {%- endif %}
 
@@ -511,6 +778,28 @@ response = litellm.completion(  # type: ignore
 
 """
 
+LITELLM_STREAMING_RESPONSE_CALL_TEMPLATE = """
+response = litellm.completion(  # type: ignore
+    model="openai/{{ model }}",
+{%- if messages %}
+    messages={{ messages }},
+{%- else %}
+    messages=[],  # Messages are managed server-side in the deployment
+{%- endif %}
+{%- if response_format %}
+    response_format={{ response_format }},  # pass the structured output format to enforce
+{%- endif %}
+{%- if has_tools %}
+    {{ tools_parameter }},
+{%- endif %}
+{%- if has_input_variables %}
+    extra_body={"input": {{ extra_body }}},
+{%- endif %}
+    stream=True,
+)
+
+"""
+
 LITELLM_OUTPUT_HANDLING_TEMPLATE = """
 {%- if is_structured %}
 {%- if has_tools %}
@@ -548,6 +837,69 @@ else:
     print(response.choices[0].message.content)
 {%- else %}
 print(response.choices[0].message.content)
+{%- endif %}
+{%- endif %}
+
+"""
+
+LITELLM_STREAMING_OUTPUT_HANDLING_TEMPLATE = """
+{%- if is_structured %}
+{%- if has_tools %}
+# Handle streaming with potential tool calls and structured output
+accumulated_content = ""
+for chunk in response:
+    if chunk.choices[0].delta.tool_calls:
+        for tool_call in chunk.choices[0].delta.tool_calls:
+            if hasattr(tool_call, 'function') and tool_call.function.name:
+                print(f"Tool called: {tool_call.function.name}")
+            if hasattr(tool_call, 'function') and tool_call.function.arguments:
+                print(f"Arguments: {tool_call.function.arguments}")
+    elif chunk.choices[0].delta.content:
+        accumulated_content += chunk.choices[0].delta.content
+        print(chunk.choices[0].delta.content, end="", flush=True)
+
+# Try to parse accumulated content as structured output
+if accumulated_content:
+    try:
+        result = {{ class_name }}.model_validate_json(accumulated_content)
+        print(f"Parsed result: {result}")
+    except Exception as e:
+        print(f"Could not parse as structured output: {e}")
+{%- else %}
+# Handle streaming structured output
+accumulated_content = ""
+for chunk in response:
+    if chunk.choices[0].delta.content:
+        accumulated_content += chunk.choices[0].delta.content
+        print(chunk.choices[0].delta.content, end="", flush=True)
+
+# Try to parse accumulated content as structured output
+if accumulated_content:
+    try:
+        result = {{ class_name }}.model_validate_json(accumulated_content)
+        print(f"Parsed result: {result}")
+    except Exception as e:
+        print(f"Could not parse as structured output: {e}")
+{%- endif %}
+{%- else %}
+{%- if has_tools %}
+# Handle streaming with potential tool calls
+for chunk in response:
+    if chunk.choices[0].delta.tool_calls:
+        for tool_call in chunk.choices[0].delta.tool_calls:
+            if hasattr(tool_call, 'function') and tool_call.function.name:
+                print(f"Tool called: {tool_call.function.name}")
+            if hasattr(tool_call, 'function') and tool_call.function.arguments:
+                print(f"Arguments: {tool_call.function.arguments}")
+    elif chunk.choices[0].delta.content:
+        print(chunk.choices[0].delta.content, end="", flush=True)
+print()  # Add newline at the end
+{%- else %}
+# Handle streaming text output
+for chunk in response:
+    if chunk.choices[0].delta.content:
+        print(chunk.choices[0].delta.content, end="", flush=True)
+print()  # Add newline at the end
 {%- endif %}
 {%- endif %}
 

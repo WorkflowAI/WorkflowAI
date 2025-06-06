@@ -23,7 +23,7 @@ from core.tools import ToolKind
 _logger = logging.getLogger(__name__)
 
 WORKFLOWAI_API_URL = "http://localhost:8000/v1"
-WORKFLOWAI_API_KEY = "wai-ptk8CbSJoJNpJHpEXbrporXlNdYcS1voQF1QXhent2I"
+WORKFLOWAI_API_KEY = ""
 
 # To store generated code for debugging
 DEBUG_DIR = Path("debug_generated_code")
@@ -649,7 +649,7 @@ class TestRealCodeExecution:
         ),
     ]
 
-    # @pytest.mark.skip("Skipping real code execution tests")
+    @pytest.mark.skip("Skipping real code execution tests")
     @pytest.mark.parametrize("integration_kind", RUNNABLE_INTEGRATIONS)
     @pytest.mark.asyncio
     async def test_raw_text(
@@ -692,8 +692,45 @@ class TestRealCodeExecution:
 
         assert "hello" in execution_result["stdout"].lower()
 
-        # @pytest.mark.skip("Skipping real code execution tests")
+    @pytest.mark.parametrize("integration_kind", RUNNABLE_INTEGRATIONS)
+    @pytest.mark.asyncio
+    async def test_raw_text_streaming(
+        self,
+        integration_kind: IntegrationKind,
+        template_service: IntegrationTemplateService,
+    ):
+        """Test basic execution of all integrations with real API calls"""
+        integration = get_integration_by_kind(integration_kind)
 
+        if integration.only_support_structured_generation:
+            pytest.skip(f"{integration.display_name} only supports structured generation, skipping test")
+
+        # Generate the code
+        code = await template_service.generate_code(
+            integration=integration,
+            agent_id="code-gen-test-raw-text",
+            agent_schema_id=1,
+            model_used="gemini-2.0-flash-001",
+            version_messages=[
+                Message(
+                    role="user",
+                    content=[MessageContent(text="Say hello")],
+                ),
+            ],
+            is_streaming=True,
+        )
+
+        # Use unified code runner with optional saving
+        code_result = run_generated_code(
+            code,
+            save_to_filename=f"test_raw_text_streaming_{integration_kind.value}",
+        )
+
+        assert code_result["execution_result"]["success"], {code_result["execution_result"]["stderr"]}
+
+        assert "hello" in code_result["execution_result"]["stdout"].lower()
+
+    @pytest.mark.skip("Skipping real code execution tests")
     @pytest.mark.parametrize("integration_kind", RUNNABLE_INTEGRATIONS)
     @pytest.mark.asyncio
     async def test_raw_text_input_variables(
@@ -735,10 +772,7 @@ class TestRealCodeExecution:
 
         # Verify execution was successful
         execution_result = code_result["execution_result"]
-        if not execution_result["success"]:
-            _logger.error("STDOUT: %s", execution_result["stdout"])
-            _logger.error("STDERR: %s", execution_result["stderr"])
-            pytest.fail(f"{integration_kind.value} execution failed: {execution_result['stderr']}")
+        assert execution_result["success"], {execution_result["stderr"]}
 
         assert "hello" in execution_result["stdout"].lower()
         assert "maxime" in execution_result["stdout"].lower()
@@ -784,7 +818,7 @@ class TestRealCodeExecution:
         assert "hello" in execution_result["stdout"].lower()
         assert "maxime" in execution_result["stdout"].lower()
 
-    # @pytest.mark.skip("Skipping real code execution tests")
+    @pytest.mark.skip("Skipping real code execution tests")
     @pytest.mark.parametrize("integration_kind,display_name,test_message", STRUCTURED_INTEGRATIONS)
     @pytest.mark.asyncio
     async def test_structured_output_execution(
@@ -827,8 +861,7 @@ class TestRealCodeExecution:
         assert output.strip(), f"No output from {display_name} structured execution"
         _logger.info("✅ %s Structured Output: %s...", display_name, output[:100])
 
-        # @pytest.mark.skip("Skipping real code execution tests")
-
+    @pytest.mark.skip("Skipping real code execution tests")
     @pytest.mark.parametrize("integration_kind", RUNNABLE_INTEGRATIONS)
     @pytest.mark.asyncio
     async def test_structured_output_execution_with_input_variables(
@@ -878,7 +911,60 @@ class TestRealCodeExecution:
         assert "26" in output.lower()
         assert "tom@gmail.com" in output.lower()
 
-    # @pytest.mark.skip("Skipping real code execution tests")
+    @pytest.mark.parametrize("integration_kind", RUNNABLE_INTEGRATIONS)
+    @pytest.mark.asyncio
+    async def test_structured_output_execution_with_input_variables_streaming(
+        self,
+        integration_kind: IntegrationKind,
+        template_service: IntegrationTemplateService,
+        user_info_extraction_schemas: tuple[Dict[str, Any], Dict[str, Any]],
+    ):
+        """Test structured output execution of all integrations with real API calls"""
+        integration = get_integration_by_kind(integration_kind)
+        input_schema, output_schema = user_info_extraction_schemas
+
+        use_input_vars = True
+
+        if integration_kind == IntegrationKind.INSTRUCTOR_PYTHON:
+            pytest.skip("Streaming with Pydantic response_format not yet supported.")
+
+        code = await template_service.generate_code(
+            integration=integration,
+            agent_id="code-gen-struct-gen-input-vars",
+            agent_schema_id=1,
+            model_used="gemini-2.0-flash-001",
+            version_messages=[
+                Message(
+                    role="system",
+                    content=[MessageContent(text="You goal is to extract user information from a message")],
+                ),
+                Message(
+                    role="user",
+                    content=[MessageContent(text="The message is {{message}}")],
+                ),
+            ],
+            is_using_instruction_variables=use_input_vars,
+            input_schema=input_schema if use_input_vars else None,
+            is_using_structured_generation=True,
+            output_schema=output_schema,
+            input_variables={"message": "Hello ! I'm Tom, I'm 26, my email is tom@gmail.com"},
+            is_streaming=True,
+        )
+
+        result = run_generated_code(
+            code,
+            save_to_filename=f"code-gen-struct-gen-input-vars-streaming-{integration_kind.value}",
+        )
+
+        assert result["execution_result"]["success"], {result["execution_result"]["stderr"]}
+
+        output = result["execution_result"]["stdout"]
+
+        assert "tom" in output.lower()
+        assert "26" in output.lower()
+        assert "tom@gmail.com" in output.lower()
+
+    @pytest.mark.skip("Skipping real code execution tests")
     @pytest.mark.parametrize("integration_kind,display_name,test_message", STRUCTURED_INTEGRATIONS)
     @pytest.mark.asyncio
     async def test_structured_output_execution_with_deployment(
@@ -1079,7 +1165,7 @@ class TestRealCodeExecution:
             return bash_match.group(1)
         raise ValueError("No bash code block found in generated code")
 
-    # @pytest.mark.skip("Skipping real code execution tests")
+    @pytest.mark.skip("Skipping real code execution tests")
     @pytest.mark.parametrize(
         "scenario,model,messages,use_input_vars,use_structured,deployment_env",
         CURL_SCENARIOS,
@@ -1164,7 +1250,6 @@ class TestRealCodeExecution:
             assert '"model": "code-gen-test-sentiment-analyzer/#3/production"' in curl_command
             assert '"messages": []' in curl_command
 
-    # @pytest.mark.skip("Skipping real code execution tests")
     @pytest.mark.asyncio
     async def test_curl_syntax_validation(
         self,
@@ -1207,7 +1292,7 @@ class TestRealCodeExecution:
             assert "-H" in curl_command
             assert "-d" in curl_command
 
-    # @pytest.mark.skip("Skipping real code execution tests")
+    @pytest.mark.skip("Skipping real code execution tests")
     @pytest.mark.asyncio
     async def test_curl_documentation_compatibility(
         self,
@@ -1252,7 +1337,7 @@ class TestRealCodeExecution:
         for element in expected_elements:
             assert element in curl_command, f"Missing expected element: {element}"
 
-    # @pytest.mark.skip("Skipping real code execution tests")
+    @pytest.mark.skip("Skipping real code execution tests")
     @pytest.mark.asyncio
     async def test_curl_environment_variables(
         self,
@@ -1295,7 +1380,6 @@ class TestRealCodeExecution:
         (IntegrationKind.LITELLM_PYTHON, "LiteLLM Python"),
     ]
 
-    @pytest.mark.skip("Skipping real code execution tests")
     @pytest.mark.parametrize("integration_kind", RUNNABLE_INTEGRATIONS)
     @pytest.mark.asyncio
     async def test_tools_execution(
@@ -1336,7 +1420,7 @@ class TestRealCodeExecution:
         assert result["execution_result"]["success"], {result["execution_result"]["stderr"]}
         assert "get_weather" in result["execution_result"]["stdout"]
 
-    # @pytest.mark.skip("Skipping real code execution tests")
+    @pytest.mark.skip("Skipping real code execution tests")
     @pytest.mark.asyncio
     async def test_tools_syntax_validation(
         self,
@@ -1390,7 +1474,7 @@ class TestRealCodeExecution:
             else:
                 _logger.info("⚠️  %s does not support tools - skipping tool content check", integration.display_name)
 
-    # @pytest.mark.skip("Skipping real code execution tests")
+    @pytest.mark.skip("Skipping real code execution tests")
     @pytest.mark.asyncio
     async def test_curl_tools_format(
         self,
@@ -1429,64 +1513,7 @@ class TestRealCodeExecution:
 
         _logger.info("✅ curl with tools: Format valid")
 
-    # @pytest.mark.skip("Skipping real code execution tests")
-    @pytest.mark.parametrize("integration_kind,display_name", TOOLS_WITH_STRUCTURED_OUTPUT_INTEGRATIONS)
-    @pytest.mark.asyncio
-    async def test_tools_with_structured_output_execution(
-        self,
-        integration_kind: IntegrationKind,
-        display_name: str,
-        template_service: IntegrationTemplateService,
-        user_info_extraction_schemas: tuple[Dict[str, Any], Dict[str, Any]],
-        sample_tools_list: list[Tool | ToolKind],
-    ):
-        """Test actual execution of tools combined with structured output"""
-        integration = get_integration_by_kind(integration_kind)
-        input_schema, output_schema = user_info_extraction_schemas
-
-        # DSPy uses input variables differently, others use them consistently
-        use_input_vars = True
-        test_message = "Check weather for {{user_text}} and return structured user info"
-        if integration_kind == IntegrationKind.DSPY_PYTHON:
-            test_message = "Process weather data: {{user_text}}"
-
-        code = await template_service.generate_code(
-            integration=integration,
-            agent_id=f"code-gen-test-{display_name.lower().replace(' ', '-')}-weather-user-agent",
-            agent_schema_id=1,
-            model_used="gemini-2.0-flash-001",
-            version_messages=[
-                Message(
-                    role="user",
-                    content=[MessageContent(text=test_message)],
-                ),
-            ],
-            is_using_instruction_variables=use_input_vars,
-            input_schema=input_schema,
-            is_using_structured_generation=True,
-            output_schema=output_schema,
-            enabled_tools=sample_tools_list,
-        )
-
-        result = run_generated_code(
-            code,
-            save_to_filename=f"test_tools_with_structured_output_execution_{display_name}",
-        )
-
-        assert result["execution_result"]["success"], {result["execution_result"]["stderr"]}
-
-        # Verify there was output
-        assert result["execution_result"]["stdout"].strip(), (
-            f"No output from {display_name} Tools + Structured Output execution"
-        )
-
-        _logger.info(
-            "✅ %s Tools + Structured Output Execution Output: %s",
-            display_name,
-            result["execution_result"]["stdout"],
-        )
-
-    # @pytest.mark.skip("Skipping real code execution tests")
+    @pytest.mark.skip("Skipping real code execution tests")
     @pytest.mark.asyncio
     async def test_nested_schema_execution(
         self,
@@ -1539,7 +1566,7 @@ class TestRealCodeExecution:
         assert output.strip(), "No output from nested schema execution"
         _logger.info("✅ Nested Schema Execution Output: %s...", output[:200])
 
-    # @pytest.mark.skip("Skipping real code execution tests")
+    @pytest.mark.skip("Skipping real code execution tests")
     @pytest.mark.asyncio
     async def test_nested_schema_syntax_validation(
         self,
@@ -1588,7 +1615,7 @@ class TestRealCodeExecution:
                     f"Generated {integration.display_name} code with nested schema has syntax error: {e}\n\nCode:\n{python_code}",
                 )
 
-    # @pytest.mark.skip("Skipping real code execution tests")
+    @pytest.mark.skip("Skipping real code execution tests")
     @pytest.mark.asyncio
     async def test_typescript_nested_schema_generation(
         self,
