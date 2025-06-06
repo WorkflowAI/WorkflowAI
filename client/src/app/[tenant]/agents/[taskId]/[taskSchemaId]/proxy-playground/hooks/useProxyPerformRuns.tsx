@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMap } from 'usehooks-ts';
 import { useAIModels } from '@/store/ai_models';
 import { useOrganizationSettings } from '@/store/organization_settings';
+import { usePlaygroundChatStore } from '@/store/playgroundChatStore';
 import { useTasks } from '@/store/task';
 import { useTaskSchemas } from '@/store/task_schemas';
 import { useVersions } from '@/store/versions';
@@ -36,6 +37,7 @@ type Props = {
   outputModels: PlaygroundModels;
   temperature: number | undefined;
   input: GeneralizedTaskInput | undefined;
+  setScheduledPlaygroundStateMessage: (message: string | undefined) => void;
 };
 
 export function useProxyPerformRuns(props: Props) {
@@ -58,6 +60,7 @@ export function useProxyPerformRuns(props: Props) {
     outputModels,
     temperature,
     input,
+    setScheduledPlaygroundStateMessage,
   } = props;
 
   const schemaIdRef = useRef<TaskSchemaID>(schemaId);
@@ -326,6 +329,8 @@ export function useProxyPerformRuns(props: Props) {
     abortControllerRun2.current?.abort();
   }, []);
 
+  const { getScheduledPlaygroundStateMessageToSendAfterRuns } = usePlaygroundChatStore();
+
   const performRuns = useCallback(
     async (indexes?: number[]) => {
       const indexesToRun = indexes ?? defaultIndexes;
@@ -348,6 +353,11 @@ export function useProxyPerformRuns(props: Props) {
       if (newSchema) {
         changeURLSchemaId(newSchema, true);
       }
+
+      const message = getScheduledPlaygroundStateMessageToSendAfterRuns();
+      if (message) {
+        setScheduledPlaygroundStateMessage(message);
+      }
     },
     [
       setTaskRunId,
@@ -361,6 +371,8 @@ export function useProxyPerformRuns(props: Props) {
       fetchModels,
       tenant,
       taskId,
+      getScheduledPlaygroundStateMessageToSendAfterRuns,
+      setScheduledPlaygroundStateMessage,
     ]
   );
 

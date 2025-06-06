@@ -1,6 +1,6 @@
 import { enableMapSet, produce } from 'immer';
 import { debounce } from 'lodash';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useEffect } from 'react';
 import { useRef } from 'react';
 import { create } from 'zustand';
@@ -164,10 +164,13 @@ export const useOrExtractTemplete = (
 
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   const [isWaitingForRequestToEnd, setIsWaitingForRequestToEnd] = useState(false);
 
-  useEffect(() => {
+  const performExtract = useCallback(async () => {
     abortControllerRef.current?.abort();
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
@@ -175,11 +178,16 @@ export const useOrExtractTemplete = (
     setIsWaitingForRequestToEnd(true);
 
     debounce(() => {
-      if (!messages) return;
-      extract(id, tenant, taskId, messages, inputSchema, abortController.signal);
+      if (!messagesRef.current) return;
+      extract(id, tenant, taskId, messagesRef.current, inputSchema, abortController.signal);
       setIsWaitingForRequestToEnd(false);
     }, 500)();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [extract, tenant, taskId, messages, inputSchema, id]);
+
+  useEffect(() => {
+    performExtract();
+  }, [performExtract]);
 
   const areThereChangesInInputSchema = useMemo(() => {
     if (!schema || !inputSchema) return false;
@@ -193,5 +201,6 @@ export const useOrExtractTemplete = (
     inputVariblesKeys,
     error,
     areThereChangesInInputSchema,
+    performExtract,
   };
 };
