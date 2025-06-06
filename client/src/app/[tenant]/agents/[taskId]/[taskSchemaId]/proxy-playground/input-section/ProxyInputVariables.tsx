@@ -2,7 +2,7 @@ import { cloneDeep } from 'lodash';
 import { set } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { ObjectViewer } from '@/components/ObjectViewer/ObjectViewer';
-import { InitInputFromSchemaMode } from '@/lib/schemaUtils';
+import { FieldType, InitInputFromSchemaMode, changeFileTypeInSchema } from '@/lib/schemaUtils';
 import { initInputFromSchema } from '@/lib/schemaUtils';
 import { mergeTaskInputAndVoid } from '@/lib/schemaVoidUtils';
 import { useAudioTranscriptions } from '@/store/audio_transcriptions';
@@ -13,6 +13,7 @@ import { JsonSchema } from '@/types/json_schema';
 
 type Props = {
   inputSchema: JsonSchema | undefined;
+  setInputSchema?: (inputSchema: JsonSchema | undefined) => void;
   input: Record<string, unknown> | undefined;
   setInput: (input: Record<string, unknown>) => void;
   tenant: TenantID | undefined;
@@ -20,7 +21,7 @@ type Props = {
 };
 
 export function ProxyInputVariables(props: Props) {
-  const { inputSchema, input, setInput, tenant, taskId } = props;
+  const { inputSchema, setInputSchema, input, setInput, tenant, taskId } = props;
 
   const voidInput = useMemo(() => {
     if (!inputSchema) return undefined;
@@ -39,6 +40,20 @@ export function ProxyInputVariables(props: Props) {
       setInput(newInput);
     },
     [input, setInput]
+  );
+
+  const handleTypeChange = useCallback(
+    (keyPath: string, newType: FieldType) => {
+      const newInput = cloneDeep(input) || {};
+      set(newInput, keyPath, undefined);
+      setInput(newInput);
+
+      if (inputSchema && setInputSchema) {
+        const newSchema = changeFileTypeInSchema(inputSchema, keyPath, newType);
+        setInputSchema(newSchema);
+      }
+    },
+    [input, setInput, inputSchema, setInputSchema]
   );
 
   const fetchAudioTranscription = useAudioTranscriptions((state) => state.fetchAudioTranscription);
@@ -67,6 +82,7 @@ export function ProxyInputVariables(props: Props) {
         voidValue={voidInput}
         editable={true}
         onEdit={handleEdit}
+        onTypeChange={setInputSchema ? handleTypeChange : undefined}
         textColor='text-gray-500'
         fetchAudioTranscription={fetchAudioTranscription}
         handleUploadFile={handleUploadFile}

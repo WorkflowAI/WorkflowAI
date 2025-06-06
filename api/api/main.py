@@ -103,10 +103,11 @@ async def lifespan(app: FastAPI):
     await HTTPXProviderBase.close()
 
 
+
 _ONLY_RUN_ROUTES = os.getenv("ONLY_RUN_ROUTES") == "true"
 
 app = FastAPI(
-    title="WorklowAI",
+    title="WorkflowAI",
     description="Structured AI workflows",
     version="0.1.0",
     openapi_tags=[
@@ -149,7 +150,7 @@ if not _ONLY_RUN_ROUTES:
     app.include_router(main_router)
 
 
-class StarndardModelResponse(BaseModel):
+class StandardModelResponse(BaseModel):
     """A model response compatible with the OpenAI API"""
 
     object: Literal["list"] = "list"
@@ -196,18 +197,18 @@ async def list_all_available_models(
     if raw:
         return list(Model)
 
-    def _model_data_iterator() -> Iterator[StarndardModelResponse.ModelItem]:
+    def _model_data_iterator() -> Iterator[StandardModelResponse.ModelItem]:
         for model in Model:
             data = MODEL_DATAS[model]
             if isinstance(data, LatestModel) and not omit_latest:
-                yield StarndardModelResponse.ModelItem.from_model_data(model.value, MODEL_DATAS[data.model])  # pyright: ignore [reportArgumentType]
+                yield StandardModelResponse.ModelItem.from_model_data(model.value, MODEL_DATAS[data.model])  # pyright: ignore [reportArgumentType]
             elif isinstance(data, FinalModelData):
-                yield StarndardModelResponse.ModelItem.from_model_data(model.value, data)
+                yield StandardModelResponse.ModelItem.from_model_data(model.value, data)
             else:
                 # Skipping deprecated models
                 continue
 
-    return StarndardModelResponse(data=list(_model_data_iterator()))
+    return StandardModelResponse(data=list(_model_data_iterator()))
 
 
 @app.exception_handler(ObjectNotFoundException)

@@ -812,3 +812,8 @@ async def test_with_files_in_variables(test_client: IntegrationTestClient, opena
         },
         "type": "object",
     }
+
+    req = test_client.httpx_mock.get_request(url="https://api.openai.com/v1/chat/completions")
+    assert req
+    body = json.loads(req.content)
+    assert body["messages"][0]["content"][1]["image_url"]["url"] == "https://blabla"

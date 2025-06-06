@@ -2228,3 +2228,80 @@ async def test_preserve_credits(test_client: IntegrationTestClient):
     await test_client.wait_for_completed_tasks()
     org = await test_client.get_org()
     assert org["current_credits_usd"] == approx(10 - run_cost)
+
+
+async def test_with_inlined_files_with_url(test_client: IntegrationTestClient):
+    # Create an agent with a file input
+    task = await test_client.create_agent_v1(
+        input_schema={
+            "type": "object",
+            "format": "messages",
+            "properties": {"image_url": {"$ref": "#/$defs/Image"}},
+        },
+    )
+    test_client.httpx_mock.add_response(
+        url="https://example.com/image.png",
+        content=b"Hello, world!",
+    )
+    # Create a version with templated variables
+    version = await test_client.create_version_v1(
+        task,
+        {
+            "model": Model.GPT_4O_2024_11_20,
+            "messages": [
+                {"role": "user", "content": [{"text": "Describe this image {{ image_url }}"}]},
+            ],
+        },
+    )
+
+    # Run the version
+    test_client.mock_openai_call()
+
+    run = await test_client.run_task_v1(
+        task,
+        version=version["id"],
+        task_input={"image_url": {"url": "https://example.com/image.png"}},
+    )
+    assert run
+    assert run["task_output"]["greeting"] == "Hello James!"
+
+    # Check that the file was inlined
+    request = test_client.httpx_mock.get_request(url="https://api.openai.com/v1/chat/completions")
+    assert request
+    body = json.loads(request.content)
+    assert len(body["messages"]) == 1
+
+    assert body["messages"][0]["content"] == [
+        {
+            "type": "text",
+            "text": "Describe this image ",
+        },
+        {
+            "type": "image_url",
+            "image_url": {"url": "https://example.com/image.png"},
+        },
+    ]
+
+    # Do the same thing with data
+    run = await test_client.run_task_v1(
+        task,
+        version=version["id"],
+        task_input={"image_url": {"data": "helloi==", "content_type": "image/png"}},
+    )
+
+    # Check that the file was inlined
+    requests = test_client.httpx_mock.get_requests(url="https://api.openai.com/v1/chat/completions")
+    assert len(requests) == 2
+    request = requests[-1]
+    body = json.loads(request.content)
+    assert len(body["messages"]) == 1
+    assert body["messages"][0]["content"] == [
+        {
+            "type": "text",
+            "text": "Describe this image ",
+        },
+        {
+            "type": "image_url",
+            "image_url": {"url": "data:image/png;base64,helloi=="},
+        },
+    ]

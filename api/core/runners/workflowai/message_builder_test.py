@@ -140,3 +140,36 @@ class TestHandleTemplatedMessages:
                 ],
             ),
         ]
+
+    async def test_with_file_in_raw_text_in_system(self, mock_builder: MessageBuilder):
+        mock_builder._version_messages = [
+            Message.with_text("Describe this image {{ image_url}}", role="system"),
+        ]
+        mock_builder._input_schema.json_schema = streamline_schema(
+            {
+                "properties": {
+                    "image_url": {"$ref": "#/$defs/File"},
+                },
+            },
+        )
+        messages = await mock_builder._handle_templated_messages(
+            StoredMessages.model_validate(
+                {
+                    "image_url": "https://blabla",
+                },
+            ),
+        )
+        assert messages == [
+            Message(
+                role="system",
+                content=[
+                    MessageContent(text="Describe this image "),
+                ],
+            ),
+            Message(
+                role="user",
+                content=[
+                    MessageContent(file=File(url="https://blabla")),
+                ],
+            ),
+        ]

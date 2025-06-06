@@ -15,6 +15,7 @@ import { GeneralizedTaskInput } from '@/types/task_run';
 import { ProxyMessage, RunRequest, TaskGroupProperties_Input, ToolKind, Tool_Output } from '@/types/workflowAI';
 import { useFetchTaskRunUntilCreated } from '../../playground/hooks/useFetchTaskRunUntilCreated';
 import { PlaygroundModels } from '../../playground/hooks/utils';
+import { removeInputEntriesNotMatchingSchemaAndKeepMessages } from '../utils';
 import { useProxyStreamedChunks } from './useProxyStreamedChunks';
 
 type Props = {
@@ -104,6 +105,12 @@ export function useProxyPerformRuns(props: Props) {
     areThereChangesInInputSchemaRef.current = areThereChangesInInputSchema;
   }, [areThereChangesInInputSchema]);
 
+  const extractedInputSchemaRef = useRef<JsonSchema | undefined>(extractedInputSchema);
+  extractedInputSchemaRef.current = extractedInputSchema;
+  useEffect(() => {
+    extractedInputSchemaRef.current = extractedInputSchema;
+  }, [extractedInputSchema]);
+
   const { streamedChunks, setStreamedChunk } = useProxyStreamedChunks(taskRunId1, taskRunId2, taskRunId3);
   const [inProgressIndexes, setInProgressIndexes] = useState<number[]>([]);
   const [errorsForModels, { set: setModelError, remove: removeModelError }] = useMap<string, Error>(
@@ -141,7 +148,7 @@ export function useProxyPerformRuns(props: Props) {
     }
 
     const updatedTask = await updateTaskSchema(tenant, taskId, {
-      input_schema: extractedInputSchema as Record<string, unknown>,
+      input_schema: extractedInputSchemaRef.current as Record<string, unknown>,
       output_schema: outputSchema as Record<string, unknown>,
     });
 
@@ -157,7 +164,7 @@ export function useProxyPerformRuns(props: Props) {
     setSchemaId(newSchema);
 
     return newSchema;
-  }, [extractedInputSchema, outputSchema, updateTaskSchema, tenant, taskId, setSchemaId, fetchTaskSchema, fetchModels]);
+  }, [outputSchema, updateTaskSchema, tenant, taskId, setSchemaId, fetchTaskSchema, fetchModels]);
 
   const abortControllerRun0 = useRef<AbortController | null>(null);
   const abortControllerRun1 = useRef<AbortController | null>(null);
@@ -230,8 +237,13 @@ export function useProxyPerformRuns(props: Props) {
         //const useCache = !!temperatureRef.current && temperatureRef.current === 0 ? 'never' : undefined;
         const useCache = 'never';
 
+        const cleanedInput = removeInputEntriesNotMatchingSchemaAndKeepMessages(
+          inputRef.current as Record<string, unknown>,
+          extractedInputSchemaRef.current
+        );
+
         const request: RunRequest = {
-          task_input: inputRef.current as Record<string, unknown>,
+          task_input: cleanedInput,
           version: versionId,
           use_cache: useCache,
         };

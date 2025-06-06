@@ -171,5 +171,9 @@ class _MessageRenderer:
             # Some files were unused
             # TODO: We need to be smarter about this but for now let's just append
             # Them at the end of the last message
-            rendered[-1].content.extend([MessageContent(file=f) for f in self._files.values()])
+            last_message = rendered[-1]
+            if last_message.role == "user":
+                rendered[-1].content.extend([MessageContent(file=f) for f in self._files.values()])
+            else:
+                rendered.append(Message(role="user", content=[MessageContent(file=f) for f in self._files.values()]))
         return rendered

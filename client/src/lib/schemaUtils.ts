@@ -1,8 +1,16 @@
 /* eslint-disable max-lines */
 import { captureException } from '@sentry/nextjs';
 import dayjs from 'dayjs';
+import { cloneDeep, get, set, unset } from 'lodash';
 import { AUDIO_REF_NAME, IMAGE_REF_NAME, PDF_REF_NAME } from '@/lib/constants';
-import { JsonArraySchema, JsonObjectSchema, JsonSchemaDefinitions, JsonValueSchema, sanitizeRef } from '@/types';
+import {
+  JsonArraySchema,
+  JsonObjectSchema,
+  JsonSchema,
+  JsonSchemaDefinitions,
+  JsonValueSchema,
+  sanitizeRef,
+} from '@/types';
 import { extractFileFieldType } from './schemaEditorUtils';
 import { isFileSchema } from './schemaFileUtils';
 
@@ -400,6 +408,219 @@ export function mergeSchemas(
   });
 
   return result;
+}
+
+export function changeKeyPathToSchemaKeyPath(keyPath: string): string {
+  const pathParts = keyPath.split('.');
+  const updatedParts: string[] = [];
+
+  pathParts.forEach((part) => {
+    if (Number.isInteger(Number(part))) {
+      updatedParts.push('items');
+    } else {
+      updatedParts.push('properties');
+      updatedParts.push(part);
+    }
+  });
+
+  const result = updatedParts.join('.');
+  return result;
+}
+
+function mergePaths(beginingPath: string, endPath: string): string {
+  const beginingPathParts = beginingPath.split('.').filter((part) => part !== '');
+  const endPathParts = endPath.split('.').filter((part) => part !== '');
+  const mergedParts = [...beginingPathParts, ...endPathParts];
+  return mergedParts.join('.');
+}
+
+function getAllTypeAndRefSchemaKeyPaths(schema: JsonSchema, currentKeyPath: string = ''): string[] {
+  const result: string[] = [];
+
+  if ('type' in schema) {
+    result.push(mergePaths(currentKeyPath, 'type'));
+  }
+
+  if ('$ref' in schema) {
+    result.push(mergePaths(currentKeyPath, '$ref'));
+  }
+
+  if (typeof schema === 'object' && schema !== null && 'properties' in schema && schema.properties) {
+    Object.entries(schema.properties).forEach(([key, value]) => {
+      const partialResults = getAllTypeAndRefSchemaKeyPaths(
+        value as JsonSchema,
+        mergePaths(currentKeyPath, `properties.${key}`)
+      );
+      result.push(...partialResults);
+    });
+  }
+
+  if (typeof schema === 'object' && schema !== null && 'items' in schema && schema.items) {
+    const partialResults = getAllTypeAndRefSchemaKeyPaths(
+      schema.items as JsonSchema,
+      mergePaths(currentKeyPath, 'items')
+    );
+    result.push(...partialResults);
+  }
+
+  return result;
+}
+
+function removeRefAndTypeFromKeyPath(keyPath: string): string {
+  const parts = keyPath.split('.');
+  parts.pop();
+  return parts.join('.');
+}
+
+export function mergeSchemaTypesAndDefs(
+  schema: JsonSchema | undefined,
+  typeSchema: JsonSchema | undefined
+): JsonSchema | undefined {
+  if (!schema || !typeSchema) {
+    return schema;
+  }
+  const result = cloneDeep(schema);
+  const typesAndRefsToSetKeyPaths = getAllTypeAndRefSchemaKeyPaths(typeSchema);
+
+  const refsAndTypes: string[] = [];
+
+  typesAndRefsToSetKeyPaths.forEach((keyPath) => {
+    // Let's first check if the entry still exists in the schema
+    const keyPathWithoutRefAndType = removeRefAndTypeFromKeyPath(keyPath);
+    const orginalValue = get(schema, keyPathWithoutRefAndType);
+    if (!orginalValue) {
+      return;
+    }
+
+    const value = get(typeSchema, keyPath);
+    if (value) {
+      set(result, keyPath, value);
+      refsAndTypes.push(value);
+    } else {
+      unset(result, keyPath);
+    }
+  });
+
+  const defs = get(typeSchema, '$defs');
+  if (defs) {
+    set(result, '$defs', defs);
+  }
+
+  return result;
+}
+
+export function changeFileTypeInSchema(schema: JsonSchema, keyPath: string, type: FieldType): JsonSchema {
+  const newSchema = cloneDeep(schema);
+  const schemaKeyPath = changeKeyPathToSchemaKeyPath(keyPath);
+
+  switch (type) {
+    case 'string':
+      set(newSchema, schemaKeyPath, { type: 'string', $ref: undefined });
+      break;
+    case 'image':
+      set(newSchema, schemaKeyPath, { $ref: '#/$defs/Image', type: undefined });
+      break;
+    case 'document':
+      set(newSchema, schemaKeyPath, { $ref: '#/$defs/File', type: undefined });
+      break;
+    case 'audio':
+      set(newSchema, schemaKeyPath, { $ref: '#/$defs/Audio', type: undefined });
+      break;
+    default:
+      set(newSchema, schemaKeyPath, { $ref: undefined, type: undefined });
+      break;
+  }
+
+  const refsAndTypes: string[] = [];
+  const typesAndRefsToSetKeyPaths = getAllTypeAndRefSchemaKeyPaths(newSchema);
+
+  typesAndRefsToSetKeyPaths.forEach((keyPath) => {
+    const value = get(newSchema, keyPath);
+    if (value) {
+      refsAndTypes.push(value);
+    }
+  });
+
+  const defs: JsonSchemaDefinitions = {};
+
+  const imageDef: JsonObjectSchema = {
+    properties: {
+      content_type: {
+        description: 'The content type of the file',
+        examples: ['image/png', 'image/jpeg', 'audio/wav', 'application/pdf'],
+        type: 'string',
+      },
+      data: {
+        description: 'The base64 encoded data of the file',
+        type: 'string',
+      },
+      url: {
+        description: 'The URL of the image',
+        type: 'string',
+      },
+    },
+    type: 'object',
+  };
+
+  const fileDef: JsonObjectSchema = {
+    properties: {
+      content_type: {
+        description: 'The content type of the file',
+        examples: ['image/png', 'image/jpeg', 'audio/wav', 'application/pdf'],
+        type: 'string',
+      },
+      data: {
+        description: 'The base64 encoded data of the file',
+        type: 'string',
+      },
+      url: {
+        description: 'The URL of the image',
+        type: 'string',
+      },
+    },
+    type: 'object',
+  };
+
+  const audioDef: JsonObjectSchema = {
+    properties: {
+      content_type: {
+        description: 'The content type of the file',
+        examples: ['image/png', 'image/jpeg', 'audio/wav', 'application/pdf'],
+        type: 'string',
+      },
+      data: {
+        description: 'The base64 encoded data of the file',
+        type: 'string',
+      },
+      url: {
+        description: 'The URL of the image',
+        type: 'string',
+      },
+    },
+    type: 'object',
+  };
+
+  if (refsAndTypes.includes('#/$defs/Image')) {
+    defs['Image'] = imageDef;
+  }
+
+  if (refsAndTypes.includes('#/$defs/Audio')) {
+    defs['Audio'] = audioDef;
+  }
+
+  if (refsAndTypes.includes('#/$defs/File')) {
+    defs['File'] = fileDef;
+  }
+
+  if (
+    refsAndTypes.includes('#/$defs/Image') ||
+    refsAndTypes.includes('#/$defs/Audio') ||
+    refsAndTypes.includes('#/$defs/File')
+  ) {
+    set(newSchema, '$defs', defs);
+  }
+
+  return newSchema;
 }
 
 /* eslint-enable no-use-before-define */

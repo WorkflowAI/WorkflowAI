@@ -137,10 +137,11 @@ export function ProxyPlayground(props: Props) {
 
   const {
     schema: extractedInputSchema,
+    setSchema: setExtractedInputSchema,
     inputVariblesKeys,
     error: extractedInputSchemaError,
     areThereChangesInInputSchema,
-  } = useOrExtractTemplete(tenant, taskId, proxyMessages, inputSchema, historyId);
+  } = useOrExtractTemplete(tenant, taskId, schema?.schema_id, proxyMessages, inputSchema, historyId);
 
   const playgroundOutputRef = useRef<HTMLDivElement>(null);
   const [scheduledPlaygroundStateMessage, setScheduledPlaygroundStateMessage] = useState<string | undefined>(undefined);
@@ -433,8 +434,8 @@ export function ProxyPlayground(props: Props) {
           >
             <div className='flex flex-col w-full sm:pb-0 pb-20'>
               <ProxySection
-                inputSchema={inputSchema}
                 extractedInputSchema={extractedInputSchema}
+                setExtractedInputSchema={setExtractedInputSchema}
                 inputVariblesKeys={inputVariblesKeys}
                 error={extractedInputSchemaError}
                 input={input}
