@@ -22,7 +22,7 @@ export function ProxyTools(props: ProxyToolsProps) {
 
     const result: Tool_Output[] = [];
     toolCalls.forEach((tool) => {
-      if ('name' in (tool as Tool_Output)) {
+      if (typeof tool === 'object' && tool && 'name' in tool) {
         result.push(tool as Tool_Output);
       }
     });
