@@ -21,4 +21,5 @@ class Provider(StrEnum):
     GOOGLE_GEMINI = "google_gemini"
     GOOGLE_IMAGEN = "google_vertex_imagen"
     X_AI = "xai"
+    CEREBRAS = "cerebras"
     OPEN_AI_IMAGE = "openai_image"

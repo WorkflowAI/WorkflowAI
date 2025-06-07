@@ -1366,6 +1366,44 @@ XAI_PROVIDER_DATA: ProviderDataByModel = {
             source="https://docs.x.ai/docs/models#models-and-pricing",
         ),
     ),
+} 
+
+CEREBRAS_PROVIDER_DATA: ProviderDataByModel = {
+    Model.LLAMA_3_1_8B: ModelProviderData(
+        text_price=TextPricePerToken(
+            prompt_cost_per_token=0.20 * ONE_MILLION_TH,
+            completion_cost_per_token=0.20 * ONE_MILLION_TH,
+            source="https://www.cerebras.net/pricing",
+        ),
+    ),
+    Model.LLAMA_3_3_70B: ModelProviderData(
+        text_price=TextPricePerToken(
+            prompt_cost_per_token=0.20 * ONE_MILLION_TH,
+            completion_cost_per_token=0.20 * ONE_MILLION_TH,
+            source="https://www.cerebras.net/pricing",
+        ),
+    ),
+    Model.LLAMA_4_SCOUT_FAST: ModelProviderData(
+        text_price=TextPricePerToken(
+            prompt_cost_per_token=0.20 * ONE_MILLION_TH,
+            completion_cost_per_token=0.20 * ONE_MILLION_TH,
+            source="https://www.cerebras.net/pricing",
+        ),
+    ),
+    Model.LLAMA_4_SCOUT_BASIC: ModelProviderData(
+        text_price=TextPricePerToken(
+            prompt_cost_per_token=0.20 * ONE_MILLION_TH,
+            completion_cost_per_token=0.20 * ONE_MILLION_TH,
+            source="https://www.cerebras.net/pricing",
+        ),
+    ),
+    Model.QWEN3_32B: ModelProviderData(
+        text_price=TextPricePerToken(
+            prompt_cost_per_token=0.20 * ONE_MILLION_TH,
+            completion_cost_per_token=0.20 * ONE_MILLION_TH,
+            source="https://www.cerebras.net/pricing",
+        ),
+    ),
 }
 
 GOOGLE_IMAGEN_PROVIDER_DATA: ProviderDataByModel = {
@@ -1437,4 +1475,7 @@ MODEL_PROVIDER_DATAS: ProviderModelDataMapping = {
     # ------------------------------------------------------------------------------------------------
     # XAI
     Provider.X_AI: XAI_PROVIDER_DATA,
+    # ------------------------------------------------------------------------------
+    # Cerebras
+    Provider.CEREBRAS: CEREBRAS_PROVIDER_DATA,
 }
