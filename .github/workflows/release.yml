@@ -65,7 +65,7 @@ jobs:
       image_name: ${{ needs.api-build.outputs.image_name }}
       env: prod-preview
       full_app_name: workflowai-api-preview
-      channel_id: ${{ secrets.SLACK_CHANNEL_ID }}
+      channel_id: ${{ vars.SLACK_CHANNEL_ID }}
     secrets: inherit
 
   client-deploy:

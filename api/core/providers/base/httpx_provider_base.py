@@ -1,4 +1,3 @@
-import json
 from abc import abstractmethod
 from collections.abc import Callable
 from contextlib import asynccontextmanager, contextmanager
@@ -281,7 +280,7 @@ class HTTPXProviderBase(AbstractProvider[ProviderConfigVar, ProviderRequestVar])
             await self.complete(
                 messages=[MessageDeprecated(role=MessageDeprecated.Role.USER, content="Respond with an empty json")],
                 options=options,
-                output_factory=lambda x, _: StructuredOutput(json.loads(x)),
+                output_factory=lambda x, _: StructuredOutput(x),
             )
             return True
         except InvalidProviderConfig:

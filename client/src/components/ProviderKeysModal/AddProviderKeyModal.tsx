@@ -111,7 +111,7 @@ function JSONProviderConfigForm(props: ProviderConfigFormProps) {
     <div className='w-full h-full flex flex-col gap-2'>
       <div className='text-[14px] text-slate-600 font-medium'>{name} Credentials</div>
       {error && <div className='text-red-500 text-[14px]'>{error}</div>}
-      <Textarea value={code} onChange={(e) => setCode(e.target.value)} className='min-h-48' />
+      <Textarea value={code} onChange={(e) => setCode(e.target.value)} className='min-h-48 max-h-96' />
     </div>
   );
 }
