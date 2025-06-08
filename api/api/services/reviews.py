@@ -174,11 +174,10 @@ class ReviewsService:
             # Potentially add created_by_user=user_who_added if tracking is needed
         )
 
-        review = await self._reviews_storage.insert_review(manual_ai_review)
         # We are not emitting an AIReviewCompletedEvent here to distinguish
         # this manual addition from an automated AI evaluation.
         # If downstream processing is needed, a new specific event could be created.
-        return review
+        return await self._reviews_storage.insert_review(manual_ai_review)
 
     async def list_reviews(
         self,

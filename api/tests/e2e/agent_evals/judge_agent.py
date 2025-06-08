@@ -20,8 +20,7 @@ def normalize_text(text: str) -> str:
     # Replace common punctuation with spaces (instead of removing)
     normalized = re.sub(r'[.,;:!?"\'\-_]', " ", normalized)
     # Remove extra whitespace, newlines, and normalize to single spaces
-    normalized = re.sub(r"\s+", " ", normalized.strip())
-    return normalized
+    return re.sub(r"\s+", " ", normalized.strip())
 
 
 def fuzzy_contains(verbatim: Optional[str], text: Optional[str], threshold: float = 0.8) -> bool:
