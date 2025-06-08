@@ -1136,7 +1136,7 @@ async def proxy_meta_agent(
     agent_has_output_schema: bool,
     use_tool_calls: bool,
     is_agent_deployed: bool,
-) -> AsyncIterator[ProxyMetaAgentOutput]:
+) -> AsyncIterator[tuple[ProxyMetaAgentOutput, str]]:
     client = AsyncOpenAI(
         api_key=os.environ["WORKFLOWAI_API_KEY"],
         base_url=f"{os.environ['WORKFLOWAI_API_URL']}/v1",
@@ -1204,24 +1204,28 @@ async def proxy_meta_agent(
     )
 
     async for chunk in response:
+        agent_run_id = chunk.id.split("/")[-1]
         # Parse tool calls if present
         parsed_tool_call = ParsedToolCall()
         if chunk.choices[0].delta.tool_calls:
             tool_call = chunk.choices[0].delta.tool_calls[0]
             parsed_tool_call = parse_tool_call(tool_call)
 
-        yield ProxyMetaAgentOutput(
-            assistant_answer=chunk.choices[0].delta.content,
-            improvement_instructions=parsed_tool_call.improvement_instructions,
-            new_tool=ProxyMetaAgentOutput.NewTool(
-                name=parsed_tool_call.tool_name,
-                description=parsed_tool_call.tool_description,
-                parameters=parsed_tool_call.tool_parameters,
-            )
-            if parsed_tool_call.tool_name and parsed_tool_call.tool_description and parsed_tool_call.tool_parameters
-            else None,
-            run_trigger_config=parsed_tool_call.run_trigger_config,
-            edit_schema_structure_request=parsed_tool_call.edit_schema_structure_request,
-            edit_schema_description_and_examples_request=parsed_tool_call.edit_schema_description_and_examples_request,
-            generate_input_request=parsed_tool_call.generate_input_request,
+        yield (
+            ProxyMetaAgentOutput(
+                assistant_answer=chunk.choices[0].delta.content,
+                improvement_instructions=parsed_tool_call.improvement_instructions,
+                new_tool=ProxyMetaAgentOutput.NewTool(
+                    name=parsed_tool_call.tool_name,
+                    description=parsed_tool_call.tool_description,
+                    parameters=parsed_tool_call.tool_parameters,
+                )
+                if parsed_tool_call.tool_name and parsed_tool_call.tool_description and parsed_tool_call.tool_parameters
+                else None,
+                run_trigger_config=parsed_tool_call.run_trigger_config,
+                edit_schema_structure_request=parsed_tool_call.edit_schema_structure_request,
+                edit_schema_description_and_examples_request=parsed_tool_call.edit_schema_description_and_examples_request,
+                generate_input_request=parsed_tool_call.generate_input_request,
+            ),
+            agent_run_id,
         )

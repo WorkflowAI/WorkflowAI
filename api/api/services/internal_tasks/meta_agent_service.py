@@ -1571,10 +1571,10 @@ class MetaAgentService:
         user_email: str | None,
         messages: list[MetaAgentChatMessage],
         playground_state: PlaygroundState,
-    ) -> AsyncIterator[list[MetaAgentChatMessage]]:
+    ) -> AsyncIterator[tuple[list[MetaAgentChatMessage], str | None]]:
         now = datetime.datetime.now(tz=datetime.timezone.utc)
         if len(messages) == 0:
-            yield [MetaAgentChatMessage(role="ASSISTANT", content=FIRST_MESSAGE_CONTENT, sent_at=now)]
+            yield ([MetaAgentChatMessage(role="ASSISTANT", content=FIRST_MESSAGE_CONTENT, sent_at=now)], None)
             return
 
         current_agent = await self.storage.task_variant_latest_by_schema_id(task_tuple[0], agent_schema_id)
@@ -1634,17 +1634,20 @@ class MetaAgentService:
                 and len(proxy_meta_agent_input.agent_lifecycle_info.deployment_info.deployments) == 1
             ):
                 environment = agent_deployment.environment or "production"
-                yield [
-                    MetaAgentChatMessage(
-                        role="ASSISTANT",
-                        content=f"Congratulations on deploying your agent! You can now make runs by using 'model={current_agent.task_id}/{current_agent.task_schema_id}/{environment}'.",
-                        kind="run_deployed_agent_assistant_proposal",
-                    ),
-                ]
+                yield (
+                    [
+                        MetaAgentChatMessage(
+                            role="ASSISTANT",
+                            content=f"Congratulations on deploying your agent! You can now make runs by using 'model={current_agent.task_id}/{current_agent.task_schema_id}/{environment}'.",
+                            kind="run_deployed_agent_assistant_proposal",
+                        ),
+                    ],
+                    None,
+                )
                 return
             else:
                 # This is not the first deployed version of the agent, we don't need to show the message
-                yield []
+                yield ([], None)
                 return
 
         # message_kind = "non_specific"
@@ -1699,14 +1702,17 @@ class MetaAgentService:
                 and proxy_meta_agent_input.agent_lifecycle_info.deployment_info
                 and not proxy_meta_agent_input.agent_lifecycle_info.deployment_info.deployments
             ):
-                yield [
-                    MetaAgentChatMessage(
-                        role="ASSISTANT",
-                        content="Congratulations on get all that set! Do you want to deploy your agent now? This will allow you to manage your agent instructions from the WorkflowAI dashboard, and you won't need to deploy every time you update your agent's instructions.",
-                        sent_at=now,
-                        kind="setup_deployment_assistant_proposal",
-                    ),
-                ]
+                yield (
+                    [
+                        MetaAgentChatMessage(
+                            role="ASSISTANT",
+                            content="Congratulations on get all that set! Do you want to deploy your agent now? This will allow you to manage your agent instructions from the WorkflowAI dashboard, and you won't need to deploy every time you update your agent's instructions.",
+                            sent_at=now,
+                            kind="setup_deployment_assistant_proposal",
+                        ),
+                    ],
+                    None,
+                )
                 return
             else:
                 # This is a polling without required action, return.
@@ -1716,22 +1722,28 @@ class MetaAgentService:
         else:  # Message is user-triggered
             if messages[-1].kind == "run_deployed_agent_user_confirmation":
                 if not self._is_any_run_using_deployment(agent_runs):
-                    yield [
-                        MetaAgentChatMessage(
-                            role="ASSISTANT",
-                            content="I can't find any run using your deployment, make sure you have set 'model={current_agent.task_id}/{current_agent.task_schema_id}/{environment}', and you have run the agent at least once after setting the deployment.",
-                            kind="run_deployed_agent_user_confirmation",
-                        ),
-                    ]
+                    yield (
+                        [
+                            MetaAgentChatMessage(
+                                role="ASSISTANT",
+                                content="I can't find any run using your deployment, make sure you have set 'model={current_agent.task_id}/{current_agent.task_schema_id}/{environment}', and you have run the agent at least once after setting the deployment.",
+                                kind="run_deployed_agent_user_confirmation",
+                            ),
+                        ],
+                        None,
+                    )
                     return
                 else:
-                    yield [
-                        MetaAgentChatMessage(
-                            role="ASSISTANT",
-                            content="Well done! I confirm that I've received a run using your deployment.",
-                            kind="run_deployed_agent_assistant_validation",
-                        ),
-                    ]
+                    yield (
+                        [
+                            MetaAgentChatMessage(
+                                role="ASSISTANT",
+                                content="Well done! I confirm that I've received a run using your deployment.",
+                                kind="run_deployed_agent_assistant_validation",
+                            ),
+                        ],
+                        None,
+                    )
                     return
 
             elif messages[-1].kind in [
@@ -1741,28 +1753,34 @@ class MetaAgentService:
                 "setup_deployment_user_postponement",
                 "run_deployed_agent_user_postponement",
             ]:
-                yield [
-                    MetaAgentChatMessage(
-                        role="ASSISTANT",
-                        content="Ok. Anything else you need help with?",
-                        kind="non_specific",
-                    ),
-                ]
+                yield (
+                    [
+                        MetaAgentChatMessage(
+                            role="ASSISTANT",
+                            content="Ok. Anything else you need help with?",
+                            kind="non_specific",
+                        ),
+                    ],
+                    None,
+                )
                 return
             elif messages[-1].kind == "try_other_models_user_confirmation":
                 if not has_tried_other_models:
-                    yield [
-                        MetaAgentChatMessage(
-                            role="ASSISTANT",
-                            content="""I did not receive any run with non-OpenAI models.
+                    yield (
+                        [
+                            MetaAgentChatMessage(
+                                role="ASSISTANT",
+                                content="""I did not receive any run with non-OpenAI models.
 Please double check:
 - You have updated your model=... parametes as mentioned above.
 - You did run the agent at least once after update.
                             """,
-                            sent_at=now,
-                            kind="try_other_models_assistant_proposal",
-                        ),
-                    ]
+                                sent_at=now,
+                                kind="try_other_models_assistant_proposal",
+                            ),
+                        ],
+                        None,
+                    )
                     return
                 else:
                     fixed_messages.append(
@@ -1773,7 +1791,7 @@ Please double check:
                             kind="try_other_models_assistant_validation",
                         ),
                     )
-                    yield fixed_messages
+                    yield (fixed_messages, None)
                     (
                         proxy_meta_agent_input,
                         instructions,
@@ -1789,18 +1807,21 @@ Please double check:
                         )
             elif messages[-1].kind == "setup_input_variables_user_confirmation":
                 if not is_using_instruction_variables:
-                    yield [
-                        MetaAgentChatMessage(
-                            role="ASSISTANT",
-                            content="""I did not receive any run with input variables, please try double check:
+                    yield (
+                        [
+                            MetaAgentChatMessage(
+                                role="ASSISTANT",
+                                content="""I did not receive any run with input variables, please try double check:
 - You have included input variables in your agent messages, inside double curly braces '{'.
 - You are passing your 'input' payload to the completion request. And the 'input' values match the input variables you defined in your 'messages'.
 - You did run the agent at least once after update.
                             """,
-                            sent_at=now,
-                            kind="setup_input_variables_assistant_proposal",
-                        ),
-                    ]
+                                sent_at=now,
+                                kind="setup_input_variables_assistant_proposal",
+                            ),
+                        ],
+                        None,
+                    )
                     return
                 else:
                     # User confirmed input variables
@@ -1812,7 +1833,7 @@ Please double check:
                             kind="setup_input_variables_assistant_validation",
                         ),
                     )
-                    yield fixed_messages
+                    yield (fixed_messages, None)
                     (
                         proxy_meta_agent_input,
                         instructions,
@@ -1826,17 +1847,20 @@ Please double check:
 
             elif messages[-1].kind == "setup_structured_output_user_confirmation":
                 if not is_using_structured_generation:
-                    yield [
-                        MetaAgentChatMessage(
-                            role="ASSISTANT",
-                            content="""I did not receive any run with structured output, please try double check:
+                    yield (
+                        [
+                            MetaAgentChatMessage(
+                                role="ASSISTANT",
+                                content="""I did not receive any run with structured output, please try double check:
 - You have included a response_format in your completion request.
 - You did run the agent at least once after update.
                             """,
-                            sent_at=now,
-                            kind="setup_structured_output_assistant_proposal",
-                        ),
-                    ]
+                                sent_at=now,
+                                kind="setup_structured_output_assistant_proposal",
+                            ),
+                        ],
+                        None,
+                    )
                     return
                 else:
                     # User confirmed input variables
@@ -1855,40 +1879,49 @@ Please double check:
                     message_kind = "setup_deployment_assistant_proposal"
             elif messages[-1].kind == "setup_deployment_user_confirmation":
                 if agent_deployment is None:
-                    yield [
-                        MetaAgentChatMessage(
-                            role="ASSISTANT",
-                            content="I can't find any deployment for your agent. Please double check https://docs.workflowai.com/features/deployments for more information.",
-                            sent_at=now,
-                            kind="setup_deployment_assistant_proposal",
-                        ),
-                    ]
+                    yield (
+                        [
+                            MetaAgentChatMessage(
+                                role="ASSISTANT",
+                                content="I can't find any deployment for your agent. Please double check https://docs.workflowai.com/features/deployments for more information.",
+                                sent_at=now,
+                                kind="setup_deployment_assistant_proposal",
+                            ),
+                        ],
+                        None,
+                    )
                     return
                 else:
                     if not self._is_any_run_using_deployment(agent_runs):
-                        yield [
-                            MetaAgentChatMessage(
-                                role="ASSISTANT",
-                                content=f"Congratulations on deploying your agent! You can now make runs by using 'model={current_agent.task_id}/{current_agent.task_schema_id}/{agent_deployment.environment}'.",
-                                sent_at=now,
-                                kind="setup_deployment_assistant_validation",
-                            ),
-                            MetaAgentChatMessage(
-                                role="ASSISTANT",
-                                content="Let me know when you will have run the agent",
-                                sent_at=now,
-                                kind="run_deployed_agent_assistant_proposal",
-                            ),
-                        ]
+                        yield (
+                            [
+                                MetaAgentChatMessage(
+                                    role="ASSISTANT",
+                                    content=f"Congratulations on deploying your agent! You can now make runs by using 'model={current_agent.task_id}/{current_agent.task_schema_id}/{agent_deployment.environment}'.",
+                                    sent_at=now,
+                                    kind="setup_deployment_assistant_validation",
+                                ),
+                                MetaAgentChatMessage(
+                                    role="ASSISTANT",
+                                    content="Let me know when you will have run the agent",
+                                    sent_at=now,
+                                    kind="run_deployed_agent_assistant_proposal",
+                                ),
+                            ],
+                            None,
+                        )
                         return
                     else:
-                        yield [
-                            MetaAgentChatMessage(
-                                role="ASSISTANT",
-                                content="Congratulations on deploying your agent! I confirm that I've received a run using your deployment.",
-                                kind="run_deployed_agent_assistant_validation",
-                            ),
-                        ]
+                        yield (
+                            [
+                                MetaAgentChatMessage(
+                                    role="ASSISTANT",
+                                    content="Congratulations on deploying your agent! I confirm that I've received a run using your deployment.",
+                                    kind="run_deployed_agent_assistant_validation",
+                                ),
+                            ],
+                            None,
+                        )
                         return
             else:
                 # This is a another client message like 'I want to do ...'
@@ -1908,7 +1941,8 @@ Please double check:
         )
         generate_input_request_chunk: GenerateAgentInputToolCallRequest | None = None
         tool_call_to_return: MetaAgentToolCallType | None = None
-        async for chunk in proxy_meta_agent(
+        agent_run_id: str | None = None
+        async for chunk, agent_run_id in proxy_meta_agent(
             input=proxy_meta_agent_input,
             instructions=instructions,
             model_name_prefix=integration.model_name_prefix or "",
@@ -1936,7 +1970,7 @@ Please double check:
                         switch_to_schema_id=current_agent.task_schema_id,
                     ),
                 ]
-                yield ret
+                yield (ret, agent_run_id)
 
             if chunk.improvement_instructions:
                 improvement_instructions_chunk = chunk.improvement_instructions
@@ -1970,6 +2004,6 @@ Please double check:
                     switch_to_schema_id=current_agent.task_schema_id,
                 ),
             ]
-            yield ret
+            yield (ret, agent_run_id)
 
         self.dispatch_new_assistant_messages_event(ret)
