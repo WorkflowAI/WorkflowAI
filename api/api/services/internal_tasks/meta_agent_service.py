@@ -1716,7 +1716,7 @@ class MetaAgentService:
                 return
             else:
                 # This is a polling without required action, return.
-                yield []
+                yield ([], None)
                 return
 
         else:  # Message is user-triggered
@@ -1874,7 +1874,7 @@ Please double check:
                             ),
                         ],
                     )
-                    yield fixed_messages
+                    yield (fixed_messages, None)
                     instructions = PROPOSE_DEPLOYMENT_INSTRUCTIONS
                     message_kind = "setup_deployment_assistant_proposal"
             elif messages[-1].kind == "setup_deployment_user_confirmation":
