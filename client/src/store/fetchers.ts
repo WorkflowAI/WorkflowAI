@@ -723,7 +723,7 @@ export const useOrFetchTaskPreview = (
   tenant: TenantID | undefined,
   schemaId: TaskSchemaID,
   chatMessages: ChatMessage[] | undefined,
-  inputSchema: Record<string, unknown>,
+  inputSchema: Record<string, unknown> | undefined,
   outputSchema: Record<string, unknown>,
   previouseInputPreview: Record<string, unknown> | undefined,
   previouseOutputPreview: Record<string, unknown> | undefined,

@@ -133,6 +133,7 @@ export type BuildAgentRequest = {
    * Whether to stream the task building process
    */
   stream?: boolean;
+  is_proxy_agent?: boolean;
 };
 
 export type CacheUsage = 'auto' | 'always' | 'never' | 'when_available' | 'only';

@@ -5,11 +5,13 @@ import { Link16Regular } from '@fluentui/react-icons';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
 import useMeasure from 'react-use-measure';
+import { useNewTaskModal } from '@/components/NewTaskModal/NewTaskModal';
 import TaskRunModal from '@/components/TaskRunModal/TaskRunModal';
 import { Button } from '@/components/ui/Button';
 import { PageContainer } from '@/components/v2/PageContainer';
 import { useCopyCurrentUrl } from '@/lib/hooks/useCopy';
 import { useDemoMode } from '@/lib/hooks/useDemoMode';
+import { useIsAllowed } from '@/lib/hooks/useIsAllowed';
 import { useIsMobile } from '@/lib/hooks/useIsMobile';
 import {
   useOrFetchOrganizationSettings,
@@ -380,6 +382,21 @@ export function ProxyPlayground(props: Props) {
     }, 1000);
   }, [cancelScheduledPlaygroundMessage, improveMessagesControls, stopAllRuns]);
 
+  const { openModal: openEditTaskModal } = useNewTaskModal();
+  const { checkIfAllowed } = useIsAllowed();
+
+  const onShowEditSchemaModal = useCallback(
+    async (message?: string) => {
+      if (!checkIfAllowed()) return;
+      openEditTaskModal({
+        mode: 'editSchema',
+        redirectToPlaygrounds: 'false',
+        prefilledMessage: message,
+      });
+    },
+    [openEditTaskModal, checkIfAllowed]
+  );
+
   return (
     <div className='flex flex-row h-full w-full'>
       <div className='flex h-full flex-1 overflow-hidden'>
@@ -512,7 +529,7 @@ export function ProxyPlayground(props: Props) {
           taskId={taskId}
           schemaId={schemaId}
           playgroundState={playgroundState}
-          onShowEditSchemaModal={() => {}}
+          onShowEditSchemaModal={onShowEditSchemaModal}
           improveInstructions={() => Promise.resolve()}
           improveVersionMessages={onImproveVersionMessagesFromChat}
           changeModels={onChatRequestToChangeModels}

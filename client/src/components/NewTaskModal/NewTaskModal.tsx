@@ -8,6 +8,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useIsMounted, useToggle } from 'usehooks-ts';
 import { useVariants } from '@/app/[tenant]/agents/[taskId]/[taskSchemaId]/playground/hooks/useVariants';
+import { checkSchemaForProxy } from '@/app/[tenant]/agents/[taskId]/[taskSchemaId]/proxy-playground/utils';
 import { AlertDialog } from '@/components/ui/AlertDialog';
 import { Dialog, DialogContent } from '@/components/ui/Dialog';
 import { WORKFLOW_AI_USERNAME } from '@/lib/constants';
@@ -186,6 +187,14 @@ export function NewTaskModal() {
       }
     }
   }, [allIterations]);
+
+  const isProxy = useMemo(() => {
+    if (!currentTaskSchema) {
+      return false;
+    }
+    return checkSchemaForProxy(currentTaskSchema);
+  }, [currentTaskSchema]);
+
   const inputSchema = taskSchema?.input_json_schema as JsonSchema | undefined;
   const outputSchema = taskSchema?.output_json_schema as JsonSchema | undefined;
   const taskName = taskSchema?.task_name ?? currentTaskSchema?.name;
@@ -199,29 +208,48 @@ export function NewTaskModal() {
     setInputSplattedSchema(newInputSplattedSchema);
   }, [inputSchema]);
 
-  useEffect(() => {
-    if (!outputSchema) return;
-    const newOutputSplattedSchema = fromSchemaToSplattedEditorFields(outputSchema, '', outputSchema?.$defs);
-    setOutputSplattedSchema(newOutputSplattedSchema);
+  const isUsingNonStructuredOutput = useMemo(() => {
+    if (!outputSchema) return false;
+    const schema = outputSchema as Record<string, unknown>;
+    return 'type' in schema && schema.type === 'string';
   }, [outputSchema]);
 
-  const computedInputSchema = useMemo(() => {
+  useEffect(() => {
+    if (!outputSchema) return;
+
+    let outputSchemaToUse = outputSchema;
+    if (isProxy && isUsingNonStructuredOutput) {
+      outputSchemaToUse = { type: 'object', properties: { content: { type: 'string' } } };
+    } else {
+      outputSchemaToUse = outputSchema;
+    }
+
+    const newOutputSplattedSchema = fromSchemaToSplattedEditorFields(outputSchemaToUse, '', outputSchema?.$defs);
+    setOutputSplattedSchema(newOutputSplattedSchema);
+  }, [outputSchema, isProxy, isUsingNonStructuredOutput]);
+
+  const computedInputSchema: Record<string, unknown> | undefined = useMemo(() => {
+    if (isProxy) {
+      return inputSchemaForVariant as Record<string, unknown>;
+    }
+
     if (!inputSplattedSchema) return undefined;
     const { schema, definitions } = fromSplattedEditorFieldsToSchema(inputSplattedSchema);
 
     return {
       ...schema,
       $defs: definitions,
-    };
-  }, [inputSplattedSchema]);
+    } as Record<string, unknown>;
+  }, [inputSplattedSchema, isProxy, inputSchemaForVariant]);
 
   const computedOutputSchema = useMemo(() => {
     if (!outputSplattedSchema) return undefined;
     const { schema, definitions } = fromSplattedEditorFieldsToSchema(outputSplattedSchema);
-    return {
+    const result = {
       ...schema,
       $defs: definitions,
     };
+    return result;
   }, [outputSplattedSchema]);
 
   const [loading, setLoading] = useState(false);
@@ -232,7 +260,6 @@ export function NewTaskModal() {
     if (!isEditMode) return false;
 
     const inputIsEqual = areSchemasEquivalent(computedInputSchema as JsonSchema, inputSchemaForVariant);
-
     const outputIsEqual = areSchemasEquivalent(computedOutputSchema as JsonSchema, outputSchemaForVariant);
 
     return inputIsEqual && outputIsEqual;
@@ -380,6 +407,7 @@ export function NewTaskModal() {
           computedOutputSchema
         ),
         user_message: newMessage,
+        is_proxy_agent: isProxy,
       };
       setUserMessage('');
       setMessages((prev) => [
@@ -455,6 +483,7 @@ export function NewTaskModal() {
       computedOutputSchema,
       open,
       setShowRetry,
+      isProxy,
     ]
   );
 
@@ -653,6 +682,11 @@ export function NewTaskModal() {
               isSaveButtonHidden={isSaveButtonHidden}
               mode={mode}
               isRedirecting={redirectToPlaygrounds}
+              infoText={
+                isProxy && isUsingNonStructuredOutput
+                  ? 'Editing the output will enable structured output. A code update will be required to use the new schema.'
+                  : undefined
+              }
             />
           )}
           {mode === 'editDescription' ? (
@@ -688,6 +722,7 @@ export function NewTaskModal() {
               flow={flow}
               integrationId={integrationId}
               onClose={onCloseRequest}
+              isProxy={isProxy}
             />
           )}
           <AlertDialog

@@ -1,4 +1,4 @@
-import { ArrowRight16Regular, Dismiss12Regular } from '@fluentui/react-icons';
+import { ArrowRight16Regular, Dismiss12Regular, Info16Regular } from '@fluentui/react-icons';
 import { useMemo } from 'react';
 import { Button } from '@/components/ui/Button';
 import { NewTaskModalQueryParams } from './NewTaskModal';
@@ -68,10 +68,11 @@ type NewTaskModalHeaderProps = {
   onSave: (() => Promise<void>) | undefined;
   onSendIteration: (() => void) | undefined;
   isRedirecting: boolean;
+  infoText: string | undefined;
 };
 
 export function NewTaskModalHeader(props: NewTaskModalHeaderProps) {
-  const { isSaveButtonHidden, mode, onClose, onSave, onSendIteration, isRedirecting } = props;
+  const { isSaveButtonHidden, mode, onClose, onSave, onSendIteration, isRedirecting, infoText } = props;
 
   const title = useMemo(() => {
     switch (mode) {
@@ -96,14 +97,22 @@ export function NewTaskModalHeader(props: NewTaskModalHeaderProps) {
         />
         {title}
       </div>
-      <NewTaskModalCTA
-        mode={mode}
-        onClose={onClose}
-        onSave={onSave}
-        onSendIteration={onSendIteration}
-        isSaveButtonHidden={isSaveButtonHidden}
-        isRedirecting={isRedirecting}
-      />
+      <div className='flex items-center gap-3'>
+        {infoText && (
+          <div className='flex items-center gap-1'>
+            <Info16Regular className='w-4 h-4 text-gray-500' />
+            <div className='text-[12px] text-gray-500'>{infoText}</div>
+          </div>
+        )}
+        <NewTaskModalCTA
+          mode={mode}
+          onClose={onClose}
+          onSave={onSave}
+          onSendIteration={onSendIteration}
+          isSaveButtonHidden={isSaveButtonHidden}
+          isRedirecting={isRedirecting}
+        />
+      </div>
     </div>
   );
 }
