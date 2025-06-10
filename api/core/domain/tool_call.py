@@ -47,10 +47,14 @@ class ToolCallRequest(BaseModel):
 class ToolCallRequestWithID(ToolCallRequest):
     id: str = Field(default="", description="The id of the tool call")
 
+    @classmethod
+    def default_id(cls, tool_name: str, input_dict: dict[str, Any]) -> str:
+        return f"{tool_name}_{compute_obj_hash(input_dict)}"
+
     @model_validator(mode="after")
     def post_validate(self):
         if not self.id:
-            self.id = f"{self.tool_name}_{compute_obj_hash(self.tool_input_dict)}"
+            self.id = self.default_id(self.tool_name, self.tool_input_dict)
         return self
 
     def add_output(self, output: "ToolCallOutput"):

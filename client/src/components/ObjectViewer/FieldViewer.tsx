@@ -41,6 +41,7 @@ export function FieldViewer(props: FieldViewerProps) {
     handleNullToggle,
     keyPath,
     onEdit,
+    onTypeChange,
     schema,
     isLast = false,
     textColor,
@@ -150,6 +151,8 @@ export function FieldViewer(props: FieldViewerProps) {
       onShowEditSchemaModal={rest.onShowEditSchemaModal}
       onShowEditDescriptionModal={rest.onShowEditDescriptionModal}
       showDescriptionPopover={rest.showDescriptionPopover !== false}
+      onTypeChange={onTypeChange}
+      schemaRefName={schemaRefName}
     />
   );
 
@@ -201,6 +204,7 @@ export function FieldViewer(props: FieldViewerProps) {
                   columnDisplay
                   {...rest}
                   isError={isError}
+                  onTypeChange={onTypeChange}
                 />
               )}
             </div>
@@ -235,6 +239,7 @@ export function FieldViewer(props: FieldViewerProps) {
                         errorsByKeypath={errorsByKeypath}
                         {...rest}
                         isError={isError}
+                        onTypeChange={onTypeChange}
                       />
                     </div>
 

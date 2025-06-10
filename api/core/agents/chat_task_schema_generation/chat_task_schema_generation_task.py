@@ -1,6 +1,6 @@
 import logging
 from enum import Enum
-from typing import Any, Literal, TypeAlias
+from typing import Any, AsyncIterator, Literal, TypeAlias
 
 import workflowai
 from pydantic import BaseModel, Field
@@ -159,6 +159,15 @@ class AgentBuilderOutput(BaseModel):
 
     new_agent_schema: AgentSchema | None = Field(
         description="The new agent schema, if any, after processing of the 'new_message'",
+        default=None,
+    )
+
+
+class OutputSchemaBuilderOutput(BaseModel):
+    answer_to_user: str = Field(description="The answer to the user, after processing of the 'new_message'", default="")
+    agent_name: str = Field(description="The name of the agent in Title Case", default="")
+    new_output_schema: OutputObjectFieldConfig | None = Field(
+        description="The schema of the agent output",
         default=None,
     )
 
@@ -357,7 +366,7 @@ INSTRUCTIONS = """Step 1 (only if there is no existing_agent_schema):
     For schema creation (existing_agent_schema is None), acknowledge the creation of the schema. You must use the following template to introduce the concept of 'agent' and 'schema':
 
     <template_for_first_schema_iteration>
-    I’ve created a schema for your [INSERT agent goal] feature. The schema defines the input variables and outlines how the AI feature should format its output. However, it doesn’t dictate its reasoning or behavior. Review the schema to ensure it looks good. You’ll be able to adjust the instructions in the Playground after saving.
+    I've created a schema for your [INSERT agent goal] feature. The schema defines the input variables and outlines how the AI feature should format its output. However, it doesn't dictate its reasoning or behavior. Review the schema to ensure it looks good. You'll be able to adjust the instructions in the Playground after saving.
     </template_for_first_schema_iteration>
 
 
@@ -371,3 +380,179 @@ INSTRUCTIONS = """Step 1 (only if there is no existing_agent_schema):
 async def agent_builder(
     input: AgentBuilderInput,
 ) -> AgentBuilderOutput: ...
+
+
+async def agent_builder_wrapper(
+    input: AgentBuilderInput,
+    version: workflowai.VersionProperties,
+    use_cache: workflowai.CacheUsage = "always",
+) -> AsyncIterator[AgentBuilderOutput]:
+    """
+    Wrapper function that streams results from agent_builder and converts them
+    to AgentBuilderOutput format for compatibility.
+    """
+    async for run_result in agent_builder.stream(input, version=version, use_cache=use_cache):
+        yield run_result.output
+
+
+OUTPUT_SCHEMA_INSTRUCTIONS = """CRITICAL RULE - INPUT SCHEMA REJECTION:
+    This agent ONLY handles output schema generation and updates. If the user requests ANY changes to input schema fields, you MUST:
+    1. Decline to make input schema changes
+    2. Explain that input schema updates are handled by updating the version messages, not through schema modifications
+    3. Direct them to use the playground agent for input schema changes
+    4. Do NOT make any input schema modifications under any circumstances
+
+    Example rejection response: "I can only help with output schema changes. For input schema modifications, you'll need to update the version messages or use the main schema builder. Input schema changes aren't handled through this interface."
+
+    Step 1 (only if there is no existing_agent_schema):
+
+    Based on the past messages exchanged with the user, decide if you have enough information to trigger the output schema generation.
+
+    What is an agent output schema? An output schema defines the structure and format of the data that an agent should return after processing its input. It specifies the fields, types, and descriptions of the expected output.
+
+    When 'user context' is provided:
+    - Review the company description to understand the business context and ensure the output schema aligns with the company's domain and needs.
+    - Check current agents to avoid duplicating existing functionality and to ensure the new output schema complements the existing ecosystem.
+
+    The information you need to create an output schema includes:
+    - What is the expected output of the agent?
+    - What format should the output take?
+    - What fields are needed in the output?
+
+    If the expected output is not defined at all, skip step 2 and directly respond to the user to ask for what information you are missing (in answer_to_user).
+    If the expected output is not super clear, generate a first simple output schema (step 2) and ask for additional information if needed (in answer_to_user).
+    If the expected output is clear, generate an output schema (step 2) and provide a basic acknowledgement in answer_to_user.
+
+    Examples:
+    - "I want to create an agent that extracts the main colors from an image" -> output is clear: list of colors, you can generate an output schema.
+    - "I want to extract events from a transcript of a meeting" -> output is defined but not super clear, you can generate a simple output schema for events and ask for additional information.
+    - "I want to create an agent that processes data" -> output is missing, you should ask for the expected output format.
+    - "Based on a text file output a summary" -> output is summary, type: 'string'
+    - "I'm building a chat" -> refer to the "SimpleChat" output schema in the "Special considerations for chat-based agents" section below.
+
+    Step 2:
+    You have to define the output object for an agent that will be given to an LLM.
+    Focus solely on the output schema - do not generate input schema fields.
+    NEVER modify input schemas - this is strictly forbidden.
+
+    If existing_agent_schema is provided, you should update the existing output schema with new output fields, based on the user's new_message as well as the existing_agent_schema and previous_messages.
+    DO NOT generate an entirely new schema; take the existing output schema as the basis and apply updates only based on the user's new_message.
+    ABSOLUTELY NEVER touch or modify the input_schema - it must remain unchanged.
+
+    What to include in the output schema?
+    - Do not extrapolate user's instructions and create too many fields. Always use the minimum fields to perform the agent goal described by the user. Better to start with a simple schema and refine, than the opposite.
+    - Do not add extra fields that are not asked by the user.
+    - Use 'enum' field type when appropriate for classification outputs or when the user explicitly requests enums.
+    - Do not add an 'explanation' field unless asked by the user.
+    - For classification cases, make sure to include an additional "UNSURE" option, for the cases that are undetermined. Do not use a "confidence_score" unless asked by the user.
+    - When refusing a query, propose an alternative.
+
+    Special considerations for chat-based agents:
+
+    For chat based agent the output schema could look like this:
+    {
+        "type": "object",
+        "fields": [
+            {
+                "name": "assistant_answer",
+                "type": "string",
+                "description": "The assistant's response to the user",
+            },
+        ],
+    }
+
+    In case the assistant can return some special data (ex: weather forecast) additional fields MUST be added to the OUTPUT schema:
+    {
+        "type": "object",
+        "fields": [
+            {
+                "name": "assistant_answer",
+                "type": "string",
+                "description": "The assistant's response to the user's weather query",
+            },
+            {
+                "name": "weather_data",
+                "type": "object",
+                "description": "Weather information provided by the assistant",
+                "fields": [
+                    {"name": "temperature", "type": "number", "description": "Temperature value"},
+                    {
+                        "name": "condition",
+                        "type": "enum",
+                        "description": "Weather condition",
+                        "values": [
+                            "sunny",
+                            "cloudy",
+                            "rainy",
+                        ],
+                    },
+                ],
+            },
+        ],
+    }
+
+    Examples:
+    - "I want to extract events from an email" -> Output should be an array of events (title, start, end, location, description, attendees).
+    - "I want to create insights from an article" -> Output should be an array of insights (STRING).
+    - "Extract the city and country from the image." -> Output should include 'city' and 'country' as strings.
+    - "I want to create a chatbot that recommends products" -> Output should include the assistant's answer and product recommendations.
+    - "I want to translate texts to Spanish" -> Output must contain a 'translated_text' (string).
+
+    Schema Generation Rules:
+
+    - The 'new_agent_schema.agent_name' must follow the following convention: [subject that is acted upon] + [the action], in Title Case. Ex: 'Sentiment Analysis', 'Text Summarization', 'Location Detection'. Avoid using "Generation" in the agent name, as all agents perform generation anyway.
+    - Enums must always have a 'fallback' value like 'OTHER', 'NA' (when the field does not apply), 'UNSURE' (for classification). This fallback value comes in addition to other values.
+    - All fields are optional by default.
+    - When an explicit timezone is required for the agent in the output (for example: repeating events at the same time on different days, daylight saving time ambiguities, etc.), you can use the "datetime_local" type that includes date, local_time, and timezone.
+    - Image generation is supported. When generating images, do not add additional fields to the output unless explicitly asked by the user.
+    - Audio generation, and file generation in general, is not supported. Always refer to the OutputSchemaFieldType.
+    - If 'available_tools_description' is provided, consider how these tools might affect the output and adjust the schema accordingly.
+
+    Step 3:
+    Set 'answer_to_user' in the output to provide a succinct reply to the user.
+
+    For output schema creation (existing_agent_schema is None), acknowledge the creation of the output schema. You must use the following template:
+
+    <template_for_first_output_schema_iteration>
+    I've created an output schema for your [INSERT agent goal] feature. The output schema defines how the AI feature should format its response. Review the schema to ensure it looks good. You'll be able to adjust the instructions in the Playground after saving.
+    </template_for_first_output_schema_iteration>
+
+    For output schema update (existing_agent_schema is not None), acknowledge the update of the output schema.
+    Since 'answer_to_user' is displayed in a chat interface, make sure that 'answer_to_user' includes line breaks, if needed, to enhance readability."""
+
+
+@workflowai.agent(
+    id="output-schema-generation",
+)
+async def output_schema_builder(
+    input: AgentBuilderInput,
+) -> OutputSchemaBuilderOutput: ...
+
+
+async def output_schema_builder_wrapper(
+    input: AgentBuilderInput,
+    version: workflowai.VersionProperties,
+    use_cache: workflowai.CacheUsage = "always",
+) -> AsyncIterator[AgentBuilderOutput]:
+    """
+    Wrapper function that streams results from output_schema_builder and converts them
+    to AgentBuilderOutput format for compatibility.
+    """
+    # Stream from the output schema builder
+    async for run_result in output_schema_builder.stream(input, version=version, use_cache=use_cache):
+        # Extract the actual result from the Run object
+        output_result = run_result.output
+
+        # Convert to AgentBuilderOutput format
+        new_agent_schema = None
+        if output_result.new_output_schema or output_result.agent_name:
+            new_agent_schema = AgentSchema(
+                agent_name=output_result.agent_name,
+                input_schema=None,  # Only output schema is generated
+                output_schema=output_result.new_output_schema,
+            )
+
+        yield AgentBuilderOutput(
+            answer_to_user=output_result.answer_to_user,
+            new_agent_schema=new_agent_schema,
+        )

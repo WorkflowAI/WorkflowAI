@@ -99,7 +99,7 @@ export function ProxyParameters(props: ProxyParametersProps) {
       </div>
       <div className='relative flex flex-col w-full flex-1 overflow-hidden'>
         <div className='flex flex-col w-full h-full overflow-y-auto'>
-          {improveMessagesControls.oldProxyMessages && (
+          {improveMessagesControls.oldProxyMessages && improveMessagesControls.showDiffChangelog && (
             <div className='flex w-full h-max px-4 pt-4'>
               <ProxyDiffsHeader improveMessagesControls={improveMessagesControls} />
             </div>

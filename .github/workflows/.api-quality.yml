@@ -9,6 +9,9 @@ on:
         type: boolean
         default: false
 
+permissions:
+  contents: read
+
 jobs:
   api-quality:
     if: inputs.skip != true
@@ -66,12 +69,12 @@ jobs:
       - name: Pyright
         run: poetry run pyright
 
-      # Run all tests in the app and tests directories except integration tests
+      # Run all tests in the app directories
       - name: Run Unit Tests
-        run: PYTHONPATH=. poetry run pytest . -W ignore::pydantic.warnings.PydanticDeprecatedSince20 -vv --junitxml=junit/test-results.xml --ignore=api/tests/LLM_tests --ignore=api/tests/e2e --ignore=api/tests/integration -m "not poppler and not ffmpeg"
+        run: PYTHONPATH=. poetry run pytest . -W ignore::pydantic.warnings.PydanticDeprecatedSince20 -vv --junitxml=junit/test-results.xml --ignore=api/tests -m "not poppler and not ffmpeg"
 
-  # Run integration tests separately
-  api-integration:
+  # Run component tests separately
+  api-component:
     if: inputs.skip != true
     runs-on: ubuntu-latest
     services:
@@ -121,7 +124,7 @@ jobs:
           poetry install
       # Run all tests in the app and tests directories
       - name: Run Unit Tests
-        run: PYTHONPATH=. poetry run pytest api/tests/integration -W ignore::pydantic.warnings.PydanticDeprecatedSince20 -vv --junitxml=junit/test-results.xml -m "not poppler and not ffmpeg"
+        run: PYTHONPATH=. poetry run pytest api/tests/component -W ignore::pydantic.warnings.PydanticDeprecatedSince20 -vv --junitxml=junit/test-results.xml -m "not poppler and not ffmpeg"
 
   # Run tests that rely on extra dependencies to avoid installing them on all jobs
   # TODO: we should likely use tool caching instead -> https://github.com/actions/toolkit/tree/main/packages/tool-cache
@@ -177,68 +180,6 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y poppler-utils ffmpeg
       # Run all tests in the app and tests directories
       - name: Run Unit Tests
-        run: PYTHONPATH=. poetry run pytest api/tests/integration -W ignore::pydantic.warnings.PydanticDeprecatedSince20 -vv --junitxml=junit/test-results.xml -m "poppler or ffmpeg"
+        run: PYTHONPATH=. poetry run pytest api/tests/component -W ignore::pydantic.warnings.PydanticDeprecatedSince20 -vv --junitxml=junit/test-results.xml -m "poppler or ffmpeg"
         env:
           JOBS_BROKER_URL: 'redis://localhost:6379'
-  api-e2e:
-    if: inputs.skip != true
-    runs-on: ubuntu-latest
-    services:
-      mongodb:
-        image: mongo:latest
-        env:
-          MONGO_INITDB_ROOT_USERNAME: admin
-          MONGO_INITDB_ROOT_PASSWORD: admin
-        ports:
-          - 27017:27017
-      redis:
-        image: redis:6.0
-        ports:
-          - 6379:6379
-      azurite:
-        # Container used to check blob storage connection
-        image: mcr.microsoft.com/azure-storage/azurite
-        ports:
-          - 10000:10000
-          - 10001:10001
-          - 10002:10002
-      clickhouse:
-        image: clickhouse/clickhouse-server:latest
-        ports:
-          - 8123:8123
-          - 9000:9000
-        env:
-          CLICKHOUSE_DB: db_int_test
-          CLICKHOUSE_PASSWORD: admin
-          CLICKHOUSE_USER: default
-    # No need to wait for mongo to be ready here
-    # It will likely be ready by the time we run tests
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
-
-      - name: Install Poetry
-        run: pipx install poetry==2.1.3
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-          cache: poetry
-      - name: Install dependencies
-        run: |
-          poetry config virtualenvs.in-project true
-          poetry install
-      - name: Run Unit Tests
-        run: PYTHONPATH=. poetry run pytest api/tests/e2e -W ignore::pydantic.warnings.PydanticDeprecatedSince20 -vv --junitxml=junit/test-results.xml -m "not requires_deployed"
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          # TODO: add more as needed
-          # GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          # AZURE_OPENAI_CONFIG: ${{ secrets.AZURE_OPENAI_CONFIG }}
-          # GOOGLE_VERTEX_AI_PROJECT_ID: ${{ secrets.GOOGLE_VERTEX_AI_PROJECT_ID }}
-          # GOOGLE_VERTEX_AI_LOCATION: ${{ secrets.GOOGLE_VERTEX_AI_LOCATION }}
-          # GOOGLE_VERTEX_AI_CREDENTIALS: ${{ secrets.GOOGLE_VERTEX_AI_CREDENTIALS }}
-          # GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          # FIREWORKS_API_KEY: ${{ secrets.FIREWORKS_API_KEY }}
-          # FIREWORKS_API_URL: ${{ secrets.FIREWORKS_API_URL }}

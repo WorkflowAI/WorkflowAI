@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { ImproveVersionMessagesResponse, useImproveVersionMessages } from '@/store/improve_version_messages';
 import { ToolCallName, usePlaygroundChatStore } from '@/store/playgroundChatStore';
 import { TaskID, TenantID } from '@/types/aliases';
@@ -22,6 +22,7 @@ export type ProxyImproveMessagesControls = {
   isImproving: boolean;
   showDiffs: boolean;
   setShowDiffs: (showDiffs: boolean) => void;
+  showDiffChangelog: boolean;
 };
 
 export function useProxyImproveMessages(props: Props): ProxyImproveMessagesControls {
@@ -31,6 +32,13 @@ export function useProxyImproveMessages(props: Props): ProxyImproveMessagesContr
   const [oldProxyMessages, setOldProxyMessages] = useState<ProxyMessage[] | undefined>(undefined);
   const [isImproving, setIsImproving] = useState(false);
   const [showDiffs, setShowDiffs] = useState(false);
+
+  const showDiffChangelog = useMemo(() => {
+    if (!oldProxyMessages) {
+      return false;
+    }
+    return (changelog && changelog.length > 0) || !isImproving;
+  }, [changelog, oldProxyMessages, isImproving]);
 
   const improve = useImproveVersionMessages((state) => state.improveVersionMessages);
 
@@ -131,5 +139,6 @@ export function useProxyImproveMessages(props: Props): ProxyImproveMessagesContr
     isImproving,
     showDiffs,
     setShowDiffs,
+    showDiffChangelog,
   };
 }

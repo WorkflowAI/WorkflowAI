@@ -1,8 +1,16 @@
 /* eslint-disable max-lines */
 import { captureException } from '@sentry/nextjs';
 import dayjs from 'dayjs';
+import { cloneDeep, get, set, unset } from 'lodash';
 import { AUDIO_REF_NAME, IMAGE_REF_NAME, PDF_REF_NAME } from '@/lib/constants';
-import { JsonArraySchema, JsonObjectSchema, JsonSchemaDefinitions, JsonValueSchema, sanitizeRef } from '@/types';
+import {
+  JsonArraySchema,
+  JsonObjectSchema,
+  JsonSchema,
+  JsonSchemaDefinitions,
+  JsonValueSchema,
+  sanitizeRef,
+} from '@/types';
 import { extractFileFieldType } from './schemaEditorUtils';
 import { isFileSchema } from './schemaFileUtils';
 
@@ -398,6 +406,222 @@ export function mergeSchemas(
       (result as Record<string, unknown>)[key] = value;
     }
   });
+
+  return result;
+}
+
+export function changeKeyPathToSchemaKeyPath(keyPath: string): string {
+  const pathParts = keyPath.split('.');
+  const updatedParts: string[] = [];
+
+  pathParts.forEach((part) => {
+    if (Number.isInteger(Number(part))) {
+      updatedParts.push('items');
+    } else {
+      updatedParts.push('properties');
+      updatedParts.push(part);
+    }
+  });
+
+  const result = updatedParts.join('.');
+  return result;
+}
+
+function mergePaths(beginingPath: string, endPath: string): string {
+  const beginingPathParts = beginingPath.split('.').filter((part) => part !== '');
+  const endPathParts = endPath.split('.').filter((part) => part !== '');
+  const mergedParts = [...beginingPathParts, ...endPathParts];
+  return mergedParts.join('.');
+}
+
+function getKeyPathsWithTypeOrRef(schema: JsonSchema, currentKeyPath: string = ''): string[] {
+  const result: string[] = [];
+
+  if ('type' in schema || '$ref' in schema) {
+    result.push(currentKeyPath);
+  }
+
+  if (typeof schema === 'object' && schema !== null && 'properties' in schema && schema.properties) {
+    Object.entries(schema.properties).forEach(([key, value]) => {
+      const partialResults = getKeyPathsWithTypeOrRef(
+        value as JsonSchema,
+        mergePaths(currentKeyPath, `properties.${key}`)
+      );
+      result.push(...partialResults);
+    });
+  }
+
+  if (typeof schema === 'object' && schema !== null && 'items' in schema && schema.items) {
+    const partialResults = getKeyPathsWithTypeOrRef(schema.items as JsonSchema, mergePaths(currentKeyPath, 'items'));
+    result.push(...partialResults);
+  }
+
+  return result;
+}
+
+export function genarateDefs(schema: JsonSchema): JsonSchemaDefinitions | undefined {
+  const refs: string[] = [];
+  const keyPathsWithTypeOrRef = getKeyPathsWithTypeOrRef(schema);
+
+  keyPathsWithTypeOrRef.forEach((keyPath) => {
+    const value = get(schema, keyPath);
+    if (!!value && '$ref' in value) {
+      refs.push(value.$ref);
+    }
+  });
+
+  const defs: JsonSchemaDefinitions = {};
+
+  const imageDef: JsonObjectSchema = {
+    properties: {
+      content_type: {
+        description: 'The content type of the file',
+        examples: ['image/png', 'image/jpeg', 'audio/wav', 'application/pdf'],
+        type: 'string',
+      },
+      data: {
+        description: 'The base64 encoded data of the file',
+        type: 'string',
+      },
+      url: {
+        description: 'The URL of the image',
+        type: 'string',
+      },
+    },
+    type: 'object',
+  };
+
+  const fileDef: JsonObjectSchema = {
+    properties: {
+      content_type: {
+        description: 'The content type of the file',
+        examples: ['image/png', 'image/jpeg', 'audio/wav', 'application/pdf'],
+        type: 'string',
+      },
+      data: {
+        description: 'The base64 encoded data of the file',
+        type: 'string',
+      },
+      url: {
+        description: 'The URL of the image',
+        type: 'string',
+      },
+    },
+    type: 'object',
+  };
+
+  const audioDef: JsonObjectSchema = {
+    properties: {
+      content_type: {
+        description: 'The content type of the file',
+        examples: ['image/png', 'image/jpeg', 'audio/wav', 'application/pdf'],
+        type: 'string',
+      },
+      data: {
+        description: 'The base64 encoded data of the file',
+        type: 'string',
+      },
+      url: {
+        description: 'The URL of the image',
+        type: 'string',
+      },
+    },
+    type: 'object',
+  };
+
+  if (refs.includes('#/$defs/Image')) {
+    defs['Image'] = imageDef;
+  }
+
+  if (refs.includes('#/$defs/Audio')) {
+    defs['Audio'] = audioDef;
+  }
+
+  if (refs.includes('#/$defs/File')) {
+    defs['File'] = fileDef;
+  }
+
+  if (Object.keys(defs).length > 0) {
+    return defs;
+  }
+
+  return undefined;
+}
+
+export function mergeSchemaTypesAndDefs(
+  schema: JsonSchema | undefined,
+  typeSchema: JsonSchema | undefined
+): JsonSchema | undefined {
+  if (!schema || !typeSchema) {
+    return schema;
+  }
+  const result = cloneDeep(schema);
+  const keyPathsWithTypeOrRef = getKeyPathsWithTypeOrRef(typeSchema);
+
+  keyPathsWithTypeOrRef.forEach((keyPath) => {
+    // Let's first check if the entry still exists in the schema
+    const orginalValue = get(schema, keyPath);
+    if (!orginalValue) {
+      return;
+    }
+
+    const typeValue = get(typeSchema, keyPath);
+
+    if ('type' in typeValue) {
+      set(result, keyPath, { type: typeValue.type });
+      unset(result, `${keyPath}.$ref`);
+    } else if ('$ref' in typeValue) {
+      set(result, keyPath, { $ref: typeValue.$ref });
+      unset(result, `${keyPath}.type`);
+    } else {
+      unset(result, `${keyPath}.$ref`);
+      unset(result, `${keyPath}.type`);
+    }
+  });
+
+  const defs = genarateDefs(result);
+  if (defs) {
+    set(result, '$defs', defs);
+  } else {
+    unset(result, '$defs');
+  }
+
+  return result;
+}
+
+export function changeFileTypeInSchema(schema: JsonSchema, keyPath: string, type: FieldType): JsonSchema {
+  const result = cloneDeep(schema);
+  const schemaKeyPath = changeKeyPathToSchemaKeyPath(keyPath);
+
+  switch (type) {
+    case 'string':
+      set(result, schemaKeyPath, { type: 'string' });
+      unset(result, `${schemaKeyPath}.$ref`);
+      break;
+    case 'image':
+      set(result, schemaKeyPath, { $ref: '#/$defs/Image' });
+      unset(result, `${schemaKeyPath}.type`);
+      break;
+    case 'document':
+      set(result, schemaKeyPath, { $ref: '#/$defs/File' });
+      unset(result, `${schemaKeyPath}.type`);
+      break;
+    case 'audio':
+      set(result, schemaKeyPath, { $ref: '#/$defs/Audio' });
+      unset(result, `${schemaKeyPath}.type`);
+      break;
+    default:
+      unset(result, `${schemaKeyPath}.$ref`);
+      unset(result, `${schemaKeyPath}.type`);
+      break;
+  }
+
+  const defs = genarateDefs(result);
+  if (defs) {
+    set(result, '$defs', defs);
+  } else {
+    unset(result, '$defs');
+  }
 
   return result;
 }

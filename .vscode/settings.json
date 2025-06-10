@@ -76,5 +76,6 @@
   "[yaml]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
-  "jest.rootPath": "client"
+  "jest.rootPath": "client",
+  "rust-analyzer.linkedProjects": ["integrations/rust/Cargo.toml"]
 }

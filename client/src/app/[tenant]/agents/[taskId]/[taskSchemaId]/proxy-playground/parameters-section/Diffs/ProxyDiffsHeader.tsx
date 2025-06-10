@@ -33,7 +33,7 @@ export function ProxyDiffsHeader(props: Props) {
       <div className='flex flex-col gap-1 w-full bg-gray-50 p-3 text-gray-500 shadow-inner'>
         {improveMessagesControls.changelog?.map((line) => (
           <div key={line} className='flex flex-row gap-1.5'>
-            <EditFilled className='w-3 h-3 text-gray-500 mt-[3px]' />
+            <EditFilled className='w-3 h-3 text-gray-500 mt-[3px] flex-shrink-0' />
             {line}
           </div>
         ))}

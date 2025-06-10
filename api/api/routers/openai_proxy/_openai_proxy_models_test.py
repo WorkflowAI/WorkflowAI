@@ -12,7 +12,7 @@ from core.domain.message import Message, MessageContent
 from core.domain.models.models import Model
 from core.domain.task_group_properties import TaskGroupProperties, ToolChoiceFunction
 from core.domain.tool import Tool
-from core.domain.tool_call import ToolCall
+from core.domain.tool_call import ToolCall, ToolCallRequestWithID
 from core.domain.version_environment import VersionEnvironment
 from core.providers.base.provider_error import MissingModelError
 from core.tools import ToolKind
@@ -151,7 +151,6 @@ class TestOpenAIProxyMessageToDomain:
     def test_with_tool_call_requests(self):
         message = OpenAIProxyMessage(
             content="I'll help you draft an email to this GitHub user. First, let me gather their information to personalize the message.",
-            name=None,
             role="assistant",
             tool_calls=[
                 OpenAIProxyToolCall(
@@ -187,6 +186,74 @@ class TestOpenAIProxyMessageToDomain:
         domain_message = message.to_domain()
         assert len(domain_message.content) == 1
         assert domain_message.content[0].tool_call_result
+
+    def test_function_role(self):
+        message = OpenAIProxyMessage(
+            role="function",
+            name="my_function",
+            content="Hello, world!",
+            # Will likely not be set by the user but instead by the domain_messages method
+            tool_call_id="1",
+        )
+        domain_message = message.to_domain()
+        assert domain_message.role == "user"
+        assert domain_message.content[0] == MessageContent(
+            tool_call_result=ToolCall(
+                id="1",
+                tool_name="",
+                tool_input_dict={},
+                result="Hello, world!",
+            ),
+        )
+
+
+class TestOpenAIProxyChatCompletionRequestDomainMessages:
+    def test_with_function_call(self):
+        payload = OpenAIProxyChatCompletionRequest.model_validate(
+            {
+                "messages": [
+                    {"role": "user", "content": "Hello, world!"},
+                    {
+                        "role": "assistant",
+                        "function_call": {"name": "get_weather", "arguments": '{"city": "Paris"}'},
+                    },
+                    {
+                        "role": "function",
+                        "name": "get_weather",
+                        "content": "The weather in Paris is sunny",
+                    },
+                ],
+                "model": "gpt-4o",
+            },
+        )
+        messages = list(payload.domain_messages())
+        assert len(messages) == 3
+        assert messages[0] == Message(role="user", content=[MessageContent(text="Hello, world!")])
+        assert messages[1] == Message(
+            role="assistant",
+            content=[
+                MessageContent(
+                    tool_call_request=ToolCallRequestWithID(
+                        id="get_weather_30f889b51cc908ea225f3b5a5c6939cf",
+                        tool_name="get_weather",
+                        tool_input_dict={"city": "Paris"},
+                    ),
+                ),
+            ],
+        )
+        assert messages[2] == Message(
+            role="user",
+            content=[
+                MessageContent(
+                    tool_call_result=ToolCall(
+                        id="get_weather_30f889b51cc908ea225f3b5a5c6939cf",
+                        tool_name="",
+                        tool_input_dict={},
+                        result="The weather in Paris is sunny",
+                    ),
+                ),
+            ],
+        )
 
 
 class TestOpenAIProxyChatCompletionRequestToolChoice:

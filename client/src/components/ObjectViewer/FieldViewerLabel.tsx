@@ -5,11 +5,13 @@ import { useEffect, useMemo, useRef } from 'react';
 import { Badge } from '@/components/ui/Badge';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/HoverCard';
 import { SimpleTooltip } from '@/components/ui/Tooltip';
+import { AUDIO_REF_NAME, IMAGE_REF_NAME, PDF_REF_NAME } from '@/lib/constants';
 import { FieldType } from '@/lib/schemaUtils';
 import { cn } from '@/lib/utils';
 import { JsonValueSchema } from '@/types';
 import { Button } from '../ui/Button';
 import { FieldViewerLabelExampleHints } from './FieldViewerLabelExampleHints';
+import { TypeSelector } from './TypeSelector';
 
 const TOOLTIP_DELAY = 100;
 
@@ -36,6 +38,8 @@ type FieldViewerLabelProps = {
   onShowEditSchemaModal?: () => void;
   onShowEditDescriptionModal?: () => void;
   showDescriptionPopover: boolean;
+  onTypeChange?: (keyPath: string, newType: string) => void;
+  schemaRefName: string | undefined;
 };
 
 export function FieldViewerLabel(props: FieldViewerLabelProps) {
@@ -61,6 +65,8 @@ export function FieldViewerLabel(props: FieldViewerLabelProps) {
     onShowEditSchemaModal,
     onShowEditDescriptionModal,
     showDescriptionPopover,
+    onTypeChange,
+    schemaRefName,
   } = props;
 
   // This is a side effect that updates the position of the field key in the parent component
@@ -84,10 +90,35 @@ export function FieldViewerLabel(props: FieldViewerLabelProps) {
   }, [isArrayObject, showTypes, editable, fieldKey, onlyShowDescriptionsAndExamplesAndHideTypes]);
   const NullToggleIcon = isNull ? PlusCircle : Trash2;
 
+  const showTypeChangeButtons = useMemo(() => {
+    return (
+      !!onTypeChange &&
+      (subSchemaFieldType === 'undefined' ||
+        subSchemaFieldType === 'audio' ||
+        subSchemaFieldType === 'document' ||
+        subSchemaFieldType === 'image' ||
+        subSchemaFieldType === 'string')
+    );
+  }, [onTypeChange, subSchemaFieldType]);
+
+  const realFieldType: FieldType | undefined = useMemo(() => {
+    if (schemaRefName) {
+      switch (schemaRefName) {
+        case IMAGE_REF_NAME:
+          return 'image';
+        case AUDIO_REF_NAME:
+          return 'audio';
+        case PDF_REF_NAME:
+          return 'document';
+      }
+    }
+    return subSchemaFieldType;
+  }, [schemaRefName, subSchemaFieldType]);
+
   const content = (
     <div
       className={cx('flex items-center justify-between self-start', {
-        'w-full': isArrayObject,
+        'w-full': isArrayObject || !!onTypeChange,
       })}
       ref={fieldRef}
     >
@@ -176,6 +207,11 @@ export function FieldViewerLabel(props: FieldViewerLabelProps) {
           />
         )}
       </div>
+      {showTypeChangeButtons && !!realFieldType && !!onTypeChange && (
+        <div className='flex w-full items-center justify-end'>
+          <TypeSelector keyPath={fieldKeyPath} type={realFieldType} onTypeChange={onTypeChange} />
+        </div>
+      )}
       {!!onRemove && <DismissFilled onClick={onRemove} className='cursor-pointer text-gray-600 h-[18px] w-[18px]' />}
     </div>
   );

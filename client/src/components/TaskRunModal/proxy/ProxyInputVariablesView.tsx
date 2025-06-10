@@ -4,10 +4,9 @@ import { InitInputFromSchemaMode } from '@/lib/schemaUtils';
 import { initInputFromSchema } from '@/lib/schemaUtils';
 import { mergeTaskInputAndVoid } from '@/lib/schemaVoidUtils';
 import { TaskSchemaResponseWithSchema } from '@/types';
-import { TaskInputDict } from '@/types/workflowAI';
 
 type Props = {
-  input: TaskInputDict;
+  input: Record<string, unknown> | undefined;
   schema: TaskSchemaResponseWithSchema;
 };
 

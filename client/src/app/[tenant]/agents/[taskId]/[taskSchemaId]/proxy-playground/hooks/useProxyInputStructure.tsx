@@ -12,7 +12,7 @@ export function useProxyInputStructure(props: Props) {
 
   const { messages, cleanInput } = useMemo(() => {
     if (!input || !('workflowai.messages' in input)) {
-      return { messages: undefined, cleanInput: input as Record<string, unknown> };
+      return { messages: undefined, cleanInput: input as Record<string, unknown> | undefined };
     }
 
     const taskInput = input as Record<string, unknown>;

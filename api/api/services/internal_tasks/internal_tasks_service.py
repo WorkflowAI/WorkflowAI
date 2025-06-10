@@ -8,7 +8,6 @@ from datetime import datetime, timezone
 from typing import Annotated, Any, AsyncIterator, Literal, NamedTuple, Optional, Sequence, overload
 
 import workflowai
-from workflowai import Run
 
 from api.services.internal_tasks._internal_tasks_utils import (
     OFFICIALLY_SUGGESTED_TOOLS,
@@ -25,6 +24,7 @@ from core.agents.chat_task_schema_generation.chat_task_schema_generation_task im
     INSTRUCTIONS as AGENT_BUILDER_INSTRUCTIONS,
 )
 from core.agents.chat_task_schema_generation.chat_task_schema_generation_task import (
+    OUTPUT_SCHEMA_INSTRUCTIONS,
     AgentBuilderInput,
     AgentBuilderOutput,
     AgentSchemaJson,
@@ -32,6 +32,8 @@ from core.agents.chat_task_schema_generation.chat_task_schema_generation_task im
     InputObjectFieldConfig,
     OutputObjectFieldConfig,
     agent_builder,
+    agent_builder_wrapper,
+    output_schema_builder_wrapper,
 )
 from core.agents.chat_task_schema_generation.chat_task_schema_generation_task_utils import (
     build_json_schema_with_defs,
@@ -330,6 +332,7 @@ class InternalTasksService:
         chat_messages: list[ChatMessage],
         user_email: str | None,
         existing_task: AgentSchemaJson | None = None,
+        is_proxy_agent: bool = False,
     ) -> AsyncIterator[
         tuple[
             Annotated[Optional[AgentSchemaJson], "The generated task schema (if any)"],
@@ -337,7 +340,7 @@ class InternalTasksService:
         ]
     ]:
         AGENT_BUILDER_MODELS = [
-            workflowai.Model.CLAUDE_3_7_SONNET_20250219,
+            Model.CLAUDE_4_SONNET_20250514,
             Model.GPT_41_2025_04_14,  # TODO: use workflowai.Model when the model will be in the SDK
             Model.GROK_3_BETA,  # TODO: use workflowai.Model when the model will be in the SDK
         ]
@@ -347,22 +350,35 @@ class InternalTasksService:
         for model in AGENT_BUILDER_MODELS:
             is_last_chance = model == AGENT_BUILDER_MODELS[-1]
 
-            version = workflowai.VersionProperties(
-                model=model,
-                max_tokens=2500,  # Generated schema can be lengthy, so 2500 instead of 1000 of most Claude agents
-                instructions=AGENT_BUILDER_INSTRUCTIONS,
-            )
+            if is_proxy_agent:
+                version = workflowai.VersionProperties(
+                    model=model,
+                    max_tokens=2500,  # Generated schema can be lengthy, so 2500 instead of 1000 of most Claude agents
+                    instructions=OUTPUT_SCHEMA_INSTRUCTIONS,
+                )
 
-            iterator = agent_builder.stream(
-                agent_input,
-                version=version,
-                use_cache="always",
-            )
-            chunk: Run[AgentBuilderOutput] | None = None
+                iterator = output_schema_builder_wrapper(
+                    agent_input,
+                    version=version,
+                    use_cache="always",
+                )
+            else:
+                version = workflowai.VersionProperties(
+                    model=model,
+                    max_tokens=2500,  # Generated schema can be lengthy, so 2500 instead of 1000 of most Claude agents
+                    instructions=AGENT_BUILDER_INSTRUCTIONS,
+                )
+
+                iterator = agent_builder_wrapper(
+                    agent_input,
+                    version=version,
+                    use_cache="always",
+                )
+            chunk: AgentBuilderOutput | None = None
             latest_chunk_is_error = False
             async for chunk in iterator:
                 try:
-                    yield self._handle_stream_task_iterations_chunk(chunk.output, partial=True)
+                    yield self._handle_stream_task_iterations_chunk(chunk, partial=True)
                     latest_chunk_is_error = False
                 except UnparsableChunkError:
                     latest_chunk_is_error = True
@@ -370,7 +386,7 @@ class InternalTasksService:
             if chunk:
                 try:
                     # We stream the last chunk with partial=False, because it is the final chunk
-                    yield self._handle_stream_task_iterations_chunk(chunk.output, partial=False)
+                    yield self._handle_stream_task_iterations_chunk(chunk, partial=False)
                     latest_chunk_is_error = False
                 except UnparsableChunkError:
                     latest_chunk_is_error = True

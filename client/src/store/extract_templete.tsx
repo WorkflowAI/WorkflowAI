@@ -7,6 +7,7 @@ import { create } from 'zustand';
 import { client } from '@/lib/api';
 import { RequestError } from '@/lib/api/client';
 import { areSchemasEquivalent } from '@/lib/schemaEditorUtils';
+import { mergeSchemaTypesAndDefs } from '@/lib/schemaUtils';
 import { TaskID, TenantID } from '@/types/aliases';
 import { JsonSchema } from '@/types/json_schema';
 import { ProxyMessage } from '@/types/workflowAI';
@@ -65,7 +66,7 @@ export const useExtractTemplete = create<ExtractTempleteState>((set, get) => ({
 
       set(
         produce((state) => {
-          state.schemaById.set(id, json_schema);
+          state.schemaById.set(id, json_schema ?? { type: 'object', properties: {} });
           state.isLoadingById.set(id, false);
           state.errorById.set(id, undefined);
         })
@@ -117,7 +118,10 @@ function extractInputKeysFromSchema(schema: JsonSchema | undefined): string[] | 
   return Object.keys(properties);
 }
 
-function fixSchema(schema: JsonSchema | undefined, baseInputSchema: JsonSchema | undefined): JsonSchema | undefined {
+function fixSchemaFormat(
+  schema: JsonSchema | undefined,
+  baseInputSchema: JsonSchema | undefined
+): JsonSchema | undefined {
   if (baseInputSchema && 'format' in baseInputSchema) {
     return {
       ...schema,
@@ -130,22 +134,27 @@ function fixSchema(schema: JsonSchema | undefined, baseInputSchema: JsonSchema |
 export const useOrExtractTemplete = (
   tenant: TenantID | undefined,
   taskId: TaskID,
+  schemaId: number | undefined,
   messages: ProxyMessage[] | undefined,
   inputSchema: JsonSchema | undefined,
   historyId: string | undefined
 ) => {
   const id = useMemo(() => {
-    return `${tenant}-${taskId}-${historyId}`;
-  }, [tenant, taskId, historyId]);
+    return `${tenant}-${taskId}-${schemaId}-${historyId}`;
+  }, [tenant, taskId, schemaId, historyId]);
 
   const isLoading = useExtractTemplete((state) => state.isLoadingById.get(id));
   const extractedSchema = useExtractTemplete((state) => state.schemaById.get(id));
   const error = useExtractTemplete((state) => state.errorById.get(id));
 
+  const [typeSchema, setTypeSchema] = useState<JsonSchema | undefined>(undefined);
+
   const schema = useMemo(() => {
     if (!extractedSchema || messages?.length === 0 || !messages) return inputSchema;
-    return fixSchema(extractedSchema, inputSchema);
-  }, [extractedSchema, inputSchema, messages]);
+    const fixedSchema = fixSchemaFormat(extractedSchema, inputSchema);
+    const mergedSchema = mergeSchemaTypesAndDefs(fixedSchema, typeSchema);
+    return mergedSchema;
+  }, [extractedSchema, inputSchema, messages, typeSchema]);
 
   const extract = useExtractTemplete((state) => state.extract);
 
@@ -155,32 +164,29 @@ export const useOrExtractTemplete = (
 
   const abortControllerRef = useRef<AbortController | undefined>(undefined);
 
-  const messagesRef = useRef(messages);
-  messagesRef.current = messages;
-  useEffect(() => {
-    messagesRef.current = messages;
-  }, [messages]);
-
-  const [isWaitingForRequestToEnd, setIsWaitingForRequestToEnd] = useState(false);
-
   const performExtract = useCallback(async () => {
     abortControllerRef.current?.abort();
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
-
-    setIsWaitingForRequestToEnd(true);
-
-    debounce(() => {
-      if (!messagesRef.current) return;
-      extract(id, tenant, taskId, messagesRef.current, inputSchema, abortController.signal);
-      setIsWaitingForRequestToEnd(false);
-    }, 500)();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    extract(id, tenant, taskId, messages ?? [], inputSchema, abortController.signal);
   }, [extract, tenant, taskId, messages, inputSchema, id]);
 
   useEffect(() => {
-    performExtract();
-  }, [performExtract]);
+    abortControllerRef.current?.abort();
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
+    const debouncedExtract = debounce(() => {
+      extract(id, tenant, taskId, messages ?? [], inputSchema, abortController.signal);
+    }, 500);
+
+    debouncedExtract();
+
+    return () => {
+      debouncedExtract.cancel();
+      abortController.abort();
+    };
+  }, [extract, tenant, taskId, messages, inputSchema, id]);
 
   const areThereChangesInInputSchema = useMemo(() => {
     if (!schema || !inputSchema) return false;
@@ -188,8 +194,9 @@ export const useOrExtractTemplete = (
   }, [schema, inputSchema]);
 
   return {
-    isLoading: isLoading || isWaitingForRequestToEnd,
+    isLoading: isLoading,
     schema,
+    setSchema: setTypeSchema,
     inputVariblesKeys,
     error,
     areThereChangesInInputSchema,

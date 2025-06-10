@@ -80,3 +80,4 @@ class BuildAgentRequest(BaseModel):
 
     user_message: str
     stream: bool = Field(default=False, description="Whether to stream the task building process")
+    is_proxy_agent: bool = Field(default=False, description="Whether the agent is a proxy agent")

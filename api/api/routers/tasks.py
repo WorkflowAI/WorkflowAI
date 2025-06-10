@@ -125,6 +125,7 @@ async def generate_via_chat(
                 chat_messages=chat_messages,
                 user_email=user_properties.user_email,
                 existing_task=existing_task,
+                is_proxy_agent=request.is_proxy_agent,
             ):
                 payload = BuildAgentIteration(
                     user_message=request.user_message,

@@ -1,0 +1,74 @@
+name: API Quality
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  api-integration:
+    if: inputs.skip != true
+    runs-on: ubuntu-latest
+    services:
+      mongodb:
+        image: mongo:latest
+        env:
+          MONGO_INITDB_ROOT_USERNAME: admin
+          MONGO_INITDB_ROOT_PASSWORD: admin
+        ports:
+          - 27017:27017
+      redis:
+        image: redis:6.0
+        ports:
+          - 6379:6379
+      azurite:
+        # Container used to check blob storage connection
+        image: mcr.microsoft.com/azure-storage/azurite
+        ports:
+          - 10000:10000
+          - 10001:10001
+          - 10002:10002
+      clickhouse:
+        image: clickhouse/clickhouse-server:latest
+        ports:
+          - 8123:8123
+          - 9000:9000
+        env:
+          CLICKHOUSE_DB: db_int_test
+          CLICKHOUSE_PASSWORD: admin
+          CLICKHOUSE_USER: default
+    # No need to wait for mongo to be ready here
+    # It will likely be ready by the time we run tests
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      - name: Install Poetry
+        run: pipx install poetry==2.1.3
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: poetry
+      - name: Install ubuntu dependencies
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils ffmpeg
+      - name: Install Rust
+        run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+      - name: Install dependencies
+        run: |
+          poetry config virtualenvs.in-project true
+          poetry install
+      - name: Run Unit Tests
+        # Can't run in parallel here because of the session scoped fixtures
+        # See https://github.com/pytest-dev/pytest-xdist/issues/271
+        run: PYTHONPATH=. poetry run pytest api/tests/integration
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # TODO: add more as needed
+          # GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          # AZURE_OPENAI_CONFIG: ${{ secrets.AZURE_OPENAI_CONFIG }}
+          # GOOGLE_VERTEX_AI_PROJECT_ID: ${{ secrets.GOOGLE_VERTEX_AI_PROJECT_ID }}
+          # GOOGLE_VERTEX_AI_LOCATION: ${{ secrets.GOOGLE_VERTEX_AI_LOCATION }}
+          # GOOGLE_VERTEX_AI_CREDENTIALS: ${{ secrets.GOOGLE_VERTEX_AI_CREDENTIALS }}
+          # GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          # FIREWORKS_API_KEY: ${{ secrets.FIREWORKS_API_KEY }}
+          # FIREWORKS_API_URL: ${{ secrets.FIREWORKS_API_URL }}

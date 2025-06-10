@@ -217,7 +217,7 @@ async def improve_version_messages(
 ):
     version = await versions_service.get_version(task_id, version_id, models_service)
 
-    if not version.group.properties.messages:
+    if not request.overriden_messages and not version.group.properties.messages:
         _logger.warning("Can not improve version message of a version without messages")
         raise BadRequestError("Can not improve version message of a version without messages")
 

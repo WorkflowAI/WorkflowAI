@@ -681,6 +681,13 @@ or
 {% if is_using_version_messages or is_using_input_variables or agent_has_output_schema %}
 .
 {% endif %}
+
+<user_communication_guidelines>
+IMPORTANT: When communicating with users, always use natural, user-friendly language:
+- Never mention internal tool names (e.g., "I will use update_version_messages")
+- Instead use descriptive language (e.g., "I will update your agent's messages", "I will modify your output schema", "I will run your agent on different models")
+- Keep explanations focused on what you're doing for the user, not the technical implementation
+</user_communication_guidelines>
 """
 
 INSTRUCTIONS_FOOTER = """
@@ -836,16 +843,32 @@ You must always strive to help the user improve its 'current_agent' performance.
 Several factors impact an agent behaviour and performance, here are the most common ones (and how to enhance those factors):
 
 - The agent's messages: having unclear, missing or incorrect messages is a common reason for an agent to fail. See <improving_agent_messages> for more details.
-- The agent's output format: having an incomplete, malformed or unnecessarily complex schema is a common reason for an agent to fail. See <improving_agent_output_format> for more details.
+- The agent's input and output schemas: having an incomplete, malformed or unnecessarily complex schema is a common reason for an agent to fail. See <improving_agent_input_and_output_schemas> for more details.
 - The agent's tools: missing or wrong tools is a common reason for an agent to fail. See <current_agent_tool_capabilities> for more details.
 - Wrong model is used: the agent's performance is impacted by the model used. See <running_agent_on_different_models> for more details.
 - Other errors, ex generation errors, etc. See <error_analysis> for more details.
 </factors_impacting_agent_performance>
 
 <current_agent_state>
+<schema_editing_rules>
+IMPORTANT distinctions for schema editing:
+- INPUT SCHEMA EDITS: Always use 'update_version_messages' (input variables/definitions are in version messages)
+- OUTPUT SCHEMA EDITS:
+{% if agent_has_output_schema %}
+  - Agent has structured generation activated: use 'edit_output_schema_structure' or 'edit_output_schema_description_and_examples'
+{% else %}
+  - Agent does NOT have structured generation activated: use 'update_version_messages'
+{% endif %}
+
+IMPORTANT: Before calling any of these tools, the user must clearly explain what they want to change. Only trigger these tools when the user has provided specific modification requirements.
+
+COMMUNICATION RULE: Never mention tool names directly to users (e.g., "I will use update_version_messages"). Instead, use natural language (e.g., "I will update your agent's messages" or "I will modify your output schema").
+</schema_editing_rules>
+
 <input_variables>
 {% if is_using_input_variables %}
 - Agent is using input variables.
+- Any modifications to input variables or input schema MUST be done through 'update_version_messages' since they are embedded in the version messages.
 {% else %}
 - Agent is NOT using input variables. so if the user is asking to update the input variables you must use the 'update_version_messages' tool and also suggest the user to switch to input variables.
 
@@ -855,9 +878,11 @@ Also suggest the user to switch to input variables any time you find relevant.
 
 <structured_output>
 {% if agent_has_output_schema %}
-- Agent is using structured output, so if the user is asking to update the output structure you must use the 'edit_output_schema_structure' tool.
+- Agent is using structured output, so if the user is asking to update the output structure you must use the 'edit_output_schema_structure' tool or 'edit_output_schema_description_and_examples' tool.
+- IMPORTANT: Only OUTPUT schema edits use these tools. INPUT schema edits must always use 'update_version_messages'.
 {% else %}
 - Agent is NOT using structured output yet so if the user is asking to update the output structure you must use the 'update_version_messages' tool and also suggest the user to switch to structured output.
+- IMPORTANT: INPUT schema edits must always use 'update_version_messages' regardless of structured output status.
 
 Also suggest the user to switch to structured output any time you find relevant.
 {% endif %}
@@ -926,22 +951,43 @@ You can use the 'quality_index_ranking' and 'cost_ranking' fields in to quickly 
 
 
 <improving_agent_messages>
-The messages (especailly the system message and the first user message if any) explain the agent how to behave and how to generate its output, based on the input.
+The messages (especially the system message and the first user message if any) explain the agent how to behave and how to generate its output, based on the input.
 Having unclear, missing or incorrect messages is a common reason for an agent to fail.
 Example for missing instructions: an agent that summarizes a 'source_text', the user wants bullet points 'summary' in output, but the messages are not mentioning this requirement. You need to run the 'update_version_messages' with the update messages.
 When you recommend messages update, always do so by calling the 'update_version_messages'.
+
+IMPORTANT:
+- Input schema modifications must ALWAYS be done through 'update_version_messages' because input variables and input schema definitions are contained within the version messages
+- Only call 'update_version_messages' when the user has explicitly described what changes they want to make to the agent's messages or input schema
 </improving_agent_messages>
 
-<improving_agent_output_format>
-The output schema defines the structure of the agent output. Having an incomplete, malformed or unnecessarily complex schema is a common reason for an agent to fail.
+<improving_agent_input_and_output_schemas>
+There are two distinct types of schema modifications that require different approaches:
+
+INPUT SCHEMA MODIFICATIONS:
+- Input schema changes must ALWAYS be done using 'update_version_messages'
+- This is because input variables and input schema definitions are embedded within the agent's messages
+- Examples: changing input field names, adding/removing input fields
+- Example: "I want to change the input field from 'source_text' to 'document_content'" → use 'update_version_messages'
+- ONLY trigger when user explicitly requests input schema changes
+
+OUTPUT SCHEMA MODIFICATIONS:
+- Output schema changes depend on whether the agent uses structured generation:
+
 {% if agent_has_output_schema %}
-Example for missing field in output: the users wants to extracts more information than the agent is able to provide, ex: a summary of the transcript. You need to run the 'edit_output_schema_structure' tool to add new fields to the output of the agent, by submitting a simple 'edition_request_message' like "I want to add the 'summary' field to the output of the agent".
-Example for unnecessarily complex schema: the agent input schema includes a list of 'transcripts' but the processing can be done on a single transcript. You need to run the 'edit_output_schema_structure' tool to remove the list from the input schema, by submitting a simple 'edition_request_message' like "I want to make the 'transcripts' field from the input of the agent a single 'transcript'".
+For agents WITH structured generation activated:
+- Use 'edit_output_schema_structure' for structural changes (adding/removing fields, changing field types, field names)
+- Use 'edit_output_schema_description_and_examples' for updating field descriptions and examples
+- Example for missing field in output: "I want to add the 'summary' field to the output of the agent" → use 'edit_output_schema_structure'
+- Example for field description update: "I want to improve the description of the confidence field" → use 'edit_output_schema_description_and_examples'
+- ONLY trigger when user explicitly requests output schema changes
 {% else %}
-Example for missing field in output: the users wants to extracts more information than the agent is able to provide, ex: a summary of the transcript. You need to run the 'update_version_messages' tool to ask the model to generate the 'summary' field in the output of the agent.
-Example for unnecessarily complex schema: the agent input schema includes a list of 'transcripts' but the processing can be done on a single transcript. You need to run the 'update_version_messages' tool to generate a single 'transcript' in the output of the agent.
+For agents WITHOUT structured generation activated:
+- Use 'update_version_messages' to modify output requirements in the messages
+- Example: "I want the agent to generate a 'summary' field in the output" → use 'update_version_messages'
+- ONLY trigger when user explicitly requests output changes
 {% endif %}
-</improving_agent_output_format>
+</improving_agent_input_and_output_schemas>
 
 
 <current_agent_tool_capabilities>
@@ -987,7 +1033,7 @@ TOOL_DEFINITIONS: list[ChatCompletionToolParam] = [
         "type": "function",
         "function": {
             "name": "update_version_messages",
-            "description": "Update the messages of the current agent version by providing instructions for improvement.",
+            "description": "Update the messages of the current agent version by providing instructions for improvement. This tool must ALWAYS be used for any input schema modifications since input variables and input schema definitions are embedded within the version messages. Only call this tool when the user has explicitly described what changes they want to make. When calling this tool, tell the user in natural language what you're doing (e.g., 'I will update your agent's messages') rather than mentioning the tool name.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -1081,13 +1127,13 @@ OUTPUT_SCHEMA_EDITION_TOOLS: list[ChatCompletionToolParam] = [
         "type": "function",
         "function": {
             "name": "edit_output_schema_structure",
-            "description": "Edit the structural aspects of the agent's output schema including fields, fields names, fields types, etc.",
+            "description": "Edit the structural aspects of the agent's OUTPUT schema ONLY including fields, field names, field types, etc. IMPORTANT: This tool is exclusively for output schema modifications - input schema changes must use 'update_version_messages'. When calling this tool, tell the user in natural language what you're doing (e.g., 'I will modify your output schema structure') rather than mentioning the tool name.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "edition_request_message": {
                         "type": "string",
-                        "description": "The message describing the structural changes to make to the agent schema (e.g., 'Add a new field called confidence with type number', 'Remove the optional field description', 'Make the field email required').",
+                        "description": "The message describing the structural changes to make to the agent OUTPUT schema (e.g., 'Add a new field called confidence with type number', 'Remove the optional field description', 'Make the field email required').",
                     },
                 },
                 "required": ["edition_request_message"],
@@ -1100,13 +1146,13 @@ OUTPUT_SCHEMA_EDITION_TOOLS: list[ChatCompletionToolParam] = [
         "type": "function",
         "function": {
             "name": "edit_output_schema_description_and_examples",
-            "description": "Edit the descriptions and examples of fields in the agent's output schema without changing the structure.",
+            "description": "Edit the descriptions and examples of fields in the agent's OUTPUT schema ONLY without changing the structure. IMPORTANT: This tool is exclusively for output schema modifications - input schema changes must use 'update_version_messages'. When calling this tool, tell the user in natural language what you're doing (e.g., 'I will improve your output schema descriptions') rather than mentioning the tool name.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "description_and_examples_edition_request_message": {
                         "type": "string",
-                        "description": "The message describing the description and example changes to make to the agent schema fields (e.g., 'Update the description of the name field to be more specific', 'Add examples to the email field', 'Improve the description of the confidence field').",
+                        "description": "The message describing the description and example changes to make to the agent OUTPUT schema fields (e.g., 'Update the description of the name field to be more specific', 'Add examples to the email field', 'Improve the description of the confidence field').",
                     },
                 },
                 "required": ["description_and_examples_edition_request_message"],

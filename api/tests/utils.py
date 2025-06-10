@@ -2,11 +2,16 @@ import json
 import os
 import warnings
 from contextlib import contextmanager
+from pathlib import Path
 from typing import Any
 
 import httpx
 import pytest
 from bson import json_util
+
+
+def root_dir() -> Path:
+    return Path(__file__).parent.parent.parent
 
 
 def fixture_path(*components: str, relative: bool = False) -> str:

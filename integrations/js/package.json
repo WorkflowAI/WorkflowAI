@@ -1,0 +1,13 @@
+{
+  "name": "node",
+  "packageManager": "yarn@4.1.0",
+  "devDependencies": {
+    "dotenv-cli": "^8.0.0",
+    "openai": "^5.1.1",
+    "tsx": "^4.19.4",
+    "zod": "^3.25.55"
+  },
+  "scripts": {
+    "run-example": "dotenv -e '../../../.env' -- sh -c 'OPENAI_BASE_URL=${WORKFLOWAI_API_URL}/v1 OPENAI_API_KEY=${WORKFLOWAI_API_KEY} tsx \"$@\"' --"
+  }
+}
