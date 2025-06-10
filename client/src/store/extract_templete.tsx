@@ -165,6 +165,10 @@ export const useOrExtractTemplete = (
   const abortControllerRef = useRef<AbortController | undefined>(undefined);
 
   const performExtract = useCallback(async () => {
+    if (!messages || messages.length === 0) {
+      return;
+    }
+
     abortControllerRef.current?.abort();
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
@@ -172,12 +176,16 @@ export const useOrExtractTemplete = (
   }, [extract, tenant, taskId, messages, inputSchema, id]);
 
   useEffect(() => {
+    if (!messages || messages.length === 0) {
+      return;
+    }
+
     abortControllerRef.current?.abort();
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
 
     const debouncedExtract = debounce(() => {
-      extract(id, tenant, taskId, messages ?? [], inputSchema, abortController.signal);
+      extract(id, tenant, taskId, messages, inputSchema, abortController.signal);
     }, 500);
 
     debouncedExtract();
