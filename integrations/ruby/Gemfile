@@ -1,0 +1,7 @@
+source "https://rubygems.org"
+
+ruby ">= 3.0.0"
+
+gem "ruby-openai", "~> 7.0"
+gem "json", "~> 2.6"
+gem "dotenv", "~> 3.0"
