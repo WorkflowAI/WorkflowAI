@@ -24,7 +24,7 @@ import {
   fromSplattedEditorFieldsToSchema,
 } from '@/lib/schemaEditorUtils';
 import { mergeSchemas } from '@/lib/schemaUtils';
-import { useOrFetchCurrentTaskSchema, useOrFetchVersions, useTasks } from '@/store';
+import { useAIModels, useOrFetchCurrentTaskSchema, useOrFetchVersions, useTasks } from '@/store';
 import { ToolCallName, usePlaygroundChatStore } from '@/store/playgroundChatStore';
 import { useTaskSchemas } from '@/store/task_schemas';
 import { JsonSchema } from '@/types';
@@ -271,10 +271,11 @@ export function NewTaskModal() {
   const createTask = useTasks((state) => state.createTask);
   const fetchTaskSchema = useTaskSchemas((state) => state.fetchTaskSchema);
   const fetchTask = useTasks((state) => state.fetchTask);
+  const fetchModels = useAIModels((state) => state.fetchModels);
 
   const { cancelToolCall, markToolCallAsDone } = usePlaygroundChatStore();
 
-  const onSave = useCallback(async () => {
+  const onOldSave = useCallback(async () => {
     if (!computedInputSchema || !computedOutputSchema) return;
 
     const payload: CreateAgentRequest = {
@@ -320,7 +321,11 @@ export function NewTaskModal() {
             });
           } else {
             const newUrl = replaceTaskSchemaId(pathname, updatedTaskSchemaId) + '?runAgents=true';
-            router.push(newUrl);
+            redirectWithParams({
+              path: newUrl,
+              params: { runAgents: 'true' },
+              scroll: false,
+            });
           }
         }
 
@@ -384,6 +389,84 @@ export function NewTaskModal() {
     pathname,
     markToolCallAsDone,
   ]);
+
+  const onProxySave = useCallback(async () => {
+    if (!computedInputSchema || !computedOutputSchema) return;
+    if (!isEditMode) return;
+
+    const payload: CreateAgentRequest = {
+      chat_messages: messages.map((message) => ({
+        content: message.message as string,
+        role: message.username === WORKFLOW_AI_USERNAME ? 'ASSISTANT' : 'USER',
+      })),
+      name: taskName || `AI agent ${dayjs().format('YYYY-MM-DD-HH-mm-ss')}`,
+      input_schema: computedInputSchema,
+      output_schema: computedOutputSchema,
+    };
+
+    const task = await updateTaskSchema(loggedInTenant, taskId, payload);
+    const updatedTaskSchemaId = !!task.schema_id ? (`${task.schema_id}` as TaskSchemaID) : taskSchemaId;
+
+    markToolCallAsDone(taskId, ToolCallName.EDIT_AGENT_SCHEMA);
+
+    if (!loggedInTenant) {
+      onClose();
+      return;
+    }
+
+    await fetchTaskSchema(loggedInTenant, taskId, updatedTaskSchemaId);
+    // We fetch the task to update the task switcher available schemas
+    await fetchTask(loggedInTenant, taskId);
+    // We are fetching the models to make the run work imdetly after the modal is closed
+    await fetchModels(loggedInTenant, taskId, updatedTaskSchemaId);
+
+    const newUrl = taskSchemaRoute(loggedInTenant, taskId, updatedTaskSchemaId);
+
+    if (redirectToPlaygrounds) {
+      router.push(newUrl);
+      return;
+    }
+
+    // In this case we already have the baseRun set so we don't need to download it again
+    redirectWithParams({
+      path: newUrl,
+      params: {
+        performRun: 'true',
+        newTaskModalOpen: undefined,
+        redirectToPlaygrounds: undefined,
+        taskRunId1: undefined,
+        taskRunId2: undefined,
+        taskRunId3: undefined,
+      },
+      scroll: false,
+    });
+  }, [
+    loggedInTenant,
+    computedInputSchema,
+    computedOutputSchema,
+    taskName,
+    updateTaskSchema,
+    fetchTaskSchema,
+    fetchTask,
+    taskSchemaId,
+    router,
+    onClose,
+    taskId,
+    isEditMode,
+    messages,
+    redirectToPlaygrounds,
+    markToolCallAsDone,
+    redirectWithParams,
+    fetchModels,
+  ]);
+
+  const onSave = useCallback(async () => {
+    if (isProxy) {
+      await onProxySave();
+    } else {
+      await onOldSave();
+    }
+  }, [isProxy, onProxySave, onOldSave]);
 
   const isMounted = useIsMounted();
 
@@ -730,7 +813,7 @@ export function NewTaskModal() {
             title={isEditMode ? 'Confirm Cancellation' : 'Leave AI Agent Creation?'}
             text={
               isEditMode
-                ? 'You haven’t saved your recent edits. Are you sure you want to cancel them?'
+                ? "You haven't saved your recent edits. Are you sure you want to cancel them?"
                 : 'Are you sure you want to discard the changes and leave the AI agent creation?'
             }
             confrimationText='Cancel Changes'

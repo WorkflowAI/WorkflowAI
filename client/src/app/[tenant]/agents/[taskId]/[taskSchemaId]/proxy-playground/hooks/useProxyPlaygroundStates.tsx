@@ -40,6 +40,9 @@ export function useProxyPlaygroundStates(tenant: TenantID | undefined, taskId: T
 
     scrollToBottom,
     setScrollToBottom,
+
+    performRun,
+    setPerformRun,
   } = useProxyPlaygroundSearchParams(tenant, taskId, urlSchemaId);
 
   const { version } = useOrFetchVersion(tenant, taskId, versionId);
@@ -193,5 +196,7 @@ export function useProxyPlaygroundStates(tenant: TenantID | undefined, taskId: T
     changeURLSchemaId,
     scrollToBottom,
     setScrollToBottom,
+    performRun,
+    setPerformRun,
   };
 }

@@ -90,6 +90,8 @@ export function ProxyPlayground(props: Props) {
     changeURLSchemaId,
     scrollToBottom,
     setScrollToBottom,
+    performRun,
+    setPerformRun,
   } = useProxyPlaygroundStates(tenant, taskId, urlSchemaId);
 
   useEffect(() => {
@@ -191,6 +193,15 @@ export function ProxyPlayground(props: Props) {
     },
     [performRuns]
   );
+
+  useEffect(() => {
+    if (performRun) {
+      setPerformRun(undefined);
+      setTimeout(() => {
+        onPerformRuns();
+      }, 500);
+    }
+  }, [performRun, onPerformRuns, setPerformRun]);
 
   useHotkeys('meta+enter', () => onPerformRuns());
 

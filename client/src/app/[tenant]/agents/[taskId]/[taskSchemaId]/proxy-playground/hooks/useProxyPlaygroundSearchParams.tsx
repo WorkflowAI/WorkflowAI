@@ -26,6 +26,7 @@ export function useProxyPlaygroundSearchParams(
     model2: model2FromParams,
     model3: model3FromParams,
     scrollToBottom: scrollToBottomFromParams,
+    performRun: performRunFromParams,
   } = useParsedSearchParams(
     'versionId',
     'taskRunId',
@@ -40,7 +41,8 @@ export function useProxyPlaygroundSearchParams(
     'model1',
     'model2',
     'model3',
-    'scrollToBottom'
+    'scrollToBottom',
+    'performRun'
   );
 
   const redirectWithParams = useRedirectWithParams();
@@ -63,6 +65,7 @@ export function useProxyPlaygroundSearchParams(
   const [scrollToBottom, setScrollToBottom] = useState(scrollToBottomFromParams);
 
   const [schemaId, setSchemaId] = useState(urlSchemaId);
+  const [performRun, setPerformRun] = useState(performRunFromParams);
 
   const params = useMemo(() => {
     const result: Record<string, QueryParam> = {
@@ -78,6 +81,7 @@ export function useProxyPlaygroundSearchParams(
       model1: model1,
       model2: model2,
       model3: model3,
+      performRun: performRun,
     };
 
     return result;
@@ -94,6 +98,7 @@ export function useProxyPlaygroundSearchParams(
     model1,
     model2,
     model3,
+    performRun,
   ]);
 
   const paramsRef = useRef(params);
@@ -180,5 +185,8 @@ export function useProxyPlaygroundSearchParams(
 
     scrollToBottom,
     setScrollToBottom,
+
+    performRun,
+    setPerformRun,
   };
 }
