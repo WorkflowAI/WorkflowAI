@@ -16,6 +16,10 @@ class _WaitForChunksError(Exception):
     pass
 
 
+class _WaitForUnicodeEscape(_WaitForChunksError):
+    pass
+
+
 class JSONStreamError(Exception):
     def __init__(self, message: Any, parser: "JSONStreamParser") -> None:
         super().__init__(message)
@@ -199,6 +203,24 @@ class JSONStreamParser:
 
     def _add_to_current_chain(self, c: str) -> None:
         if self.is_escaping:
+            if c == "u":
+                if len(self._leftover_buffer) < 4:
+                    # Not enough characters to decode the unicode escape
+                    # Put back the sequence and wait for more characters
+                    self._leftover_buffer = "\\u" + self._leftover_buffer
+                    self.is_escaping = False
+                    raise _WaitForUnicodeEscape()
+
+                unicode_sequence = self._leftover_buffer[:4]
+                if all(ch in "0123456789abcdefABCDEF" for ch in unicode_sequence):
+                    self.current_chain += chr(int(unicode_sequence, 16))
+                    self._leftover_buffer = self._leftover_buffer[4:]
+                else:
+                    self.current_chain += "u" + unicode_sequence
+                    self._leftover_buffer = self._leftover_buffer[4:]
+                self.is_escaping = False
+                return
+
             self.current_chain += _ESCAPED_CHARS.get(c, c)
             self.is_escaping = False
             return
@@ -308,7 +330,7 @@ class JSONStreamParser:
     def raw_completion(self) -> str:
         return "".join(self.aggregate)
 
-    def process_chunk(self, chunk: str) -> list[tuple[str, Any]] | None:
+    def process_chunk(self, chunk: str) -> list[tuple[str, Any]] | None:  # noqa: C901
         self.aggregate.append(chunk)
 
         if self.is_done:
@@ -334,6 +356,9 @@ class JSONStreamParser:
 
             try:
                 processed = self._process_chunk_inner_loop(c, res=res, i=i)
+            except _WaitForUnicodeEscape:
+                # Waiting for the rest of a unicode escape sequence; characters were already re-added
+                return res or None
             except _WaitForChunksError:
                 # We need to wait for more data so we break here
                 # The current character was not processed, so we add it back to the buffer

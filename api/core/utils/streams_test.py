@@ -217,6 +217,12 @@ def test_new_line_and_quote() -> None:
     assert agg[-1] == ("answer", '"Red"\n"Blue"')
 
 
+def test_unicode_escape_across_chunks() -> None:
+    chunks = ['{"a": "\\u202', '2"}']
+    agg = _agg_stream(chunks)
+    assert agg == [("a", "•")]
+
+
 def test_invalid_json_with_comma() -> None:
     chunks = ["{\n", "}", ","]
     # The last comma is not part of the json so we check the json without it
