@@ -15,7 +15,8 @@ from core.domain.events import (
     UserReviewAddedEvent,
 )
 from core.domain.input_evaluation import InputEvaluation
-from core.domain.review import Review, ReviewerType
+from core.domain.review import Review, ReviewerType, ReviewOutcome
+from core.domain.run_identifier import RunIdentifier
 from core.domain.task_evaluation import TaskEvaluationScore
 from core.domain.task_evaluator import EvalV2Evaluator, TaskEvaluator
 from core.domain.task_group import TaskGroupQuery
@@ -125,6 +126,58 @@ class ReviewsService:
             UserReviewAddedEvent.from_review(review, run_id=run_id, is_first_review=current_review is None),
         )
         return review
+
+    async def add_manual_ai_review(
+        self,
+        task_id: str,
+        task_schema_id: int,
+        task_input_hash: str,
+        task_output_hash: str,
+        outcome: ReviewOutcome,
+        comment: str | None,
+        evaluator_id: str,  # Should correspond to an existing AI evaluator configuration
+        input_evaluation_id: str,  # Should correspond to an existing input evaluation (human review baseline), or be an empty string if not applicable.
+        confidence_score: float | None,
+        run_identifier_details: dict[str, Any] | None,  # For RunIdentifier domain object
+        positive_aspects: list[str] | None,
+        negative_aspects: list[str] | None,
+        # user_who_added: UserIdentifier, # Optional: to track who manually added this AI review
+    ):
+        # Mark existing AI reviews for this specific input/output as stale,
+        # as this manual entry is considered more definitive or a correction.
+        await self._reviews_storage.mark_as_stale(
+            task_id,
+            task_schema_id,
+            task_input_hash,
+            task_output_hash,
+            "ai",
+        )
+
+        ai_reviewer_details = Review.AIReviewer(
+            evaluator_id=evaluator_id,
+            input_evaluation_id=input_evaluation_id,
+            confidence_score=confidence_score,
+            run_identifier=RunIdentifier.model_validate(run_identifier_details) if run_identifier_details else None,
+        )
+
+        manual_ai_review = Review(
+            task_id=task_id,
+            task_schema_id=task_schema_id,
+            task_input_hash=task_input_hash,
+            task_output_hash=task_output_hash,
+            outcome=outcome,
+            comment=comment,
+            reviewer=ai_reviewer_details,
+            status="completed",  # Manual AI reviews are directly completed
+            positive_aspects=positive_aspects,
+            negative_aspects=negative_aspects,
+            # Potentially add created_by_user=user_who_added if tracking is needed
+        )
+
+        # We are not emitting an AIReviewCompletedEvent here to distinguish
+        # this manual addition from an automated AI evaluation.
+        # If downstream processing is needed, a new specific event could be created.
+        return await self._reviews_storage.insert_review(manual_ai_review)
 
     async def list_reviews(
         self,

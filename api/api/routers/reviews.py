@@ -15,6 +15,7 @@ from api.services.reviews import ReviewsService
 from core.domain.errors import BadRequestError, DuplicateValueError
 from core.domain.page import Page
 from core.domain.review import Review as DomainReview
+from core.domain.review import ReviewOutcome
 from core.domain.review_benchmark import ReviewBenchmark as DomainReviewBenchmark
 from core.domain.task_evaluator import EvalV2Evaluator
 from core.domain.types import AgentOutput
@@ -42,10 +43,15 @@ class UserReviewer(UserIdentifier):
 
 class AIReviewer(BaseModel):
     reviewer_type: Literal["ai"] = "ai"
+    evaluator_id: str | None
+    input_evaluation_id: str
 
     @classmethod
     def from_domain(cls, reviewer: DomainReview.AIReviewer):
-        return cls()
+        return cls(
+            evaluator_id=reviewer.evaluator_id,
+            input_evaluation_id=reviewer.input_evaluation_id,
+        )
 
 
 class Review(BaseModel):
@@ -102,6 +108,26 @@ async def run_hash_info(
 _RunHashInfoDep = Annotated[tuple[str, str, int, Literal["success", "failure"]], Depends(run_hash_info)]
 
 
+# Schema for manually adding an AI review
+class CreateManualAIReviewRequest(BaseModel):
+    outcome: ReviewOutcome
+    comment: str | None = None
+    evaluator_id: str = Field(description="The ID of the AI evaluator configuration this review corresponds to.")
+    input_evaluation_id: str | None = Field(
+        default=None,
+        description="The ID of the input evaluation (e.g., human review) this AI review is based on or related to. Can be empty if not applicable.",
+    )
+    confidence_score: float | None = Field(default=None, description="The AI's confidence in its evaluation.")
+    run_identifier_model_name: str | None = Field(default=None, description="Model name from RunIdentifier")
+    run_identifier_model_version: str | None = Field(default=None, description="Model version from RunIdentifier")
+    run_identifier_model_provider: str | None = Field(default=None, description="Model provider from RunIdentifier")
+
+    positive_aspects: list[str] | None = Field(default=None, description="Positive aspects noted by the AI.")
+    negative_aspects: list[str] | None = Field(default=None, description="Negative aspects noted by the AI.")
+
+    # Note: Status will be 'completed' by default in the service.
+
+
 @router.post("/runs/{run_id}/reviews", description="Create a user review for a given run")
 async def create_review(
     request: CreateReviewRequest,
@@ -123,6 +149,44 @@ async def create_review(
         user=UserIdentifier(user_id=user.user_id, user_email=user.sub),
         run_id=run_id,
     )
+    return Review.from_domain(review)
+
+
+@router.post("/runs/{run_id}/manual-ai-reviews", description="Manually create an AI review for a given run")
+async def create_manual_ai_review(
+    request: CreateManualAIReviewRequest,
+    task_id: TaskID,
+    user: RequiredUserDep,  # To know who is making this manual entry, though not stored on AIReviewer directly
+    reviews_service: ReviewsServiceDep,
+    run_hash_info: _RunHashInfoDep,
+    run_id: RunID,  # Though run_id is in path, explicit for clarity in service if needed
+) -> Review:
+    if run_hash_info[3] == "failure":
+        raise BadRequestError("Cannot create a manual AI review for a failed run at this moment.")
+
+    run_identifier_details = None
+    if request.run_identifier_model_name:  # Check if any run_identifier field is present
+        run_identifier_details = {
+            "model_name": request.run_identifier_model_name,
+            "model_version": request.run_identifier_model_version,
+            "model_provider": request.run_identifier_model_provider,
+        }
+
+    review = await reviews_service.add_manual_ai_review(
+        task_id=task_id,
+        task_schema_id=run_hash_info[2],
+        task_input_hash=run_hash_info[0],
+        task_output_hash=run_hash_info[1],
+        outcome=request.outcome,
+        comment=request.comment,
+        evaluator_id=request.evaluator_id,
+        input_evaluation_id=request.input_evaluation_id or "",
+        confidence_score=request.confidence_score,
+        run_identifier_details=run_identifier_details,
+        positive_aspects=request.positive_aspects,
+        negative_aspects=request.negative_aspects,
+    )
+
     return Review.from_domain(review)
 
 
