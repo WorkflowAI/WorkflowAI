@@ -8,8 +8,10 @@ import { ExtractTempleteError } from '@/store/extract_templete';
 import { MajorVersion, ProxyMessage, ToolKind, Tool_Output, VersionV1 } from '@/types/workflowAI';
 import { MajorVersionCombobox } from '../../playground/components/MajorVersionSelector/MajorVersionSelector';
 import { ProxyImproveMessagesControls } from '../hooks/useProxyImproveMessages';
+import { AdvancedSettings } from '../hooks/useProxyPlaygroundSearchParams';
 import { ProxyMessagesView } from '../proxy-messages/ProxyMessagesView';
 import { getAvaibleMessageTypes } from '../proxy-messages/utils';
+import { AdvancedSettingsView } from './AdvancedSettings/AdvancedSettingsView';
 import { ProxyDiffMessagesView } from './Diffs/ProxyDiffMessagesView';
 import { ProxyDiffsHeader } from './Diffs/ProxyDiffsHeader';
 import { ProxyTools } from './ProxyTools';
@@ -18,8 +20,7 @@ type ProxyParametersProps = {
   messages: ProxyMessage[] | undefined;
   setMessages: (messages: ProxyMessage[] | undefined) => void;
 
-  temperature: number;
-  setTemperature: (temperature: number) => void;
+  advancedSettings: AdvancedSettings;
 
   toolCalls: (ToolKind | Tool_Output)[] | undefined;
   setToolCalls: (toolCalls: (ToolKind | Tool_Output)[] | undefined) => void;
@@ -42,8 +43,7 @@ export function ProxyParameters(props: ProxyParametersProps) {
   const {
     messages,
     setMessages,
-    temperature,
-    setTemperature,
+    advancedSettings,
     toolCalls,
     setToolCalls,
     majorVersions,
@@ -134,9 +134,15 @@ export function ProxyParameters(props: ProxyParametersProps) {
           <div className='flex w-full items-center font-medium text-[13px] text-gray-900'>Tools</div>
           <ProxyTools toolCalls={toolCalls} setToolCalls={setToolCalls} />
         </div>
-        <div className='flex flex-col gap-1 px-4 pt-3 pb-3'>
-          <div className='flex w-full items-center font-medium text-[13px] text-gray-900'>Temperature</div>
-          <TemperatureSelector temperature={temperature} setTemperature={setTemperature} />
+        <div className='flex flex-row w-full items-center'>
+          <div className='flex flex-col gap-1 px-4 pt-3 pb-3'>
+            <div className='flex w-full items-center font-medium text-[13px] text-gray-900'>Temperature</div>
+            <TemperatureSelector
+              temperature={Number(advancedSettings.temperature)}
+              setTemperature={(temperature) => advancedSettings.setTemperature(String(temperature))}
+            />
+          </div>
+          <AdvancedSettingsView advancedSettings={advancedSettings} />
         </div>
       </div>
     </div>

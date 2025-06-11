@@ -44,25 +44,28 @@ import {
 import { getVersionsPerEnvironment, mapMajorVersionsToVersions, useVersions } from './versions';
 import { useWeeklyRuns } from './weekly_runs';
 
-type TUseOrFetchAllAiModelsProps = {
+type UseOrFetchSchemaAIModelsProps = {
   tenant: TenantID | undefined;
   taskId: TaskID;
   taskSchemaId: TaskSchemaID;
 };
 
-export function useOrFetchAllAiModels(props: TUseOrFetchAllAiModelsProps) {
+export function useOrFetchSchemaAIModels(props: UseOrFetchSchemaAIModelsProps) {
   const { tenant, taskId, taskSchemaId } = props;
+
   const scope = buildScopeKey({ tenant, taskId, taskSchemaId });
+
   const models = useAIModels((state) => state.modelsByScope.get(scope));
   const isLoading = useAIModels((state) => state.isLoadingByScope.get(scope));
   const isInitialized = useAIModels((state) => state.isInitializedByScope.get(scope));
-  const fetchModels = useAIModels((state) => state.fetchModels);
+
+  const fetchSchemaModels = useAIModels((state) => state.fetchSchemaModels);
 
   useEffect(() => {
     if (!isInitialized) {
-      fetchModels(tenant, taskId, taskSchemaId);
+      fetchSchemaModels(tenant, taskId, taskSchemaId);
     }
-  }, [isInitialized, fetchModels, tenant, taskId, taskSchemaId]);
+  }, [isInitialized, fetchSchemaModels, tenant, taskId, taskSchemaId]);
 
   const findIconURLForModel = useCallback(
     (modelId?: string) => {

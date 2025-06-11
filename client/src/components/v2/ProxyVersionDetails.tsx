@@ -4,6 +4,10 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useMemo, useState } from 'react';
 import { DebouncedState } from 'usehooks-ts';
 import { ProxyMessagesView } from '@/app/[tenant]/agents/[taskId]/[taskSchemaId]/proxy-playground/proxy-messages/ProxyMessagesView';
+import {
+  advencedSettingNameFromKey,
+  advencedSettingsVersionPropertiesKeys,
+} from '@/app/[tenant]/agents/[taskId]/[taskSchemaId]/proxy-playground/utils';
 import { TaskVersionNotes } from '@/components/TaskVersionNotes';
 import { TaskRunCountBadge } from '@/components/v2/TaskRunCountBadge/TaskRunCountBadge';
 import { useDemoMode } from '@/lib/hooks/useDemoMode';
@@ -75,7 +79,7 @@ export function ProxyVersionDetails(props: TaskMetadataProps) {
 
   const environments = useMemo(() => environmentsForVersion(version) || [], [version]);
 
-  const { temperature, instructions, provider, few_shot, messages } = properties;
+  const { temperature, instructions, provider, messages } = properties;
   const model = version?.model;
 
   const isSaved = isVersionSaved(version);
@@ -137,7 +141,6 @@ export function ProxyVersionDetails(props: TaskMetadataProps) {
     return null;
   }
 
-  const fewShotCount = few_shot?.count;
   const runCount = version.run_count ?? undefined;
 
   return (
@@ -212,7 +215,7 @@ export function ProxyVersionDetails(props: TaskMetadataProps) {
         </div>
       )}
 
-      <div className='grid grid-cols-3 gap-2'>
+      <div className='grid grid-cols-3 gap-2 pb-1'>
         {temperature !== undefined && temperature !== null && (
           <TaskMetadataSection title='temperature'>
             <TaskTemperatureBadge temperature={temperature} />
@@ -229,11 +232,17 @@ export function ProxyVersionDetails(props: TaskMetadataProps) {
           <TaskRunCountBadge runsCount={runCount} onClick={onViewRuns} />
         </TaskMetadataSection>
 
-        {fewShotCount !== undefined && fewShotCount !== null && (
-          <TaskMetadataSection title='few-shot'>
-            {`${fewShotCount} ${fewShotCount > 1 ? 'examples' : 'example'}`}
-          </TaskMetadataSection>
-        )}
+        {advencedSettingsVersionPropertiesKeys.map((key) => {
+          const value = properties[key];
+          if (value === undefined) {
+            return null;
+          }
+          return (
+            <TaskMetadataSection key={key} title={advencedSettingNameFromKey(key)}>
+              <div className='text-[13px] font-medium text-gray-700 px-1.5 py-0.5 border border-gray-200 rounded-[2px]'>{`${value}`}</div>
+            </TaskMetadataSection>
+          );
+        })}
       </div>
       {children}
     </div>

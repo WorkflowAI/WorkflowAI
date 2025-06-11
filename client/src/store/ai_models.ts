@@ -17,7 +17,7 @@ interface AIModelsState {
   isLoading: boolean;
   isInitialized: boolean;
 
-  fetchModels(tenant: TenantID | undefined, taskId: TaskID, taskSchemaId: TaskSchemaID): Promise<void>;
+  fetchSchemaModels(tenant: TenantID | undefined, taskId: TaskID, taskSchemaId: TaskSchemaID): Promise<void>;
   fetchUniversalModels(): Promise<void>;
 }
 
@@ -30,17 +30,22 @@ export const useAIModels = create<AIModelsState>((set, get) => ({
   isLoading: false,
   isInitialized: false,
 
-  fetchModels: async (tenant: TenantID | undefined, taskId: TaskID, taskSchemaId: TaskSchemaID) => {
-    if (!tenant) {
-      return;
-    }
+  fetchSchemaModels: async (tenant: TenantID | undefined, taskId: TaskID, taskSchemaId: TaskSchemaID) => {
     const scope = buildScopeKey({ tenant, taskId, taskSchemaId });
+
     if (get().isLoadingByScope.get(scope)) return;
-    set({ isLoadingByScope: new Map([[scope, true]]) });
+
+    set(
+      produce((state) => {
+        state.isLoadingByScope.set(scope, true);
+      })
+    );
+
     try {
       const response = await client.get<Page_ModelResponse_>(
         taskSchemaSubPath(tenant, taskId, taskSchemaId, '/models', true)
       );
+
       set(
         produce((state) => {
           state.modelsByScope.set(scope, response.items);
@@ -59,7 +64,12 @@ export const useAIModels = create<AIModelsState>((set, get) => ({
 
   fetchUniversalModels: async () => {
     if (get().isLoading) return;
-    set({ isLoading: true });
+
+    set(
+      produce((state) => {
+        state.isLoading = true;
+      })
+    );
 
     const path = `/api/data/features/models`;
 

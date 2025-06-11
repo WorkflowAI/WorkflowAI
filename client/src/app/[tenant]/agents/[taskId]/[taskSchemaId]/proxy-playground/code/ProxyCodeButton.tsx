@@ -19,6 +19,8 @@ import {
 import { PlaygroundModels } from '../../playground/hooks/utils';
 import { SideBySideVersionPopoverItem } from '../../side-by-side/SideBySideVersionPopoverItem';
 import { SideBySideVersionPopoverModelItem } from '../../side-by-side/SideBySideVersionPopoverModelItem';
+import { AdvancedSettings } from '../hooks/useProxyPlaygroundSearchParams';
+import { addAdvencedSettingsToProperties } from '../utils';
 
 type Props = {
   tenant: TenantID | undefined;
@@ -32,7 +34,7 @@ type Props = {
 
   proxyMessages: ProxyMessage[] | undefined;
   proxyToolCalls: (ToolKind | Tool_Output)[] | undefined;
-  temperature: number | undefined;
+  advancedSettings: AdvancedSettings;
 
   setVersionIdForCode: (versionId: string | undefined) => void;
 };
@@ -47,7 +49,7 @@ export function ProxyCodeButton(props: Props) {
     taskId,
     proxyMessages,
     proxyToolCalls,
-    temperature,
+    advancedSettings,
     schemaId,
     setVersionIdForCode,
   } = props;
@@ -106,14 +108,15 @@ export function ProxyCodeButton(props: Props) {
 
       const properties: TaskGroupProperties_Input = {
         model: modelId,
-        temperature: temperature,
         enabled_tools: proxyToolCalls,
         messages: proxyMessages,
       };
 
+      const propertiesWithAdvancedSettings = addAdvencedSettingsToProperties(properties, advancedSettings);
+
       try {
         const { id: versionId } = await createVersion(tenant, taskId, schemaId, {
-          properties,
+          properties: propertiesWithAdvancedSettings,
         });
 
         await saveVersion(tenant, taskId, versionId);
@@ -127,7 +130,6 @@ export function ProxyCodeButton(props: Props) {
     },
     [
       setOpen,
-      temperature,
       proxyToolCalls,
       proxyMessages,
       createVersion,
@@ -136,6 +138,7 @@ export function ProxyCodeButton(props: Props) {
       schemaId,
       saveVersion,
       setVersionIdForCode,
+      advancedSettings,
     ]
   );
 

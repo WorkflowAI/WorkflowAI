@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useOrFetchAllAiModels } from '@/store/fetchers';
+import { useOrFetchSchemaAIModels } from '@/store/fetchers';
 import { SideBySideEntry, useSideBySideStore } from '@/store/side_by_side';
 import { useTaskRuns } from '@/store/task_runs';
 import { buildScopeKey } from '@/store/utils';
@@ -53,7 +53,7 @@ export function useSideBySideRowStatsEffect(
   });
 
   const runs = useSideBySideStore((state) => state.runs.get(scopeKey));
-  const { models } = useOrFetchAllAiModels({ tenant, taskId, taskSchemaId });
+  const { models } = useOrFetchSchemaAIModels({ tenant, taskId, taskSchemaId });
 
   const leftEntry = useMemo(
     () => findEntry(runs, inputHash, leftVersionId, undefined),

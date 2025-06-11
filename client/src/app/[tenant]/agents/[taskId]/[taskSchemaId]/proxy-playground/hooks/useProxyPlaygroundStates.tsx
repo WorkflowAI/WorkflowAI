@@ -1,9 +1,33 @@
 import { nanoid } from 'nanoid';
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useOrFetchLatestRun, useOrFetchRunV1, useOrFetchVersion } from '@/store/fetchers';
 import { TaskID, TaskSchemaID, TenantID } from '@/types/aliases';
+import { VersionV1 } from '@/types/workflowAI';
 import { useProxyOutputModels } from './useProxyOutputModels';
 import { useProxyPlaygroundSearchParams } from './useProxyPlaygroundSearchParams';
+
+function useSetPropertyFromVersionIfNeeded(
+  version: VersionV1 | undefined,
+  key: string,
+  property: string | undefined,
+  setProperty: (property: string | undefined) => void
+) {
+  const propertyRef = useRef<string | undefined>(property);
+  const keyRef = useRef<string>(key);
+  const setPropertyRef = useRef<((property: string | undefined) => void) | undefined>(setProperty);
+
+  useEffect(() => {
+    const property = propertyRef.current;
+    const key = keyRef.current;
+
+    if (property !== undefined || !version || !version.properties[key]) {
+      return;
+    }
+
+    const value = String(version.properties[key]);
+    setPropertyRef.current?.(value);
+  }, [version]);
+}
 
 export function useProxyPlaygroundStates(tenant: TenantID | undefined, taskId: TaskID, urlSchemaId: TaskSchemaID) {
   const {
@@ -25,8 +49,6 @@ export function useProxyPlaygroundStates(tenant: TenantID | undefined, taskId: T
     runIdForModal,
     historyId,
     setHistoryId,
-    temperature,
-    setTemperature,
     model1,
     model2,
     model3,
@@ -40,6 +62,8 @@ export function useProxyPlaygroundStates(tenant: TenantID | undefined, taskId: T
 
     scrollToBottom,
     setScrollToBottom,
+
+    advancedSettings,
   } = useProxyPlaygroundSearchParams(tenant, taskId, urlSchemaId);
 
   const { version } = useOrFetchVersion(tenant, taskId, versionId);
@@ -91,13 +115,41 @@ export function useProxyPlaygroundStates(tenant: TenantID | undefined, taskId: T
     }
   }, [versionId, baseRun, setVersionId, run1, run2, run3, baseRunId, setTaskRunId1]);
 
-  useEffect(() => {
-    if (temperature !== undefined || !version) {
-      return;
-    }
-
-    setTemperature(version.properties.temperature ?? undefined);
-  }, [version, temperature, setTemperature]);
+  useSetPropertyFromVersionIfNeeded(
+    version,
+    'temperature',
+    advancedSettings.temperature,
+    advancedSettings.setTemperature
+  );
+  useSetPropertyFromVersionIfNeeded(version, 'top_p', advancedSettings.topP, advancedSettings.setTopP);
+  useSetPropertyFromVersionIfNeeded(version, 'max_tokens', advancedSettings.maxTokens, advancedSettings.setMaxTokens);
+  useSetPropertyFromVersionIfNeeded(version, 'stream', advancedSettings.stream, advancedSettings.setStream);
+  useSetPropertyFromVersionIfNeeded(
+    version,
+    'stream_options_include_usage',
+    advancedSettings.streamOptionsIncludeUsage,
+    advancedSettings.setStreamOptionsIncludeUsage
+  );
+  useSetPropertyFromVersionIfNeeded(version, 'stop', advancedSettings.stop, advancedSettings.setStop);
+  useSetPropertyFromVersionIfNeeded(
+    version,
+    'presence_penalty',
+    advancedSettings.presencePenalty,
+    advancedSettings.setPresencePenalty
+  );
+  useSetPropertyFromVersionIfNeeded(
+    version,
+    'frequency_penalty',
+    advancedSettings.frequencyPenalty,
+    advancedSettings.setFrequencyPenalty
+  );
+  useSetPropertyFromVersionIfNeeded(
+    version,
+    'tool_choice',
+    advancedSettings.toolChoice,
+    advancedSettings.setToolChoice
+  );
+  useSetPropertyFromVersionIfNeeded(version, 'use_cache', advancedSettings.cache, advancedSettings.setCache);
 
   // Setters and Getters with Sync
 
@@ -182,8 +234,6 @@ export function useProxyPlaygroundStates(tenant: TenantID | undefined, taskId: T
     setRunIdForModal,
     runIdForModal,
     historyId,
-    temperature,
-    setTemperature,
     outputModels,
     setOutputModels,
     compatibleModels,
@@ -193,5 +243,7 @@ export function useProxyPlaygroundStates(tenant: TenantID | undefined, taskId: T
     changeURLSchemaId,
     scrollToBottom,
     setScrollToBottom,
+
+    advancedSettings,
   };
 }
