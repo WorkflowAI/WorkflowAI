@@ -180,6 +180,8 @@ class TestModelsEndpoint:
         assert first_model["object"] == "model"
         assert "supports" in first_model
         assert "parallel_tool_calls" in first_model["supports"]
+        assert "price_per_input_token_usd" in first_model
+        assert "price_per_output_token_usd" in first_model
 
     async def test_models_endpoint_order_check(self, test_api_client: AsyncClient, mock_tenant_dep: Mock):
         # Making sure we raise if the tenant dep is called
