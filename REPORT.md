@@ -29,3 +29,13 @@ The client expects this field when consuming the stats endpoint:
 - `client/src/store/agents.ts` stores returned stats by `agent_uid`.
 
 These usages rely on the field name returned by the endpoint.
+
+## Tests
+
+There are currently no component tests covering the `/agents/stats` endpoint. As
+such, renaming `agent_uid` to `agent_id` did not trigger test failures.
+
+To ensure the API contract is validated, a new component test should be added.
+One option would be `api/tests/component/agents/stats_test.py` verifying that the
+response for `GET /v1/{tenant}/agents/stats` includes both `agent_id` and the
+deprecated `agent_uid` fields.
