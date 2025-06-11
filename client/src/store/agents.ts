@@ -29,7 +29,8 @@ const useAgentsStats = create<AgentsStatsState>((set, get) => ({
       const agentsStats = await client.get<Page<AgentStat>>(`${rootTenantPath(tenant, true)}/agents/stats`);
       const byUid = new Map<number, AgentStat>();
       agentsStats.items.forEach((agentStat) => {
-        byUid.set(agentStat.agent_uid, agentStat);
+        const id = agentStat.agent_id ?? agentStat.agent_uid;
+        byUid.set(id, agentStat);
       });
       set(
         produce((state: AgentsStatsState) => {
