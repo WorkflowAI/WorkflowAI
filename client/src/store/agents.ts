@@ -8,7 +8,7 @@ import { AgentStat } from '@/types/workflowAI';
 import { rootTenantPath } from './utils';
 
 interface AgentsStatsState {
-  agentsStatsByTenant: Map<TenantID, Map<number, AgentStat>>;
+  agentsStatsByTenant: Map<TenantID, Map<string, AgentStat>>;
   isInitializedByTenant: Map<TenantID, boolean>;
   isLoadingByTenant: Map<TenantID, boolean>;
   fetchAgentsStats(tenant: TenantID): Promise<void>;
@@ -27,9 +27,9 @@ const useAgentsStats = create<AgentsStatsState>((set, get) => ({
     );
     try {
       const agentsStats = await client.get<Page<AgentStat>>(`${rootTenantPath(tenant, true)}/agents/stats`);
-      const byUid = new Map<number, AgentStat>();
+      const byUid = new Map<string, AgentStat>();
       agentsStats.items.forEach((agentStat) => {
-        const id = agentStat.agent_id ?? agentStat.agent_uid;
+        const id = agentStat.agent_id ?? String(agentStat.agent_uid);
         byUid.set(id, agentStat);
       });
       set(

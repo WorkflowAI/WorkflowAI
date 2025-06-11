@@ -4,7 +4,7 @@ We want to rename the `agent_uid` field returned by `/v1/{tenant}/agents/stats` 
 
 ## Steps
 1. **API Change**
-   - Introduce a new field `agent_id` in the `AgentStat` response model.
+   - Introduce a new field `agent_id` (string) in the `AgentStat` response model.
    - Continue returning `agent_uid` but mark it as deprecated in the OpenAPI schema.
 2. **Client Update**
    - Update types and stores to read `agent_id` when present and fall back to `agent_uid` for backward compatibility.

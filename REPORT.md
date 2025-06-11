@@ -4,11 +4,12 @@ This report summarizes where the `agent_uid` field is exposed in the public API.
 
 ## Endpoints
 
-- **GET `/v1/{tenant}/agents/stats`** – defined in `api/api/routers/agents_v1.py`. The endpoint returns a page of `AgentStat` objects which contain `agent_uid`.
+- **GET `/v1/{tenant}/agents/stats`** – defined in `api/api/routers/agents_v1.py`. The endpoint returns a page of `AgentStat` objects which now include a string `agent_id` field while still exposing `agent_uid`.
 
   ```python
   class AgentStat(BaseModel):
-      agent_uid: int
+      agent_id: str
+      agent_uid: int = Field(..., deprecated=True)
       run_count: int
       total_cost_usd: float
 
@@ -25,8 +26,8 @@ No other FastAPI routes expose `agent_uid` in request or response payloads.
 
 The client expects this field when consuming the stats endpoint:
 
-- `client/src/types/workflowAI/models.ts` defines the `AgentStat` type with `agent_uid`.
-- `client/src/store/agents.ts` stores returned stats by `agent_uid`.
+- `client/src/types/workflowAI/models.ts` defines the `AgentStat` type with the new `agent_id` string field and the deprecated `agent_uid`.
+- `client/src/store/agents.ts` stores returned stats keyed by `agent_id` when present, falling back to `agent_uid`.
 
 These usages rely on the field name returned by the endpoint.
 

@@ -141,7 +141,7 @@ async def create_agent(
 
 
 class AgentStat(BaseModel):
-    agent_id: int
+    agent_id: str
     agent_uid: int = Field(..., deprecated=True)
     run_count: int
     total_cost_usd: float
@@ -158,7 +158,7 @@ async def get_agent_stats(
     from_date = from_date or datetime.now() - timedelta(days=7)
     items = [
         AgentStat(
-            agent_id=stat.agent_uid,
+            agent_id=str(stat.agent_uid),
             agent_uid=stat.agent_uid,
             run_count=stat.run_count,
             total_cost_usd=stat.total_cost_usd,
