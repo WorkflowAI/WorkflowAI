@@ -364,10 +364,10 @@ class FireworksAIProvider(HTTPXProvider[FireworksConfig, CompletionResponse]):
     def _check_for_closing_thinking_tag(self, content: str, tool_calls: list[ToolCallRequestWithID] | None):
         index = content.find("</think>")
         if index == -1:
-            return ParsedResponse("", content, tool_calls=tool_calls)
+            return ParsedResponse("", thoughts=content, tool_calls=tool_calls)
 
         self._thinking_tag_context.set(False)
-        return ParsedResponse(content[index + len("</think>") :], content[:index], tool_calls=tool_calls)
+        return ParsedResponse(content[index + len("</think>") :], thoughts=content[:index], tool_calls=tool_calls)
 
     def _check_for_thinking_tag(self, content: str, tool_calls: list[ToolCallRequestWithID] | None):
         # We only consider full tags in streams for now

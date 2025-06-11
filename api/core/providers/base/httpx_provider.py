@@ -146,6 +146,7 @@ class HTTPXProvider(HTTPXProviderBase[ProviderConfigVar, dict[str, Any]], Generi
             output_factory,
             content_str,
             reasoning_steps,
+            None,
             native_tools_calls=native_tool_calls,
             files=files,
         )
@@ -211,7 +212,7 @@ class HTTPXProvider(HTTPXProviderBase[ProviderConfigVar, dict[str, Any]], Generi
             if not context.last_chunk:
                 cls._get_logger().warning("No last chunk found in streaming context")
                 return partial_output_factory("")
-            raw = StructuredOutput(output=None, delta=context.last_chunk.content)
+            raw = StructuredOutput(output=None, delta=context.last_chunk.content, thoughts=context.last_chunk.thoughts)
             if context.last_chunk.tool_calls:
                 raw = raw._replace(tool_calls=context.last_chunk.tool_calls)
             if context.last_chunk.reasoning_steps:
@@ -222,6 +223,8 @@ class HTTPXProvider(HTTPXProviderBase[ProviderConfigVar, dict[str, Any]], Generi
         partial = partial_output_factory(context.agg_output if context.json else context.streamer.raw_completion)
         if context.reasoning_steps:
             partial = partial._replace(reasoning_steps=context.reasoning_steps)
+        if context.thoughts:
+            partial = partial._replace(thoughts=context.thoughts)
 
         # TODO: looks like we are not streaming tool calls ?
         # if context.tool_calls:
@@ -234,6 +237,7 @@ class HTTPXProvider(HTTPXProviderBase[ProviderConfigVar, dict[str, Any]], Generi
         output_factory: Callable[[str, bool], StructuredOutput],
         raw: str,
         reasoning_steps: list[InternalReasoningStep] | None = None,
+        thoughts: str | None = None,
         native_tools_calls: list[ToolCallRequestWithID] | None = None,
         files: list[File] | None = None,
     ):
@@ -256,6 +260,8 @@ class HTTPXProvider(HTTPXProviderBase[ProviderConfigVar, dict[str, Any]], Generi
             output = StructuredOutput(output=None)
         if reasoning_steps:
             output = output._replace(reasoning_steps=reasoning_steps)
+        if thoughts:
+            output = output._replace(thoughts=thoughts)
         if native_tools_calls:
             output = output._replace(tool_calls=native_tools_calls + (output.tool_calls or []))
         if files:
@@ -291,6 +297,14 @@ class HTTPXProvider(HTTPXProviderBase[ProviderConfigVar, dict[str, Any]], Generi
         context.reasoning_steps[0].append_explanation(extracted)
         return True
 
+    def _handle_chunk_thoughts(self, context: StreamingContext, extracted: str | None) -> bool:
+        if not extracted:
+            return False
+        if context.thoughts is None:
+            context.thoughts = ""
+        context.thoughts += extracted
+        return True
+
     def _handle_chunk_tool_calls(
         self,
         context: StreamingContext,
@@ -313,6 +327,7 @@ class HTTPXProvider(HTTPXProviderBase[ProviderConfigVar, dict[str, Any]], Generi
         should_yield = self._handle_chunk_output(context, delta.content)
         should_yield |= self._handle_chunk_reasoning_steps(context, delta.reasoning_steps)
         should_yield |= self._handle_chunk_tool_calls(context, delta.tool_calls)
+        should_yield |= self._handle_chunk_thoughts(context, getattr(delta, "thoughts", None))
         return should_yield or bool(context.stream_deltas and delta.content)
 
     @override
@@ -367,5 +382,6 @@ class HTTPXProvider(HTTPXProviderBase[ProviderConfigVar, dict[str, Any]], Generi
                         output_factory,
                         streaming_context.streamer.raw_completion,
                         streaming_context.reasoning_steps,
+                        streaming_context.thoughts,
                         streaming_context.tool_calls,
                     )

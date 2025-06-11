@@ -144,6 +144,7 @@ class TaskRunBuilder(BaseModel):
             tool_calls=list(output.tool_calls) if output and output.tool_calls else None,
             tool_call_requests=list(output.tool_call_requests) if output and output.tool_call_requests else None,
             reasoning_steps=output.reasoning_steps if output else None,
+            thoughts=output.thoughts if output else None,
             metadata=metadata or None,
             status="failure" if error else "success",
             error=error,

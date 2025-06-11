@@ -17,6 +17,7 @@ class ToolCallRequestBuffer(BaseModel):
 class ParsedResponse(NamedTuple):
     content: str
     reasoning_steps: str | None = None
+    thoughts: str | None = None
     # TODO: switch to tool call request
     tool_calls: list[ToolCallRequestWithID] | None = None
 
@@ -27,6 +28,7 @@ class StreamingContext:
         self.streamer = JSONStreamParser() if json else RawStreamParser()
         self.agg_output: dict[str, Any] = {}
         self.reasoning_steps: list[InternalReasoningStep] | None = None
+        self.thoughts: str | None = None
         self.raw_completion = raw_completion
 
         self.tool_call_request_buffer: dict[int, ToolCallRequestBuffer] = {}

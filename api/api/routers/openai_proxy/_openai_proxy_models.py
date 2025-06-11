@@ -206,6 +206,8 @@ class OpenAIProxyMessage(BaseModel):
     name: str | None = None
     role: str
 
+    reasoning_content: str | None = None
+
     tool_calls: list[OpenAIProxyToolCall] | None = None
     function_call: OpenAIProxyFunctionCall | None = None  # Deprecated
     tool_call_id: str | None = None
@@ -221,6 +223,7 @@ class OpenAIProxyMessage(BaseModel):
             function_call=OpenAIProxyFunctionCall.from_domain(run.tool_call_requests[0])
             if run.tool_call_requests and deprecated_function
             else None,
+            reasoning_content=run.thoughts,
         )
 
     @property
@@ -847,6 +850,7 @@ class OpenAIProxyChatCompletionChunkDelta(BaseModel):
     function_call: OpenAIProxyFunctionCall | None  # Deprecated
     tool_calls: list[OpenAIProxyToolCall] | None
     role: Literal["user", "assistant", "system", "tool"] | None
+    reasoning_content: str | None = None
 
     @classmethod
     def from_domain(cls, output: RunOutput, deprecated_function: bool):
@@ -861,6 +865,7 @@ class OpenAIProxyChatCompletionChunkDelta(BaseModel):
             tool_calls=[OpenAIProxyToolCall.from_domain(t) for t in output.tool_call_requests]
             if output.tool_call_requests and not deprecated_function
             else None,
+            reasoning_content=output.thoughts,
         )
 
 

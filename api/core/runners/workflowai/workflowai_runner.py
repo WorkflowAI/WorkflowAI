@@ -847,6 +847,7 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
             tool_calls=internal_tools or None,
             tool_call_requests=external_tools or None,
             reasoning_steps=output.reasoning_steps,
+            thoughts=output.thoughts,
         )
 
     async def _build_task_output_from_messages(
@@ -1062,6 +1063,7 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
             enabled_tools=list(self._all_tools()),
             tool_choice=self._options.tool_choice,
             timeout=self._timeout,
+            reasoning_effort=self._options.reasoning_effort,
         )
 
         model_data_copy = model_data.model_copy()
@@ -1117,7 +1119,7 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
                     continue
 
                 # TODO[tools]: add tool calls and tool call requests
-                yield RunOutput(task_output=output.output, reasoning_steps=output.reasoning_steps, delta=output.delta)
+                yield RunOutput(task_output=output.output, reasoning_steps=output.reasoning_steps, delta=output.delta, thoughts=output.thoughts)
 
             if not output:
                 # We never had any output, we can stop the stream

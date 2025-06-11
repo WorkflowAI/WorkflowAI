@@ -126,7 +126,7 @@ class OpenAIProviderBase(HTTPXProvider[_OpenAIConfigVar, CompletionResponse], Ge
             stream_options=StreamOptions(include_usage=True) if stream else None,
             # store=True,
             response_format=self._response_format(options, is_preview_model),
-            reasoning_effort=_REASONING_EFFORT_FOR_MODEL.get(options.model, None),
+            reasoning_effort=options.reasoning_effort or _REASONING_EFFORT_FOR_MODEL.get(options.model, None),
             tool_choice=CompletionRequest.tool_choice_from_domain(options.tool_choice),
             top_p=options.top_p,
             presence_penalty=options.presence_penalty,

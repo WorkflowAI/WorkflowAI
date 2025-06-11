@@ -109,6 +109,11 @@ class TaskGroupProperties(BaseModel):
         description="Whether to allow the model to output mutliple tool calls",
     )
 
+    reasoning_effort: str | int | None = Field(
+        default=None,
+        description="The reasoning effort or thinking budget used for the run",
+    )
+
     messages: list[Message] | None = None
 
     def model_hash(self) -> str:
