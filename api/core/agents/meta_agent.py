@@ -338,7 +338,7 @@ class MetaAgentInput(BaseModel):
         description="The current datetime",
     )
 
-    messages: list[MetaAgentChatMessage] = Field(
+    chat_messages: list[MetaAgentChatMessage] = Field(
         description="The list of messages in the conversation, the last message being the most recent one",
     )
 
@@ -649,5 +649,4 @@ META_AGENT_INSTRUCTIONS = """You are WorkflowAI's meta-agent. You are responsibl
         max_tokens=1000,
     ),
 )
-async def meta_agent(_: MetaAgentInput) -> MetaAgentOutput:
-    ...
+async def meta_agent(_: MetaAgentInput) -> MetaAgentOutput: ...

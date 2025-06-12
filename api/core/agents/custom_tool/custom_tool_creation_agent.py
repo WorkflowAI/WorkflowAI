@@ -7,7 +7,7 @@ from core.domain.fields.custom_tool_creation_chat_message import CustomToolCreat
 
 
 class CustomToolCreationAgentInput(BaseModel):
-    messages: list[CustomToolCreationChatMessage] | None = Field(
+    chat_messages: list[CustomToolCreationChatMessage] | None = Field(
         default=None,
         description="The list of previous messages in the conversation, the last message is the most recent one",
     )

@@ -721,7 +721,7 @@ class MetaAgentService:
 
         return MetaAgentInput(
             current_datetime=datetime.datetime.now(tz=datetime.timezone.utc),
-            messages=[message.to_domain() for message in messages],
+            chat_messages=[message.to_domain() for message in messages],
             latest_messages_url_content=await self._extract_url_content_from_messages(messages),
             company_context=MetaAgentInput.CompanyContext(
                 company_name=context.company_description.company_name if context.company_description else None,

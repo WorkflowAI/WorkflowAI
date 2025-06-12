@@ -24,7 +24,7 @@ class IntegrationAgentInput(BaseModel):
     documentation: list[DocumentationSection] = Field(
         description="The documentation sections that are relevant to the conversation.",
     )
-    messages: list[IntegrationAgentChatMessage] = Field(
+    chat_messages: list[IntegrationAgentChatMessage] = Field(
         description="The list of messages in the conversation, the last message being the most recent one.",
     )
     integration: Integration = Field(

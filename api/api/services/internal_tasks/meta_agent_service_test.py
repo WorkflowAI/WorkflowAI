@@ -62,7 +62,7 @@ class TestMetaAgentService:
                 ["Agent 1", "Agent 2"],
                 MetaAgentInput(
                     current_datetime=datetime.datetime(2025, 1, 1),
-                    messages=[MetaAgentChatMessage(role="USER", content="Hello").to_domain()],
+                    chat_messages=[MetaAgentChatMessage(role="USER", content="Hello").to_domain()],
                     company_context=MetaAgentInput.CompanyContext(
                         company_name="Example Corp",
                         company_description="A tech company",
@@ -100,7 +100,7 @@ class TestMetaAgentService:
                 [],  # No agents
                 MetaAgentInput(
                     current_datetime=datetime.datetime(2025, 1, 1),
-                    messages=[MetaAgentChatMessage(role="USER", content="Help").to_domain()],
+                    chat_messages=[MetaAgentChatMessage(role="USER", content="Help").to_domain()],
                     company_context=MetaAgentInput.CompanyContext(
                         company_name=None,
                         company_description=None,
@@ -225,7 +225,7 @@ class TestMetaAgentService:
             mock_get_relevant_doc_sections.assert_called_once()
 
             # Verify the result
-            assert result.messages == expected_input.messages
+            assert result.chat_messages == expected_input.chat_messages
             assert result.company_context.company_name == expected_input.company_context.company_name
             assert result.company_context.company_description == expected_input.company_context.company_description
             assert result.company_context.company_locations == expected_input.company_context.company_locations
@@ -369,7 +369,7 @@ class TestMetaAgentService:
         # Create a mock for _build_meta_agent_input
         mock_input = MetaAgentInput(
             current_datetime=datetime.datetime(2025, 1, 1),
-            messages=[message.to_domain() for message in messages],
+            chat_messages=[message.to_domain() for message in messages],
             company_context=MetaAgentInput.CompanyContext(),
             workflowai_documentation_sections=[
                 DocumentationSection(title="Some title", content="Some content"),

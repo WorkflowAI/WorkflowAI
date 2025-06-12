@@ -142,11 +142,11 @@ class TestBuildIntegrationChatAgentInput:
         result = await integration_service._build_integration_chat_agent_input(messages, Mock(spec=Integration))  # pyright: ignore[reportPrivateUsage]
 
         assert isinstance(result, IntegrationAgentInput)
-        assert len(result.messages) == 2
-        assert result.messages[0].role == "USER"
-        assert result.messages[0].content == "Hello"
-        assert result.messages[1].role == "ASSISTANT"
-        assert result.messages[1].content == "Hi there"
+        assert len(result.chat_messages) == 2
+        assert result.chat_messages[0].role == "USER"
+        assert result.chat_messages[0].content == "Hello"
+        assert result.chat_messages[1].role == "ASSISTANT"
+        assert result.chat_messages[1].content == "Hi there"
 
 
 class TestGetInitialCodeSnippetMessages:

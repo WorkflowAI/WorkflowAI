@@ -166,7 +166,7 @@ class IntegrationService:
         return IntegrationAgentInput(
             current_datetime=datetime.datetime.now(),
             integration=integration,
-            messages=self._get_integration_agent_chat_messages(messages),
+            chat_messages=self._get_integration_agent_chat_messages(messages),
             documentation=list(
                 set(relevant_documentation_sections + integration_documentation_sections),  # Deduplicate
             ),

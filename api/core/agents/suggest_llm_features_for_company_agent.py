@@ -102,7 +102,7 @@ class SuggestLlmAgentForCompanyInput(BaseModel):
         description="The context of the company",
     )
 
-    messages: list[AgentSuggestionChatMessage] | None = Field(
+    chat_messages: list[AgentSuggestionChatMessage] | None = Field(
         default=None,
         description="The list of previous messages in the conversation, the last message is the most recent one",
     )

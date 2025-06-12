@@ -38,7 +38,7 @@ class CustomToolService:
     ) -> AsyncIterator[CustomToolCreationChatMessage]:
         async for output in stream_custom_tool_creation_agent(
             CustomToolCreationAgentInput(
-                messages=messages,
+                chat_messages=messages,
             ),
         ):
             if answer := output.answer:
