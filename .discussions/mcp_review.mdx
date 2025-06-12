@@ -1,0 +1,27 @@
+Pierre:
+
+Are we set on using FastAPI-MCP? 
+
+I don't think the syntax is very good, comparing with the library I had used for my prototype.
+
+For example, in FastAPI-MCP, we have to use `@app.get` with a URL, but we're not exposing any API REST, right?
+
+```python
+# Explicit operation_id (tool will be named "get_user_info")
+@app.get("/users/{user_id}", operation_id="get_user_info")
+async def read_user(user_id: int):
+    return {"user_id": user_id}
+```
+
+Feels like FastAPI-MCP is made for people who want to expose an API REST as a MCP, but not building a proper MCP server from scratch. Looks like people on Github agree. https://github.com/jlowin/fastmcp has 12.4k stars, but https://github.com/tadata-org/fastapi_mcp has 5.4k stars.
+
+As a reference, here is the code I had used for my prototype:
+
+```python
+# https://gofastmcp.com/servers/tools
+ @mcp.tool
+ async def send_message(message: str, reply_to_message_id: str | None = None) -> dict[str, str]:
+     # Note: Neon formats the MCP tool description using HTML-like tags for sections such as <use_case>, <workflow>, <important_notes>, <example>, <next_steps>, and <error_handling>.
+```
+
+Could you please explain the decision to use FastAPI-MCP? What are the advantages? and what are the disadvantages?
