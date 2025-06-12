@@ -2353,3 +2353,52 @@ async def test_with_messages(test_client: IntegrationTestClient):
     test_client.mock_openai_call()
     run = await test_client.run_task_v1(task, task_input={"messages": "world"})
     assert run
+
+
+# ---------------------------------------------------------------------------
+# Model fallback: internal error should not trigger when using Gemini provider
+# ---------------------------------------------------------------------------
+
+
+async def test_no_model_fallback_on_provider_internal_error_gemini(test_client: IntegrationTestClient):
+    """Ensure that a *provider_internal_error* raised by Vertex/Gemini does **not** trigger
+    the automatic model-fallback mechanism (regression test for WOR-XXXX).
+
+    The pipeline currently should *try* to fall back for this error code, but the
+    bug we are investigating causes it to stop after the first provider.  This
+    component test makes the behaviour visible by:
+
+    1. Mocking the Vertex endpoint to return **500** (internal server error).
+    2. Running a task with *auto* fallback enabled (`use_fallback=None`).
+    3. Verifying that the run fails with HTTP 424 / `provider_internal_error` and
+       that **no** secondary OpenAI request (the default fallback provider) was
+       issued.
+    """
+
+    # 1) Prepare an empty agent and mock a 500 response from Vertex.
+    task = await test_client.create_task()
+
+    test_client.mock_vertex_call(
+        model=Model.GEMINI_1_5_PRO_002,
+        status_code=500,  # Force an internal error
+    )
+
+    # 2) Execute the run – `use_fallback=None` activates the automatic mechanism.
+    with pytest.raises(HTTPStatusError) as exc_info:
+        await test_client.run_task_v1(
+            task,
+            model=Model.GEMINI_1_5_PRO_002,
+            use_fallback=None,  # auto
+        )
+
+    # 3) Validate that the error surfaced and no secondary provider was called.
+    response = exc_info.value.response
+    assert response.status_code == 424
+
+    body = response.json()
+    assert body["error"]["code"] == "provider_internal_error"
+
+    # The fallback path would have called OpenAI – make sure that never happened.
+    assert len(test_client.httpx_mock.get_requests(url=openai_endpoint())) == 0, (
+        "Fallback call to OpenAI should not have been made"
+    )
