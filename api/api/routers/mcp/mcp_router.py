@@ -64,16 +64,13 @@ class AskAIEngineerRequest(BaseModel):
         default=None,
     )
     agent_id: str | None = Field(
-        description="The id of the user's agent, example: 'email-filtering-agent' in 'model=email-filtering-agent/gpt-4o-latest'. Pass 'new' when the user wants to create a new agent.",
+        description="The id of the user's agent, example: 'email-filtering-agent' in 'model=email-filtering-agent/gpt-4o-latest'.
         default=None,
     )
-    message: str = Field(
-        description="Your message to the AI engineer about what help you need",
-        default="I need help improving my agent",
-    )
-    user_programming_language: str = Field(
+    message: str = Field()
+    user_programming_language: str | None = Field(
         description="The programming language and integration (if known) used by the user, e.g, Typescript, Python with OpenAI SDK, etc.",
-        default="python",
+        default=None,
     )
     user_code_extract: str | None = Field(
         description="The code you are working on to improve the user's agent, if any. Please DO NOT include API keys or other sensitive information.",
@@ -93,6 +90,7 @@ async def ask_ai_engineer(
     """
     <when_to_use>
     Most user request about WorkflowAI must be processed by starting a conversation with the AI engineer agent to get insight about the WorkflowAI platform and the user's agents.
+    This tool is also useful when you're stuck and need guidance on how to proceed with the user's WorkflowAI-related task.
     </when_to_use>
 
     <returns>
@@ -118,7 +116,10 @@ When you need to pick a model for the user's WorkflowAI agent, or any model-rela
 </when_to_use>
 <returns>
 Returns a list of all available AI models from WorkflowAI.
+TODO: explain what type of models information is returned, price, release_date (otherwise the LLM does not know until calling the tool since tool output are not part of the discovery done in the MCP protocol)
 </returns>
+
+TODO: ask examples from use-cases
 """,
 )
 async def list_available_models(mcp_service: MCPServiceDep) -> MCPToolReturn:
@@ -134,8 +135,17 @@ async def list_available_models(mcp_service: MCPServiceDep) -> MCPToolReturn:
 When the user wants to investigate a specific run of a WorkflowAI agent, for debugging, improving the agent, fixing a problem on a specific use case, or any other reason.
 You must either pass run_id + agent_id OR run_url.
 </when_to_use>
+
+TODO: give examples of use-cases
+merge when_to_use with examples?
+
+<example>
+...
+</example>
+
+
 <returns>
-Returns the details of a specific run of a WorkflowAI agent.
+Returns the details of a specific run of a WorkflowAI agent. (TODO: explain what type of information is returned)
 </returns>
 """,
 )
@@ -157,10 +167,10 @@ async def fetch_run_details(
     """Fetch details of a specific agent run."""
     return await mcp_service.fetch_run_details(agent_id, run_id, run_url)
 
-
+# TODO: rename with list_agents
 @router.get(
     "/agents-stats",
-    operation_id="list_agents_with_stats",
+    operation_id="list_agents",
     description="""
 <when_to_use>
 When the user wants to see all agents they have created, along with their statistics (run counts and costs on the last 7 days).
@@ -170,14 +180,15 @@ Returns a list of all agents for the user along with their statistics (run count
 </returns>
 """,
 )
-async def list_agents_with_stats(
+async def list_agents(
     mcp_service: MCPServiceDep,
     from_date: str = Query(
         description="ISO date string to filter stats from (e.g., '2024-01-01T00:00:00Z'). Defaults to 7 days ago if not provided.",
         default="",
     ),
 ) -> MCPToolReturn:
-    """List all agents with their statistics."""
+    # """List all agents with their statistics."""
+    # TODO: if the docstrings are not passed as the tool description, then we should remove the docstrings
     return await mcp_service.list_agents_with_stats(from_date)
 
 

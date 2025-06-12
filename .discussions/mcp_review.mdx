@@ -62,3 +62,37 @@ async def fetch_run_details(
 How do we know what parameters are actually passed to the MCP client? I'm assuming that `mcp_service` is not a tool parameter?
 
 Why do we default to `"python"` for `user_programming_language` in `AskAIEngineerRequest`? Is it a good idea to make that field optional instead of required?
+
+Would be great to consider using the tools' description formatting from Neon MCP server?
+
+````
+    # <use_case>
+     # Describe what this tool does and its supported operations
+     # </use_case>
+     #
+     # <workflow>
+     # Outline the step-by-step process the tool follows
+     # </workflow>
+     #
+     # <important_notes>
+     # Critical requirements and actions that must be taken after using this tool
+     # </important_notes>
+     #
+     # <example>
+     # Provide concrete examples of how to use this tool and expected outputs
+     # </example>
+     #
+     # <next_steps>
+     # Define what actions should be taken after tool execution
+     # <response_instructions>
+     # Guidelines for formatting responses to the client
+     # <do_not_include>
+     # Specify what technical details to avoid in responses
+     # </do_not_include>
+     # </response_instructions>
+     # </next_steps>
+     #
+     # <error_handling>
+     # Define how errors should be handled, including retry logic and failure responses
+     # </error_handling>
+```
