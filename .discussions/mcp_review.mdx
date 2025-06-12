@@ -26,4 +26,39 @@ As a reference, here is the code I had used for my prototype:
 
 Could you please explain the decision to use FastAPI-MCP? What are the advantages? and what are the disadvantages?
 
+```python
+@router.get(
+    "/runs-details",
+    operation_id="fetch_run_details",
+    description="""
+<when_to_use>
+When the user wants to investigate a specific run of a WorkflowAI agent, for debugging, improving the agent, fixing a problem on a specific use case, or any other reason.
+You must either pass run_id + agent_id OR run_url.
+</when_to_use>
+<returns>
+Returns the details of a specific run of a WorkflowAI agent.
+</returns>
+""",
+)
+async def fetch_run_details(
+    mcp_service: MCPServiceDep,
+    agent_id: str | None = Query(
+        description="The id of the user's agent, example: 'email-filtering-agent'. Pass 'new' when the user wants to create a new agent.",
+        default=None,
+    ),
+    run_id: str | None = Query(
+        description="The id of the run to fetch details for",
+        default=None,
+    ),
+    run_url: str | None = Query(
+        description="The url of the run to fetch details for",
+        default=None,
+    ),
+) -> MCPToolReturn:
+    """Fetch details of a specific agent run."""
+    return await mcp_service.fetch_run_details(agent_id, run_id, run_url)
+```
+
+How do we know what parameters are actually passed to the MCP client? I'm assuming that `mcp_service` is not a tool parameter?
+
 Why do we default to `"python"` for `user_programming_language` in `AskAIEngineerRequest`? Is it a good idea to make that field optional instead of required?
