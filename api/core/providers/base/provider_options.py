@@ -23,3 +23,5 @@ class ProviderOptions(BaseModel):
     presence_penalty: float | None = None
     frequency_penalty: float | None = None
     parallel_tool_calls: bool | None = None
+
+    reasoning_effort: str | int | None = None

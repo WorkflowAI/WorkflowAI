@@ -81,7 +81,8 @@ class XAIProvider(HTTPXProvider[XAIConfig, CompletionResponse]):
 
         model_data = get_model_data(options.model)
 
-        model_value, reasoning_effort = THINKING_MODEL_MAP.get(options.model, (options.model.value, None))
+        model_value, default_effort = THINKING_MODEL_MAP.get(options.model, (options.model.value, None))
+        reasoning_effort = options.reasoning_effort or default_effort
 
         completion_request = CompletionRequest(
             messages=message,

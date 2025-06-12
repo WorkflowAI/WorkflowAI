@@ -128,6 +128,8 @@ class AgentRun(AgentRunBase):
 
     conversation_id: str | None = None
 
+    thoughts: str | None = None
+
     @property
     def used_environment(self) -> str | None:
         if not self.metadata:

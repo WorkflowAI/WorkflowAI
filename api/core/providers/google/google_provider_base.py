@@ -48,6 +48,7 @@ from core.providers.google.google_provider_domain import (
 from core.services.message import merge_messages
 from core.tools import ToolKind
 from core.utils.models.dumps import safe_dump_pydantic_model
+from core.utils.reasoning import reasoning_effort_to_budget
 
 MODELS_THAT_REQUIRE_DOWNLOADING_FILES = {
     Model.GEMINI_2_0_FLASH_THINKING_EXP_1219,
@@ -155,11 +156,18 @@ class GoogleProviderBase(HTTPXProvider[_GoogleConfigVar, CompletionResponse], Ge
 
         # See https://ai.google.dev/gemini-api/docs/thinking
         # Thinking is enabled by default on thinking models so we just need to "turn off" thinking
-        thinking_config = (
-            CompletionRequest.GenerationConfig.ThinkingConfig(
-                thinkingBudget=0,
+        budget = None
+        if options.reasoning_effort is not None:
+            budget = reasoning_effort_to_budget(
+                options.reasoning_effort,
+                model_data.max_tokens_data.max_output_tokens or model_data.max_tokens_data.max_tokens,
             )
-            if model_data.reasoning_level == "none"
+        if budget is None and model_data.reasoning_level == "none":
+            budget = 0
+
+        thinking_config = (
+            CompletionRequest.GenerationConfig.ThinkingConfig(thinkingBudget=budget)
+            if budget is not None
             else None
         )
 
@@ -539,6 +547,6 @@ class GoogleProviderBase(HTTPXProvider[_GoogleConfigVar, CompletionResponse], Ge
 
         return ParsedResponse(
             response,
-            thoughts,
-            native_tool_calls,
+            thoughts=thoughts,
+            tool_calls=native_tool_calls,
         )

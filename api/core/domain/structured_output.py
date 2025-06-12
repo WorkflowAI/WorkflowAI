@@ -22,6 +22,8 @@ class StructuredOutput(NamedTuple):
 
     delta: str | None = None
 
+    thoughts: str | None = None
+
     @property
     def number_of_images(self) -> int:
         if not self.files:
