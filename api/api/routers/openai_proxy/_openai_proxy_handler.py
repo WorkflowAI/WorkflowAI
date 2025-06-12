@@ -93,11 +93,14 @@ class OpenAIProxyHandler:
 
     def _update_event_router(self, tenant_data: PublicOrganizationData, variant: SerializableTaskVariant):
         try:
-            self._event_router.task_properties = TaskProperties.build(  # pyright: ignore [reportAttributeAccessIssue]
+            props = TaskProperties.build(
                 variant.task_id,
                 variant.task_schema_id,
                 tenant_data,
             )
+            self._event_router.task_properties = props  # pyright: ignore [reportAttributeAccessIssue]
+            self._run_service.analytics_service.task_properties = props  # pyright: ignore[reportAttributeAccessIssue]
+            self._group_service.analytics_service.task_properties = props  # pyright: ignore[reportAttributeAccessIssue]
         except Exception:
             _logger.exception("Could not set task properties for event router")
 
