@@ -17,12 +17,15 @@ from core.providers.base.provider_error import (
     FailedGenerationError,
     MaxTokensExceededError,
     ProviderError,
+    ProviderInvalidFileError,
     ProviderRateLimitError,
     UnknownProviderError,
 )
+from core.providers.base.provider_options import ProviderOptions
 from core.providers.factory.abstract_provider_factory import AbstractProviderFactory
 from core.providers.factory.local_provider_factory import LocalProviderFactory
 from core.runners.workflowai.provider_pipeline import ProviderPipeline, ProviderPipelineBuilder
+from core.runners.workflowai.templates import TemplateName
 from core.runners.workflowai.workflowai_options import WorkflowAIRunnerOptions
 from tests import models as test_models
 
@@ -453,3 +456,70 @@ class TestProviderIterator:
             (Provider.ANTHROPIC, Model.CLAUDE_4_OPUS_20250514),
         ]
         mock_provider1.complete.assert_not_called()
+
+
+class _FakeProvider:  # noqa: D101
+    """A minimal stub provider used only for pipeline unit-tests."""
+
+    is_custom_config = False
+
+    @classmethod
+    def name(cls):  # noqa: D401
+        return Provider.OPEN_AI
+
+
+class _DummyFactory:  # noqa: D101
+    """A stub factory that always returns a single ``_FakeProvider`` instance."""
+
+    def get_providers(self, provider_type):  # noqa: D401, ANN001
+        return [_FakeProvider()]
+
+    # The pipeline may call this when custom configs are supplied. Not used here but
+    # implemented for completeness.
+    def build_provider(self, *_, **__):  # noqa: D401, ANN002
+        return _FakeProvider()
+
+
+def _builder(provider, model_data, _is_structured_generation_enabled):  # noqa: ANN001
+    """Return the minimal ``PipelineProviderData`` tuple expected by the pipeline."""
+    return (
+        provider,
+        TemplateName.V2_DEFAULT,
+        ProviderOptions(model=model_data.model),
+        model_data,
+    )
+
+
+def test_model_fallback_not_triggered_on_invalid_file_error():  # noqa: D401
+    """Ensure that a ProviderInvalidFileError does **not** trigger model fallback.
+
+    The pipeline should refrain from switching to a fallback model when the error code
+    is ``invalid_file``. This test simulates such an error and checks that the internal
+    flag tracking fallback usage remains ``False``.
+    """
+
+    options = WorkflowAIRunnerOptions(model=Model.GPT_41_LATEST)
+
+    pipeline = ProviderPipeline(
+        options=options,
+        custom_configs=None,
+        factory=_DummyFactory(),
+        builder=_builder,
+        typology=TaskTypology(),
+        use_fallback="auto",
+    )
+
+    iterator = pipeline.provider_iterator(raise_at_end=False)
+
+    provider, *_ = next(iterator)
+
+    # Inject the error inside the provider context
+    with pipeline.wrap_provider_call(provider):
+        raise ProviderInvalidFileError("Test invalid file error")
+
+    # Drain the iterator so the pipeline can attempt (and skip) model fallback
+    for _ in iterator:
+        pass
+
+    # The pipeline must not have switched to a fallback model
+    assert pipeline._has_used_model_fallback is False
