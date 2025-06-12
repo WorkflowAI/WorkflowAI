@@ -70,3 +70,19 @@ export function isActiveTask(task?: SerializableTask) {
 export function filterActiveTasksIDs(tasks: SerializableTask[]): string[] {
   return tasks.filter((task) => isActiveTask(task)).map((task) => task.id);
 }
+
+export function getLatestActivityDate(task?: SerializableTask): Date | undefined {
+  if (!task) return undefined;
+
+  let latest: Date | undefined;
+  task.versions.forEach(({ last_active_at }) => {
+    if (last_active_at) {
+      const current = new Date(last_active_at);
+      if (!latest || current > latest) {
+        latest = current;
+      }
+    }
+  });
+
+  return latest;
+}
