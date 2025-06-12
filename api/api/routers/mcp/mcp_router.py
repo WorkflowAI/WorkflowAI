@@ -122,7 +122,7 @@ Returns a list of all available AI models from WorkflowAI.
 """,
 )
 async def list_available_models(mcp_service: MCPServiceDep) -> MCPToolReturn:
-    """List all available AI models from WorkflowAI."""
+    # remove the docstring (confused if the docstring is passed as the tool description, or the `description` parameter)
     return await mcp_service.list_available_models()
 
 
