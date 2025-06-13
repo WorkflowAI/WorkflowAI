@@ -1,6 +1,7 @@
 'use client';
 
 import { cx } from 'class-variance-authority';
+import { useMemo } from 'react';
 import { ObjectViewer } from '@/components';
 import { TaskOutputViewer } from '@/components/ObjectViewer/TaskOutputViewer';
 import { PersistantAllotment } from '@/components/PersistantAllotment';
@@ -9,6 +10,7 @@ import { Loader } from '@/components/ui/Loader';
 import { CircleCheckbox } from '@/components/v2/Checkbox';
 import { TaskSchemaID } from '@/types/aliases';
 import { TaskSchemaResponseWithSchema } from '@/types/task';
+import { checkSchemaForProxy } from '../proxy-playground/utils';
 import { SchemasSelector } from './schemasSelector';
 
 type SchemaCellProps = {
@@ -59,6 +61,12 @@ type SchemasContentProps = {
 export function SchemasContent(props: SchemasContentProps) {
   const { taskSchema, isInitialized, visibleSchemaIds, hiddenSchemaIds, activeSchemaIds, currentSchemaId, onSelect } =
     props;
+  const isProxy = useMemo(() => {
+    if (!taskSchema) {
+      return false;
+    }
+    return checkSchemaForProxy(taskSchema);
+  }, [taskSchema]);
   return (
     <div className='flex flex-row w-full h-full border-r border-gray-200'>
       <SchemasSelector
@@ -78,7 +86,7 @@ export function SchemasContent(props: SchemasContentProps) {
           className={cx('flex-1 bg-gradient-to-b from-white/60 to-white/0')}
         >
           <div className='flex-1 flex flex-col overflow-hidden h-full'>
-            <SchemasContentHeader title='Input' />
+            <SchemasContentHeader title={isProxy ? 'Input Variables' : 'Input'} />
             <ObjectViewer
               textColor='text-gray-500'
               value={undefined}
@@ -91,7 +99,7 @@ export function SchemasContent(props: SchemasContentProps) {
           </div>
 
           <div className='h-full flex flex-col overflow-hidden border-l border-gray-200/70'>
-            <SchemasContentHeader title='Output' />
+            <SchemasContentHeader title={isProxy ? 'Output Format' : 'Output'} />
             <TaskOutputViewer
               textColor='text-gray-500'
               value={undefined}
