@@ -33,7 +33,7 @@ MCPServiceDep = Annotated[MCPService, Depends(mcp_service_dependency)]
 
 
 @router.get(
-    "/agents/{task_id}/versions",
+    "/agents/{agent_id}/versions",
     operation_id="get_agent_versions",
     description="""
 <when_to_use>
@@ -182,7 +182,7 @@ async def list_agents_with_stats(
 
 
 @router.get(
-    "/agents/{task_id}/versions",
+    "/agents/{agent_id}/versions",
     operation_id="list_agent_versions",
     description="""
 <when_to_use>

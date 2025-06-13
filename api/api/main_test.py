@@ -114,7 +114,7 @@ class TestAuthentication:
 
         mock_user_dep.assert_called_once()
 
-    @pytest.mark.parametrize("path,method", authenticated_routes(prefix="/{tenant}/agents/{task_id}", methods={"GET"}))
+    @pytest.mark.parametrize("path,method", authenticated_routes(prefix="/{tenant}/agents/{agent_id}", methods={"GET"}))
     async def test_not_allowed_if_task_not_public(
         self,
         path: str,
@@ -142,7 +142,7 @@ class TestAuthentication:
             uid=11,
         )
 
-        path = path.replace("{tenant}", "tenant_slug").replace("{task_id}", "123")
+        path = path.replace("{tenant}", "tenant_slug").replace("{agent_id}", "123")
         res = await test_api_client.request(method, path, headers={"Authorization": "Bearer bla"})
         assert res.status_code == 404, f"Expected 404 for {path}"
 
