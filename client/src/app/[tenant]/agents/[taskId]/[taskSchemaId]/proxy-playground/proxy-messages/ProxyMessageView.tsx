@@ -186,6 +186,7 @@ export function ProxyMessageView(props: Props) {
     const route = taskSchemaRoute(tenant as TenantID, taskId as TaskID, `${run.task_schema_id}` as TaskSchemaID, {
       versionId: run.version.id,
       taskRunId1: message.run_id,
+      baseRunId: message.run_id,
     });
 
     router.push(route);

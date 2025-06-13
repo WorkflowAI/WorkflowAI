@@ -15,7 +15,9 @@ import { GeneralizedTaskInput } from '@/types/task_run';
 import { ProxyMessage, RunRequest, TaskGroupProperties_Input, ToolKind, Tool_Output } from '@/types/workflowAI';
 import { useFetchTaskRunUntilCreated } from '../../playground/hooks/useFetchTaskRunUntilCreated';
 import { PlaygroundModels } from '../../playground/hooks/utils';
-import { removeInputEntriesNotMatchingSchemaAndKeepMessages } from '../utils';
+import { getUseCache, removeInputEntriesNotMatchingSchemaAndKeepMessages } from '../utils';
+import { addAdvencedSettingsToProperties } from '../utils';
+import { AdvancedSettings } from './useProxyPlaygroundSearchParams';
 import { useProxyStreamedChunks } from './useProxyStreamedChunks';
 
 type Props = {
@@ -35,9 +37,9 @@ type Props = {
   proxyMessages: ProxyMessage[] | undefined;
   proxyToolCalls: (ToolKind | Tool_Output)[] | undefined;
   outputModels: PlaygroundModels;
-  temperature: number | undefined;
   input: GeneralizedTaskInput | undefined;
   setScheduledPlaygroundStateMessage: (message: string | undefined) => void;
+  advancedSettings: AdvancedSettings;
 };
 
 export function useProxyPerformRuns(props: Props) {
@@ -58,9 +60,9 @@ export function useProxyPerformRuns(props: Props) {
     proxyMessages,
     proxyToolCalls,
     outputModels,
-    temperature,
     input,
     setScheduledPlaygroundStateMessage,
+    advancedSettings,
   } = props;
 
   const schemaIdRef = useRef<TaskSchemaID>(schemaId);
@@ -87,12 +89,6 @@ export function useProxyPerformRuns(props: Props) {
     proxyMessagesRef.current = proxyMessages;
   }, [proxyMessages]);
 
-  const temperatureRef = useRef<number | undefined>(temperature);
-  temperatureRef.current = temperature;
-  useEffect(() => {
-    temperatureRef.current = temperature;
-  }, [temperature]);
-
   const proxyToolCallsRef = useRef<(ToolKind | Tool_Output)[] | undefined>(proxyToolCalls);
   proxyToolCallsRef.current = proxyToolCalls;
   useEffect(() => {
@@ -110,6 +106,12 @@ export function useProxyPerformRuns(props: Props) {
   useEffect(() => {
     extractedInputSchemaRef.current = extractedInputSchema;
   }, [extractedInputSchema]);
+
+  const advancedSettingsRef = useRef<AdvancedSettings | undefined>(advancedSettings);
+  advancedSettingsRef.current = advancedSettings;
+  useEffect(() => {
+    advancedSettingsRef.current = advancedSettings;
+  }, [advancedSettings]);
 
   const { streamedChunks, setStreamedChunk } = useProxyStreamedChunks(taskRunId1, taskRunId2, taskRunId3);
   const [inProgressIndexes, setInProgressIndexes] = useState<number[]>([]);
@@ -136,7 +138,7 @@ export function useProxyPerformRuns(props: Props) {
 
   const updateTaskSchema = useTasks((state) => state.updateTaskSchema);
   const fetchTaskSchema = useTaskSchemas((state) => state.fetchTaskSchema);
-  const fetchModels = useAIModels((state) => state.fetchModels);
+  const fetchModels = useAIModels((state) => state.fetchSchemaModels);
   const createVersion = useVersions((state) => state.createVersion);
   const runTask = useTasks((state) => state.runTask);
   const fetchTaskRunUntilCreated = useFetchTaskRunUntilCreated();
@@ -212,10 +214,11 @@ export function useProxyPerformRuns(props: Props) {
 
       const properties: TaskGroupProperties_Input = {
         model: outputModelsRef.current[index],
-        temperature: temperatureRef.current,
         enabled_tools: proxyToolCallsRef.current,
         messages: proxyMessagesRef.current,
       };
+
+      const propertiesWithAdvancedSettings = addAdvencedSettingsToProperties(properties, advancedSettingsRef.current);
 
       const clean = () => {
         setTaskRunId(index, undefined);
@@ -225,17 +228,13 @@ export function useProxyPerformRuns(props: Props) {
 
       try {
         const { id: versionId } = await createVersion(tenant, taskId, schemaIdRef.current, {
-          properties,
+          properties: propertiesWithAdvancedSettings,
         });
 
         if (abortController.signal.aborted) {
           clean();
           return;
         }
-
-        // TODO: remove this once the bug on with the messages when inputs are set are not taken into account is fixed
-        //const useCache = !!temperatureRef.current && temperatureRef.current === 0 ? 'never' : undefined;
-        const useCache = 'never';
 
         const cleanedInput =
           removeInputEntriesNotMatchingSchemaAndKeepMessages(
@@ -246,7 +245,7 @@ export function useProxyPerformRuns(props: Props) {
         const request: RunRequest = {
           task_input: cleanedInput,
           version: versionId,
-          use_cache: useCache,
+          use_cache: getUseCache(advancedSettingsRef.current?.cache),
         };
 
         const { id: runId } = await runTask({
