@@ -1,0 +1,25 @@
+# OpenAPI Specification for WorkflowAI
+# This file will contain the customized OpenAPI spec 
+
+# TODO: 
+# api/api/routers/openai_proxy/_openai_proxy_models.py
+
+TODO:
+- [ ] Add descriptions and examples for fields in OpenAIProxyChatCompletionRequest
+- [ ] Set exclude=True for fields that are not meant to be exposed publicly
+- [ ] Describe what fields from OpenAI are not supported by WorkflowAI
+- [ ] Remove workflowai_tools?
+- [ ] Keep provider? explain why in the code.
+- [ ] Set the URL of base URL in the OpenAPI spec (https://api.workflowai.com) and run.workflowai.com for the `/v1/chat/completions` endpoint
+- [ ] Deploy API documentation using https://scalar.com/
+
+# List of API endpoints to describe:
+- /v1/chat/completions
+- /v1/runs/{id}
+- /v1/agents/id/runs/search
+- ... 
+- [ ] Do we need {tenant} in the path?
+
+# Notes:
+
+- you can use `include_in_schema=False` to exclude a route from the OpenAPI spec
