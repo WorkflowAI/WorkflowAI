@@ -9,7 +9,13 @@ from freezegun import freeze_time
 from httpx import AsyncClient
 
 from api.dependencies.security import user_organization
-from api.routers.run import DeprecatedVersionReference, RunResponse, RunResponseStreamChunk, version_reference_to_domain
+from api.routers.run import (
+    DeprecatedVersionReference,
+    RunRequest,
+    RunResponse,
+    RunResponseStreamChunk,
+    version_reference_to_domain,
+)
 from core.domain.agent_run import AgentRun
 from core.domain.ban import Ban
 from core.domain.llm_completion import LLMCompletion
@@ -683,3 +689,53 @@ class TestReply:
                 },
             },
         }
+
+
+class TestRunRequestValidation:
+    def test_private_fields_accepts_task_input_and_task_output(self):
+        """Test that private_fields accepts both 'task_input' and 'task_output' as valid literal values.
+
+        This test ensures that the private_fields type annotation correctly includes both
+        'task_input' and 'task_output' (not a duplicate 'task_input').
+        """
+        # This should work - task_input is valid
+        request_with_task_input = RunRequest.model_validate(
+            {
+                "task_input": {"test": "data"},
+                "version": 1,
+                "private_fields": ["task_input"],
+            }
+        )
+        assert "task_input" in request_with_task_input.private_fields
+
+        # This should also work - task_output should be valid
+        request_with_task_output = RunRequest.model_validate(
+            {
+                "task_input": {"test": "data"},
+                "version": 1,
+                "private_fields": ["task_output"],
+            }
+        )
+        assert "task_output" in request_with_task_output.private_fields
+
+        # Both should work together
+        request_with_both = RunRequest.model_validate(
+            {
+                "task_input": {"test": "data"},
+                "version": 1,
+                "private_fields": ["task_input", "task_output"],
+            }
+        )
+        assert "task_input" in request_with_both.private_fields
+        assert "task_output" in request_with_both.private_fields
+
+        # Custom string fields should also work
+        request_with_custom = RunRequest.model_validate(
+            {
+                "task_input": {"test": "data"},
+                "version": 1,
+                "private_fields": ["task_input.image", "metadata.secret"],
+            }
+        )
+        assert "task_input.image" in request_with_custom.private_fields
+        assert "metadata.secret" in request_with_custom.private_fields
