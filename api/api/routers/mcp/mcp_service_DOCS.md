@@ -126,6 +126,7 @@ Notes from Yann: I wonder if I should not simply manage my subtasque in this REA
 - [ ] Scenario 10: Ask WorkflowAI for Agent Improvement Recommendations
 - [ ] Scenario 11: Setup Deployments on Existing Agent
 - [ ] Scenario 12: Deploy Specific Agent Version
+- [ ] Scenario 13: Debug Agent by Searching for Runs with Errors
 
 
 ## Scenario 1: Build Text Summarization Agent from Scratch
@@ -471,6 +472,37 @@ ALT:
 
 ### what is required:
 - ...
+
+## Scenario 13: Debug Agent by Searching for Runs with Errors
+
+### initial state:
+```
+- agent is deployed on WorkflowAI in production
+- agent has been running for some time and has accumulated successful and failed runs
+- some users are experiencing errors (e.g., "proof-caffeine" user sending extremely large PDF documents)
+```
+
+### goal:
+```
+- I need to debug my agent by finding all runs that have errors
+- search for runs with specific error patterns or types
+- analyze common failure modes across multiple error runs
+- identify users who are consistently hitting errors (like "proof-caffeine" user)
+- understand what's causing the errors (e.g., file size limits, processing timeouts, etc.)
+- get insights into how to improve agent robustness
+```
+
+### what is required:
+- ability to search/filter runs by error status (failed/error runs only)
+- access to error messages and stack traces from failed runs
+- ability to query runs by user_id to find problematic users
+- search functionality to find runs with specific error patterns
+- ability to retrieve detailed logs and metadata from error runs
+- aggregate error statistics and common failure patterns
+- access to run execution details when errors occurred
+- ability to correlate errors with input characteristics (e.g., file sizes, content types)
+- tools to identify trends in error patterns over time
+- capability to store and retrieve invalid/failed runs with their complete error context
 
 # References
 
