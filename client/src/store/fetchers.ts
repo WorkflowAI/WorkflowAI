@@ -93,10 +93,10 @@ export function useOrFetchSchemaAIModels(props: UseOrFetchSchemaAIModelsProps) {
 }
 
 export function useOrFetchModels() {
-  const models = useAIModels((state) => state.models);
-  const isLoading = useAIModels((state) => state.isLoading);
-  const isInitialized = useAIModels((state) => state.isInitialized);
-  const fetchUniversalModels = useAIModels((state) => state.fetchUniversalModels);
+  const models = useAIModels((state) => state.featureModels);
+  const isLoading = useAIModels((state) => state.isLoadingFeatureModels);
+  const isInitialized = useAIModels((state) => state.isInitializedFeatureModels);
+  const fetchUniversalModels = useAIModels((state) => state.fetchFeaturesModels);
 
   useEffect(() => {
     if (!isInitialized) {

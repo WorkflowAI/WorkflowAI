@@ -13,12 +13,17 @@ interface AIModelsState {
   isLoadingByScope: Map<string, boolean>;
   isInitializedByScope: Map<string, boolean>;
 
+  featureModels: ModelResponse[] | undefined;
+  isLoadingFeatureModels: boolean;
+  isInitializedFeatureModels: boolean;
+
   models: ModelResponse[] | undefined;
-  isLoading: boolean;
-  isInitialized: boolean;
+  isLoadingModels: boolean;
+  isInitializedModels: boolean;
 
   fetchSchemaModels(tenant: TenantID | undefined, taskId: TaskID, taskSchemaId: TaskSchemaID): Promise<void>;
-  fetchUniversalModels(): Promise<void>;
+  fetchFeaturesModels(): Promise<void>;
+  fetchModels(): Promise<void>;
 }
 
 export const useAIModels = create<AIModelsState>((set, get) => ({
@@ -26,9 +31,13 @@ export const useAIModels = create<AIModelsState>((set, get) => ({
   isLoadingByScope: new Map(),
   isInitializedByScope: new Map(),
 
+  featureModels: undefined,
+  isLoadingFeatureModels: false,
+  isInitializedFeatureModels: false,
+
   models: undefined,
-  isLoading: false,
-  isInitialized: false,
+  isLoadingModels: false,
+  isInitializedModels: false,
 
   fetchSchemaModels: async (tenant: TenantID | undefined, taskId: TaskID, taskSchemaId: TaskSchemaID) => {
     const scope = buildScopeKey({ tenant, taskId, taskSchemaId });
@@ -62,8 +71,8 @@ export const useAIModels = create<AIModelsState>((set, get) => ({
     );
   },
 
-  fetchUniversalModels: async () => {
-    if (get().isLoading) return;
+  fetchFeaturesModels: async () => {
+    if (get().isLoadingFeatureModels) return;
 
     set(
       produce((state) => {
@@ -87,6 +96,36 @@ export const useAIModels = create<AIModelsState>((set, get) => ({
         produce((state) => {
           state.isLoading = false;
           state.isInitialized = true;
+        })
+      );
+    }
+  },
+
+  fetchModels: async () => {
+    if (get().isLoadingModels) return;
+
+    set(
+      produce((state) => {
+        state.isLoadingModels = true;
+      })
+    );
+
+    const path = `/api/data/v1/models`;
+
+    try {
+      const response = await client.get<Page_ModelResponse_>(path);
+      set(
+        produce((state) => {
+          state.models = response.items;
+        })
+      );
+    } catch (error) {
+      console.error('Failed to fetch ai models', error);
+    } finally {
+      set(
+        produce((state) => {
+          state.isLoadingModels = false;
+          state.isInitializedModels = true;
         })
       );
     }

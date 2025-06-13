@@ -87,6 +87,7 @@ export function ProxyPlayground(props: Props) {
     scrollToBottom,
     setScrollToBottom,
     advancedSettings,
+    maxTokens,
   } = useProxyPlaygroundStates(tenant, taskId, urlSchemaId);
 
   useEffect(() => {
@@ -454,6 +455,7 @@ export function ProxyPlayground(props: Props) {
                 onSaveAllVersions={onSaveAllVersions}
                 versionsForRuns={versionsForRuns}
                 improveMessagesControls={improveMessagesControls}
+                maxTokens={maxTokens}
               />
               <div ref={playgroundOutputRef} className='flex w-full'>
                 <ProxyOutput

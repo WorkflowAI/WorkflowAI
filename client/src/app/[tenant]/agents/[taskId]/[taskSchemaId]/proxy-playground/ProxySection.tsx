@@ -43,6 +43,8 @@ interface Props {
 
   versionsForRuns: Record<string, VersionV1>;
   improveMessagesControls: ProxyImproveMessagesControls;
+
+  maxTokens: number | undefined;
 }
 
 export function ProxySection(props: Props) {
@@ -68,6 +70,7 @@ export function ProxySection(props: Props) {
     onSaveAllVersions,
     versionsForRuns,
     improveMessagesControls,
+    maxTokens,
   } = props;
 
   const messagesWithDefaultSystemMessage = useMemo(() => {
@@ -149,6 +152,7 @@ export function ProxySection(props: Props) {
           inputVariblesKeys={inputVariblesKeys}
           error={error}
           improveMessagesControls={improveMessagesControls}
+          maxTokens={maxTokens}
         />
       </div>
     </div>

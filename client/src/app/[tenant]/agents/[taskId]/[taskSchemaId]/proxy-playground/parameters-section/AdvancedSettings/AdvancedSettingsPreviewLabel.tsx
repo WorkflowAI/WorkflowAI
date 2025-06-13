@@ -1,5 +1,9 @@
 import { AdvancedSettings } from '../../hooks/useProxyPlaygroundSearchParams';
-import { advencedSettingNameFromKey } from '../../utils';
+import {
+  advencedSettingNameFromKey,
+  advencedSettingsVersionPropertiesKeys,
+  defaultValueForAdvencedSetting,
+} from '../../utils';
 
 type Props = {
   advancedSettings: AdvancedSettings;
@@ -8,19 +12,22 @@ type Props = {
 export function AdvancedSettingsPreviewLabel(props: Props) {
   const { advancedSettings } = props;
 
-  const nonEmptySettings: [string, string][] = [];
-  for (const [key, value] of Object.entries(advancedSettings)) {
-    if (value !== undefined && typeof value === 'string' && key !== 'temperature') {
-      const name = advencedSettingNameFromKey(key);
-      nonEmptySettings.push([name, value]);
+  const settings: [string, string][] = [];
+
+  for (const key of advencedSettingsVersionPropertiesKeys) {
+    const value = (advancedSettings as unknown as { [K in typeof key]: string | undefined })[key];
+    const name = advencedSettingNameFromKey(key);
+    const valueToUse = value ?? defaultValueForAdvencedSetting(key) ?? 'Not Set';
+    if (valueToUse !== undefined) {
+      settings.push([name, valueToUse]);
     }
   }
 
   return (
     <div className='flex w-max items-center justify-end h-5 max-h-5 gap-2 whitespace-nowrap'>
-      {nonEmptySettings.map(([name, value]) => (
+      {settings.map(([name, value]) => (
         <div key={name} className='text-gray-500 text-[12px] shrink-0'>
-          {name}: <span className='font-semibold text-gray-700'>{value}</span>
+          {name}: <span className='font-semibold text-gray-700 capitalize'>{value}</span>
         </div>
       ))}
     </div>

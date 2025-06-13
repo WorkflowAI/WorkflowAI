@@ -121,32 +121,32 @@ export function useProxyPlaygroundStates(tenant: TenantID | undefined, taskId: T
     advancedSettings.temperature,
     advancedSettings.setTemperature
   );
-  useSetPropertyFromVersionIfNeeded(version, 'top_p', advancedSettings.topP, advancedSettings.setTopP);
-  useSetPropertyFromVersionIfNeeded(version, 'max_tokens', advancedSettings.maxTokens, advancedSettings.setMaxTokens);
+  useSetPropertyFromVersionIfNeeded(version, 'top_p', advancedSettings.top_p, advancedSettings.setTopP);
+  useSetPropertyFromVersionIfNeeded(version, 'max_tokens', advancedSettings.max_tokens, advancedSettings.setMaxTokens);
   useSetPropertyFromVersionIfNeeded(version, 'stream', advancedSettings.stream, advancedSettings.setStream);
   useSetPropertyFromVersionIfNeeded(
     version,
     'stream_options_include_usage',
-    advancedSettings.streamOptionsIncludeUsage,
+    advancedSettings.stream_options_include_usage,
     advancedSettings.setStreamOptionsIncludeUsage
   );
   useSetPropertyFromVersionIfNeeded(version, 'stop', advancedSettings.stop, advancedSettings.setStop);
   useSetPropertyFromVersionIfNeeded(
     version,
     'presence_penalty',
-    advancedSettings.presencePenalty,
+    advancedSettings.presence_penalty,
     advancedSettings.setPresencePenalty
   );
   useSetPropertyFromVersionIfNeeded(
     version,
     'frequency_penalty',
-    advancedSettings.frequencyPenalty,
+    advancedSettings.frequency_penalty,
     advancedSettings.setFrequencyPenalty
   );
   useSetPropertyFromVersionIfNeeded(
     version,
     'tool_choice',
-    advancedSettings.toolChoice,
+    advancedSettings.tool_choice,
     advancedSettings.setToolChoice
   );
   useSetPropertyFromVersionIfNeeded(version, 'use_cache', advancedSettings.cache, advancedSettings.setCache);
@@ -199,7 +199,7 @@ export function useProxyPlaygroundStates(tenant: TenantID | undefined, taskId: T
     setTaskRunId3(undefined);
   }, [setTaskRunId1, setTaskRunId2, setTaskRunId3]);
 
-  const { outputModels, setOutputModels, compatibleModels, allModels } = useProxyOutputModels(
+  const { outputModels, setOutputModels, compatibleModels, allModels, maxTokens } = useProxyOutputModels(
     tenant,
     taskId,
     schemaId,
@@ -245,5 +245,6 @@ export function useProxyPlaygroundStates(tenant: TenantID | undefined, taskId: T
     setScrollToBottom,
 
     advancedSettings,
+    maxTokens,
   };
 }

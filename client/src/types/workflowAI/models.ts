@@ -1,3 +1,4 @@
+import { JsonSchema } from '../json_schema';
 import { ProxyMessage } from '.';
 
 export type AIReviewer = {
@@ -2842,4 +2843,136 @@ export type IntegrationChatMessage = {
   role: 'USER' | 'ASSISTANT';
   content: string;
   message_kind: 'initial_code_snippet' | 'agent_name_definition_code_snippet' | 'non_specific';
+};
+
+export type OpenAIProxyToolChoiceFunction = {
+  name: string;
+};
+
+export type OpenAIProxyFunctionDefinition = {
+  description?: string | null;
+  name: string;
+  parameters: Record<string, unknown>;
+  strict?: boolean | null;
+  [key: string]: unknown;
+};
+
+export type OpenAIProxyPredicatedOutput = {
+  content: string | Array<OpenAIProxyContent>;
+  type: string;
+};
+
+export type OpenAIProxyImageURL = {
+  url: string;
+  detail?: 'low' | 'high' | 'auto' | null;
+  [key: string]: unknown;
+};
+
+export type OpenAIAudioInput = {
+  data: string;
+  format: string;
+};
+
+export type OpenAIProxyContent = {
+  type: string;
+  text?: string | null;
+  image_url?: OpenAIProxyImageURL | null;
+  input_audio?: OpenAIAudioInput | null;
+  [key: string]: unknown;
+};
+
+export type OpenAIProxyResponseFormat = {
+  type: string;
+  json_schema?: JsonSchema | null;
+  [key: string]: unknown;
+};
+
+export type OpenAIProxyStreamOptions = {
+  include_usage?: boolean | null;
+  [key: string]: unknown;
+};
+
+export type OpenAIProxyToolChoice = {
+  type: 'function';
+  function: OpenAIProxyToolChoiceFunction;
+};
+
+export type OpenAIProxyWebSearchOptions = {
+  search_context_size: string;
+  user_location?: Record<string, unknown> | null;
+};
+
+export type OpenAIProxyToolFunction = {
+  description?: string | null;
+  name: string;
+  parameters: Record<string, unknown>;
+  strict?: boolean | null;
+  [key: string]: unknown;
+};
+
+export type OpenAIProxyTool = {
+  type: 'function';
+  function: OpenAIProxyToolFunction;
+  [key: string]: unknown;
+};
+
+export type OpenAIProxyFunctionCall = {
+  name: string;
+  arguments?: string | null;
+  [key: string]: unknown;
+};
+
+export type OpenAIProxyToolCall = {
+  id: string;
+  type?: 'function';
+  function: OpenAIProxyFunctionCall;
+  [key: string]: unknown;
+};
+
+export type OpenAIProxyMessage = {
+  content?: Array<OpenAIProxyContent> | string | null;
+  name?: string | null;
+  role: string;
+  tool_calls?: Array<OpenAIProxyToolCall> | null;
+  function_call?: OpenAIProxyFunctionCall | null;
+  tool_call_id?: string | null;
+  [key: string]: unknown;
+};
+
+export type OpenAIProxyChatCompletionRequest = {
+  messages: Array<OpenAIProxyMessage>;
+  model: string;
+  frequency_penalty?: number | null;
+  function_call?: string | OpenAIProxyToolChoiceFunction | null;
+  functions?: Array<OpenAIProxyFunctionDefinition> | null;
+  max_tokens?: number | null;
+  modalities?: Array<'text' | 'audio'> | null;
+  n?: number | null;
+  parallel_tool_calls?: boolean | null;
+  prediction?: OpenAIProxyPredicatedOutput | null;
+  presence_penalty?: number | null;
+  reasoning_effort?: string | null;
+  response_format?: OpenAIProxyResponseFormat | null;
+  seed?: number | null;
+  service_tier?: string | null;
+  stop?: string | Array<string> | null;
+  store?: boolean | null;
+  stream?: boolean | null;
+  stream_options?: OpenAIProxyStreamOptions | null;
+  temperature?: number | null;
+  tool_choice?: string | OpenAIProxyToolChoice | null;
+  tools?: Array<OpenAIProxyTool> | null;
+  top_logprobs?: number | null;
+  top_p?: number | null;
+  user?: string | null;
+  web_search_options?: OpenAIProxyWebSearchOptions | null;
+  input?: Record<string, unknown> | null;
+  provider?: string | null;
+  agent_id?: string | null;
+  environment?: string | null;
+  schema_id?: number | null;
+  use_cache?: 'auto' | 'always' | 'never' | null;
+  workflowai_tools?: Array<string> | null;
+  use_fallback?: 'auto' | 'never' | Array<string> | null;
+  [key: string]: unknown;
 };

@@ -10,6 +10,7 @@ type Props = {
   prompt: string;
   minValue: number;
   maxValue: number;
+  textWidth?: number;
   step: number;
   value: string | undefined;
   setValue: (value: string | undefined) => void;
@@ -35,6 +36,7 @@ export function AdvancedSettingsSliderEntry(props: Props) {
     prompt,
     minValue,
     maxValue,
+    textWidth,
     step,
     value,
     setValue,
@@ -107,7 +109,10 @@ export function AdvancedSettingsSliderEntry(props: Props) {
               data-1p-ignore
               autoFocus={false}
               tabIndex={-1}
-              className='w-[50px] text-gray-900 text-right rounded-[2px] text-[13px] placeholder:text-gray-400 py-0.5 px-1 border border-gray-300 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none focus:outline-none focus:ring-0'
+              className={cn(
+                'text-gray-900 text-right rounded-[2px] text-[13px] placeholder:text-gray-400 py-0.5 px-1 border border-gray-300 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none focus:outline-none focus:ring-0',
+                textWidth ? `w-[${textWidth}px]` : 'w-[50px]'
+              )}
               value={formatValue(valueToUse, step)}
               onChange={(e) => onUpdateValue(e.target.value)}
               placeholder='0.0'

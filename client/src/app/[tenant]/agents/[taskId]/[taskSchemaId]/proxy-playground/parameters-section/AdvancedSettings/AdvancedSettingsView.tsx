@@ -11,16 +11,17 @@ import { AdvancedSettingsTextEntry } from './AdvancedSettingsTextEntry';
 
 type Props = {
   advancedSettings: AdvancedSettings;
+  maxTokens: number | undefined;
 };
 
 export function AdvancedSettingsView(props: Props) {
-  const { advancedSettings } = props;
+  const { advancedSettings, maxTokens } = props;
 
   const [isAdvancedSettingsOpen, setIsAdvancedSettingsOpen] = useState(false);
 
   return (
     <div className='flex flex-col gap-2.5 w-full items-center justify-end overflow-hidden'>
-      <div className='flex w-full justify-end overflow-hidden pr-3'>
+      <div className='flex w-full justify-end overflow-hidden pr-3 pl-10'>
         <div className='relative flex max-w-full justify-start'>
           <div className='flex w-full justify-start overflow-x-auto scrollbar-hide px-2'>
             <AdvancedSettingsPreviewLabel advancedSettings={advancedSettings} />
@@ -64,7 +65,7 @@ export function AdvancedSettingsView(props: Props) {
 
               <AdvancedSettingsSliderEntry
                 name={advencedSettingNameFromKey('top_p')}
-                value={advancedSettings.topP}
+                value={advancedSettings.top_p}
                 setValue={advancedSettings.setTopP}
                 defaultValue={defaultValueForAdvencedSetting('top_p')}
                 minValue={0.01}
@@ -76,11 +77,12 @@ export function AdvancedSettingsView(props: Props) {
               />
               <AdvancedSettingsSliderEntry
                 name={advencedSettingNameFromKey('max_tokens')}
-                value={advancedSettings.maxTokens}
+                value={advancedSettings.max_tokens}
                 setValue={advancedSettings.setMaxTokens}
                 defaultValue={defaultValueForAdvencedSetting('max_tokens')}
                 minValue={1}
-                maxValue={4096}
+                maxValue={maxTokens ?? 4096}
+                textWidth={64}
                 isOptional={true}
                 allowGoingAboveMaxValue={true}
                 className='border-b border-gray-100'
@@ -96,7 +98,7 @@ export function AdvancedSettingsView(props: Props) {
               />
               <AdvancedSettingsSwitchEntry
                 name='Stream Options: Include Usage'
-                value={advancedSettings.streamOptionsIncludeUsage}
+                value={advancedSettings.stream_options_include_usage}
                 setValue={advancedSettings.setStreamOptionsIncludeUsage}
                 className='border-b border-gray-100'
                 prompt='Optional boolean. When stream is true, this includes token usage details in the final streamed message.'
@@ -110,7 +112,7 @@ export function AdvancedSettingsView(props: Props) {
               />
               <AdvancedSettingsSliderEntry
                 name={advencedSettingNameFromKey('presence_penalty')}
-                value={advancedSettings.presencePenalty}
+                value={advancedSettings.presence_penalty}
                 setValue={advancedSettings.setPresencePenalty}
                 defaultValue={defaultValueForAdvencedSetting('presence_penalty')}
                 minValue={-2}
@@ -122,7 +124,7 @@ export function AdvancedSettingsView(props: Props) {
               />
               <AdvancedSettingsSliderEntry
                 name={advencedSettingNameFromKey('frequency_penalty')}
-                value={advancedSettings.frequencyPenalty}
+                value={advancedSettings.frequency_penalty}
                 setValue={advancedSettings.setFrequencyPenalty}
                 defaultValue={defaultValueForAdvencedSetting('frequency_penalty')}
                 minValue={-2}
@@ -134,7 +136,7 @@ export function AdvancedSettingsView(props: Props) {
               />
               <AdvancedSettingsTextEntry
                 name={advencedSettingNameFromKey('tool_choice')}
-                value={advancedSettings.toolChoice}
+                value={advancedSettings.tool_choice}
                 setValue={advancedSettings.setToolChoice}
                 prompt='Optional value that can be "none", "auto", or an object specifying a function. Controls whether the model uses tools or calls a specific function.'
               />

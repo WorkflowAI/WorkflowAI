@@ -24,6 +24,15 @@ export function useProxyOutputModels(
     taskSchemaId,
   });
 
+  const maxTokens = useMemo(() => {
+    if (allModels.length === 0) {
+      return undefined;
+    }
+    return allModels.reduce((max, model) => {
+      return Math.max(max, model.metadata.context_window_tokens ?? 0);
+    }, 0);
+  }, [allModels]);
+
   const outputModels = useMemo(() => {
     return [
       model1 ?? defaultModels[0]?.id ?? undefined,
@@ -72,5 +81,6 @@ export function useProxyOutputModels(
     setOutputModels,
     compatibleModels: compatibleModels,
     allModels: allModels,
+    maxTokens,
   };
 }

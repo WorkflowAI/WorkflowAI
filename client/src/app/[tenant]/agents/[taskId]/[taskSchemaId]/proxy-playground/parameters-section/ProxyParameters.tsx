@@ -37,6 +37,8 @@ type ProxyParametersProps = {
   error: ExtractTempleteError | undefined;
 
   improveMessagesControls: ProxyImproveMessagesControls;
+
+  maxTokens: number | undefined;
 };
 
 export function ProxyParameters(props: ProxyParametersProps) {
@@ -55,6 +57,7 @@ export function ProxyParameters(props: ProxyParametersProps) {
     inputVariblesKeys,
     error,
     improveMessagesControls,
+    maxTokens,
   } = props;
 
   const version = useMemo(() => {
@@ -142,7 +145,7 @@ export function ProxyParameters(props: ProxyParametersProps) {
               setTemperature={(temperature) => advancedSettings.setTemperature(String(temperature))}
             />
           </div>
-          <AdvancedSettingsView advancedSettings={advancedSettings} />
+          <AdvancedSettingsView advancedSettings={advancedSettings} maxTokens={maxTokens} />
         </div>
       </div>
     </div>

@@ -225,14 +225,14 @@ export function addAdvencedSettingsToProperties(
   const {
     temperature,
     cache,
-    topP,
-    maxTokens,
+    top_p: topP,
+    max_tokens: maxTokens,
     stream,
-    streamOptionsIncludeUsage,
+    stream_options_include_usage,
     stop,
-    presencePenalty,
-    frequencyPenalty,
-    toolChoice,
+    presence_penalty,
+    frequency_penalty,
+    tool_choice,
   } = advancedSettings;
 
   const result = { ...properties };
@@ -257,24 +257,24 @@ export function addAdvencedSettingsToProperties(
     result.stream = stream === 'true';
   }
 
-  if (streamOptionsIncludeUsage !== undefined) {
-    result.stream_options_include_usage = streamOptionsIncludeUsage === 'true';
+  if (stream_options_include_usage !== undefined) {
+    result.stream_options_include_usage = stream_options_include_usage === 'true';
   }
 
   if (stop !== undefined) {
     result.stop = stop;
   }
 
-  if (presencePenalty !== undefined) {
-    result.presence_penalty = Number(presencePenalty);
+  if (presence_penalty !== undefined) {
+    result.presence_penalty = Number(presence_penalty);
   }
 
-  if (frequencyPenalty !== undefined) {
-    result.frequency_penalty = Number(frequencyPenalty);
+  if (frequency_penalty !== undefined) {
+    result.frequency_penalty = Number(frequency_penalty);
   }
 
-  if (toolChoice !== undefined) {
-    result.tool_choice = toolChoice;
+  if (tool_choice !== undefined) {
+    result.tool_choice = tool_choice;
   }
 
   return result;
@@ -356,6 +356,7 @@ export function advencedSettingNameFromKey(key: string): string {
 }
 
 export const advencedSettingsVersionPropertiesKeys = [
+  'cache',
   'top_p',
   'max_tokens',
   'stream',
