@@ -104,6 +104,9 @@ async def lifespan(app: FastAPI):
 
 
 _ONLY_RUN_ROUTES = os.getenv("ONLY_RUN_ROUTES") == "true"
+_INCLUDE_OPENAPI_PROXY = os.getenv("INCLUDE_OPENAPI_PROXY", "true") == "true"
+_INCLUDE_PROBES = os.getenv("INCLUDE_PROBES", "true") == "true"
+_OPENAPI_ROUTES_FILTER = os.getenv("OPENAPI_ROUTES_FILTER", "").split(",") if os.getenv("OPENAPI_ROUTES_FILTER") else []
 
 app = FastAPI(
     title="WorkflowAI",
@@ -139,9 +142,14 @@ if WORKFLOWAI_ALLOWED_ORIGINS:
         allow_headers=["*"],
     )
 
-app.include_router(probes.router)
+# Conditionally include routers based on environment configuration
+if _INCLUDE_PROBES:
+    app.include_router(probes.router)
+
 app.include_router(run.router)
-app.include_router(openai_proxy_router.router)
+
+if _INCLUDE_OPENAPI_PROXY:
+    app.include_router(openai_proxy_router.router)
 
 
 class StandardModelResponse(BaseModel):
@@ -231,6 +239,10 @@ if not _ONLY_RUN_ROUTES:
     mcp = FastApiMCP(app, include_tags=[RouteTags.MCP])
     mcp.mount()
 
+# Apply custom OpenAPI schema if route filtering is enabled
+if _OPENAPI_ROUTES_FILTER:
+    app.openapi = custom_openapi
+
 
 @app.exception_handler(ObjectNotFoundException)
 async def object_not_found_exception_handler(request: Request, exc: ObjectNotFoundException):
@@ -304,3 +316,37 @@ async def logger_middleware(request: Request, call_next: Callable[[Request], Awa
     )
 
     return response
+
+
+def custom_openapi():
+    """Custom OpenAPI schema generator with route filtering"""
+    if app.openapi_schema:
+        return app.openapi_schema
+
+    # Generate full schema first
+    from fastapi.openapi.utils import get_openapi
+
+    openapi_schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        description=app.description,
+        routes=app.routes,
+    )
+
+    # Filter based on environment variables
+    if _OPENAPI_ROUTES_FILTER:
+        filtered_paths = {}
+        for path, methods in openapi_schema.get("paths", {}).items():
+            # Check if any method in this path has a tag we want to include
+            should_include = False
+            for method_info in methods.values():
+                if isinstance(method_info, dict) and "tags" in method_info:
+                    if any(tag in _OPENAPI_ROUTES_FILTER for tag in method_info["tags"]):
+                        should_include = True
+                        break
+            if should_include:
+                filtered_paths[path] = methods
+        openapi_schema["paths"] = filtered_paths
+
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
