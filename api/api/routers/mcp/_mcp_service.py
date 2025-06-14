@@ -28,6 +28,8 @@ from core.utils.url_utils import IGNORE_URL_END_TAG, IGNORE_URL_START_TAG
 
 # Maximum number of agents to return in list_agents MCP tool
 MAX_AGENTS_LIMIT = 50
+# Database fetch limit - fetch more than needed to allow for proper activity-based sorting
+DB_FETCH_LIMIT = 200
 
 
 class RunSearchResult(BaseModel):
@@ -243,7 +245,11 @@ class MCPService:
             )
 
     async def list_agents(self, from_date: str = "") -> MCPToolReturn:
-        """List all agents with their statistics."""
+        """List the most active agents with their statistics.
+
+        Fetches up to DB_FETCH_LIMIT agents from database, sorts by activity
+        (runs, recent activity, cost), and returns the top MAX_AGENTS_LIMIT most active ones.
+        """
         try:
             # Parse from_date or use default
             parsed_from_date = None
@@ -267,7 +273,7 @@ class MCPService:
             # Get all agents (tasks)
             from api.services import tasks
 
-            agents = await tasks.list_tasks(self.storage)
+            agents = await tasks.list_tasks(self.storage, limit=DB_FETCH_LIMIT)
 
             # Enrich agents with stats
             enriched_agents: list[dict[str, Any]] = []
