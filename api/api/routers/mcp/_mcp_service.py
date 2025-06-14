@@ -26,6 +26,9 @@ from core.storage.backend_storage import BackendStorage
 from core.utils.schemas import FieldType
 from core.utils.url_utils import IGNORE_URL_END_TAG, IGNORE_URL_START_TAG
 
+# Maximum number of agents to return in list_agents MCP tool
+MAX_AGENTS_LIMIT = 50
+
 
 class RunSearchResult(BaseModel):
     """Model for run search results"""
@@ -299,11 +302,33 @@ class MCPService:
 
                 enriched_agents.append(agent_dict)
 
+            # Sort agents by activity: prioritize recent runs, then recent activity, then cost
+            def agent_activity_score(agent: dict[str, Any]) -> tuple[int, str, float]:
+                # Primary: number of runs in last 7 days (higher is better)
+                run_count = agent["stats_last_7d"]["run_count_last_7d"]
+
+                # Secondary: most recent last_active_at from any version (more recent is better)
+                most_recent_active = ""
+                for version in agent["versions"]:
+                    if version["last_active_at"]:
+                        if not most_recent_active or version["last_active_at"] > most_recent_active:
+                            most_recent_active = version["last_active_at"]
+
+                # Tertiary: total cost in last 7 days (higher spend = more active)
+                total_cost = agent["stats_last_7d"]["total_cost_usd_last_7d"]
+
+                return (run_count, most_recent_active, total_cost)
+
+            enriched_agents.sort(key=agent_activity_score, reverse=True)
+
+            # Apply limit to get only the most active agents
+            limited_agents = enriched_agents[:MAX_AGENTS_LIMIT]
+
             return MCPToolReturn(
                 success=True,
                 data={
-                    "items": enriched_agents,
-                    "count": len(enriched_agents),
+                    "items": limited_agents,
+                    "count": len(limited_agents),
                 },
             )
 
