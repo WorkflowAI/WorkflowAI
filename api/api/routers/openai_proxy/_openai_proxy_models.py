@@ -304,6 +304,12 @@ class OpenAIProxyResponseFormat(BaseModel):
 class OpenAIProxyStreamOptions(BaseModel):
     include_usage: bool | None = None
 
+    aggregate_content: bool | None = Field(
+        default=None,
+        description="Whether to send the aggregate the content server side and stream the entire payload "
+        "(as opposed to sending the delta). When using a json based format, the content is always a valid JSON object.",
+    )
+
     model_config = ConfigDict(extra="allow")
 
 
@@ -885,12 +891,19 @@ class OpenAIProxyChatCompletionChunkDelta(BaseModel):
     role: Literal["user", "assistant", "system", "tool"] | None
 
     @classmethod
-    def from_domain(cls, output: RunOutput, deprecated_function: bool):
-        if not output.delta and not output.tool_call_requests:
+    def from_domain(
+        cls,
+        output: RunOutput,
+        output_mapper: Callable[[AgentOutput], str | None],
+        deprecated_function: bool,
+        aggregate_content: bool | None,
+    ):
+        if not aggregate_content and not output.delta and not output.tool_call_requests:
             return None
+
         return cls(
             role="assistant",
-            content=output.delta,
+            content=output_mapper(output.task_output) if aggregate_content else output.delta,
             function_call=OpenAIProxyFunctionCall.from_domain(output.tool_call_requests[0])
             if deprecated_function and output.tool_call_requests
             else None,
@@ -922,13 +935,16 @@ class OpenAIProxyChatCompletionChunkChoiceFinal(OpenAIProxyChatCompletionChunkCh
         run: AgentRun,
         output_mapper: Callable[[AgentOutput], str | None],
         deprecated_function: bool,
+        aggregate_content: bool | None,
     ):
         """Build the final delta based on a run. The final delta contains the full output of the run if the run
         is from cache since there was no previous delta. Otherwise the final delta is empty."""
-        if run.from_cache:
+        if run.from_cache or aggregate_content:
             if chunk := OpenAIProxyChatCompletionChunkDelta.from_domain(
-                RunOutput.from_run(run, delta=output_mapper(run.task_output)),
+                RunOutput.from_run(run),
+                output_mapper,
                 deprecated_function,
+                True,
             ):
                 return chunk
         # Otherwise the final chunk is always empty
@@ -946,13 +962,14 @@ class OpenAIProxyChatCompletionChunkChoiceFinal(OpenAIProxyChatCompletionChunkCh
         output_mapper: Callable[[AgentOutput], str | None],
         deprecated_function: bool,
         feedback_generator: Callable[[str], str],
+        aggregate_content: bool | None,
     ):
         """Compute the final choice chunk from a run"""
 
         usage = OpenAIProxyCompletionUsage.from_domain(run.llm_completions[-1]) if run.llm_completions else None
 
         return cls(
-            delta=cls._build_delta(run, output_mapper, deprecated_function),
+            delta=cls._build_delta(run, output_mapper, deprecated_function, aggregate_content),
             finish_reason=cls._possible_finish_reason(run, deprecated_function),
             index=0,
             usage=usage,
@@ -977,8 +994,21 @@ class OpenAIProxyChatCompletionChunk(BaseModel):
     # metadata: dict[str, Any] | None = Field(description="Metadata about the completion, WorkflowAI specific")
 
     @classmethod
-    def from_domain(cls, id: str, output: RunOutput, model: str, deprecated_function: bool):
-        chunk_delta = OpenAIProxyChatCompletionChunkDelta.from_domain(output, deprecated_function)
+    def from_domain(
+        cls,
+        id: str,
+        output: RunOutput,
+        output_mapper: Callable[[AgentOutput], str | None],
+        model: str,
+        deprecated_function: bool,
+        aggregate_content: bool | None,
+    ):
+        chunk_delta = OpenAIProxyChatCompletionChunkDelta.from_domain(
+            output,
+            output_mapper,
+            deprecated_function,
+            aggregate_content,
+        )
         if not chunk_delta:
             return None
         return cls(
@@ -989,9 +1019,23 @@ class OpenAIProxyChatCompletionChunk(BaseModel):
         )
 
     @classmethod
-    def stream_serializer(cls, agent_id: str, model: str, deprecated_function: bool):
+    def stream_serializer(
+        cls,
+        agent_id: str,
+        model: str,
+        deprecated_function: bool,
+        aggregate_content: bool | None,
+        output_mapper: Callable[[AgentOutput], str | None],
+    ):
         def _serializer(id: str, output: RunOutput):
-            return cls.from_domain(f"{agent_id}/{id}", output, model=model, deprecated_function=deprecated_function)
+            return cls.from_domain(
+                f"{agent_id}/{id}",
+                output,
+                output_mapper,
+                model=model,
+                deprecated_function=deprecated_function,
+                aggregate_content=aggregate_content,
+            )
 
         return _serializer
 
@@ -1002,6 +1046,7 @@ class OpenAIProxyChatCompletionChunk(BaseModel):
         deprecated_function: bool,
         output_mapper: Callable[[AgentOutput], str | None],
         feedback_generator: Callable[[str], str],
+        aggregate_content: bool | None,
     ):
         # Builds the final chunk containing the usage and feedback token
         def _serializer(run: AgentRun):
@@ -1010,6 +1055,7 @@ class OpenAIProxyChatCompletionChunk(BaseModel):
                 output_mapper,
                 deprecated_function,
                 feedback_generator,
+                aggregate_content,
             )
             if not choice:
                 # This is mostly for typing reasons, it should never happen

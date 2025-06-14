@@ -86,6 +86,8 @@ class RunService:
                 if chunk and (serialized := chunk_serializer(builder.id, chunk)):
                     yield _format_model(serialized)
 
+            # TODO: We are streaming one too many chunks here. Both the abstract provider and below
+            # Stream the final chunk which leads to duplicate final chunks
             if run := builder.task_run:
                 if final_chunk := serializer(run):
                     yield _format_model(final_chunk)
