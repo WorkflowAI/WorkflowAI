@@ -1,0 +1,86 @@
+---
+title: No-Code
+description: Learn how to build AI features without writing code to access 100+ models, observe your agents' behavior in real-time, and update prompts through deployments without changing code.
+icon: Wand2
+---
+
+import { Step, Steps } from 'fumadocs-ui/components/steps';
+import { BarChart3, UploadCloud, Columns3, Eye, PlugZap, ListChecks, Globe, ShieldCheck, Target, FileText, Settings } from 'lucide-react';
+import { Accordions, Accordion } from 'fumadocs-ui/components/accordion';
+import { WorkflowModelCount } from '@/components/workflow-model-count';
+
+<Callout type="info">
+  When building your AI feature, it's helpful to consider three key aspects:
+
+- **Goal**: Clearly describe how input data transforms into output data
+  - *Example*: Extracting calendar events detected in a list of provided emails
+- **Input**: The type of data that the AI will be given to process
+  - *Example*: A list of emails
+- **Output**: The type of data the feature will produce  
+  - *Example*: A list of calendar events
+</Callout>
+
+## Get Started
+
+<Steps>
+<Step>
+
+### Create your free account
+
+Visit [workflowai.com](https://workflowai.com) to create your free account. We give you $10 in credits to get started, so you can begin building and testing your AI features right away.
+
+</Step>
+
+<Step>
+
+### Start building your AI feature
+
+Once you're logged in, tap the **"New"** button, then select **"Create new AI feature"** to begin building your first AI-powered functionality.
+
+</Step>
+
+<Step>
+
+### Describe what you want to build
+
+Write a clear description of the feature you want to build and send it to the AI. The more specific you are about your goals, inputs, and expected outputs, the better WorkflowAI can help you create the perfect AI feature.
+
+<Callout type="success">
+  Congratulations! Your first no code AI feature is now running in the playground!
+</Callout>
+
+</Step>
+
+<Step>
+
+### Next: Test and improve your agent
+
+Now that your AI feature is created, head over to the [playground](/docs/playground) to test your agent and make improvements. The playground is where you can refine your agent's behavior, test different scenarios, and ensure it works perfectly for your use case. To help make your agent the best it can be, all the features below are automatically enabled:
+
+<include>../partials/features-cards.mdx</include>
+
+</Step>
+
+</Steps>
+
+## Need help?
+
+- Ask our AI or join our [Discord](https://discord.com/invite/auuf8DREZh)
+
+## Next steps
+
+<Card 
+  title="Setup Deployments" 
+  description="Update your prompts without changing your code"
+  href="/docs/deployments" 
+  icon={<UploadCloud />}
+/>
+<br />
+
+<Card 
+  title="Setup Evaluations" 
+  description="Compare prompts and models"
+  href="/docs/evaluations" 
+  icon={<BarChart3 />}
+
+/>

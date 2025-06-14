@@ -2,7 +2,6 @@ import json
 import unittest
 from collections.abc import Callable
 from typing import Any, cast
-from unittest.mock import patch
 
 import pytest
 from httpx import Response
@@ -698,6 +697,7 @@ class TestComplete:
         httpx_mock.add_response(
             url="https://api.openai.com/v1/chat/completions",
             json=fixtures_json("openai", "audio_refusal.json"),
+            is_reusable=True,
         )
 
         provider = OpenAIProvider()
@@ -857,147 +857,6 @@ class TestRequiresDownloadingFile:
     )
     def test_does_not_require_downloading_file(self, file: FileWithKeyPath):
         assert not OpenAIProvider.requires_downloading_file(file, Model.GPT_4O_2024_11_20)
-
-
-class TestIsSchemaSupported:
-    async def test_schema_supported(self, httpx_mock: HTTPXMock):
-        httpx_mock.add_response(
-            url="https://api.openai.com/v1/chat/completions",
-            json=fixtures_json("openai", "completion.json"),
-        )
-
-        provider = OpenAIProvider()
-        schema = fixtures_json("jsonschemas", "schema_1.json")
-
-        with patch("core.utils.redis_cache.get_redis_client") as mock_cache:
-            mock_cache.get.return_value = None
-            is_supported = await provider.is_schema_supported_for_structured_generation(
-                task_name="test",
-                model=Model.GPT_4O_2024_11_20,
-                schema=schema,
-            )
-
-        assert is_supported
-        request = httpx_mock.get_requests()[0]
-        body = json.loads(request.read().decode())
-        assert body == {
-            # "max_tokens": 16_384,
-            "messages": [
-                {"content": "Generate a test output", "role": "user"},
-            ],
-            "model": "gpt-4o-2024-11-20",
-            "response_format": {
-                "type": "json_schema",
-                "json_schema": {
-                    "name": "test_6332b35b347573206791b5e07ead9edf",
-                    "strict": True,
-                    "schema": {
-                        "description": 'The expected output of the EmailToCalendarProcessor. Each attribute corresponds to a question asked to the processor.\n\nThis class will be dynamically injected in the prompt as a "schema" for the LLM to enforce.',
-                        "$defs": {
-                            "CalendarEventCategory": {
-                                "enum": [
-                                    "UNSPECIFIED",
-                                    "IN_PERSON_MEETING",
-                                    "REMOTE_MEETING",
-                                    "FLIGHT",
-                                    "TO_DO",
-                                    "BIRTHDAY",
-                                ],
-                                "type": "string",
-                            },
-                            "MeetingProvider": {
-                                "enum": ["ZOOM", "GOOGLE_MEET", "MICROSOFT_TEAMS", "SKYPE", "OTHER"],
-                                "type": "string",
-                            },
-                        },
-                        "properties": {
-                            "is_email_thread_about_an_event": {"type": "boolean"},
-                            "is_event_confirmed": {"anyOf": [{"type": "boolean"}, {"type": "null"}]},
-                            "event_category": {"anyOf": [{"$ref": "#/$defs/CalendarEventCategory"}, {"type": "null"}]},
-                            "is_event_all_day": {"type": "boolean"},
-                            "is_event_start_datetime_defined": {"anyOf": [{"type": "boolean"}, {"type": "null"}]},
-                            "event_start_datetime": {
-                                "anyOf": [{"description": "format: date-time", "type": "string"}, {"type": "null"}],
-                            },
-                            "event_start_date": {
-                                "anyOf": [{"description": "format: date", "type": "string"}, {"type": "null"}],
-                            },
-                            "is_event_end_datetime_defined": {"anyOf": [{"type": "boolean"}, {"type": "null"}]},
-                            "event_end_datetime": {
-                                "anyOf": [{"description": "format: date-time", "type": "string"}, {"type": "null"}],
-                            },
-                            "event_end_date": {
-                                "anyOf": [{"description": "format: date", "type": "string"}, {"type": "null"}],
-                            },
-                            "event_title": {"anyOf": [{"type": "string"}, {"type": "null"}]},
-                            "remote_meeting_provider": {
-                                "anyOf": [{"$ref": "#/$defs/MeetingProvider"}, {"type": "null"}],
-                            },
-                            "event_location_details": {"anyOf": [{"type": "string"}, {"type": "null"}]},
-                            "event_participants_emails_addresses": {
-                                "anyOf": [{"items": {"type": "string"}, "type": "array"}, {"type": "null"}],
-                            },
-                        },
-                        "required": [
-                            "is_email_thread_about_an_event",
-                            "is_event_confirmed",
-                            "event_category",
-                            "is_event_all_day",
-                            "is_event_start_datetime_defined",
-                            "event_start_datetime",
-                            "event_start_date",
-                            "is_event_end_datetime_defined",
-                            "event_end_datetime",
-                            "event_end_date",
-                            "event_title",
-                            "remote_meeting_provider",
-                            "event_location_details",
-                            "event_participants_emails_addresses",
-                        ],
-                        "type": "object",
-                        "additionalProperties": False,
-                    },
-                },
-            },
-            "stream": False,
-            "temperature": 0.0,
-        }
-
-    async def test_schema_not_supported_error(self, httpx_mock: HTTPXMock):
-        httpx_mock.add_response(
-            url="https://api.openai.com/v1/chat/completions",
-            status_code=400,
-            json={"error": {"message": "Invalid schema format"}},
-        )
-
-        provider = OpenAIProvider()
-        schema = {"type": "invalid_schema"}
-
-        with patch("core.utils.redis_cache.get_redis_client") as mock_cache:
-            mock_cache.get.return_value = None
-            is_supported = await provider.is_schema_supported_for_structured_generation(
-                task_name="test",
-                model=Model.GPT_4O_2024_11_20,
-                schema=schema,
-            )
-
-        assert not is_supported
-
-    async def test_schema_not_supported_exception(self, httpx_mock: HTTPXMock):
-        httpx_mock.add_exception(Exception("Unexpected error"))
-
-        provider = OpenAIProvider()
-        schema = {"type": "object"}
-
-        with patch("core.utils.redis_cache.get_redis_client") as mock_cache:
-            mock_cache.get.return_value = None
-            is_supported = await provider.is_schema_supported_for_structured_generation(
-                task_name="test",
-                model=Model.GPT_4O_2024_11_20,
-                schema=schema,
-            )
-
-        assert not is_supported
 
 
 class TestMaxTokensExceededError:

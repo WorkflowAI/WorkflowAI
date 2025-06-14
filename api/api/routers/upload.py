@@ -3,6 +3,7 @@ import mimetypes
 from fastapi import APIRouter, UploadFile
 from pydantic import BaseModel
 
+from api.dependencies.path_params import AgentID
 from api.dependencies.security import TenantDep
 from api.dependencies.services import FileStorageDep
 from core.storage.file_storage import FileData
@@ -22,11 +23,11 @@ def _content_type(file: UploadFile) -> str | None:
     return mimetypes.guess_type(file.filename)[0]
 
 
-@router.post("/{task_id}", response_model=UploadFileResponse)
+@router.post("/{agent_id}", response_model=UploadFileResponse)
 async def upload_file(
     file_storage: FileStorageDep,
     tenant: TenantDep,
-    task_id: str,
+    agent_id: AgentID,
     file: UploadFile,
 ) -> UploadFileResponse:
     url = await file_storage.store_file(
@@ -35,6 +36,6 @@ async def upload_file(
             contents=await file.read(),
             content_type=_content_type(file),
         ),
-        f"{tenant}/{task_id}/uploads",
+        f"{tenant}/{agent_id}/uploads",
     )
     return UploadFileResponse(url=url)

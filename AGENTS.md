@@ -76,3 +76,13 @@ Useful commands:
 - `yarn format` to format the code.
 - `yarn workspace workflowai lint` run eslint on the client code
 - `yarn workspace workflowai build` to build the client, including checking for type errors.
+
+## Docs
+
+The [documentation](./docsv2) is written in [MDX](https://mdxjs.com/) and uses [FumaDocs](https://fumadocs.com/) as a framework.
+
+Useful commands:
+
+- `yarn workspace docs dev` to start the development server.
+- `yarn workspace docs build` to build the documentation. Make sure to run this before pushing the PR to make sure it builds
+- `yarn workspace docs lint` to lint the documentation.

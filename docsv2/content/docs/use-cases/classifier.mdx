@@ -1,0 +1,579 @@
+---
+title: Building a Classifier
+description: Create AI-powered classifiers for text, sentiment, and custom categories
+---
+
+# Building a Classifier
+
+Learn how to build robust AI classifiers for various use cases including sentiment analysis, content moderation, intent detection, and custom categorization.
+
+## Overview
+
+AI classifiers use language models to categorize text into predefined classes. They're essential for:
+- Sentiment analysis
+- Content moderation
+- Customer support routing
+- Intent detection
+- Document categorization
+- Spam detection
+
+## Types of Classifiers
+
+### Binary Classification
+Categorizing into two classes (e.g., spam/not spam, positive/negative)
+
+### Multi-class Classification
+Categorizing into multiple exclusive classes (e.g., product categories)
+
+### Multi-label Classification
+Assigning multiple labels to a single input (e.g., content tags)
+
+## Step 1: Basic Classifier Implementation
+
+### Simple Sentiment Classifier
+
+```python
+from openai import OpenAI
+from enum import Enum
+from typing import List, Dict
+
+client = OpenAI(api_key="YOUR_API_KEY")
+
+class Sentiment(Enum):
+    POSITIVE = "positive"
+    NEGATIVE = "negative"
+    NEUTRAL = "neutral"
+
+def classify_sentiment(text: str) -> Sentiment:
+    """Classify the sentiment of the given text"""
+    
+    response = client.chat.completions.create(
+        model="gpt-4",
+        messages=[
+            {
+                "role": "system", 
+                "content": "You are a sentiment analysis system. Classify text as positive, negative, or neutral."
+            },
+            {
+                "role": "user", 
+                "content": f"Classify the sentiment: {text}"
+            }
+        ],
+        response_format={
+            "type": "json_schema",
+            "json_schema": {
+                "type": "object",
+                "properties": {
+                    "sentiment": {
+                        "type": "string",
+                        "enum": ["positive", "negative", "neutral"]
+                    }
+                },
+                "required": ["sentiment"]
+            }
+        }
+    )
+    
+    result = json.loads(response.choices[0].message.content)
+    return Sentiment(result["sentiment"])
+
+# Example usage
+text = "I absolutely love this product! It exceeded my expectations."
+sentiment = classify_sentiment(text)
+print(f"Sentiment: {sentiment.value}")
+```
+
+## Step 2: Advanced Classification with Confidence Scores
+
+### Classifier with Confidence Levels
+
+```python
+from pydantic import BaseModel, Field
+
+class ClassificationResult(BaseModel):
+    category: str
+    confidence: float = Field(ge=0, le=1)
+    reasoning: str
+
+class AdvancedClassifier:
+    def __init__(self, categories: List[str], model: str = "gpt-4"):
+        self.categories = categories
+        self.model = model
+        self.client = OpenAI(api_key="YOUR_API_KEY")
+    
+    def classify(self, text: str, include_reasoning: bool = True) -> ClassificationResult:
+        """Classify text with confidence score and reasoning"""
+        
+        system_prompt = f"""You are a text classification system.
+        
+        Categories: {', '.join(self.categories)}
+        
+        For each text, provide:
+        1. The most appropriate category
+        2. A confidence score (0-1)
+        3. Brief reasoning for your classification
+        """
+        
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"Classify this text: {text}"}
+            ],
+            response_format={
+                "type": "json_schema",
+                "json_schema": ClassificationResult.model_json_schema()
+            }
+        )
+        
+        return ClassificationResult.model_validate_json(
+            response.choices[0].message.content
+        )
+
+# Example: Customer Support Ticket Classifier
+support_classifier = AdvancedClassifier([
+    "billing",
+    "technical_issue",
+    "feature_request",
+    "complaint",
+    "general_inquiry"
+])
+
+ticket = "I've been charged twice for my subscription this month"
+result = support_classifier.classify(ticket)
+print(f"Category: {result.category}")
+print(f"Confidence: {result.confidence}")
+print(f"Reasoning: {result.reasoning}")
+```
+
+## Step 3: Multi-label Classification
+
+### Building a Content Tagger
+
+```python
+class ContentTag(BaseModel):
+    tags: List[str]
+    primary_tag: str
+    content_warnings: List[str] = []
+
+class MultiLabelClassifier:
+    def __init__(self, available_tags: List[str]):
+        self.available_tags = available_tags
+        self.client = OpenAI(api_key="YOUR_API_KEY")
+    
+    def classify(self, content: str) -> ContentTag:
+        """Assign multiple tags to content"""
+        
+        prompt = f"""Analyze the content and assign relevant tags.
+        
+        Available tags: {', '.join(self.available_tags)}
+        
+        Rules:
+        - Assign all relevant tags
+        - Identify the primary (most relevant) tag
+        - Flag any content warnings if applicable
+        """
+        
+        response = self.client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": prompt},
+                {"role": "user", "content": f"Content to tag: {content}"}
+            ],
+            response_format={
+                "type": "json_schema",
+                "json_schema": ContentTag.model_json_schema()
+            }
+        )
+        
+        return ContentTag.model_validate_json(
+            response.choices[0].message.content
+        )
+
+# Example: Blog Post Tagger
+blog_tagger = MultiLabelClassifier([
+    "technology", "ai", "tutorial", "news", "opinion",
+    "programming", "python", "javascript", "cloud",
+    "security", "performance", "best-practices"
+])
+
+post = """
+Learn how to implement OAuth2 authentication in your Python web application.
+This tutorial covers security best practices and common pitfalls to avoid.
+"""
+
+tags = blog_tagger.classify(post)
+print(f"Tags: {tags.tags}")
+print(f"Primary tag: {tags.primary_tag}")
+```
+
+## Step 4: Hierarchical Classification
+
+### Building Category Trees
+
+```python
+class HierarchicalClassifier:
+    def __init__(self, category_tree: Dict):
+        self.category_tree = category_tree
+        self.client = OpenAI(api_key="YOUR_API_KEY")
+    
+    def classify_hierarchical(self, text: str) -> List[str]:
+        """Classify text through category hierarchy"""
+        
+        path = []
+        current_level = self.category_tree
+        
+        while current_level:
+            # Get categories at current level
+            categories = list(current_level.keys())
+            
+            if not categories:
+                break
+            
+            # Classify at this level
+            response = self.client.chat.completions.create(
+                model="gpt-4",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": f"Choose the most appropriate category: {categories}"
+                    },
+                    {
+                        "role": "user",
+                        "content": text
+                    }
+                ]
+            )
+            
+            category = response.choices[0].message.content.strip()
+            path.append(category)
+            
+            # Move to next level
+            current_level = current_level.get(category, {})
+        
+        return path
+
+# Example: E-commerce Product Classifier
+category_tree = {
+    "Electronics": {
+        "Computers": {
+            "Laptops": {},
+            "Desktops": {},
+            "Tablets": {}
+        },
+        "Audio": {
+            "Headphones": {},
+            "Speakers": {},
+            "Microphones": {}
+        }
+    },
+    "Clothing": {
+        "Men": {
+            "Shirts": {},
+            "Pants": {},
+            "Shoes": {}
+        },
+        "Women": {
+            "Dresses": {},
+            "Tops": {},
+            "Shoes": {}
+        }
+    }
+}
+
+classifier = HierarchicalClassifier(category_tree)
+product = "Wireless noise-canceling over-ear headphones"
+categories = classifier.classify_hierarchical(product)
+print(f"Category path: {' > '.join(categories)}")
+```
+
+## Step 5: Few-shot Learning Classifier
+
+### Using Examples for Better Classification
+
+```python
+class FewShotClassifier:
+    def __init__(self, categories: Dict[str, List[str]]):
+        """
+        categories: Dict mapping category names to example texts
+        """
+        self.categories = categories
+        self.client = OpenAI(api_key="YOUR_API_KEY")
+    
+    def build_prompt(self) -> str:
+        """Build few-shot prompt with examples"""
+        prompt = "Classify text into categories based on these examples:\n\n"
+        
+        for category, examples in self.categories.items():
+            prompt += f"{category}:\n"
+            for example in examples[:3]:  # Use up to 3 examples
+                prompt += f"- {example}\n"
+            prompt += "\n"
+        
+        return prompt
+    
+    def classify(self, text: str) -> str:
+        """Classify using few-shot learning"""
+        
+        prompt = self.build_prompt()
+        
+        response = self.client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": prompt},
+                {
+                    "role": "user", 
+                    "content": f"Classify this text: {text}\nCategory:"
+                }
+            ]
+        )
+        
+        return response.choices[0].message.content.strip()
+
+# Example: Intent Classifier with Examples
+intent_classifier = FewShotClassifier({
+    "order_status": [
+        "Where is my order?",
+        "I want to track my package",
+        "When will my order arrive?"
+    ],
+    "return_request": [
+        "I want to return this item",
+        "How do I send this back?",
+        "I'm not satisfied with my purchase"
+    ],
+    "product_inquiry": [
+        "Do you have this in size L?",
+        "Is this item available in blue?",
+        "What are the specifications?"
+    ]
+})
+
+query = "I'd like to know when my package will be delivered"
+intent = intent_classifier.classify(query)
+print(f"Intent: {intent}")
+```
+
+## Step 6: Batch Classification
+
+### Efficient Classification at Scale
+
+```python
+from typing import List, Tuple
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+
+class BatchClassifier:
+    def __init__(self, classifier_func, max_concurrent: int = 10):
+        self.classifier_func = classifier_func
+        self.max_concurrent = max_concurrent
+    
+    async def classify_batch(self, texts: List[str]) -> List[Tuple[str, str]]:
+        """Classify multiple texts concurrently"""
+        
+        async def classify_with_semaphore(text: str, semaphore):
+            async with semaphore:
+                loop = asyncio.get_event_loop()
+                result = await loop.run_in_executor(
+                    None, self.classifier_func, text
+                )
+                return (text, result)
+        
+        # Create semaphore to limit concurrent requests
+        semaphore = asyncio.Semaphore(self.max_concurrent)
+        
+        # Create tasks
+        tasks = [
+            classify_with_semaphore(text, semaphore) 
+            for text in texts
+        ]
+        
+        # Execute concurrently
+        results = await asyncio.gather(*tasks)
+        return results
+
+# Example usage
+async def batch_example():
+    texts = [
+        "I love this product!",
+        "Terrible experience, would not recommend",
+        "It's okay, nothing special",
+        "Amazing quality and fast shipping",
+        "Disappointed with the purchase"
+    ]
+    
+    batch_classifier = BatchClassifier(classify_sentiment)
+    results = await batch_classifier.classify_batch(texts)
+    
+    for text, sentiment in results:
+        print(f"{text[:30]}... -> {sentiment}")
+```
+
+## Step 7: Evaluation and Improvement
+
+### Classifier Performance Metrics
+
+```python
+from sklearn.metrics import accuracy_score, precision_recall_fscore_support
+import pandas as pd
+
+class ClassifierEvaluator:
+    def __init__(self, classifier):
+        self.classifier = classifier
+        self.results = []
+    
+    def evaluate(self, test_data: List[Tuple[str, str]]) -> Dict:
+        """Evaluate classifier on labeled test data"""
+        
+        predictions = []
+        true_labels = []
+        
+        for text, true_label in test_data:
+            pred = self.classifier(text)
+            predictions.append(pred)
+            true_labels.append(true_label)
+            
+            self.results.append({
+                'text': text,
+                'true_label': true_label,
+                'predicted': pred,
+                'correct': pred == true_label
+            })
+        
+        # Calculate metrics
+        accuracy = accuracy_score(true_labels, predictions)
+        precision, recall, f1, _ = precision_recall_fscore_support(
+            true_labels, predictions, average='weighted'
+        )
+        
+        return {
+            'accuracy': accuracy,
+            'precision': precision,
+            'recall': recall,
+            'f1_score': f1,
+            'confusion_matrix': self._build_confusion_matrix(true_labels, predictions)
+        }
+    
+    def _build_confusion_matrix(self, true_labels, predictions):
+        """Build confusion matrix"""
+        from sklearn.metrics import confusion_matrix
+        labels = sorted(set(true_labels + predictions))
+        cm = confusion_matrix(true_labels, predictions, labels=labels)
+        return pd.DataFrame(cm, index=labels, columns=labels)
+    
+    def analyze_errors(self) -> pd.DataFrame:
+        """Analyze misclassified examples"""
+        errors = [r for r in self.results if not r['correct']]
+        return pd.DataFrame(errors)
+```
+
+## Deployment
+
+### REST API for Classification
+
+```python
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+
+app = FastAPI()
+
+# Initialize classifiers
+sentiment_classifier = AdvancedClassifier(["positive", "negative", "neutral"])
+intent_classifier = FewShotClassifier({...})  # Your intent examples
+
+class ClassificationRequest(BaseModel):
+    text: str
+    classifier_type: str = "sentiment"
+
+class ClassificationResponse(BaseModel):
+    text: str
+    classification: str
+    confidence: float = None
+    metadata: Dict = {}
+
+@app.post("/classify", response_model=ClassificationResponse)
+async def classify_text(request: ClassificationRequest):
+    try:
+        if request.classifier_type == "sentiment":
+            result = sentiment_classifier.classify(request.text)
+            return ClassificationResponse(
+                text=request.text,
+                classification=result.category,
+                confidence=result.confidence,
+                metadata={"reasoning": result.reasoning}
+            )
+        elif request.classifier_type == "intent":
+            intent = intent_classifier.classify(request.text)
+            return ClassificationResponse(
+                text=request.text,
+                classification=intent
+            )
+        else:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Unknown classifier type: {request.classifier_type}"
+            )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/classify/batch")
+async def classify_batch(texts: List[str], classifier_type: str = "sentiment"):
+    batch_classifier = BatchClassifier(
+        lambda t: sentiment_classifier.classify(t).category
+    )
+    results = await batch_classifier.classify_batch(texts)
+    return results
+```
+
+## Best Practices
+
+1. **Clear Categories**: Define mutually exclusive, well-defined categories
+2. **Balanced Examples**: Provide balanced examples for few-shot learning
+3. **Confidence Thresholds**: Set minimum confidence thresholds for production
+4. **Human-in-the-Loop**: Route low-confidence classifications for human review
+5. **Regular Evaluation**: Continuously evaluate and improve classifier performance
+6. **Error Analysis**: Regularly analyze misclassifications to identify patterns
+
+## Common Use Cases
+
+### Content Moderation
+```python
+moderation_classifier = AdvancedClassifier([
+    "safe",
+    "spam",
+    "toxic",
+    "nsfw",
+    "misinformation"
+])
+```
+
+### Customer Support Routing
+```python
+support_router = HierarchicalClassifier({
+    "Technical": {
+        "Account": ["login", "password", "settings"],
+        "Product": ["bug", "error", "crash"],
+        "Integration": ["api", "webhook", "plugin"]
+    },
+    "Billing": {
+        "Payment": ["charge", "refund", "failed"],
+        "Subscription": ["upgrade", "downgrade", "cancel"]
+    }
+})
+```
+
+### Document Classification
+```python
+document_classifier = MultiLabelClassifier([
+    "contract", "invoice", "report", "proposal",
+    "confidential", "public", "internal",
+    "draft", "final", "archived"
+])
+```
+
+## Next Steps
+
+- Implement [evaluations](/docs/evaluations) to measure classifier accuracy
+- Add [observability](/docs/observability) to monitor classification performance
+- Explore [fine-tuning](/docs/deployments) for domain-specific classification
+- Build [structured outputs](/docs/inference/structured-outputs) for complex classification schemas 

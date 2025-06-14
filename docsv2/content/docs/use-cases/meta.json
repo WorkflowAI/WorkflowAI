@@ -1,0 +1,12 @@
+{
+  "title": "Use Cases",
+  "icon": "BookOpenText",
+  "pages": [
+    "chatbot",
+    "agent",
+    "classifier",
+    "image-input",
+    "pdf-input",
+    "image-generation"
+  ]
+} 

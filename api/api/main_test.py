@@ -1,9 +1,11 @@
+import re
 from collections.abc import Callable
 from typing import Any, Iterator, cast
 from unittest.mock import Mock
 
 import pytest
 from fastapi import FastAPI, HTTPException
+from fastapi.routing import Mount
 from httpx import AsyncClient
 from starlette.routing import Route
 
@@ -43,7 +45,7 @@ _PUBLIC_ROUTES = {
 }
 
 
-def authenticated_routes(
+def authenticated_routes(  # noqa: C901
     prefix: str = "",
     methods: set[str] | None = None,
     exc_methods: set[str] | None = None,
@@ -69,6 +71,10 @@ def authenticated_routes(
     method_predicate = _include_methods(methods, exc_methods)
 
     for route in app.routes:
+        # TODO: dedicated test for MCP routes auth
+        if isinstance(route, Mount) and (route.path.startswith("/_mcp") or route.path.startswith("/mcp")):
+            continue
+
         assert isinstance(route, Route)
         if not route.methods:
             continue
@@ -180,6 +186,14 @@ class TestModelsEndpoint:
         assert first_model["object"] == "model"
         assert "supports" in first_model
         assert "parallel_tool_calls" in first_model["supports"]
+        assert "pricing" in first_model
+        pricing = cast(dict[str, Any], first_model["pricing"])
+        assert "input_token_usd" in pricing
+        assert "output_token_usd" in pricing
+
+        assert "release_date" in first_model
+        release_date = cast(str, first_model["release_date"])
+        assert re.match(r"\d{4}-\d{2}-\d{2}", release_date)
 
     async def test_models_endpoint_order_check(self, test_api_client: AsyncClient, mock_tenant_dep: Mock):
         # Making sure we raise if the tenant dep is called

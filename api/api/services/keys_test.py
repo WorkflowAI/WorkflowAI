@@ -13,10 +13,7 @@ from core.domain.users import User
 
 from .keys import Claims, InvalidToken, JWTHeader, KeyRing, verify_signature
 
-
-@pytest.fixture
-def assert_all_responses_were_requested() -> bool:
-    return False
+pytestmark = pytest.mark.httpx_mock(assert_all_responses_were_requested=False)
 
 
 @pytest.fixture(scope="function")

@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field, TypeAdapter, field_validator, model_validator
 
 from api.dependencies.analytics import UserPropertiesDep
-from api.dependencies.path_params import TaskID, TaskSchemaID
+from api.dependencies.path_params import AgentID, TaskSchemaID
 from api.dependencies.security import (
     ProviderSettingsDep,
     RequiredUserOrganizationDep,
@@ -357,18 +357,18 @@ async def _send_overhead_metrics(
 
 
 @task_router.post(
-    "/v1/{tenant}/tasks/{task_id}/schemas/{task_schema_id}/run",
+    "/v1/{tenant}/tasks/{agent_id}/schemas/{task_schema_id}/run",
     responses=_RUN_RESPONSE_V1,
     response_model_exclude_none=True,
 )
 @agent_router.post(
-    "/v1/{tenant}/agents/{task_id}/schemas/{task_schema_id}/run",
+    "/v1/{tenant}/agents/{agent_id}/schemas/{task_schema_id}/run",
     responses=_RUN_RESPONSE_V1,
     response_model_exclude_none=True,
 )
 async def run_task(
     body: RunRequest,
-    task_id: TaskID,
+    agent_id: AgentID,
     task_schema_id: TaskSchemaID,
     run_service: RunServiceDep,
     groups_service: GroupServiceDep,
@@ -384,15 +384,15 @@ async def run_task(
 
     reference = version_reference_to_domain(body.version)
 
-    with prettify_errors(user_org, task_id, task_schema_id, reference):
+    with prettify_errors(user_org, agent_id, task_schema_id, reference):
         runner, is_different_version = await groups_service.sanitize_groups_for_internal_runner(
-            task_id=task_id,
+            task_id=agent_id,
             task_schema_id=task_schema_id,
             reference=reference,
             provider_settings=provider_settings,
             use_fallback=body.use_fallback,
         )
-    runner.metric_tags = {"tenant": task_org.slug if task_org else None, "task_id": task_id}
+    runner.metric_tags = {"tenant": task_org.slug if task_org else None, "task_id": agent_id}
     add_background_task(
         _send_overhead_metrics(
             request_start_time,
@@ -452,7 +452,7 @@ class RunReplyRequest(BaseModel):
 
 
 @agent_router.post(
-    "/v1/{tenant}/agents/{task_id}/runs/{run_id}/reply",
+    "/v1/{tenant}/agents/{agent_id}/runs/{run_id}/reply",
     responses=_RUN_RESPONSE_V1,
     response_model_exclude_none=True,
     description="Reply to a run. The tool use results or added message are appended to the messages of the "
@@ -547,21 +547,21 @@ _DEPRECATED_RUN_RESPONSE: dict[int | str, dict[str, Any]] = {
 
 
 @task_router.post(
-    "/tasks/{task_id}/schemas/{task_schema_id}/run",
+    "/tasks/{agent_id}/schemas/{task_schema_id}/run",
     description="Run a task with a group id",
     responses=_DEPRECATED_RUN_RESPONSE,
     deprecated=True,
     include_in_schema=False,
 )
 @task_router.post(
-    "/{tenant}/tasks/{task_id}/schemas/{task_schema_id}/run",
+    "/{tenant}/tasks/{agent_id}/schemas/{task_schema_id}/run",
     description="Run a task with a group id",
     responses=_DEPRECATED_RUN_RESPONSE,
     deprecated=True,
 )
 async def run_schema(
     body: DeprecatedRunRequest,
-    task_id: TaskID,
+    agent_id: AgentID,
     task_schema_id: TaskSchemaID,
     run_service: RunServiceDep,
     groups_service: GroupServiceDep,
@@ -576,9 +576,9 @@ async def run_schema(
 
     version_ref = body.group.to_domain()
 
-    with prettify_errors(user_org, task_id, task_schema_id, version_ref):
+    with prettify_errors(user_org, agent_id, task_schema_id, version_ref):
         runner, _ = await groups_service.sanitize_groups_for_internal_runner(
-            task_id=task_id,
+            task_id=agent_id,
             task_schema_id=task_schema_id,
             reference=version_ref,
             provider_settings=provider_settings,

@@ -114,11 +114,15 @@ class SlackCommand(str, Enum):
 
 
 class CustomerService:
+    """A service that handles customer success"""
+
+    # TODO: this should not be in this repo
     _SLEEP_BETWEEN_RETRIES = 0.1
 
     def __init__(self, storage: BackendStorage, user_service: UserService):
         self._storage = storage
         self._user_service = user_service
+        self._is_disabled = os.environ.get("CUSTOMER_SERVICE_DISABLED") == "true"
 
     @classmethod
     def _channel_name(cls, slug: str, uid: int):
@@ -272,6 +276,9 @@ class CustomerService:
             await clt.send_message(channel_id, {"text": message})
 
     async def handle_customer_migrated(self, from_user_id: str | None, from_anon_id: str | None):
+        if self._is_disabled:
+            return
+
         org = await self._get_organization()
         if not org.slack_channel_id:
             _logger.warning("No slack channel id found for organization", extra={"org_uid": org.uid, "slug": org.slug})
@@ -290,6 +297,8 @@ class CustomerService:
         )
 
     async def send_chat_started(self, user: UserProperties | None, existing_task_name: str | None, user_message: str):
+        if self._is_disabled:
+            return
         username = _readable_name(user)
         action_str = "update " + existing_task_name if existing_task_name else "create a new task"
         message = f'{username} started a chat to {action_str}\nmessage: "{user_message}"'
@@ -297,6 +306,8 @@ class CustomerService:
         await self._send_message(message)
 
     async def send_proxy_agent_created(self, event: ProxyAgentCreatedEvent):
+        if self._is_disabled:
+            return
         username = _readable_name(event.user_properties)
         agent_str = _get_task_str_for_slack(event=event, task_id=event.task_id, task_schema_id=event.task_schema_id)
 
@@ -309,6 +320,8 @@ class CustomerService:
 
     # TODO: avoid using event directly here
     async def send_task_update(self, event: TaskSchemaCreatedEvent):
+        if self._is_disabled:
+            return
         username = _readable_name(event.user_properties)
         task_str = _get_task_str_for_slack(event=event, task_id=event.task_id, task_schema_id=event.task_schema_id)
 
@@ -320,12 +333,16 @@ class CustomerService:
         await self._send_message(message)
 
     async def notify_features_by_domain_generation_started(self, event: FeaturesByDomainGenerationStarted):
+        if self._is_disabled:
+            return
         username = _readable_name(event.user_properties)
         message = f"{username} started to generate features for domain: {event.company_domain}"
 
         await self._send_message(message)
 
     async def notify_meta_agent_messages_sent(self, event: MetaAgentChatMessagesSent):
+        if self._is_disabled:
+            return
         username = _readable_name(event.user_properties)
 
         for message in event.messages:

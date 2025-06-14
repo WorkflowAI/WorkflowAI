@@ -1407,13 +1407,11 @@ Total : 650 kcal, 105g de glucides, 28g de protéines, 7g de lipides""",
 
 
 class TestInit:
-    @pytest.mark.parametrize("disable_fallback", [False, True])
-    def test_raises_error_if_provider_does_not_support_model(self, mock_task: Mock, disable_fallback: bool):
+    def test_raises_error_if_provider_does_not_support_model(self, mock_task: Mock):
         with pytest.raises(ProviderDoesNotSupportModelError):
             WorkflowAIRunner(
                 task=mock_task,
                 properties=TaskGroupProperties(model=Model.GPT_4O_MINI_2024_07_18, provider=Provider.GOOGLE),
-                disable_fallback=disable_fallback,
             )
 
     # TODO[models]: this test relies on actual model data. it should be patched instead

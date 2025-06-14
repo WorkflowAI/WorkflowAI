@@ -1,11 +1,9 @@
 from pydantic import BaseModel
 
-from api.dependencies.path_params import TaskID, TaskSchemaID
-
 
 class VersionChangelog(BaseModel):
-    task_id: TaskID
-    task_schema_id: TaskSchemaID
+    task_id: str
+    task_schema_id: int
 
     major_from: int
     major_to: int

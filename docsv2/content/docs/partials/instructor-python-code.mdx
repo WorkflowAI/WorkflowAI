@@ -1,0 +1,20 @@
+---
+title: Instructor Python Code
+---
+```python
+import instructor
+from openai import OpenAI
+from pydantic import BaseModel
+
+# setup WorkflowAI client
+workflowai_client = OpenAI(
+  base_url="https://run.workflowai.com/v1", # [!code highlight]
+  api_key="wai--***", # workflowai.com/keys // [!code highlight]
+)
+
+client = instructor.from_openai(workflowai_client,
+  # recommended mode, but other modes are supported
+  mode=instructor.Mode.OPENROUTER_STRUCTURED_OUTPUTS, # [!code highlight]
+  ... # your existing code
+)
+```

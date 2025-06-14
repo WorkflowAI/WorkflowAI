@@ -1,0 +1,59 @@
+---
+title: Cost Metadata
+---
+
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+
+While most standard LLM APIs return usage metrics (like input and output token counts), they typically don't provide the actual monetary cost of the request. Developers are often left to calculate this themselves, requiring them to maintain and apply up-to-date pricing information for each model.
+
+WorkflowAI simplifies cost tracking by automatically calculating the estimated cost for each LLM request based on the specific model used and WorkflowAI's current pricing data.
+
+### Programmatically
+
+TODO:
+- adjust the code for this section, the cost and latency are inside the array choices[]
+- add WorkflowAI SDK and REST API examples
+
+<Tabs items={["curl", "OpenAI SDK (Python)", "OpenAI SDK (Ruby)", "Instructor (Python)"]}>
+  <Tab>
+  ```
+  ....
+  ```
+  </Tab>
+  <Tab>
+  ```python
+  class Answer(BaseModel):
+      sentiment: str
+      score: float
+
+  answer, completion = client.chat.completions.create_with_completion(
+      model="sentiment-analysis-agent/gpt-4o-mini",
+      response_model=Answer,
+      messages=[{"role": "user", "content": "I love Workflow AI!"}],
+  )
+
+  cost = completion.model_extra.get('cost_usd')
+  latency = completion.model_extra.get("duration_seconds")
+  print(f"Latency (s): {latency:.2f}")
+  print(f"Cost   ($): ${cost:.6f}")
+  ```
+  </Tab>
+  <Tab>
+  ```ruby
+  # Ruby implementation here
+  ...
+  ```
+  </Tab>
+  <Tab>
+  ```python
+  # Instructor implementation here
+  ...
+  ```
+  </Tab>
+</Tabs>
+
+#### ...
+
+<Callout type="info">
+  You can also track costs in the [Playground](/docs/playground) and the [Monitor](/docs/observability) sections.
+</Callout>

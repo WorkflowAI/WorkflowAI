@@ -1,0 +1,14 @@
+---
+title: Authentication
+description: Learn how to authenticate with our API
+---
+
+WorkflowAI uses API keys for authentication. You can create and manage your API keys in your [organization settings](https://workflowai.com/keys).
+
+Keep your API key secure—never share it or expose it in client-side code (such as browsers or apps). API keys should always be loaded securely from an environment variable or a key management service on your server.
+
+To authenticate, provide your API key using HTTP Bearer authentication.
+
+```bash
+Authorization: Bearer WORKFLOWAI_API_KEY
+```

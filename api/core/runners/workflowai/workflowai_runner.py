@@ -137,7 +137,6 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
         custom_configs: list[ProviderSettings] | None = None,
         cache_fetcher: Optional[CacheFetcher] = None,
         metadata: dict[str, Any] | None = None,
-        disable_fallback: bool = False,
         stream_deltas: bool = False,
         # TODO: this is not set anywhere for now
         timeout: float | None = None,
@@ -158,7 +157,6 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
 
         self._custom_configs = custom_configs
 
-        self.disable_fallback = disable_fallback
         # internal tool cache contains the result of internal tool calls
         self._internal_tool_cache = ToolCache()
         # For external tools we still use a cache to ensure the unicity of tool calls

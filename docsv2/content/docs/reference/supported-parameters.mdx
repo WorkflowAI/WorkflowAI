@@ -1,0 +1,84 @@
+---
+title: Supported Parameters
+description: Complete reference of all supported API parameters
+---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
+[TODO: @guillaq]
+
+## `POST` `/v1/chat/completions`
+
+Request body
+
+<TypeTable
+  type={{
+    messages: {
+      description: 'Array of message objects that make up the conversation',
+      type: 'array',
+      required: true,
+    },
+    model: {
+      description: 'ID of the model to use for completion',
+      type: 'string',
+      required: true,
+    },
+    stream: {
+      description: 'Whether to stream back partial progress',
+      type: 'boolean',
+      typeDescriptionLink: '/docs/guides/streaming.md',
+    },
+    temperature: {
+      description: 'What sampling temperature to use, between 0 and 2',
+      type: 'number',
+      default: '1',
+    },
+    max_tokens: {
+      description: 'The maximum number of tokens to generate in the completion',
+      type: 'integer',
+    },
+    top_p: {
+      description: 'An alternative to sampling with temperature, called nucleus sampling',
+      type: 'number',
+      default: '1',
+    },
+    frequency_penalty: {
+      description: 'Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency',
+      type: 'number',
+      default: '0',
+    },
+    presence_penalty: {
+      description: 'Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far',
+      type: 'number',
+      default: '0',
+    },
+    stop: {
+      description: 'Up to 4 sequences where the API will stop generating further tokens',
+      type: 'string | array',
+    },
+    
+    metadata: {
+      description: 'Set of key-value pairs that can be attached to the request',
+      type: 'object',
+    },
+    extra_body: {
+      description: 'Additional parameters to pass to the underlying API (see below)',
+      type: 'object',
+    },
+  }}
+/>
+
+### Parameters not supported from OpenAI
+
+- ...
+
+## `extra_body` (optional)
+
+<TypeTable
+  type={{
+    agent_id: {
+      description: 'Unique identifier for the agent to use',
+      type: 'string',
+    },
+  }}
+/>

@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from api.dependencies.analytics import UserPropertiesDep
 from api.dependencies.event_router import EventRouterDep
-from api.dependencies.path_params import TaskID
+from api.dependencies.path_params import AgentID
 from api.dependencies.security import UserOrganizationDep
 from api.dependencies.services import (
     AnalyticsServiceDep,
@@ -225,9 +225,9 @@ async def list_tasks(storage: StorageDep) -> Page[SerializableTask]:
     return Page(items=items)
 
 
-@router.get("/{task_id}")
-async def get_task(task_id: TaskID, storage: StorageDep) -> SerializableTask:
-    return await storage.get_task(task_id=task_id)
+@router.get("/{agent_id}")
+async def get_task(agent_id: AgentID, storage: StorageDep) -> SerializableTask:
+    return await storage.get_task(task_id=agent_id)
 
 
 class BaseTaskCreateRequest(BaseModel):
@@ -390,13 +390,13 @@ class CreateTaskSchemaRequest(BaseTaskCreateRequest):
 
 
 @router.post(
-    "/{task_id}/schemas",
+    "/{agent_id}/schemas",
     description="Create a new agent schema for a given agent id",
     deprecated=True,
     include_in_schema=False,
 )
 async def create_task_schema(
-    task_id: TaskID,
+    agent_id: AgentID,
     request: CreateTaskSchemaRequest,
     storage: StorageDep,
     internal_tasks: InternalTasksServiceDep,
@@ -405,13 +405,13 @@ async def create_task_schema(
     analytics_service: AnalyticsServiceDep,
     user_org: UserOrganizationDep,
 ) -> SerializableTaskVariant:
-    existing_latest_task_variant = await storage.task_variants.get_latest_task_variant(task_id)
+    existing_latest_task_variant = await storage.task_variants.get_latest_task_variant(agent_id)
     input_schema = normalize_input_json_schema(request.input_schema)  # pyright: ignore[reportDeprecated]
     output_schema = normalize_output_json_schema(request.output_schema)  # pyright: ignore[reportDeprecated]
 
     task_variant = SerializableTaskVariant(
         id="",
-        task_id=task_id,
+        task_id=agent_id,
         task_schema_id=0,  # Final schema id will be computed in 'store_task_resource'
         name="",
         input_schema=SerializableTaskIO.from_json_schema(input_schema),
@@ -444,7 +444,7 @@ async def create_task_schema(
             return await generate_new_task_instructions(required_tool_kinds)
 
         previous_group = await storage.task_groups.get_latest_group_iteration(
-            task_id,
+            agent_id,
             existing_latest_task_variant.task_schema_id,
         )
 
@@ -474,7 +474,7 @@ async def create_task_schema(
 
             # Add a first iteration for the new schema
             await group_service.get_or_create_group(
-                task_id=task_id,
+                task_id=agent_id,
                 task_schema_id=new_task.task_schema_id,
                 reference=VersionReference(
                     properties=TaskGroupProperties(
@@ -484,7 +484,7 @@ async def create_task_schema(
                 ),
             )
         except Exception:
-            _logger.exception("Error creating iteration", extra={"task_id": task_id})
+            _logger.exception("Error creating iteration", extra={"agent_id": agent_id})
             # Continue execution as the version creation is not mandatory for the task to work
 
     if request.create_first_iteration:
@@ -526,21 +526,21 @@ class UpdateTaskRequest(BaseModel):
         )
 
 
-@router.patch("/{task_id}", description="Update an agent")
-async def update_task(task_id: TaskID, request: UpdateTaskRequest, storage: StorageDep) -> None:
-    await storage.tasks.update_task(task_id, request.to_storage())
+@router.patch("/{agent_id}", description="Update an agent")
+async def update_task(agent_id: AgentID, request: UpdateTaskRequest, storage: StorageDep) -> None:
+    await storage.tasks.update_task(agent_id, request.to_storage())
 
 
 @router.delete(
-    "/{task_id}",
+    "/{agent_id}",
     description="Delete an agent by id",
     include_in_schema=INCLUDE_PRIVATE_ROUTES,
 )
 async def delete_task(
-    task_id: str,
+    agent_id: AgentID,
     storage: StorageDep,
 ) -> None:
-    await storage.delete_task(task_id)
+    await storage.delete_task(agent_id)
 
 
 class TaskStats(BaseModel):
@@ -562,7 +562,7 @@ class TaskStatsResponse(BaseModel):
 
 
 @router.get(
-    "/{task_id}/runs/stats",
+    "/{agent_id}/runs/stats",
     description="Get stats for agent",
 )
 async def get_task_stats(
@@ -601,31 +601,31 @@ class UpdateDescriptionRequest(BaseModel):
 
 
 @router.get(
-    "/{task_id}/versions/deployed",
+    "/{agent_id}/versions/deployed",
     description="Get deployed versions for agent",
 )
 async def get_task_versions_deployed(
-    task_id: TaskID,
+    agent_id: AgentID,
     storage: StorageDep,
     task_deployments_service: TaskDeploymentsServiceDep,
 ) -> Page[DeployedVersionsResponse]:
-    # Endpoint : GET tasks/{task_id}/versions/deployed
+    # Endpoint : GET tasks/{agent_id}/versions/deployed
 
-    groups = await task_deployments_service.get_task_deployments(task_id)
+    groups = await task_deployments_service.get_task_deployments(agent_id)
 
     return Page(items=groups, count=len(groups))
 
 
 @router.get(
-    "/{task_id}/versions",
+    "/{agent_id}/versions",
     description="Get all versions for agent",
 )
 async def get_task_versions(
-    task_id: TaskID,
+    agent_id: AgentID,
     storage: StorageDep,
 ) -> Page[VersionsResponse]:
-    # Endpoint : GET tasks/{task_id}/versions
+    # Endpoint : GET tasks/{agent_id}/versions
     # Return a Page object containing the TaskGroupWithCost items
-    query = TaskGroupQuery(task_id=task_id)
+    query = TaskGroupQuery(task_id=agent_id)
     groups = [group async for group in storage.task_groups.list_task_groups(query)]
     return Page(items=[VersionsResponse.from_domain(group) for group in groups], count=len(groups))

@@ -177,7 +177,7 @@ class TestFinalTenantDataDependency:
         patched_storage_for_tenant: Mock,
     ):
         # Check that we return a 404 for a post request where the url tenant and the user tenant don't match
-        mock_request.path_params = {"tenant": "org_2_slug", "task_id": "task_1"}
+        mock_request.path_params = {"tenant": "org_2_slug", "agent_id": "task_1"}
         mock_request.url.path = "/test/agents/task_1/schemas/1"
         user_org.tenant = "hello1"
         public_org = PublicOrganizationData(tenant="hello2")
@@ -199,7 +199,7 @@ class TestFinalTenantDataDependency:
         patched_storage_for_tenant: Mock,
     ):
         mock_request.method = "GET"
-        mock_request.path_params = {"tenant": "org_2_slug", "task_id": "task_1"}
+        mock_request.path_params = {"tenant": "org_2_slug", "agent_id": "task_1"}
         mock_request.url.path = "/test/agents/task_1/schemas/1"
         user_org.tenant = "hello1"
 

@@ -23,3 +23,4 @@ class RouteTags(str, Enum):
     PROMPT_ENGINEER_AGENT = "Prompt Engineer Agent"
     FEEDBACK = "Feedback"
     INTEGRATIONS = "Integrations"
+    MCP = "MCP"

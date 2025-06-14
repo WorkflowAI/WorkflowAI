@@ -90,6 +90,7 @@ def _authenticated_router():
     authenticated_router.include_router(features.router, tags=[RouteTags.FEATURES])
     authenticated_router.include_router(feedback_v1.router)
     authenticated_router.include_router(integrations_router.router, tags=[RouteTags.INTEGRATIONS])
+
     return authenticated_router
 
 

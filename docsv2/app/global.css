@@ -1,0 +1,23 @@
+@import 'tailwindcss';
+@import 'fumadocs-ui/css/neutral.css';
+@import 'fumadocs-ui/css/preset.css';
+
+/* Tremor CSS utilities */
+.shadow-tremor-card {
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+}
+
+.dark .dark-tremor-card {
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.3), 0 1px 2px -1px rgb(0 0 0 / 0.3);
+}
+
+/* Add antialiasing for better font rendering */
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Support for dark mode background */
+html.dark {
+  background-color: rgb(17 24 39); /* gray-900 */
+}

@@ -32,7 +32,7 @@ from core.utils.iter_utils import safe_map_optional
 from core.utils.schemas import FieldType
 from core.utils.stream_response_utils import safe_streaming_response
 
-router = APIRouter(prefix="/v1/{tenant}/agents/{task_id}/runs", tags=[RouteTags.RUNS])
+router = APIRouter(prefix="/v1/{tenant}/agents/{agent_id}/runs", tags=[RouteTags.RUNS])
 
 _logger = getLogger(__name__)
 

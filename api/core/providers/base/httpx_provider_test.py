@@ -425,7 +425,7 @@ class TestReadErrors:
         assert len(requests) == 2
 
     async def test_max_retry_count(self, httpx_mock: HTTPXMock):
-        httpx_mock.add_exception(ReadError("Failed to read"))
+        httpx_mock.add_exception(ReadError("Failed to read"), is_reusable=True)
 
         with pytest.raises(ProviderUnavailableError):
             await MockedProvider().complete(  # pyright: ignore[reportPrivateUsage]

@@ -255,7 +255,6 @@ class GroupService:
         task: SerializableTaskVariant,
         sanitized_version: SanitizedVersion,
         custom_configs: list[ProviderSettings] | None,
-        disable_fallback: bool,
         stream_deltas: bool,
         use_fallback: Literal["auto", "never"] | list[Model] | None,
     ) -> AbstractRunner[Any]:
@@ -271,7 +270,6 @@ class GroupService:
             properties=sanitized_version.properties,
             metadata=metadata or None,
             custom_configs=custom_configs,
-            disable_fallback=disable_fallback,
             stream_deltas=stream_deltas,
             use_fallback=use_fallback,
         )
@@ -327,7 +325,6 @@ class GroupService:
         detect_chain_of_thought: bool = False,  # COT detection is only run when creating a group from POST /groups for now.
         detect_image_options: bool = False,
         provider_settings: list[ProviderSettings] | None = None,
-        disable_fallback: bool = False,
         stream_deltas: bool = False,
         use_fallback: Literal["auto", "never"] | list[Model] | None = None,
     ) -> tuple[AbstractRunner[Any], bool]:
@@ -380,7 +377,6 @@ class GroupService:
             variant,
             version,
             custom_configs=provider_settings,
-            disable_fallback=disable_fallback,
             stream_deltas=stream_deltas,
             use_fallback=use_fallback,
         )

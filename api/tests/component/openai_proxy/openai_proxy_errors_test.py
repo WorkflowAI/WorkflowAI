@@ -164,12 +164,14 @@ async def test_deployed_version_no_messages_with_empty_input(
 
     assert "Your deployment on schema #1 expects input variables" in str(e.value)
 
+    test_client.mock_openai_call(raw_content="Hello James!")
     await openai_client.chat.completions.create(
         model="my-agent/#1/production",
         messages=[],
         extra_body={"input": {"instructions": "elllo"}},
     )
 
+    test_client.mock_openai_call(raw_content="Hello James!")
     await openai_client.chat.completions.create(
         model="my-agent/#1/production",
         messages=[{"role": "user", "content": "Hello, world!"}],
