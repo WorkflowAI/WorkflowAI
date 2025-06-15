@@ -19,6 +19,8 @@ completion = client.beta.chat.completions.parse(
 )
 ```
 
+- [ ] The `base_url` was set to `api.workflowai.com` instead of `run.workflowai.com`. We need more context on when to use `api.workflowai.com` and when to use `run.workflowai.com`.
+
 - [ ] agent prefix needs to be added to the `metadata` field as the preferred way to identify the agent. https://github.com/WorkflowAI/fumadocs-demo/blob/main/demo/my-app/content/docs/observability/index.mdx#identify-your-agent (probably just requires the documentation repo to be merged in `workflowai/workflowai` and up-to-date?)
 
 - [ ] how does the integration between the IDE and our playground is expected to work? I would imagine that the AI engineer should be able to return a list of "next steps" after the agent was created, and open the playground?
