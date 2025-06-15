@@ -15,7 +15,6 @@ interface Model {
   id: string;
   object: string;
   created: number;
-  owned_by: string;
   display_name: string;
   icon_url: string;
   supports: ModelSupports;

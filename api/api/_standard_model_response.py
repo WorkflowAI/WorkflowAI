@@ -15,7 +15,6 @@ class StandardModelResponse(BaseModel):
         id: str
         object: Literal["model"] = "model"
         created: int
-        owned_by: str
         display_name: str
         icon_url: str
         supports: dict[str, Any]
@@ -47,7 +46,6 @@ class StandardModelResponse(BaseModel):
             return cls(
                 id=id,
                 created=int(datetime.datetime.combine(model.release_date, datetime.time(0, 0)).timestamp()),
-                owned_by=model.provider_name,
                 display_name=model.display_name,
                 icon_url=model.icon_url,
                 supports={
