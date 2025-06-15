@@ -7,7 +7,6 @@ from api.schemas.user_identifier import UserIdentifier
 from api.schemas.version_properties import ShortVersionProperties
 from core.domain.message import Message
 from core.domain.models.model_data import FinalModelData
-from core.domain.models.model_data_supports import ModelDataSupports
 from core.domain.task_group import TaskGroup
 from core.domain.task_group_properties import TaskGroupProperties
 from core.domain.task_variant import SerializableTaskVariant
@@ -187,6 +186,18 @@ class StandardModelResponse(BaseModel):
 
         @classmethod
         def from_model_data(cls, id: str, model: FinalModelData):
+            # Whitelist of support fields to include in the API response
+            included_support_fields = {
+                "supports_input_image",
+                "supports_input_pdf",
+                "supports_input_audio",
+                "supports_output_image",
+                "supports_output_text",
+                "supports_audio_only",
+                "supports_tool_calling",
+                "supports_parallel_tool_calls",
+            }
+
             return cls(
                 id=id,
                 created=int(datetime.combine(model.release_date, time(0, 0)).timestamp()),
@@ -197,9 +208,8 @@ class StandardModelResponse(BaseModel):
                     k.removeprefix("supports_"): v
                     for k, v in model.model_dump(
                         mode="json",
-                        include=set(ModelDataSupports.model_fields.keys()),
+                        include=included_support_fields,
                     ).items()
-                    if k not in {"supports_structured_output", "supports_json_mode", "support_system_messages"}
                 },
             )
 

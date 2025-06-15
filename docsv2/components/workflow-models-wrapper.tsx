@@ -7,9 +7,8 @@ interface ModelSupports {
   output_image: boolean;
   output_text: boolean;
   audio_only: boolean;
-  support_input_schema: boolean;
-  parallel_tool_calls: boolean;
   tool_calling: boolean;
+  parallel_tool_calls: boolean;
 }
 
 interface Model {
