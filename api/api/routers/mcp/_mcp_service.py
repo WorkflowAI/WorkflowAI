@@ -59,7 +59,7 @@ class MCPService:
         self.models_service = models_service
         self.task_deployments_service = task_deployments_service
 
-    async def list_available_models(self) -> MCPToolReturn:
+    async def list_models(self) -> MCPToolReturn:
         def _model_data_iterator() -> Iterator[StandardModelResponse.ModelItem]:
             for model in Model:
                 data = MODEL_DATAS[model]
@@ -392,6 +392,40 @@ class MCPService:
             """
             # We add URL fetching ignore tags to avoid fetching URLs in the code extract
 
+        # Add guidance about using input variables and agent prefix in metadata
+        user_message += """
+        
+        IMPORTANT GUIDANCE FOR THE AI ENGINEER:
+        1. ALWAYS encourage the use of input variables in prompts when generating code examples. Instead of hardcoded values in prompts, show how to use {variable_name} syntax and pass data via the 'input' parameter.
+        2. When generating completion code, ALWAYS include the agent prefix in the metadata field as the preferred way to identify the agent.
+        3. Show examples with both approaches: with input variables (preferred) and without input variables when appropriate.
+        4. Emphasize that input variables make agents more flexible and reusable.
+        
+        Example of GOOD code generation:
+        ```python
+        completion = client.beta.chat.completions.parse(
+            model="agent-name/gpt-4o",
+            messages=[],  # Empty because prompt is stored in WorkflowAI
+            response_format=ResponseFormat,
+            extra_body={
+                "input": {"text": user_input, "context": additional_context},
+                "metadata": {"agent_prefix": "agent-name", "user_id": "user123"}
+            }
+        )
+        ```
+        
+        Example of code to AVOID (hardcoded prompts):
+        ```python
+        completion = client.beta.chat.completions.parse(
+            model="agent-name/gpt-4o",
+            messages=[
+                {"role": "system", "content": "Fixed system prompt"},
+                {"role": "user", "content": f"Hardcoded prompt with {variable}"}
+            ]
+        )
+        ```
+        """
+
         if not agent_id or agent_id == "new":
             # Find the relevant section in the documentation
             relevant_docs = await DocumentationService().get_relevant_doc_sections(
@@ -402,6 +436,12 @@ class MCPService:
                 success=True,
                 data=f"""Here are some relevant documentation from WorkflowAI for your request:
                 {"\n".join([f"- {doc.title}: {doc.content}" for doc in relevant_docs])}
+                
+                **Key Recommendations:**
+                - Use input variables in your prompts with {{variable_name}} syntax for flexibility
+                - Always include agent prefix in metadata for proper identification  
+                - Test different models to find the best balance of quality, speed, and cost
+                - Consider using the playground to prototype your agents before implementing them in code
                 """,
             )
 
@@ -423,9 +463,28 @@ class MCPService:
         ):
             last_messages = messages
 
+        # Add additional guidance to the AI engineer's response
+        ai_response = "\n\n".join([message.content for message in last_messages])
+
+        # Append next steps and best practices
+        ai_response += """
+
+**Next Steps:**
+1. Consider using the playground to test your changes interactively
+2. Use input variables in your prompts for better flexibility 
+3. Add agent prefix to metadata for proper tracking
+4. Test with different models to optimize performance and cost
+
+**Best Practices:**
+- Always use input variables instead of hardcoded values in prompts
+- Include meaningful metadata with agent_prefix for identification
+- Test thoroughly before deploying to production
+- Use structured output formats when possible for better reliability
+"""
+
         return MCPToolReturn(
             success=True,
-            data="\n\n".join([message.content for message in last_messages]),
+            data=ai_response,
         )
 
     async def deploy_agent_version(
@@ -514,6 +573,90 @@ class MCPService:
             return MCPToolReturn(
                 success=False,
                 error=f"Failed to deploy version: {str(e)}",
+            )
+
+    async def open_playground(self, agent_id: str | None = None, with_comparison: bool = False) -> MCPToolReturn:
+        """Open the WorkflowAI playground with optional agent context."""
+        try:
+            # Base playground URL - we'll need to determine the correct domain based on environment
+            # For now using a placeholder that would be configured per environment
+            base_url = "https://workflowai.com"  # This should be configurable per environment
+
+            if agent_id and agent_id != "new":
+                # Try to get task info to validate the agent exists
+                try:
+                    task_info = await self.storage.tasks.get_task_info(agent_id)
+                    if with_comparison:
+                        playground_url = f"{base_url}/workflowai/agents/{agent_id}/playground?mode=comparison"
+                    else:
+                        playground_url = f"{base_url}/workflowai/agents/{agent_id}/playground"
+
+                    agent_context = f"Opening playground for agent '{agent_id}' ({task_info.name})"
+                except Exception:
+                    # Agent doesn't exist, but we can still open the playground
+                    if with_comparison:
+                        playground_url = f"{base_url}/workflowai/playground?mode=comparison"
+                    else:
+                        playground_url = f"{base_url}/workflowai/playground"
+                    agent_context = f"Agent '{agent_id}' not found, opening general playground"
+            else:
+                # Open general playground
+                if with_comparison:
+                    playground_url = f"{base_url}/workflowai/playground?mode=comparison"
+                else:
+                    playground_url = f"{base_url}/workflowai/playground"
+                agent_context = "Opening general playground"
+
+            next_steps = [
+                "1. Click the link above to open the WorkflowAI playground in your browser",
+                "2. Experiment with different prompts and models",
+            ]
+
+            if with_comparison:
+                next_steps.extend(
+                    [
+                        "3. Use the comparison mode to test multiple models side-by-side",
+                        "4. Compare performance, cost, and quality across different models",
+                    ],
+                )
+
+            if agent_id and agent_id != "new":
+                next_steps.extend(
+                    [
+                        "5. Make any needed changes to your agent in the playground",
+                        "6. Test your changes with sample inputs",
+                        "7. Save your changes as a new version when ready",
+                    ],
+                )
+            else:
+                next_steps.extend(
+                    [
+                        "5. Create a new agent or import an existing one",
+                        "6. Test different model configurations",
+                        "7. Save your work as a new agent when ready",
+                    ],
+                )
+
+            return MCPToolReturn(
+                success=True,
+                data={
+                    "playground_url": playground_url,
+                    "message": agent_context,
+                    "comparison_mode": with_comparison,
+                    "next_steps": next_steps,
+                    "tips": [
+                        "Use the playground to rapidly prototype and test your agents",
+                        "Try different models to find the best balance of quality, speed, and cost",
+                        "Use input variables in your prompts to make them more flexible",
+                        "Save different versions to track your improvements over time",
+                    ],
+                },
+            )
+
+        except Exception as e:
+            return MCPToolReturn(
+                success=False,
+                error=f"Failed to open playground: {str(e)}",
             )
 
     async def search_runs_by_metadata(  # noqa: C901

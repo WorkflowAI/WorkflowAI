@@ -136,15 +136,28 @@ async def get_task_tuple_from_task_id(task_id: str) -> TaskTuple:
 
 
 @_mcp.tool()
-async def list_available_models() -> MCPToolReturn:
+async def list_models() -> MCPToolReturn:
     """<when_to_use>
-    When you need to pick a model for the user's WorkflowAI agent, or any model-related goal.
+    When you need to pick a model for the user's WorkflowAI agent, or any model-related goal including:
+    - Comparing different models for performance, cost, or capabilities
+    - Finding models with specific features (structured output, vision, audio, etc.)
+    - Selecting the best model for a particular use case
+    - Understanding model pricing and capabilities
+    - Choosing between different model providers
+
+    This tool is particularly useful for "compare models" requests - use the returned data to help users understand the differences between models in terms of capabilities, cost, performance, and usage guidelines.
     </when_to_use>
     <returns>
-    Returns a list of all available AI models from WorkflowAI.
+    Returns a comprehensive list of all available AI models from WorkflowAI, including:
+    - Model capabilities (structured output, vision, audio support, etc.)
+    - Pricing information (input/output token costs)
+    - Usage guidelines (especially for preview/experimental models)
+    - Model metadata (release date, provider, quality indicators)
+
+    Use this data to help users compare models and make informed choices based on their specific needs.
     </returns>"""
     service = await get_mcp_service()
-    return await service.list_available_models()
+    return await service.list_models()
 
 
 @_mcp.tool()
@@ -448,6 +461,33 @@ async def deploy_agent_version(
         environment=environment,
         deployed_by=user_identifier,
     )
+
+
+@_mcp.tool()
+async def open_playground(
+    agent_id: Annotated[
+        str | None,
+        "Optional agent ID to open the playground with. If provided, the playground will open with this agent's context.",
+    ] = None,
+    with_comparison: Annotated[
+        bool,
+        "Whether to open the playground in comparison mode to compare different models",
+    ] = False,
+) -> MCPToolReturn:
+    """<when_to_use>
+    When the user wants to:
+    - Open the WorkflowAI playground to experiment with prompts
+    - Compare different models side by side
+    - Test an agent in a visual interface
+    - Experiment with model parameters and settings
+    - Access the playground for any interactive development needs
+    </when_to_use>
+
+    <returns>
+    Returns the playground URL and next steps for the user to continue their work in the playground.
+    </returns>"""
+    service = await get_mcp_service()
+    return await service.open_playground(agent_id=agent_id, with_comparison=with_comparison)
 
 
 def mcp_http_app():
