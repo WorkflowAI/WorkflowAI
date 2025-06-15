@@ -6,10 +6,7 @@ interface ModelSupports {
   input_audio: boolean;
   output_image: boolean;
   output_text: boolean;
-  json_mode: boolean;
   audio_only: boolean;
-  support_system_messages: boolean;
-  structured_output: boolean;
   support_input_schema: boolean;
   parallel_tool_calls: boolean;
   tool_calling: boolean;
@@ -69,14 +66,8 @@ export function WorkflowModelsTable({ models }: WorkflowModelsTableProps) {
             <th className='text-center p-2 font-semibold' title='Output Text'>
               💬
             </th>
-            <th className='text-center p-2 font-semibold' title='JSON Mode'>
-              {}
-            </th>
             <th className='text-center p-2 font-semibold' title='Tool Calling'>
               🔧
-            </th>
-            <th className='text-center p-2 font-semibold' title='Structured Output'>
-              📊
             </th>
           </tr>
         </thead>
@@ -113,13 +104,7 @@ export function WorkflowModelsTable({ models }: WorkflowModelsTableProps) {
                 <FeatureIcon supported={model.supports.output_text} />
               </td>
               <td className='text-center p-2'>
-                <FeatureIcon supported={model.supports.json_mode} />
-              </td>
-              <td className='text-center p-2'>
                 <FeatureIcon supported={model.supports.tool_calling} />
-              </td>
-              <td className='text-center p-2'>
-                <FeatureIcon supported={model.supports.structured_output} />
               </td>
             </tr>
           ))}
@@ -134,9 +119,7 @@ export function WorkflowModelsTable({ models }: WorkflowModelsTableProps) {
           <div>🎵 Input Audio</div>
           <div>🎨 Output Image</div>
           <div>💬 Output Text</div>
-          <div>{} JSON Mode</div>
           <div>🔧 Tool Calling</div>
-          <div>📊 Structured Output</div>
         </div>
       </div>
     </div>

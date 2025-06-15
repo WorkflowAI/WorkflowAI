@@ -6,10 +6,7 @@ interface ModelSupports {
   input_audio: boolean;
   output_image: boolean;
   output_text: boolean;
-  json_mode: boolean;
   audio_only: boolean;
-  support_system_messages: boolean;
-  structured_output: boolean;
   support_input_schema: boolean;
   parallel_tool_calls: boolean;
   tool_calling: boolean;

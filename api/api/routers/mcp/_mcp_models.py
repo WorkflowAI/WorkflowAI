@@ -199,6 +199,7 @@ class StandardModelResponse(BaseModel):
                         mode="json",
                         include=set(ModelDataSupports.model_fields.keys()),
                     ).items()
+                    if k not in {"supports_structured_output", "supports_json_mode", "support_system_messages"}
                 },
             )
 
