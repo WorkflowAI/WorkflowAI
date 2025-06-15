@@ -14,8 +14,8 @@ TODO:
 - [ ] Add descriptions and examples for fields in StandardModelResponse
 - [ ] Set exclude=True for fields that are not meant to be exposed publicly
 - [ ] Describe what fields from OpenAI are not supported by WorkflowAI
-- [ ] Remove workflowai_tools?
-- [ ] Keep provider? explain why in the code.
+- [x] Remove workflowai_tools? `workflowai_tools` should be removed.
+- [ ] Keep provider? explain why in the code. Decided that `provider` will be set as `include_in_schema=False`
 - [ ] Set the URL of base URL in the OpenAPI spec (https://api.workflowai.com) and run.workflowai.com for the `/v1/chat/completions` endpoint
 - [ ] Set Authorization header in the OpenAPI spec
 - [ ] Deploy API documentation using https://scalar.com/
@@ -24,9 +24,9 @@ TODO:
 - /v1/chat/completions
 - /v1/models
 - /v1/runs/{id}
-- /v1/agents/id/runs/search
+- /v1/agents/{agent_id}/runs/search
 - ... 
-- [ ] Do we need {tenant} in the path?
+- [x] Do we need {tenant} in the path? Decided that we don't need `{tenant}` in the path of our public API endpoints.
 
 # Notes:
 
