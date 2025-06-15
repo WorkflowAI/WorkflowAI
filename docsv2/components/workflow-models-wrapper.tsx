@@ -6,20 +6,15 @@ interface ModelSupports {
   input_audio: boolean;
   output_image: boolean;
   output_text: boolean;
-  json_mode: boolean;
   audio_only: boolean;
-  support_system_messages: boolean;
-  structured_output: boolean;
-  support_input_schema: boolean;
-  parallel_tool_calls: boolean;
   tool_calling: boolean;
+  parallel_tool_calls: boolean;
 }
 
 interface Model {
   id: string;
   object: string;
   created: number;
-  owned_by: string;
   display_name: string;
   icon_url: string;
   supports: ModelSupports;

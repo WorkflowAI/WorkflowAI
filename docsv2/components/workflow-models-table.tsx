@@ -6,20 +6,15 @@ interface ModelSupports {
   input_audio: boolean;
   output_image: boolean;
   output_text: boolean;
-  json_mode: boolean;
   audio_only: boolean;
-  support_system_messages: boolean;
-  structured_output: boolean;
-  support_input_schema: boolean;
-  parallel_tool_calls: boolean;
   tool_calling: boolean;
+  parallel_tool_calls: boolean;
 }
 
 interface Model {
   id: string;
   object: string;
   created: number;
-  owned_by: string;
   display_name: string;
   icon_url: string;
   supports: ModelSupports;
@@ -52,7 +47,6 @@ export function WorkflowModelsTable({ models }: WorkflowModelsTableProps) {
         <thead>
           <tr className='border-b border-border'>
             <th className='text-left p-2 font-semibold'>Model</th>
-            <th className='text-left p-2 font-semibold'>Provider</th>
             <th className='text-left p-2 font-semibold'>Released</th>
             <th className='text-center p-2 font-semibold' title='Input Image'>
               🖼️
@@ -69,14 +63,8 @@ export function WorkflowModelsTable({ models }: WorkflowModelsTableProps) {
             <th className='text-center p-2 font-semibold' title='Output Text'>
               💬
             </th>
-            <th className='text-center p-2 font-semibold' title='JSON Mode'>
-              {}
-            </th>
             <th className='text-center p-2 font-semibold' title='Tool Calling'>
               🔧
-            </th>
-            <th className='text-center p-2 font-semibold' title='Structured Output'>
-              📊
             </th>
           </tr>
         </thead>
@@ -87,7 +75,7 @@ export function WorkflowModelsTable({ models }: WorkflowModelsTableProps) {
                 <div className='flex items-center gap-2'>
                   {model.icon_url && (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={model.icon_url} alt={model.owned_by} className='w-5 h-5' />
+                    <img src={model.icon_url} alt={model.display_name} className='w-5 h-5' />
                   )}
                   <div>
                     <div className='font-medium'>{model.display_name}</div>
@@ -95,7 +83,6 @@ export function WorkflowModelsTable({ models }: WorkflowModelsTableProps) {
                   </div>
                 </div>
               </td>
-              <td className='p-2 text-sm'>{model.owned_by}</td>
               <td className='p-2 text-sm text-muted-foreground'>{formatDate(model.created)}</td>
               <td className='text-center p-2'>
                 <FeatureIcon supported={model.supports.input_image} />
@@ -113,13 +100,7 @@ export function WorkflowModelsTable({ models }: WorkflowModelsTableProps) {
                 <FeatureIcon supported={model.supports.output_text} />
               </td>
               <td className='text-center p-2'>
-                <FeatureIcon supported={model.supports.json_mode} />
-              </td>
-              <td className='text-center p-2'>
                 <FeatureIcon supported={model.supports.tool_calling} />
-              </td>
-              <td className='text-center p-2'>
-                <FeatureIcon supported={model.supports.structured_output} />
               </td>
             </tr>
           ))}
@@ -134,9 +115,7 @@ export function WorkflowModelsTable({ models }: WorkflowModelsTableProps) {
           <div>🎵 Input Audio</div>
           <div>🎨 Output Image</div>
           <div>💬 Output Text</div>
-          <div>{} JSON Mode</div>
           <div>🔧 Tool Calling</div>
-          <div>📊 Structured Output</div>
         </div>
       </div>
     </div>

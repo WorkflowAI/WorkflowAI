@@ -4,7 +4,6 @@ from typing import Any, Literal
 from pydantic import BaseModel
 
 from core.domain.models.model_data import FinalModelData
-from core.domain.models.model_data_supports import ModelDataSupports
 
 
 class StandardModelResponse(BaseModel):
@@ -16,7 +15,6 @@ class StandardModelResponse(BaseModel):
         id: str
         object: Literal["model"] = "model"
         created: int
-        owned_by: str
         display_name: str
         icon_url: str
         supports: dict[str, Any]
@@ -26,23 +24,34 @@ class StandardModelResponse(BaseModel):
             output_token_usd: float
 
         pricing: Pricing
-
         release_date: datetime.date
 
         @classmethod
         def from_model_data(cls, id: str, model: FinalModelData):
             provider_data = model.providers[0][1]
+
+            # Whitelist of support fields to include in the API response
+            included_support_fields = {
+                "supports_input_image",
+                "supports_input_pdf",
+                "supports_input_audio",
+                "supports_output_image",
+                "supports_output_text",
+                "supports_audio_only",
+                "supports_tool_calling",
+                "supports_parallel_tool_calls",
+            }
+
             return cls(
                 id=id,
                 created=int(datetime.datetime.combine(model.release_date, datetime.time(0, 0)).timestamp()),
-                owned_by=model.provider_name,
                 display_name=model.display_name,
                 icon_url=model.icon_url,
                 supports={
                     k.removeprefix("supports_"): v
                     for k, v in model.model_dump(
                         mode="json",
-                        include=set(ModelDataSupports.model_fields.keys()),
+                        include=included_support_fields,
                     ).items()
                 },
                 pricing=cls.Pricing(
