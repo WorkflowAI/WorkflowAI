@@ -374,6 +374,7 @@ class _OpenAIProxyExtraFields(BaseModel):
         description="A specific provider to use for the request. When provided, multi provider fallback is disabled."
         "The attribute is ignored if the provider is not supported.",
         validation_alias=_alias_generator("provider"),
+        exclude=True,  # not meant to be exposed publicly
     )
 
     agent_id: str | None = Field(
@@ -399,13 +400,6 @@ class _OpenAIProxyExtraFields(BaseModel):
     use_cache: CacheUsage | None = Field(
         default=None,
         validation_alias=_alias_generator("use_cache"),
-    )
-
-    workflowai_tools: list[str] | None = Field(
-        default=None,
-        description=f"A list of WorkflowAI hosted tools. Possible values are `{'`, `'.join(ToolKind)}`."
-        "When not provided, we attempt to detect tools in the system message.",
-        validation_alias=_alias_generator("workflowai_tools"),
     )
 
     use_fallback: Literal["auto", "never"] | list[str] | None = Field(
