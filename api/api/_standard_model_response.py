@@ -36,10 +36,10 @@ class StandardModelResponse(BaseModel):
 
             # Generate usage guidelines based on model characteristics
             usage_guidelines = None
-            if "preview" in id.lower() or "experimental" in id.lower() or "exp" in id.lower():
-                usage_guidelines = "Preview model with lower rate limits - not recommended for production use"
-            elif "audio" in id.lower() and "preview" in id.lower():
+            if "audio" in id.lower() and "preview" in id.lower():
                 usage_guidelines = "Audio preview model - use for audio processing tasks but not recommended for production due to rate limits"
+            elif "preview" in id.lower() or "experimental" in id.lower() or "exp" in id.lower():
+                usage_guidelines = "Preview model with lower rate limits - not recommended for production use"
             elif model.quality_data and hasattr(model.quality_data, "index") and model.quality_data.index < 300:
                 usage_guidelines = "Lower quality model - suitable for simple tasks where cost is a priority"
             elif hasattr(model, "reasoning_level") and model.reasoning_level == "high":
