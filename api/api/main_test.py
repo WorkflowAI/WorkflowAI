@@ -1,3 +1,4 @@
+import re
 from collections.abc import Callable
 from typing import Any, Iterator, cast
 from unittest.mock import Mock
@@ -184,15 +185,63 @@ class TestModelsEndpoint:
         first_model = cast(dict[str, Any], data["data"][0])
         assert first_model["object"] == "model"
 
-        # Check for whitelisted root fields
-        assert "id" in first_model
-        assert "created" in first_model
-        assert "display_name" in first_model
-        assert "icon_url" in first_model
-        assert "supports" in first_model
+        # Define the exact whitelisted root fields
+        expected_root_fields = {
+            "id",
+            "object",
+            "created",
+            "display_name",
+            "icon_url",
+            "supports",
+            "pricing",
+            "release_date",
+        }
 
-        # Check that supports contains expected fields
-        assert "parallel_tool_calls" in first_model["supports"]
+        # Check that all expected fields are present
+        for field in expected_root_fields:
+            assert field in first_model, f"Expected field '{field}' missing from model response"
+
+        # Check that no unexpected fields are present
+        actual_fields = set(first_model.keys())
+        unexpected_fields = actual_fields - expected_root_fields
+        assert len(unexpected_fields) == 0, f"Unexpected fields found: {unexpected_fields}"
+
+        # Verify pricing structure
+        assert "pricing" in first_model
+        pricing = cast(dict[str, Any], first_model["pricing"])
+        assert "input_token_usd" in pricing
+        assert "output_token_usd" in pricing
+        assert len(pricing.keys()) == 2, (
+            f"Unexpected pricing fields: {set(pricing.keys()) - {'input_token_usd', 'output_token_usd'}}"
+        )
+
+        # Verify release_date format
+        assert "release_date" in first_model
+        release_date = cast(str, first_model["release_date"])
+        assert re.match(r"\d{4}-\d{2}-\d{2}", release_date)
+
+        # Check that supports contains expected fields and no unexpected ones
+        expected_support_fields = {
+            "input_image",
+            "input_pdf",
+            "input_audio",
+            "output_image",
+            "output_text",
+            "audio_only",
+            "tool_calling",
+            "parallel_tool_calls",
+        }
+
+        supports = cast(dict[str, Any], first_model["supports"])
+        actual_support_fields = set(supports.keys())
+
+        # Check that all expected support fields are present
+        for field in expected_support_fields:
+            assert field in supports, f"Expected support field '{field}' missing"
+
+        # Check that no unexpected support fields are present
+        unexpected_support_fields = actual_support_fields - expected_support_fields
+        assert len(unexpected_support_fields) == 0, f"Unexpected support fields found: {unexpected_support_fields}"
 
     async def test_models_endpoint_order_check(self, test_api_client: AsyncClient, mock_tenant_dep: Mock):
         # Making sure we raise if the tenant dep is called

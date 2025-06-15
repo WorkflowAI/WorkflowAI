@@ -19,8 +19,17 @@ class StandardModelResponse(BaseModel):
         icon_url: str
         supports: dict[str, Any]
 
+        class Pricing(BaseModel):
+            input_token_usd: float
+            output_token_usd: float
+
+        pricing: Pricing
+        release_date: datetime.date
+
         @classmethod
         def from_model_data(cls, id: str, model: FinalModelData):
+            provider_data = model.providers[0][1]
+
             # Whitelist of support fields to include in the API response
             included_support_fields = {
                 "supports_input_image",
@@ -45,6 +54,11 @@ class StandardModelResponse(BaseModel):
                         include=included_support_fields,
                     ).items()
                 },
+                pricing=cls.Pricing(
+                    input_token_usd=provider_data.text_price.prompt_cost_per_token,
+                    output_token_usd=provider_data.text_price.completion_cost_per_token,
+                ),
+                release_date=model.release_date,
             )
 
     data: list[ModelItem]
