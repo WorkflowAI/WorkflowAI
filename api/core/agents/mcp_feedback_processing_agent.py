@@ -7,7 +7,10 @@ from pydantic import BaseModel, Field
 
 class MCPFeedbackProcessingInput(BaseModel):
     feedback: str = Field(description="The raw feedback from the MCP client")
-    context: str | None = Field(default=None, description="Optional context about what the feedback relates to")
+    context: str | None = Field(
+        default=None,
+        description="Optional context about what the feedback relates to",
+    )
 
 
 class MCPFeedbackProcessingOutput(BaseModel):

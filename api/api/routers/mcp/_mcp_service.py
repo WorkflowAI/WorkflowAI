@@ -876,7 +876,11 @@ class MCPService:
     ):
         """Background task to process MCP client feedback with the agent"""
         try:
+            import logging
+
             from core.agents.mcp_feedback_processing_agent import mcp_feedback_processing_agent
+
+            logger = logging.getLogger(__name__)
 
             # Process feedback with the agent, including metadata for tracking
             async for response in mcp_feedback_processing_agent(
@@ -886,8 +890,17 @@ class MCPService:
             ):
                 # Log the analysis or store it somewhere if needed
                 # For now, just log that processing completed
-                print(f"MCP client feedback processed for {organization_name}: {response.analysis.sentiment} sentiment")
+                logger.info(
+                    "MCP client feedback processed",
+                    extra={
+                        "organization_name": organization_name,
+                        "sentiment": response.analysis.sentiment,
+                    },
+                )
 
         except Exception as e:
             # Log error but don't fail the MCP tool response
-            print(f"Error processing MCP client feedback: {str(e)}")
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.error("Error processing MCP client feedback", extra={"error": str(e)})
