@@ -181,6 +181,8 @@ class RunV1(_BaseRunV1):
 
     conversation_id: str | None
 
+    metadata: dict[str, Any] | None
+
     @classmethod
     def from_domain_task_run(cls, run: AgentRun, feedback_token: str):
         return cls(
@@ -205,6 +207,7 @@ class RunV1(_BaseRunV1):
             ),
             feedback_token=feedback_token,
             conversation_id=run.conversation_id,
+            metadata=run.metadata,
         )
 
 
