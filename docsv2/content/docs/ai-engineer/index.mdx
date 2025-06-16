@@ -2,4 +2,42 @@
 title: Setup
 ---
 
-## ...
+## MCP Server Installation
+
+To connect to the WorkflowAI MCP server, follow these steps:
+
+### 1. Access Cursor Settings
+
+1. Open Cursor
+2. Go to `Settings...`
+3. Navigate to `Cursor settings`
+4. Select `Tools & integrations`
+
+### 2. Configure MCP Server
+
+Add the following configuration to your MCP servers config:
+
+```json
+{
+  "mcpServers": {
+    "workflowai": {
+      "url": "https://api.workflowai.com/mcp/sse/",
+      "headers": {
+        "Authorization": "Bearer <your API token here>"
+      }
+    }
+  }
+}
+```
+
+### 3. Get Your API Token
+
+Replace `<your API token here>` with your actual WorkflowAI API token. You can obtain your API token from your WorkflowAI dashboard.
+
+### 4. Save and Restart
+
+After adding the configuration:
+1. Save the settings
+2. Restart Cursor to ensure the MCP server connection is established
+
+Once configured, you'll be able to use WorkflowAI's capabilities directly within Cursor through the MCP integration.
