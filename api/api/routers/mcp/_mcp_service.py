@@ -4,8 +4,8 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from api._standard_model_response import StandardModelResponse
 from api.routers.mcp._mcp_models import MajorVersion, MCPToolReturn
+from api.schemas.v1_models import ModelItem, V1ModelsResponse
 from api.services.documentation_service import DocumentationService
 from api.services.internal_tasks.meta_agent_service import MetaAgentChatMessage, PlaygroundState
 from api.services.internal_tasks.meta_agent_service import MetaAgentService as MetaAgentServiceType
@@ -60,20 +60,20 @@ class MCPService:
         self.task_deployments_service = task_deployments_service
 
     async def list_available_models(self) -> MCPToolReturn:
-        def _model_data_iterator() -> Iterator[StandardModelResponse.ModelItem]:
+        def _model_data_iterator() -> Iterator[ModelItem]:
             for model in Model:
                 data = MODEL_DATAS[model]
                 if isinstance(data, LatestModel):
-                    yield StandardModelResponse.ModelItem.from_model_data(model.value, MODEL_DATAS[data.model])  # pyright: ignore [reportArgumentType]
+                    yield ModelItem.from_model_data(model.value, MODEL_DATAS[data.model])  # pyright: ignore [reportArgumentType]
                 elif isinstance(data, FinalModelData):
-                    yield StandardModelResponse.ModelItem.from_model_data(model.value, data)
+                    yield ModelItem.from_model_data(model.value, data)
                 else:
                     # Skipping deprecated models
                     continue
 
         return MCPToolReturn(
             success=True,
-            data=StandardModelResponse(data=list(_model_data_iterator())).model_dump(),
+            data=V1ModelsResponse(data=list(_model_data_iterator())).model_dump(),
         )
 
     def _extract_agent_id_and_run_id(self, run_url: str) -> tuple[str, str]:  # noqa: C901

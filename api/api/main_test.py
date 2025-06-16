@@ -184,7 +184,8 @@ class TestModelsEndpoint:
 
         first_model = cast(dict[str, Any], data["data"][0])
         assert first_model["object"] == "model"
-        assert "supports" in first_model
+        assert "capabilities" in first_model
+        assert "supports" in first_model  # Legacy field for backward compatibility
         assert "parallel_tool_calls" in first_model["supports"]
         assert "pricing" in first_model
         pricing = cast(dict[str, Any], first_model["pricing"])
@@ -194,6 +195,13 @@ class TestModelsEndpoint:
         assert "release_date" in first_model
         release_date = cast(str, first_model["release_date"])
         assert re.match(r"\d{4}-\d{2}-\d{2}", release_date)
+
+        # Test new capabilities structure
+        capabilities = cast(dict[str, Any], first_model["capabilities"])
+        assert "json_mode" in capabilities
+        assert "tool_calling" in capabilities
+        assert "input_image" in capabilities
+        assert "output_text" in capabilities
 
     async def test_models_endpoint_order_check(self, test_api_client: AsyncClient, mock_tenant_dep: Mock):
         # Making sure we raise if the tenant dep is called

@@ -1,13 +1,12 @@
-from datetime import datetime, time
-from typing import Any, Literal
+from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel
 
 from api.schemas.user_identifier import UserIdentifier
+from api.schemas.v1_models import V1ModelsResponse
 from api.schemas.version_properties import ShortVersionProperties
 from core.domain.message import Message
-from core.domain.models.model_data import FinalModelData
-from core.domain.models.model_data_supports import ModelDataSupports
 from core.domain.task_group import TaskGroup
 from core.domain.task_group_properties import TaskGroupProperties
 from core.domain.task_variant import SerializableTaskVariant
@@ -171,35 +170,6 @@ class MajorVersion(BaseModel):
         )
 
 
-class StandardModelResponse(BaseModel):
-    """A model response compatible with the OpenAI API"""
-
-    object: Literal["list"] = "list"
-
-    class ModelItem(BaseModel):
-        id: str
-        object: Literal["model"] = "model"
-        created: int
-        owned_by: str
-        display_name: str
-        icon_url: str
-        supports: dict[str, Any]
-
-        @classmethod
-        def from_model_data(cls, id: str, model: FinalModelData):
-            return cls(
-                id=id,
-                created=int(datetime.combine(model.release_date, time(0, 0)).timestamp()),
-                owned_by=model.provider_name,
-                display_name=model.display_name,
-                icon_url=model.icon_url,
-                supports={
-                    k.removeprefix("supports_"): v
-                    for k, v in model.model_dump(
-                        mode="json",
-                        include=set(ModelDataSupports.model_fields.keys()),
-                    ).items()
-                },
-            )
-
-    data: list[ModelItem]
+# Use the standardized V1ModelsResponse from the schemas module
+# instead of duplicating the model definition here
+StandardModelResponse = V1ModelsResponse

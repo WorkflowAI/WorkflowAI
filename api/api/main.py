@@ -11,9 +11,9 @@ from fastapi import FastAPI, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from sentry_sdk.integrations.logging import ignore_logger
 
-from api._standard_model_response import StandardModelResponse
 from api.errors import configure_scope_for_error
 from api.routers.openai_proxy import openai_proxy_router
+from api.schemas.v1_models import ModelItem, V1ModelsResponse
 from api.services.analytics import close_analytics, start_analytics
 from api.services.storage import storage_for_tenant
 from api.tags import RouteTags
@@ -182,24 +182,35 @@ app.include_router(openai_proxy_router.router)
 async def list_all_available_models(
     raw: Annotated[bool, Query()] = False,
     omit_latest: Annotated[bool, Query()] = False,
-):
+) -> V1ModelsResponse | list[Model]:
+    """
+    List all available models in OpenAI-compatible format.
+
+    Args:
+        raw: If True, return raw model enum values instead of formatted response
+        omit_latest: If True, omit latest model variants from the response
+
+    Returns:
+        V1ModelsResponse: Formatted model list response
+        list[Model]: Raw model enum values (if raw=True)
+    """
     # No need to filter anything here as the raw models will not be exposed
     # The api container will filter the models based on the task schema
     if raw:
         return list(Model)
 
-    def _model_data_iterator() -> Iterator[StandardModelResponse.ModelItem]:
+    def _model_data_iterator() -> Iterator[ModelItem]:
         for model in Model:
             data = MODEL_DATAS[model]
             if isinstance(data, LatestModel) and not omit_latest:
-                yield StandardModelResponse.ModelItem.from_model_data(model.value, MODEL_DATAS[data.model])  # pyright: ignore [reportArgumentType]
+                yield ModelItem.from_model_data(model.value, MODEL_DATAS[data.model])  # pyright: ignore [reportArgumentType]
             elif isinstance(data, FinalModelData):
-                yield StandardModelResponse.ModelItem.from_model_data(model.value, data)
+                yield ModelItem.from_model_data(model.value, data)
             else:
                 # Skipping deprecated models
                 continue
 
-    return StandardModelResponse(data=list(_model_data_iterator()))
+    return V1ModelsResponse(data=list(_model_data_iterator()))
 
 
 if not _ONLY_RUN_ROUTES:
