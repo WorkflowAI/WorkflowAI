@@ -200,18 +200,14 @@ export function removeInputEntriesNotMatchingSchemaAndKeepMessages(
     return input;
   }
 
-  const inputMessages = input['workflowai.messages'] as ProxyMessage[] | undefined;
+  const inputMessages = (input['workflowai.messages'] as ProxyMessage[] | undefined) ?? [];
   const cleanedInput = removeInputEntriesNotMatchingSchema(input, schema);
 
   if (Array.isArray(cleanedInput)) {
     return input;
   }
 
-  if (!!inputMessages) {
-    return { ...cleanedInput, 'workflowai.messages': inputMessages };
-  }
-
-  return cleanedInput;
+  return { ...cleanedInput, 'workflowai.messages': inputMessages };
 }
 
 export function addAdvencedSettingsToProperties(

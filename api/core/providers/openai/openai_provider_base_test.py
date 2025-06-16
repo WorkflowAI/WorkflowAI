@@ -603,50 +603,48 @@ def test_compute_prompt_token_count(messages: list[dict[str, Any]], expected_tok
 
 class TestBuildRequest:
     async def test_with_tool_calls(self, base_provider: _TestOpenAIProviderBase):
-        messages = Messages(
-            messages=[
-                Message(
-                    role="system",
-                    content=[
-                        MessageContent(
-                            text="Be concise, reply with one sentence.Use the `get_lat_lng` tool to get the latitude and longitude of the locations, then use the `get_weather` tool to get the weather.",
+        messages = Messages.with_messages(
+            Message(
+                role="system",
+                content=[
+                    MessageContent(
+                        text="Be concise, reply with one sentence.Use the `get_lat_lng` tool to get the latitude and longitude of the locations, then use the `get_weather` tool to get the weather.",
+                    ),
+                ],
+            ),
+            Message(
+                role="user",
+                content=[
+                    MessageContent(
+                        text="What is the weather like in London?",
+                    ),
+                ],
+            ),
+            Message(
+                role="assistant",
+                content=[
+                    MessageContent(
+                        tool_call_request=ToolCallRequestWithID(
+                            tool_name="get_lat_lng",
+                            tool_input_dict={"location_description": "London"},
+                            id="call_ucYQgwUMFhWu2e91vA9FgRCj",
                         ),
-                    ],
-                ),
-                Message(
-                    role="user",
-                    content=[
-                        MessageContent(
-                            text="What is the weather like in London?",
+                    ),
+                ],
+            ),
+            Message(
+                role="user",
+                content=[
+                    MessageContent(
+                        tool_call_result=ToolCall(
+                            tool_name="",
+                            tool_input_dict={},
+                            id="call_ucYQgwUMFhWu2e91vA9FgRCj",
+                            result='{"lat":51.5074456,"lng":-0.1277653}',
                         ),
-                    ],
-                ),
-                Message(
-                    role="assistant",
-                    content=[
-                        MessageContent(
-                            tool_call_request=ToolCallRequestWithID(
-                                tool_name="get_lat_lng",
-                                tool_input_dict={"location_description": "London"},
-                                id="call_ucYQgwUMFhWu2e91vA9FgRCj",
-                            ),
-                        ),
-                    ],
-                ),
-                Message(
-                    role="user",
-                    content=[
-                        MessageContent(
-                            tool_call_result=ToolCall(
-                                tool_name="",
-                                tool_input_dict={},
-                                id="call_ucYQgwUMFhWu2e91vA9FgRCj",
-                                result='{"lat":51.5074456,"lng":-0.1277653}',
-                            ),
-                        ),
-                    ],
-                ),
-            ],
+                    ),
+                ],
+            ),
         )
 
         req = base_provider._build_request(

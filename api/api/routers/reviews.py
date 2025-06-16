@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Path, Response
 from pydantic import BaseModel, Field
 from typing_extensions import Annotated
 
-from api.dependencies.path_params import RunID, TaskID, TaskSchemaID
+from api.dependencies.path_params import AgentID, RunID, TaskSchemaID
 from api.dependencies.security import RequiredUserDep
 from api.dependencies.services import ReviewsServiceDep
 from api.dependencies.storage import StorageDep
@@ -21,7 +21,7 @@ from core.domain.types import AgentOutput
 from core.domain.users import UserIdentifier
 from core.storage import ObjectNotFoundException
 
-router = APIRouter(prefix="/agents/{task_id}")
+router = APIRouter(prefix="/agents/{agent_id}")
 
 
 class CreateReviewRequest(BaseModel):
@@ -105,7 +105,7 @@ _RunHashInfoDep = Annotated[tuple[str, str, int, Literal["success", "failure"]],
 @router.post("/runs/{run_id}/reviews", description="Create a user review for a given run")
 async def create_review(
     request: CreateReviewRequest,
-    task_id: TaskID,
+    agent_id: AgentID,
     user: RequiredUserDep,  # user will be marked as the creator of the review
     reviews_service: ReviewsServiceDep,
     run_hash_info: _RunHashInfoDep,
@@ -114,7 +114,7 @@ async def create_review(
     if run_hash_info[3] == "failure":
         raise BadRequestError("Cannot review a failed run")
     review = await reviews_service.add_user_review(
-        task_id=task_id,
+        task_id=agent_id,
         task_schema_id=run_hash_info[2],
         task_input_hash=run_hash_info[0],
         task_output_hash=run_hash_info[1],
@@ -132,12 +132,12 @@ async def create_review(
     "A review becomes state if either a new review of the same type was created or if the review was responded to",
 )
 async def list_reviews(
-    task_id: TaskID,
+    agent_id: AgentID,
     run_hash_info: _RunHashInfoDep,
     reviews_service: ReviewsServiceDep,
 ) -> Page[Review]:
     reviews = await reviews_service.list_reviews(
-        task_id=task_id,
+        task_id=agent_id,
         task_schema_id=run_hash_info[2],
         task_input_hash=run_hash_info[0],
         task_output_hash=run_hash_info[1],
@@ -155,14 +155,14 @@ class RespondToReviewRequest(BaseModel):
     "A user review must exist.",
 )
 async def respond_to_review(
-    task_id: TaskID,
+    agent_id: AgentID,
     review_id: Annotated[str, Path(description="The id of the AI review to respond to")],
     request: RespondToReviewRequest,
     reviews_service: ReviewsServiceDep,
     run_hash_info: _RunHashInfoDep,
 ) -> Response:
     await reviews_service.respond_to_review(
-        task_id=task_id,
+        task_id=agent_id,
         task_schema_id=run_hash_info[2],
         task_input_hash=run_hash_info[0],
         task_output_hash=run_hash_info[1],
@@ -235,9 +235,9 @@ class ReviewBenchmark(BaseModel):
     "/schemas/{task_schema_id}/reviews/benchmark",
     description="Retrieve the benchmark for a given task schema",
 )
-async def get_review_benchmark(task_id: TaskID, task_schema_id: TaskSchemaID, storage: StorageDep) -> ReviewBenchmark:
+async def get_review_benchmark(agent_id: AgentID, task_schema_id: TaskSchemaID, storage: StorageDep) -> ReviewBenchmark:
     try:
-        benchmark = await storage.review_benchmarks.get_review_benchmark(task_id, task_schema_id)
+        benchmark = await storage.review_benchmarks.get_review_benchmark(agent_id, task_schema_id)
         return ReviewBenchmark.from_domain(benchmark)
     except ObjectNotFoundException:
         return ReviewBenchmark(results=[])
@@ -254,7 +254,7 @@ class PatchReviewBenchmarkRequest(BaseModel):
     response_model_exclude_none=True,
 )
 async def patch_review_benchmark(
-    task_id: TaskID,
+    agent_id: AgentID,
     task_schema_id: TaskSchemaID,
     request: PatchReviewBenchmarkRequest,
     reviews_service: ReviewsServiceDep,
@@ -263,7 +263,7 @@ async def patch_review_benchmark(
     try:
         if request.add_versions:
             benchmark = await reviews_service.add_versions_to_review_benchmark(
-                task_id,
+                agent_id,
                 task_schema_id,
                 request.add_versions,
             )
@@ -272,7 +272,7 @@ async def patch_review_benchmark(
 
     if request.remove_versions:
         benchmark = await reviews_service.remove_versions_from_review_benchmark(
-            task_id,
+            agent_id,
             task_schema_id,
             request.remove_versions,
         )
@@ -291,12 +291,12 @@ class TaskEvaluationResponse(BaseModel):
 
 @router.get("/schemas/{task_schema_id}/evaluation")
 async def get_task_evaluation(
-    task_id: TaskID,
+    agent_id: AgentID,
     task_schema_id: TaskSchemaID,
     user: RequiredUserDep,
     reviews_service: ReviewsServiceDep,
 ) -> TaskEvaluationResponse:
-    evaluator = await reviews_service.get_latest_ai_evaluator(task_id, task_schema_id, active=True)
+    evaluator = await reviews_service.get_latest_ai_evaluator(agent_id, task_schema_id, active=True)
     if not evaluator:
         return TaskEvaluationResponse(evaluation_instructions="")
     assert isinstance(evaluator.evaluator_type, EvalV2Evaluator)
@@ -309,14 +309,14 @@ class TaskEvaluationPatchRequest(BaseModel):
 
 @router.patch("/schemas/{task_schema_id}/evaluation")
 async def update_task_evaluation(
-    task_id: TaskID,
+    agent_id: AgentID,
     task_schema_id: TaskSchemaID,
     request: TaskEvaluationPatchRequest,
     user: RequiredUserDep,
     reviews_service: ReviewsServiceDep,
 ) -> TaskEvaluationResponse:
     inserted = await reviews_service.update_task_evaluator(
-        task_id=task_id,
+        task_id=agent_id,
         task_schema_id=task_schema_id,
         instructions=request.evaluation_instructions,
         user=UserIdentifier(user_id=user.user_id, user_email=user.sub),
@@ -387,7 +387,7 @@ class InputEvaluationPatchRequest(BaseModel):
 
 @router.patch("/schemas/{task_schema_id}/evaluation/inputs/{task_input_hash}")
 async def update_input_evaluation(
-    task_id: TaskID,
+    agent_id: AgentID,
     task_schema_id: TaskSchemaID,
     task_input_hash: Annotated[str, Path(description="The hash of the task input evaluation to update")],
     request: InputEvaluationPatchRequest,
@@ -395,7 +395,7 @@ async def update_input_evaluation(
     user: RequiredUserDep,
 ) -> InputEvaluationData:
     res = await reviews_service.update_input_evaluation(
-        task_id=task_id,
+        task_id=agent_id,
         task_schema_id=task_schema_id,
         task_input_hash=task_input_hash,
         instructions=request.update_input_evaluation_instructions,

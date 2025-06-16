@@ -13,7 +13,7 @@ from core.domain.search_query import SearchFieldOption
 from core.utils.schemas import FieldType
 from core.utils.templates import InvalidTemplateError, TemplateManager
 
-router = APIRouter(prefix="/v1/{tenant}/agents/{task_id}/schemas/{task_schema_id}")
+router = APIRouter(prefix="/v1/{tenant}/agents/{agent_id}/schemas/{task_schema_id}")
 
 
 class AgentModelResponse(ModelResponse):

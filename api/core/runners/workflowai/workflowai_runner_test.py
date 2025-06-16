@@ -51,7 +51,7 @@ from core.runners.workflowai.workflowai_runner import (
     WorkflowAIRunner,
 )
 from core.tools import ToolKind
-from tests.models import task_variant
+from tests import models as test_models
 from tests.utils import mock_aiter
 
 
@@ -67,7 +67,7 @@ def _build_runner(
     output_model: type[BaseModel] | None = None,
 ):
     return WorkflowAIRunner(
-        task or task_variant(input_model=input_model, output_model=output_model or input_model),
+        task or test_models.task_variant(input_model=input_model, output_model=output_model or input_model),
         properties=properties or TaskGroupProperties(model=model),
     )
 
@@ -369,6 +369,46 @@ Output:
 ```"""
         )
 
+    async def test_with_messages(self, mock_provider: Mock):
+        runner = _build_runner(
+            properties=TaskGroupProperties(
+                model=Model.GPT_3_5_TURBO_1106,
+            ),
+            # Input schema has messages but they are a different case than StoredMessages
+            task=test_models.task_variant(
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "messages": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                        },
+                    },
+                },
+            ),
+        )
+
+        messages = await runner._build_messages(  # pyright: ignore [reportPrivateUsage]
+            TemplateName.V2_DEFAULT,
+            {"messages": ["hello", "world"]},
+            mock_provider,
+            test_models.model_data(),
+        )
+        assert messages
+        assert messages[1].role == MessageDeprecated.Role.USER
+        assert (
+            messages[1].content
+            == """Input is:
+```json
+{
+  "messages": [
+    "hello",
+    "world"
+  ]
+}
+```"""
+        )
+
 
 class TestInlineMessages:
     async def test_inlined_structured_output(self, mock_provider_factory_full: Mock):
@@ -447,7 +487,7 @@ class TestInlineMessages:
 
 def test_init() -> None:
     runner = WorkflowAIRunner(
-        task_variant(),
+        test_models.task_variant(),
         properties=TaskGroupProperties(
             model=Model.GPT_4O_MINI_2024_07_18,
             instructions="Hello, world!",
@@ -515,7 +555,7 @@ class TestBuildMessages:
         class PdfSummaryTaskInput(BaseModel):
             file: File
 
-        task = task_variant(input_model=PdfSummaryTaskInput, output_model=PdfSummaryTaskInput)
+        task = test_models.task_variant(input_model=PdfSummaryTaskInput, output_model=PdfSummaryTaskInput)
 
         runner = _build_runner(task=task, model=Model.LLAMA_3_1_8B)
 
@@ -545,7 +585,7 @@ class TestBuildMessages:
         class PdfSummaryTaskInput(BaseModel):
             file: File
 
-        task = task_variant(input_model=PdfSummaryTaskInput, output_model=PdfSummaryTaskInput)
+        task = test_models.task_variant(input_model=PdfSummaryTaskInput, output_model=PdfSummaryTaskInput)
 
         runner = _build_runner(task=task, model=Model.LLAMA_3_1_8B)
 
@@ -575,7 +615,7 @@ class TestBuildMessages:
         class PdfSummaryTaskInput(BaseModel):
             file: File
 
-        task = task_variant(input_model=PdfSummaryTaskInput, output_model=PdfSummaryTaskInput)
+        task = test_models.task_variant(input_model=PdfSummaryTaskInput, output_model=PdfSummaryTaskInput)
 
         runner = _build_runner(task=task, model=Model.GPT_4O_2024_11_20)
 
@@ -623,7 +663,7 @@ class TestBuildMessages:
         class SummaryTaskInput(BaseModel):
             files: list[File]
 
-        task = task_variant(input_model=SummaryTaskInput, output_model=SummaryTaskInput)
+        task = test_models.task_variant(input_model=SummaryTaskInput, output_model=SummaryTaskInput)
 
         runner = _build_runner(task=task, model=Model.GPT_4O_2024_11_20)
 
@@ -656,7 +696,7 @@ class TestBuildMessages:
         class SingleFileTaskInput(BaseModel):
             file: File
 
-        task = task_variant(input_model=SingleFileTaskInput, output_model=SingleFileTaskInput)
+        task = test_models.task_variant(input_model=SingleFileTaskInput, output_model=SingleFileTaskInput)
 
         runner = _build_runner(task=task, model=Model.GPT_4O_2024_11_20)
 
@@ -684,7 +724,9 @@ class TestBuildMessages:
         class ArrayOfFileTaskInput(BaseModel):
             files: list[File]
 
-        runner = _build_runner(task=task_variant(input_model=ArrayOfFileTaskInput, output_model=ArrayOfFileTaskInput))
+        runner = _build_runner(
+            task=test_models.task_variant(input_model=ArrayOfFileTaskInput, output_model=ArrayOfFileTaskInput),
+        )
 
         messages = await runner._build_messages(  # pyright: ignore [reportPrivateUsage]
             TemplateName.V2_DEFAULT,
@@ -711,7 +753,7 @@ class TestBuildMessages:
             files: list[File]
             description: str
 
-        runner = _build_runner(task=task_variant(input_model=MultiFileTaskInput))
+        runner = _build_runner(task=test_models.task_variant(input_model=MultiFileTaskInput))
 
         messages = await runner._build_messages(  # pyright: ignore [reportPrivateUsage]
             TemplateName.V2_DEFAULT,
@@ -744,7 +786,7 @@ class TestBuildMessages:
             file: File
             description: str
 
-        runner = _build_runner(task=task_variant(input_model=ComplexFileTaskInput))
+        runner = _build_runner(task=test_models.task_variant(input_model=ComplexFileTaskInput))
 
         messages = await runner._build_messages(  # pyright: ignore [reportPrivateUsage]
             TemplateName.V2_DEFAULT,
@@ -773,7 +815,7 @@ class TestBuildMessages:
         class TextFileTaskInput(BaseModel):
             file: File
 
-        runner = _build_runner(task=task_variant(input_model=TextFileTaskInput))
+        runner = _build_runner(task=test_models.task_variant(input_model=TextFileTaskInput))
 
         messages = await runner._build_messages(  # pyright: ignore [reportPrivateUsage]
             TemplateName.V2_DEFAULT,
@@ -832,7 +874,7 @@ Return a single JSON object enforcing the following schema:
             other_field: str
 
         runner = _build_runner(
-            task=task_variant(input_model=_TestInput),
+            task=test_models.task_variant(input_model=_TestInput),
             properties=TaskGroupProperties(model=Model.GPT_4O_LATEST, instructions="Hello, {{ input }}!"),
         )
 
@@ -1365,13 +1407,11 @@ Total : 650 kcal, 105g de glucides, 28g de protéines, 7g de lipides""",
 
 
 class TestInit:
-    @pytest.mark.parametrize("disable_fallback", [False, True])
-    def test_raises_error_if_provider_does_not_support_model(self, mock_task: Mock, disable_fallback: bool):
+    def test_raises_error_if_provider_does_not_support_model(self, mock_task: Mock):
         with pytest.raises(ProviderDoesNotSupportModelError):
             WorkflowAIRunner(
                 task=mock_task,
                 properties=TaskGroupProperties(model=Model.GPT_4O_MINI_2024_07_18, provider=Provider.GOOGLE),
-                disable_fallback=disable_fallback,
             )
 
     # TODO[models]: this test relies on actual model data. it should be patched instead
@@ -2579,7 +2619,10 @@ class TestBuildOptions:
                 "task_variant_id": "7b0d19c962a285fcd8139372ecadc89e",
             },
         )
-        options = WorkflowAIRunner._build_options(task=task_variant(), properties=deprecated_tools_properties)  # pyright: ignore[reportPrivateUsage]
+        options = WorkflowAIRunner._build_options(
+            task=test_models.task_variant(),
+            properties=deprecated_tools_properties,
+        )  # pyright: ignore[reportPrivateUsage]
         assert options.model == "gemini-1.5-pro-latest"
         assert options.instructions == "You are a helpful assistant."
 
@@ -2989,9 +3032,9 @@ class TestMessagesInput:
     @pytest.mark.parametrize(
         "input",
         [
-            pytest.param({"messages": [{"content": [{"text": "Hello world"}], "role": "user"}]}, id="dict"),
+            pytest.param({"workflowai.messages": [{"content": [{"text": "Hello world"}], "role": "user"}]}, id="dict"),
             pytest.param(
-                Messages(messages=[Message(role="user", content=[MessageContent(text="Hello world")])]),
+                Messages.with_messages(Message(role="user", content=[MessageContent(text="Hello world")])),
                 id="messages_model",
             ),
         ],
@@ -3037,6 +3080,33 @@ class TestTemplatedMessages:
         builder = await runner.task_run_builder(
             {
                 "text": "bla",
+            },
+            start_time=0,
+        )
+        run = await runner.run(builder)
+        assert run.task_output == "Hello world"
+
+        mock_provider_factory_full.openai.complete.assert_called_once()
+
+        messages = mock_provider_factory_full.openai.complete.call_args_list[0].args[0]
+        assert isinstance(messages, list)
+        messages = cast(list[MessageDeprecated], messages)
+        assert len(messages) == 1
+        assert messages[0].content == "Hello bla"
+
+    async def test_templated_messages_with_messages_key(self, mock_provider_factory_full: Mock):
+        runner = _build_runner2(
+            mock_provider_factory_full,
+            SerializableTaskIO.from_json_schema({"type": "object", "properties": {"messages": {"type": "string"}}}),
+            RawStringMessageSchema,
+            messages=[Message.with_text("Hello {{messages}}")],
+        )
+
+        mock_provider_factory_full.openai.complete.side_effect = mock_complete("Hello world")
+
+        builder = await runner.task_run_builder(
+            {
+                "messages": "bla",
             },
             start_time=0,
         )

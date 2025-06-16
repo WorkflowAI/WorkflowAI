@@ -266,4 +266,46 @@ def mistral_models() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             supports_tool_calling=True,
             fallback=ModelFallback.default("cheap"),
         ),
+        Model.MAGISTRAL_SMALL_2506: ModelData(
+            display_name="Magistral Small (25-06)",
+            supports_json_mode=True,
+            supports_input_image=True,
+            supports_input_pdf=True,
+            supports_input_audio=False,
+            max_tokens_data=MaxTokensData(
+                max_tokens=40_960,
+                source="https://docs.mistral.ai/getting-started/models/models_overview/",
+            ),
+            icon_url="https://workflowai.blob.core.windows.net/workflowai-public/mistral.svg",
+            release_date=date(2025, 6, 11),
+            quality_data=QualityData(
+                gpqa_diamond=68.18,
+                source="https://huggingface.co/mistralai/Magistral-Small-2506",
+            ),
+            provider_name=DisplayedProvider.MISTRAL_AI.value,
+            supports_tool_calling=True,
+            reasoning_level="medium",  # This is a thinking model
+            fallback=ModelFallback.default("cheap"),
+        ),
+        Model.MAGISTRAL_MEDIUM_2506: ModelData(
+            display_name="Magistral Medium (25-06)",
+            supports_json_mode=True,
+            supports_input_image=True,
+            supports_input_pdf=True,
+            supports_input_audio=False,
+            max_tokens_data=MaxTokensData(
+                max_tokens=40_960,
+                source="https://docs.mistral.ai/getting-started/models/models_overview/",
+            ),
+            icon_url="https://workflowai.blob.core.windows.net/workflowai-public/mistral.svg",
+            release_date=date(2025, 6, 11),
+            quality_data=QualityData(
+                gpqa_diamond=79.8,
+                source="https://mistral.ai/news/magistral",
+            ),
+            provider_name=DisplayedProvider.MISTRAL_AI.value,
+            supports_tool_calling=True,
+            reasoning_level="high",  # This is a thinking model
+            fallback=ModelFallback.default("medium"),
+        ),
     }

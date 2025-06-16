@@ -14,7 +14,7 @@ from sentry_sdk import capture_exception, new_scope
 
 from api.dependencies.event_router import EventRouterDep
 from api.dependencies.latest_task_variant import TaskVariantDep
-from api.dependencies.path_params import TaskID, TaskSchemaID
+from api.dependencies.path_params import AgentID, TaskSchemaID
 from api.dependencies.security import SystemStorageDep, TenantDep, UserDep, UserOrganizationDep
 from api.dependencies.services import (
     AnalyticsServiceDep,
@@ -68,7 +68,7 @@ from ..schemas.create_task_run_request import CreateTaskRunRequest
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/agents/{task_id}/schemas/{task_schema_id}")
+router = APIRouter(prefix="/agents/{agent_id}/schemas/{task_schema_id}")
 
 
 class TaskSchemaResponse(BaseModel):
@@ -84,7 +84,7 @@ class TaskSchemaResponse(BaseModel):
 
 @router.get("")
 async def get_task_schema(task_variant: TaskVariantDep, storage: StorageDep) -> TaskSchemaResponse:
-    # Endpoint : GET /agents/{task_id}/schemas/{task_schema_id}
+    # Endpoint : GET /agents/{agent_id}/schemas/{task_schema_id}
     # is hidden field is derived from the `task_info` collection if the schema id is in the `hidden_schemas` list
     # Return the task schema
     task_info = await storage.tasks.get_task_info(task_variant.task_id)
@@ -119,7 +119,7 @@ async def update_task_schema(
     request: TaskSchemaUpdateRequest,
     storage: StorageDep,
 ) -> TaskSchemaResponse:
-    # Endpoint : PATCH /agents/{task_id}/schemas/{task_schema_id}
+    # Endpoint : PATCH /agents/{agent_id}/schemas/{task_schema_id}
     # Update the task schema's hidden status by adding it to the `hidden_schemas` list in the `task_info` collection
     # Return the updated task schema
     if request.is_hidden is not None:
@@ -490,23 +490,23 @@ async def import_inputs(
 async def get_input_by_hash(
     input_hash: Annotated[str, Path(description="The hash of the input")],
     storage: StorageDep,
-    task_id: TaskID,
+    agent_id: AgentID,
     task_schema_id: TaskSchemaID,
     exclude_fields: list[TaskInputFields] | None = Query(default=None),
 ) -> TaskInput:
-    return await storage.task_inputs.get_input_by_hash(task_id, task_schema_id, input_hash, exclude=exclude_fields)
+    return await storage.task_inputs.get_input_by_hash(agent_id, task_schema_id, input_hash, exclude=exclude_fields)
 
 
 @router.post("/generate/description")
 async def stream_task_description(
-    task_id: TaskID,
+    agent_id: AgentID,
     task_schema_id: TaskSchemaID,
     instructions: str,
     internal_tasks: InternalTasksServiceDep,
 ) -> Response:
     async def description_generator():
         async for chunk in internal_tasks.set_task_description_if_missing(
-            task_id=task_id,
+            task_id=agent_id,
             task_schema_id=task_schema_id,
             instructions=instructions,
         ):
@@ -621,12 +621,12 @@ async def deploy_version(
     task_deployments_service: TaskDeploymentsServiceDep,
     user: UserDep,
 ) -> DeployVersionResponse:
-    # Endpoint: POST /agents/{task_id}/schemas/{task_schema_id}/versions/{version_id}/deploy
+    # Endpoint: POST /agents/{agent_id}/schemas/{task_schema_id}/versions/{version_id}/deploy
     # Deploy a version to an environment.
     # Making two consecutive calls with the same version_id and environment overrides the previous deployment.
-    # Call 1: POST /agents/{task_id}/schemas/{task_schema_id}/versions/{version_id}/deploy
+    # Call 1: POST /agents/{agent_id}/schemas/{task_schema_id}/versions/{version_id}/deploy
     # task_id: test, task_schema_id: 1, version_id: 4, environment: dev, provider_config_id: 1
-    # Call 2: POST /agents/{task_id}/schemas/{task_schema_id}/versions/{version_id}/deploy
+    # Call 2: POST /agents/{agent_id}/schemas/{task_schema_id}/versions/{version_id}/deploy
     # task_id: test, task_schema_id: 1, version_id: 4, environment: dev, provider_config_id: 2
     # Call 1 config details are overwritten by Call 2 details, for the iteration 4, environment: dev
     user_identifier = UserIdentifier(user_id=user.user_id if user else "", user_email=user.sub if user else "")

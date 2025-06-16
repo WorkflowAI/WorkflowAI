@@ -3,7 +3,7 @@ from typing import Annotated
 
 from fastapi import Depends, HTTPException
 
-from api.dependencies.path_params import TaskID
+from api.dependencies.path_params import AgentID
 from api.dependencies.storage import StorageDep
 from core.domain.task_info import TaskInfo
 from core.storage import TaskTuple
@@ -12,17 +12,17 @@ logger = logging.getLogger(__name__)
 
 
 async def task_info_dependency(
-    task_id: TaskID,
+    agent_id: AgentID,
     storage: StorageDep,
 ) -> TaskInfo | None:
     try:
-        return await storage.tasks.get_task_info(task_id)
+        return await storage.tasks.get_task_info(agent_id)
     except Exception as e:
         # TODO: we should remove the exception here
         logger.error(
             "Error getting task info",
             extra={
-                "task_id": task_id,
+                "agent_id": agent_id,
                 "error": e,
             },
         )

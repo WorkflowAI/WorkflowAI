@@ -1,0 +1,359 @@
+---
+title: Prompt Templating Syntax
+description: Learn how to use variables and templates in your prompts
+---
+
+# Prompt Templating Syntax
+
+WorkflowAI uses **Jinja2** as its templating engine to enable dynamic prompt generation with input variables. This allows you to separate static instructions from dynamic content, making your agents more maintainable and observable.
+
+## Overview
+
+When using input variables with templates (as shown in the [Using variables in prompts](/docs/guides/using-variables-in-prompts.md) guide), WorkflowAI renders your message templates at runtime using the variables provided in `extra_body["input"]`.
+
+```python
+instructions = "You must classify the email address as:
+- 'personal' (gmail, yahoo, etc.),
+- 'work' (company email address)
+- or 'unsure'.
+The email address is:
+{{email_address}}"
+
+client.chat.completions.create(
+    model="email-classifier-agent/gpt-4o-mini",
+    response_model=EmailAddressClassificationOutput,
+    messages=[{"role": "system", "content": instructions}],
+    extra_body={"input": {"email_address": "john@gmail.com"}},
+)
+```
+
+## Basic Variable Substitution
+
+### Simple Variables
+
+```python
+messages = [
+    {
+        "role": "system",
+        "content": "You are a helpful assistant specializing in {{domain}}."
+    },
+    {
+        "role": "user",
+        "content": "Please analyze this {{content_type}}: {{content}}"
+    }
+]
+
+extra_body = {
+    "input": {
+        "domain": "data science",
+        "content_type": "document",
+        "content": "Annual financial report with quarterly breakdown"
+    }
+}
+```
+
+### Accessing Nested Objects
+
+```python
+messages = [
+    {
+        "role": "system", 
+        "content": "You are analyzing data for {{company.name}} in the {{company.industry}} industry."
+    },
+    {
+        "role": "user",
+        "content": "The user {{user.name}} ({{user.role}}) is asking: {{query}}"
+    }
+]
+
+extra_body = {
+    "input": {
+        "company": {
+            "name": "TechCorp",
+            "industry": "software"
+        },
+        "user": {
+            "name": "Alice",
+            "role": "Data Analyst"
+        },
+        "query": "What are the sales trends?"
+    }
+}
+```
+
+## Conditional Logic
+
+### Basic Conditionals
+
+```python
+messages = [
+    {
+        "role": "system",
+        "content": "You are a customer service assistant.
+{% if is_premium_user %}
+This user is a premium customer. Provide priority support and offer advanced solutions.
+{% else %}
+This user is on the standard plan. Provide helpful support within standard service levels.
+{% endif %}"
+    },
+    {
+        "role": "user",
+        "content": "{{user_message}}"
+    }
+]
+
+extra_body = {
+    "input": {
+        "is_premium_user": True,
+        "user_message": "I need help with my account"
+    }
+}
+```
+
+### Multiple Conditions
+
+```python
+messages = [
+    {
+        "role": "system",
+        "content": "Adjust your response based on user expertise:
+{% if expertise_level == "beginner" %}
+Use simple language and provide step-by-step explanations.
+{% elif expertise_level == "intermediate" %}
+Use technical terms but explain complex concepts.
+{% elif expertise_level == "expert" %}
+Use advanced terminology and focus on nuanced details.
+{% else %}
+Ask about their background before providing advice.
+{% endif %}"
+    }
+]
+
+extra_body = {
+    "input": {
+        "expertise_level": "intermediate"
+    }
+}
+```
+
+## Loops and Lists
+
+### Processing Lists of Items
+
+```python
+messages = [
+    {
+        "role": "system",
+        "content": "Analyze the following items:
+{% for item in items %}
+- {{item.name}}: {{item.description}}
+{% endfor %}
+
+Provide insights about these {{items|length}} items."
+    }
+]
+
+extra_body = {
+    "input": {
+        "items": [
+            {"name": "Product A", "description": "High-performance widget"},
+            {"name": "Product B", "description": "Cost-effective solution"},
+            {"name": "Product C", "description": "Premium offering"}
+        ]
+    }
+}
+```
+
+## Advanced Use Cases
+
+### Dynamic System Instructions
+
+```python
+messages = [
+    {
+        "role": "system",
+        "content": "You are an AI assistant with the following capabilities:
+{% for capability in capabilities %}
+- {{capability.name}}: {{capability.description}}
+{% endfor %}
+
+Current task configuration:
+- Mode: {{task_mode}}
+- Max response length: {{max_length}} words
+{% if special_instructions %}
+- Special instructions: {{special_instructions}}
+{% endif %}
+
+{% if examples %}
+Examples of good responses:
+{% for example in examples %}
+Input: "{{example.input}}"
+Output: "{{example.output}}"
+{% endfor %}
+{% endif %}"
+    }
+]
+
+extra_body = {
+    "input": {
+        "capabilities": [
+            {"name": "Analysis", "description": "Analyze data and provide insights"},
+            {"name": "Summarization", "description": "Create concise summaries"},
+            {"name": "Generation", "description": "Generate creative content"}
+        ],
+        "task_mode": "analysis",
+        "max_length": 200,
+        "special_instructions": "Focus on actionable insights",
+        "examples": [
+            {
+                "input": "Analyze this sales data",
+                "output": "Sales show 15% growth with strongest performance in Q3"
+            }
+        ]
+    }
+}
+```
+
+### Localization and Internationalization
+
+```python
+messages = [
+    {
+        "role": "system",
+        "content": "
+{% if language == "spanish" %}
+Eres un asistente útil. Responde en español.
+{% elif language == "french" %}
+Vous êtes un assistant utile. Répondez en français.
+{% elif language == "german" %}
+Sie sind ein hilfreicher Assistent. Antworten Sie auf Deutsch.
+{% else %}
+You are a helpful assistant. Respond in English.
+{% endif %}
+
+{% if cultural_context %}
+Cultural context: {{cultural_context}}{% endif %}"
+    },
+    {
+        "role": "user",
+        "content": "{{user_query}}"
+    }
+]
+
+extra_body = {
+    "input": {
+        "language": "spanish",
+        "cultural_context": "Business context in Latin America",
+        "user_query": "¿Puedes ayudarme con mi proyecto?"
+    }
+}
+```
+
+## Error Handling and Defaults
+
+### Providing Default Values
+
+```python
+messages = [
+    {
+        "role": "system",
+        "content": "User: {{user_name|default("Anonymous User")}}
+Department: {{department|default("General")}}
+Priority Level: {{priority|default("standard")|title}}
+Special Requirements: {{requirements|default("None specified")}}"
+    }
+]
+
+extra_body = {
+    "input": {
+        "user_name": "Alice",
+        # department not provided - will use default
+        "priority": "high"
+        # requirements not provided - will use default
+    }
+}
+```
+
+### Conditional Default Handling
+
+```python
+messages = [
+    {
+        "role": "system",
+        "content": "
+{% set user_info = user_name if user_name else "Guest" %}
+{% set dept_info = department if department else "No department specified" %}
+
+Hello {{user_info}} from {{dept_info}}.
+
+{% if preferences %}
+Your preferences:
+{% for key, value in preferences.items() %}
+- {{key|title}}: {{value}}
+{% endfor %}
+{% else %}
+No preferences configured. Using defaults.
+{% endif %}"
+    }
+]
+```
+
+## Best Practices
+
+### 1. Use Descriptive Variable Names
+
+Using descriptive variable names improves code readability and maintainability without affecting performance. The variable names themselves are not sent to the LLM - only their values are included in the final prompt after template rendering.
+
+```python
+# Good
+extra_body = {
+    "input": {
+        "customer_support_query": "Need help with billing",
+        "user_account_type": "premium",
+        "urgency_level": "high"
+    }
+}
+
+# Avoid
+extra_body = {
+    "input": {
+        "q": "Need help with billing", 
+        "type": "premium",
+        "urgent": "high"
+    }
+}
+```
+
+### 2. Handle Missing Data Gracefully
+
+```python
+messages = [
+    {
+        "role": "system",
+        "content": "
+{% if user_history %}
+Based on your history: {{user_history|truncate(100)}}
+{% endif %}
+
+{% if not context %}
+I don't have much context about your request, so I'll ask clarifying questions.
+{% else %}
+Context: {{context}}
+{% endif %}"
+    }
+]
+```
+
+## Jinja2 Quick Reference
+
+| Feature        | Syntax                                 | Example                                 |
+|----------------|----------------------------------------|-----------------------------------------|
+| Variable       | <code>&#123;&#123;variable&#125;&#125;</code>              | <code>&#123;&#123;user_name&#125;&#125;</code>              |
+| If statement   | <code>&#123;% if condition %&#125;...&#123;% endif %&#125;</code> | <code>&#123;% if is_premium %&#125;...&#123;% endif %&#125;</code> |
+| For loop       | <code>&#123;% for item in list %&#125;...&#123;% endfor %&#125;</code> | <code>&#123;% for msg in messages %&#125;...&#123;% endfor %&#125;</code> |
+| Filter         | <code>&#123;&#123;variable&#124;filter&#125;&#125;</code>       | <code>&#123;&#123;text&#124;upper&#125;&#125;</code>             |
+| Default value  | <code>&#123;&#123;variable&#124;default("fallback")&#125;&#125;</code> | <code>&#123;&#123;name&#124;default("Anonymous")&#125;&#125;</code> |
+| Comment        | <code>&#123;# comment #&#125;</code>             | <code>&#123;# This is a comment #&#125;</code>    |
+| Set variable   | <code>&#123;% set var = value %&#125;</code>     | <code>&#123;% set count = items&#124;length %&#125;</code> |
+
+For complete Jinja2 documentation, visit: [https://jinja.palletsprojects.com/](https://jinja.palletsprojects.com/)

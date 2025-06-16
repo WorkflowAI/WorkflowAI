@@ -256,7 +256,7 @@ async def test_anthropic_tool_calls(test_client: IntegrationTestClient):
             "id": "@perplexity-sonar-pro_888d53255ea5c85ece1ec3b1f0213860",
             "name": "@perplexity-sonar-pro",
             "input_preview": 'query: "What was the final score of the Utah Jazz vs Los Angeles Lakers basketball game on February 12, 2025?"',
-            "output_preview": '{"answer": "131-119"}',
+            "output_preview": '{"answer":"131-119"}',
         },
     ]
     assert (

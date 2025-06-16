@@ -62,7 +62,6 @@ async def test_deprecated_token(test_client: IntegrationTestClient, integration_
     test_client.mock_openai_call()
     await run_task(test_client.int_api_client, task["task_id"], task["task_schema_id"])
 
-    test_client.mock_openai_call()
     await test_client.run_task_v1(task)
 
 

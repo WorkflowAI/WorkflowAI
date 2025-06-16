@@ -8,7 +8,7 @@ from api.services.runs._stored_message import StoredMessage, StoredMessages
 from core.domain.errors import BadRequestError
 from core.domain.fields.file import File, FileKind
 from core.domain.message import Message, MessageContent
-from core.domain.task_io import RawMessagesSchema, SerializableTaskIO
+from core.domain.task_io import SerializableTaskIO
 from core.utils.schemas import InvalidSchemaError, JsonSchema
 from core.utils.templates import TemplateManager
 
@@ -104,7 +104,7 @@ class MessageBuilder:
     async def extract(self, input: Any):
         # No matter what, the input should be a valid Messages object
         if isinstance(input, list):
-            messages = StoredMessages(messages=[StoredMessage.model_validate(m) for m in input])  # type:ignore
+            messages = StoredMessages.with_messages(*(StoredMessage.model_validate(m) for m in input))  # pyright: ignore [reportUnknownVariableType]
         else:
             try:
                 # Stored messages allows extras
@@ -113,7 +113,7 @@ class MessageBuilder:
                 # Capturing for now just in case
                 raise BadRequestError(f"Input is not a valid list of messages: {str(e)}", capture=True) from e
 
-        if self._input_schema.version == RawMessagesSchema.version:
+        if self._input_schema.uses_raw_messages:
             # Version messages are not templated since there is no field in the input schema
             # So we can just inline as is
             if self._version_messages:

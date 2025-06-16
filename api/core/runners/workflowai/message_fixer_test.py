@@ -15,7 +15,7 @@ class TestMessageAutofixer:
     def autofix(self):
         # Just to make sure we keep the original list in place
         def _autofix(messages: list[Message]):
-            cloned = Messages(messages=messages).model_copy(deep=True)
+            cloned = Messages.with_messages(*messages).model_copy(deep=True)
             return MessageAutofixer().fix(cloned.messages)
 
         return _autofix

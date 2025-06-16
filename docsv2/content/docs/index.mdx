@@ -1,0 +1,98 @@
+---
+title: Overview
+---
+
+import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
+import { Step, Steps } from 'fumadocs-ui/components/steps';
+import { Code2, BookOpen, Wand2, Eye, Network, FileCode, Shield } from 'lucide-react';
+
+## What is WorkflowAI?
+
+WorkflowAI is the [open-source](https://github.com/workflowai/workflowai) platform for AI agents. It provides the developer tools and cloud infrastructure to build, deploy, monitor, evaluate, and improve agentic systems.
+
+## Get Started
+
+### Option 1: Build a new agent (no-code)
+
+<Card
+  title="Get started building your agent without writing any code."
+  href="/docs/quickstarts/no-code"
+/>
+
+### Option 2: Migrate your existing agents
+
+With just a few minutes and two simple code changes, you can migrate your existing agents to WorkflowAI to [access 100+ models](/docs/inference/models), use the [playground](/docs/playground) for comparing models side-by-side, [observe](/docs/observability) your agents' behavior in real-time, and run on a [scalable and reliable inference infrastructure](/docs/inference/reliability).
+
+<Callout type="info" href="/docs/pricing">
+By switching to WorkflowAI, you won't pay more than your current inference costs. We price match the providers and make our margin through volume discounts. [Learn more about our pricing](/docs/pricing).
+</Callout>
+
+<Tabs items={['OpenAI Python', 'OpenAI Javascript/TS', 'Instructor Python']} groupId="integration-examples" persist updateAnchor>
+  <Tab id="openai-python-integration" value="OpenAI Python">
+    <include>partials/openai-python-code.mdx</include>
+    
+    <Callout type="info">
+      **Get Started**: [OpenAI Python SDK Integration Guide →](/docs/quickstarts/openai-python)
+    </Callout>
+  </Tab>
+  
+  <Tab id="openai-typescript-integration" value="OpenAI Javascript/TS">
+    <include>partials/openai-javascript-code.mdx</include>
+    
+    <Callout type="info">
+      **Get Started**: [OpenAI Javascript/TS Integration Guide →](/docs/quickstarts/openai-javascript-typescript)
+    </Callout>
+  </Tab>
+  
+  <Tab id="instructor-python-integration" value="Instructor Python">
+    <include>partials/instructor-python-code.mdx</include>
+    
+    <Callout type="info">
+      **Get Started**: [Instructor Python Integration Guide →](/docs/quickstarts/instructor-python)
+    </Callout>
+  </Tab>
+</Tabs>
+
+## Products
+
+### Playground
+
+![header](</images/overview/playground.png>)
+
+<Card
+  title="Playground"
+  description="Our goal is to build the best playground that supports all leading AI models."
+  href="/docs/playground"
+/>
+
+### Inference
+
+![header](</images/overview/inference.png>)
+
+<Callout type="info">
+should we show all the sections from inference, or just the header?
+</Callout>
+
+### Observability
+
+![header](</images/overview/observability.png>)
+
+### Deployments
+
+![header](</images/overview/deployments.png>)
+
+### Agents
+
+![header](</images/overview/agents.png>)
+
+### Evaluations
+
+![header](</images/overview/evaluations.png>)
+
+<Callout type="info">
+**Enterprise Compliance**: SOC2 & GDPR compliant. No training on your data. [Learn more](/docs/compliance).
+</Callout>
+
+## Join the community
+
+If you have questions about WorkflowAI, reach out to our team and community on our [Discord Server](https://discord.com/invite/auuf8DREZh).

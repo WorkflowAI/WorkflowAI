@@ -1,5 +1,5 @@
 import { enableMapSet, produce } from 'immer';
-import { debounce } from 'lodash';
+import { debounce, unset } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useEffect } from 'react';
 import { useRef } from 'react';
@@ -118,16 +118,25 @@ function extractInputKeysFromSchema(schema: JsonSchema | undefined): string[] | 
   return Object.keys(properties);
 }
 
-function fixSchemaFormat(
-  schema: JsonSchema | undefined,
-  baseInputSchema: JsonSchema | undefined
-): JsonSchema | undefined {
-  if (baseInputSchema && 'format' in baseInputSchema) {
-    return {
-      ...schema,
-      format: baseInputSchema.format,
-    };
+function fixSchemaFormat(schema: JsonSchema | undefined): JsonSchema | undefined {
+  return {
+    ...schema,
+    format: 'messages',
+  };
+}
+
+function removePropertiesKeyIfThereAreNotPropertiesFromSchema(schema: JsonSchema | undefined): JsonSchema | undefined {
+  if (!schema) return schema;
+  const newSchema = { ...schema } as JsonSchema;
+
+  if (!('properties' in newSchema)) return schema;
+  const properties = newSchema.properties;
+
+  if (!properties || Object.keys(properties).length === 0) {
+    unset(newSchema, 'properties');
+    return newSchema;
   }
+
   return schema;
 }
 
@@ -151,9 +160,10 @@ export const useOrExtractTemplete = (
 
   const schema = useMemo(() => {
     if (!extractedSchema || messages?.length === 0 || !messages) return inputSchema;
-    const fixedSchema = fixSchemaFormat(extractedSchema, inputSchema);
+    const fixedSchema = fixSchemaFormat(extractedSchema);
     const mergedSchema = mergeSchemaTypesAndDefs(fixedSchema, typeSchema);
-    return mergedSchema;
+    const resultSchema = removePropertiesKeyIfThereAreNotPropertiesFromSchema(mergedSchema);
+    return resultSchema;
   }, [extractedSchema, inputSchema, messages, typeSchema]);
 
   const extract = useExtractTemplete((state) => state.extract);

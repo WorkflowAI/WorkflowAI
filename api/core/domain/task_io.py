@@ -129,6 +129,10 @@ class SerializableTaskIO(BaseModel):
     def is_structured_output_disabled(self) -> bool:
         return self.json_schema.get("format") == "message"
 
+    @property
+    def uses_raw_messages(self):
+        return self.uses_messages and not self.json_schema.get("properties")
+
 
 # Used to represent a list of messages as an input
 # When used as an input schema, the messages are sent as is to the providers

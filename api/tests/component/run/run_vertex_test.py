@@ -9,7 +9,8 @@ from core.domain.models.utils import get_model_data
 from core.providers.google.vertex_base_config import VertexBaseConfig
 from tests.component.common import (
     IntegrationTestClient,
-    vertex_url_matcher,
+    mock_gemini_call,
+    vertex_url,
 )
 from tests.utils import request_json_body
 
@@ -40,6 +41,37 @@ async def test_vertex_region_switch(
     assert run
     assert sorted(run["metadata"]["workflowai.vertex_api_excluded_regions"].split(",")) == ["us-central1", "us-west1"]
     assert run["metadata"]["workflowai.vertex_api_region"] == "us-east4"
+
+
+async def test_vertex_global(test_client: IntegrationTestClient):
+    task = await test_client.create_task()
+
+    # Mock only one failed region at a time
+    test_client.mock_vertex_call(
+        model=Model.GEMINI_2_5_FLASH_PREVIEW_0520,
+        url=vertex_url(Model.GEMINI_2_5_FLASH_PREVIEW_0520, region="global"),
+    )
+
+    run = await test_client.run_task_v1(task, model=Model.GEMINI_2_5_FLASH_PREVIEW_0520)
+    assert run
+
+
+async def test_vertex_invalid_response(test_client: IntegrationTestClient):
+    task = await test_client.create_task()
+
+    # Mock only one failed region at a time
+    test_client.mock_vertex_call(
+        model=Model.GEMINI_2_5_FLASH_PREVIEW_0520,
+        url=vertex_url(Model.GEMINI_2_5_FLASH_PREVIEW_0520, region="global"),
+        # parts have a missing name so the validation will fail
+        parts=[{"functionCall": {"args": {"url": "https://pastacaponi.it/"}}}],
+    )
+    # So we will fallback to gemin
+    mock_gemini_call(test_client.httpx_mock, model=Model.GEMINI_2_5_FLASH_PREVIEW_0520)
+
+    # assert provider.config.vertex_location == ["us-central1", "us-east4", "us-west1"]
+    run = await test_client.run_task_v1(task, model=Model.GEMINI_2_5_FLASH_PREVIEW_0520)
+    assert run
 
 
 async def test_vertex_prompt_feedback(test_client: IntegrationTestClient):
@@ -90,7 +122,7 @@ async def test_pdf_no_conversion(test_client: IntegrationTestClient):
     )
 
     test_client.mock_vertex_call(
-        url=vertex_url_matcher(Model.GEMINI_2_0_FLASH_001),
+        url=vertex_url(Model.GEMINI_2_0_FLASH_001, region="global"),
     )
     test_client.httpx_mock.add_response(
         url="https://hello.com/world.pdf",
@@ -106,7 +138,7 @@ async def test_pdf_no_conversion(test_client: IntegrationTestClient):
     res = await test_client.run_task_v1(task, model=Model.GEMINI_2_0_FLASH_001, task_input=task_input)
     assert res
 
-    call = test_client.httpx_mock.get_request(url=vertex_url_matcher(Model.GEMINI_2_0_FLASH_001))
+    call = test_client.httpx_mock.get_request(url=vertex_url(Model.GEMINI_2_0_FLASH_001, region="global"))
     assert call
     body = request_json_body(call)
     assert body["contents"] == [

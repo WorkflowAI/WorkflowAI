@@ -1,3 +1,5 @@
+# pyright: reportPrivateUsage=false
+
 import copy
 import logging
 from typing import Any
@@ -6,19 +8,25 @@ import pytest
 from jsonschema.validators import validator_for  # pyright: ignore[reportUnknownVariableType]
 from pydantic import BaseModel, Field
 
+from core.agents.chat_task_schema_generation.chat_task_schema_generation_task import AgentBuilderOutput
 from core.domain.consts import FILE_DEFS, FILE_REF_NAME
 from core.domain.errors import UnfixableSchemaError
 from core.utils.schema_sanitation import (
-    _build_internal_defs,  # pyright: ignore[reportPrivateUsage]
-    _check_for_protected_keys,  # pyright: ignore[reportPrivateUsage]
-    _enforce_no_file_in_output_schema,  # pyright: ignore[reportPrivateUsage]
-    _handle_internal_ref,  # pyright: ignore[reportPrivateUsage]
-    _handle_one_any_all_ofs,  # pyright: ignore[reportPrivateUsage]
+    _INTERNAL_DEFS,
+    _build_internal_defs,
+    _check_for_protected_keys,
+    _CircularReferenceError,
+    _enforce_no_file_in_output_schema,
+    _handle_internal_ref,
+    _handle_one_any_all_ofs,
+    _streamline_schema,
     get_file_format,
     normalize_input_json_schema,  # pyright: ignore[reportDeprecated]
     normalize_output_json_schema,  # pyright: ignore[reportDeprecated]
     schema_contains_file,
-    streamline_schema,
+)
+from core.utils.schema_sanitation import (
+    streamline_schema as safe_streamline_schema,
 )
 from core.utils.schemas import strip_metadata
 from tests.fixtures.schemas import (
@@ -42,6 +50,11 @@ from tests.fixtures.schemas import (
     TYPE_ARRAY,
     TYPE_ARRAY_CLEANED,
 )
+
+
+def streamline_schema(schema: dict[str, Any]) -> dict[str, Any]:
+    """Rewraps _streamline_schema to avoid catching exceptions"""
+    return _streamline_schema(schema, _INTERNAL_DEFS)
 
 
 def test_enforce_no_file_in_output_schema_raises_if_needed() -> None:
@@ -227,6 +240,13 @@ class TestStreamlineSchema:
         }
         assert streamline_schema(schema) == {"type": "object", "properties": {"field": {"type": "string"}}}
 
+    def test_empty_properties_are_removed(self):
+        schema: dict[str, Any] = {
+            "type": "object",
+            "properties": {"field": {"type": "object", "properties": {}}},
+        }
+        assert streamline_schema(schema) == {"type": "object", "properties": {"field": {"type": "object"}}}
+
     def test_streamlined_schemas_refs(self):
         schema1: dict[str, Any] = {
             "$defs": {
@@ -260,6 +280,60 @@ class TestStreamlineSchema:
             },
         }
 
+    def test_streamline_schema_any_of(self):
+        schema = {
+            "type": "object",
+            "properties": {
+                "field": {
+                    "anyOf": [
+                        {"type": "string"},
+                        {"type": "null"},
+                    ],
+                },
+            },
+        }
+        streamlined = streamline_schema(schema)
+        assert streamlined == {
+            "type": "object",
+            "properties": {
+                "field": {"type": "string"},
+            },
+        }
+
+    def test_circular_reference_detection(self, caplog: pytest.LogCaptureFixture):
+        """Test that circular references are handled without infinite recursion."""
+        # Create a simple schema with circular references
+        schema = {
+            "type": "object",
+            "properties": {
+                "parent": {"$ref": "#/$defs/Node"},
+            },
+            "$defs": {
+                "Node": {
+                    "type": "object",
+                    "properties": {
+                        "value": {"type": "string"},
+                        "child": {"$ref": "#/$defs/Node"},  # Circular reference
+                    },
+                },
+            },
+        }
+
+        # This should not cause infinite recursion
+        with pytest.raises(_CircularReferenceError):
+            streamline_schema(schema)
+        with caplog.at_level(logging.ERROR):
+            assert safe_streamline_schema(schema) == schema
+        assert not caplog.text
+
+    def test_complex_case(self, caplog: pytest.LogCaptureFixture):
+        raw = AgentBuilderOutput.model_json_schema()
+        with pytest.raises(_CircularReferenceError):
+            streamline_schema(raw)
+        with caplog.at_level(logging.ERROR):
+            assert safe_streamline_schema(raw) == raw
+        assert not caplog.text
+
     @pytest.mark.parametrize(
         "schema,expected",
         [
@@ -286,6 +360,11 @@ class TestStreamlineSchema:
                 SCHEMA_WITH_REQUIRED_AS_FIELD_NAME,
                 SCHEMA_WITH_REQUIRED_AS_FIELD_NAME_CLEANED,
                 id="required as field name",
+            ),
+            pytest.param(
+                {"properties": {}},
+                {"type": "object"},
+                id="empty properties",
             ),
         ],
     )
@@ -463,7 +542,7 @@ class TestHandleOneAnyAllOf:
                 {"type": "null"},
             ],
         }
-        assert _handle_one_any_all_ofs(schema, self._ref_handler, {}, True) == {"type": ["number", "null"]}
+        assert _handle_one_any_all_ofs(schema, self._ref_handler, {}, True, set()) == {"type": ["number", "null"]}
 
     def test_compact_nullable_types_when_not_required(self):
         schema = {
@@ -472,4 +551,4 @@ class TestHandleOneAnyAllOf:
                 {"type": "null"},
             ],
         }
-        assert _handle_one_any_all_ofs(schema, self._ref_handler, {}, False) == {"type": "number"}
+        assert _handle_one_any_all_ofs(schema, self._ref_handler, {}, False, set()) == {"type": "number"}

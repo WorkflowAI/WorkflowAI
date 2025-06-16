@@ -1,0 +1,45 @@
+---
+title: Features Cards
+---
+
+import {
+  Columns3 as Columns3Icon,
+  Eye as EyeIcon,
+  PlugZap as PlugZapIcon,
+  Globe as GlobeIcon,
+  ShieldCheck as ShieldCheckIcon,
+} from 'lucide-react';
+import { WorkflowModelCount as WorkflowModelCountPartial } from '../../../components/workflow-model-count';
+
+<Cards>
+  <Card 
+    title="Compare models side-by-side"
+    description="Explore the playground to compare different models and see their outputs in real time."
+    href="/docs/playground"
+    icon={<Columns3Icon />}
+  />
+  <Card 
+    title="Observability"
+    description="Observe how your agent is performing with detailed logs and analytics."
+    href="/docs/observability"
+    icon={<EyeIcon />}
+  />
+  <Card 
+    title="Try new models"
+    description={<>Connect to <WorkflowModelCountPartial /> models instantly without any setup or configuration.</>}
+    href="/docs/inference/models"
+    icon={<PlugZapIcon />}
+  />
+  <Card 
+    title="Tools"
+    description="Enable web search and browsing for your agent to access up-to-date information."
+    href="/docs/agents/tools"
+    icon={<GlobeIcon />}
+  />
+  <Card 
+    title="100% uptime"
+    description="Learn more about how WorkflowAI ensures your agents are always available and reliable."
+    href="/docs/inference/reliability"
+    icon={<ShieldCheckIcon />}
+  />
+</Cards> 

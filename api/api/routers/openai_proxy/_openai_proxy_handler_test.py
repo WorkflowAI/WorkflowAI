@@ -196,12 +196,12 @@ class TestPrepareRun:
 class TestCheckForDuplicateMessages:
     def test_no_messages(self, proxy_handler: OpenAIProxyHandler):
         """Check that we just don't raise if we have no messages in the deployment"""
-        messages = Messages(messages=[Message.with_text("Hello, world!")])
+        messages = Messages.with_messages(Message.with_text("Hello, world!"))
         proxy_handler._check_for_duplicate_messages(None, messages)
 
     def test_duplicate_messages(self, proxy_handler: OpenAIProxyHandler):
         """Check that we raise if we have duplicate messages"""
-        messages = Messages(messages=[Message.with_text("Hello, world!")])
+        messages = Messages.with_messages(Message.with_text("Hello, world!"))
         with pytest.raises(BadRequestError):
             proxy_handler._check_for_duplicate_messages([Message.with_text("Hello, world!")], messages)
 
@@ -222,11 +222,11 @@ class TestPrepareRunForDeployment:
         result = await proxy_handler._prepare_for_deployment(
             agent_ref=EnvironmentRef(agent_id="", schema_id=1, environment=VersionEnvironment.PRODUCTION),
             tenant_data=PublicOrganizationData(),
-            messages=Messages(messages=[Message.with_text("Hello, world!")]),
+            messages=Messages.with_messages(Message.with_text("Hello, world!")),
             input=None,
             response_format=None,
         )
-        assert result.final_input == Messages(messages=[Message.with_text("Hello, world!")])
+        assert result.final_input == Messages.with_messages(Message.with_text("Hello, world!"))
 
 
 class TestPrepareRunForModel:
@@ -243,12 +243,12 @@ class TestPrepareRunForModel:
         result = await proxy_handler._prepare_for_model(
             agent_ref=ModelRef(model=Model.GPT_4O_LATEST, agent_id=None),
             tenant_data=PublicOrganizationData(),
-            messages=Messages(messages=[Message.with_text("Hello, world!", role=role)]),
+            messages=Messages.with_messages(Message.with_text("Hello, world!", role=role)),
             input=None,
             response_format=None,
         )
         # All messages are passed through to the input, none are in the version
-        assert result.final_input == Messages(messages=[Message.with_text("Hello, world!", role=role)])
+        assert result.final_input == Messages.with_messages(Message.with_text("Hello, world!", role=role))
         assert result.properties.messages is None
 
     async def test_no_templated_message_with_empty_input_sytem(
@@ -259,11 +259,9 @@ class TestPrepareRunForModel:
         result = await proxy_handler._prepare_for_model(
             agent_ref=ModelRef(model=Model.GPT_4O_LATEST, agent_id=None),
             tenant_data=PublicOrganizationData(),
-            messages=Messages(
-                messages=[
-                    Message.with_text("You are a helpful assistant", role="system"),
-                    Message.with_text("Hello, world!", role="user"),
-                ],
+            messages=Messages.with_messages(
+                Message.with_text("You are a helpful assistant", role="system"),
+                Message.with_text("Hello, world!", role="user"),
             ),
             input={},
             response_format=None,
@@ -280,7 +278,7 @@ class TestPrepareRunForModel:
         result = await proxy_handler._prepare_for_model(
             agent_ref=ModelRef(model=Model.GPT_4O_LATEST, agent_id=None),
             tenant_data=PublicOrganizationData(),
-            messages=Messages(messages=[Message.with_text("Hello, world!", role="user")]),
+            messages=Messages.with_messages(Message.with_text("Hello, world!", role="user")),
             input={},
             response_format=None,
         )
@@ -294,13 +292,11 @@ class TestPrepareRunForModel:
         result = await proxy_handler._prepare_for_model(
             agent_ref=ModelRef(model=Model.GPT_4O_LATEST, agent_id=None),
             tenant_data=PublicOrganizationData(),
-            messages=Messages(
-                messages=[
-                    Message.with_text("Hello, world!", role="system"),
-                    Message.with_text("Hello, {{name}}!", role="user"),
-                    Message.with_text("Hello, {{dude}}!", role="user"),
-                    Message.with_text("Not a template", role="user"),
-                ],
+            messages=Messages.with_messages(
+                Message.with_text("Hello, world!", role="system"),
+                Message.with_text("Hello, {{name}}!", role="user"),
+                Message.with_text("Hello, {{dude}}!", role="user"),
+                Message.with_text("Not a template", role="user"),
             ),
             input={
                 "name": "John",
@@ -333,7 +329,7 @@ class TestPrepareRunForModel:
 class TestBuildVariant:
     def test_build_variant_no_template(self):
         result, idx = OpenAIProxyHandler._build_variant(
-            messages=Messages(messages=[Message.with_text("Hello, world!", role="user")]),
+            messages=Messages.with_messages(Message.with_text("Hello, world!", role="user")),
             agent_slug="slug-agent",
             input=None,
             response_format=None,
@@ -347,7 +343,7 @@ class TestBuildVariant:
 
     def test_build_variant_weird_agent_id(self):
         result, idx = OpenAIProxyHandler._build_variant(
-            messages=Messages(messages=[Message.with_text("Hello, world!", role="user")]),
+            messages=Messages.with_messages(Message.with_text("Hello, world!", role="user")),
             agent_slug="L'agent de la mère",
             input=None,
             response_format=None,

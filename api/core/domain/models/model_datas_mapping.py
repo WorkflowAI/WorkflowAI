@@ -39,7 +39,7 @@ def _openai_fallback(pricing: PricingTier, context_exceeded: Model | Literal["no
             # OpenAI expensive models usually have a 200k context window
             model = Model.CLAUDE_4_OPUS_LATEST
             if not context_exceeded:
-                context_exceeded = Model.GEMINI_2_5_PRO_PREVIEW_0506
+                context_exceeded = Model.GEMINI_2_5_PRO_PREVIEW_0605
 
     return ModelFallback.only_model(model, pricing_tier=pricing, context_exceeded=context_exceeded)
 
@@ -543,7 +543,7 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             latest_model=Model.O3_LATEST_HIGH_REASONING_EFFORT,
             supports_tool_calling=True,
             supports_parallel_tool_calls=False,
-            fallback=_openai_fallback("expensive"),
+            fallback=_openai_fallback("medium"),
         ),
         Model.O3_2025_04_16_MEDIUM_REASONING_EFFORT: ModelData(
             display_name="o3 (2025-04-16) - Medium reasoning effort",
@@ -569,7 +569,7 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             supports_tool_calling=True,
             supports_parallel_tool_calls=False,
             aliases=["o3-2025-04-16"],
-            fallback=_openai_fallback("expensive"),
+            fallback=_openai_fallback("medium"),
         ),
         Model.O3_2025_04_16_LOW_REASONING_EFFORT: ModelData(
             display_name="o3 (2025-04-16) - Low reasoning effort",
@@ -592,8 +592,94 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             latest_model=Model.O3_LATEST_LOW_REASONING_EFFORT,
             supports_tool_calling=True,
             supports_parallel_tool_calls=False,
-            fallback=_openai_fallback("expensive"),
+            fallback=_openai_fallback("medium"),
         ),
+        # Model.O3_PRO_LATEST_HIGH_REASONING_EFFORT: LatestModel(
+        #     model=Model.O3_PRO_2025_06_10_HIGH_REASONING_EFFORT,
+        #     display_name="o3-pro (latest) - High reasoning effort",
+        # ),
+        # Model.O3_PRO_LATEST_MEDIUM_REASONING_EFFORT: LatestModel(
+        #     model=Model.O3_PRO_2025_06_10_MEDIUM_REASONING_EFFORT,
+        #     display_name="o3-pro (latest) - Medium reasoning effort",
+        #     aliases=["o3-pro"],
+        # ),
+        # Model.O3_PRO_LATEST_LOW_REASONING_EFFORT: LatestModel(
+        #     model=Model.O3_PRO_2025_06_10_LOW_REASONING_EFFORT,
+        #     display_name="o3-pro (latest) - Low reasoning effort",
+        # ),
+        # Model.O3_PRO_2025_06_10_HIGH_REASONING_EFFORT: ModelData(
+        #     display_name="o3-pro (2025-06-10) - High reasoning effort",
+        #     supports_json_mode=True,
+        #     supports_input_image=True,
+        #     supports_input_pdf=True,
+        #     supports_input_audio=False,
+        #     supports_structured_output=True,
+        #     release_date=date(2025, 6, 10),
+        #     quality_data=QualityData(
+        #         equivalent_to=(Model.O3_PRO_2025_06_10_MEDIUM_REASONING_EFFORT, 5),  # Same quality as o3
+        #     ),
+        #     provider_name=DisplayedProvider.OPEN_AI.value,
+        #     icon_url="https://workflowai.blob.core.windows.net/workflowai-public/openai.svg",
+        #     max_tokens_data=MaxTokensData(
+        #         max_tokens=200_000,
+        #         max_output_tokens=100_000,
+        #         source="https://platform.openai.com/docs/models/o3-pro",
+        #     ),
+        #     latest_model=Model.O3_PRO_LATEST_HIGH_REASONING_EFFORT,
+        #     supports_tool_calling=True,
+        #     supports_parallel_tool_calls=False,
+        #     fallback=_openai_fallback("expensive"),
+        # ),
+        # Model.O3_PRO_2025_06_10_MEDIUM_REASONING_EFFORT: ModelData(
+        #     display_name="o3-pro (2025-06-10) - Medium reasoning effort",
+        #     supports_json_mode=True,
+        #     supports_input_image=True,
+        #     supports_input_pdf=True,
+        #     supports_input_audio=False,
+        #     supports_structured_output=True,
+        #     release_date=date(2025, 6, 10),
+        #     quality_data=QualityData(
+        #         # TODO: for now using same quality data as o3
+        #         gpqa_diamond=83.6,
+        #         mmlu_pro=85.6,
+        #         source="https://www.vals.ai/models/openai_o3-2025-04-16",
+        #     ),
+        #     provider_name=DisplayedProvider.OPEN_AI.value,
+        #     icon_url="https://workflowai.blob.core.windows.net/workflowai-public/openai.svg",
+        #     max_tokens_data=MaxTokensData(
+        #         max_tokens=200_000,
+        #         max_output_tokens=100_000,
+        #         source="https://platform.openai.com/docs/models/o3-pro",
+        #     ),
+        #     latest_model=Model.O3_PRO_LATEST_MEDIUM_REASONING_EFFORT,
+        #     supports_tool_calling=True,
+        #     supports_parallel_tool_calls=False,
+        #     aliases=["o3-pro-2025-06-10"],
+        #     fallback=_openai_fallback("expensive"),
+        # ),
+        # Model.O3_PRO_2025_06_10_LOW_REASONING_EFFORT: ModelData(
+        #     display_name="o3-pro (2025-06-10) - Low reasoning effort",
+        #     supports_json_mode=True,
+        #     supports_input_image=True,
+        #     supports_input_pdf=True,
+        #     supports_input_audio=False,
+        #     supports_structured_output=True,
+        #     release_date=date(2025, 6, 10),
+        #     quality_data=QualityData(
+        #         equivalent_to=(Model.O3_PRO_2025_06_10_MEDIUM_REASONING_EFFORT, -5),  # Same quality as o3
+        #     ),
+        #     provider_name=DisplayedProvider.OPEN_AI.value,
+        #     icon_url="https://workflowai.blob.core.windows.net/workflowai-public/openai.svg",
+        #     max_tokens_data=MaxTokensData(
+        #         max_tokens=200_000,
+        #         max_output_tokens=100_000,
+        #         source="https://platform.openai.com/docs/models/o3-pro",
+        #     ),
+        #     latest_model=Model.O3_PRO_LATEST_LOW_REASONING_EFFORT,
+        #     supports_tool_calling=True,
+        #     supports_parallel_tool_calls=False,
+        #     fallback=_openai_fallback("expensive"),
+        # ),
         Model.GEMINI_1_5_PRO_PREVIEW_0514: DeprecatedModel(replacement_model=Model.GEMINI_1_5_PRO_002),
         Model.GEMINI_2_0_FLASH_LITE_PREVIEW_2502: DeprecatedModel(replacement_model=Model.GEMINI_2_0_FLASH_LITE_001),
         Model.GEMINI_2_0_FLASH_LITE_001: ModelData(
@@ -643,35 +729,7 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
                 context_exceeded="no",
             ),
         ),
-        Model.GEMINI_2_5_FLASH_PREVIEW_0417: ModelData(
-            display_name="Gemini 2.5 Flash Preview (0417)",
-            supports_json_mode=True,
-            supports_input_image=True,
-            supports_input_pdf=True,
-            supports_input_audio=True,
-            supports_structured_output=False,
-            max_tokens_data=MaxTokensData(
-                max_tokens=1_048_576 + 65_536,
-                max_output_tokens=65_536,
-                source="https://ai.google.dev/gemini-api/docs/models#gemini-2.5-flash-preview",
-            ),
-            icon_url="https://workflowai.blob.core.windows.net/workflowai-public/google.svg",
-            release_date=date(2025, 4, 17),
-            # https://www.vals.ai/benchmarks/gpqa-04-04-2025
-            quality_data=QualityData(
-                gpqa=53.3,
-                source="https://www.vals.ai/models/google_gemini-2.5-flash-preview-04-17",
-            ),
-            provider_name=DisplayedProvider.GOOGLE.value,
-            supports_tool_calling=True,
-            reasoning_level="none",
-            fallback=ModelFallback.default(
-                "cheapest",
-                content_moderation=Model.GPT_41_NANO_LATEST,
-                rate_limit=Model.GEMINI_2_0_FLASH_001,
-                context_exceeded="no",
-            ),
-        ),
+        Model.GEMINI_2_5_FLASH_PREVIEW_0417: DeprecatedModel(replacement_model=Model.GEMINI_2_5_FLASH_PREVIEW_0520),
         Model.GEMINI_2_5_FLASH_PREVIEW_0520: ModelData(
             display_name="Gemini 2.5 Flash Preview (0520)",
             supports_json_mode=True,
@@ -701,33 +759,8 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
                 context_exceeded="no",
             ),
         ),
-        Model.GEMINI_2_5_FLASH_THINKING_PREVIEW_0417: ModelData(
-            display_name="Gemini 2.5 Flash Thinking Preview (0417)",
-            supports_json_mode=True,
-            supports_input_image=True,
-            supports_input_pdf=True,
-            supports_input_audio=True,
-            supports_structured_output=False,
-            max_tokens_data=MaxTokensData(
-                max_tokens=1_048_576 + 65_536,
-                max_output_tokens=65_536,
-                source="https://ai.google.dev/gemini-api/docs/models#gemini-2.5-flash-preview",
-            ),
-            icon_url="https://workflowai.blob.core.windows.net/workflowai-public/google.svg",
-            release_date=date(2025, 4, 17),
-            # https://www.vals.ai/benchmarks/gpqa-04-04-2025
-            quality_data=QualityData(
-                equivalent_to=(Model.GEMINI_2_5_FLASH_PREVIEW_0417, 5),
-            ),
-            provider_name=DisplayedProvider.GOOGLE.value,
-            supports_tool_calling=True,
-            reasoning_level="medium",
-            fallback=ModelFallback.default(
-                "cheapest",
-                content_moderation=Model.GPT_41_NANO_LATEST,
-                rate_limit=Model.GEMINI_2_0_FLASH_001,
-                context_exceeded="no",
-            ),
+        Model.GEMINI_2_5_FLASH_THINKING_PREVIEW_0417: DeprecatedModel(
+            replacement_model=Model.GEMINI_2_5_FLASH_THINKING_PREVIEW_0520,
         ),
         Model.GEMINI_2_5_FLASH_THINKING_PREVIEW_0520: ModelData(
             display_name="Gemini 2.5 Flash Thinking Preview (0520)",
@@ -786,32 +819,7 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
                 context_exceeded="no",
             ),
         ),
-        Model.GEMINI_2_5_PRO_PREVIEW_0506: ModelData(
-            display_name="Gemini 2.5 Pro Preview (0506)",
-            supports_json_mode=True,
-            supports_input_image=True,
-            supports_input_pdf=True,
-            supports_input_audio=True,
-            supports_structured_output=False,
-            max_tokens_data=MaxTokensData(
-                max_tokens=1_048_576 + 65_536,
-                max_output_tokens=65_536,
-                source="https://ai.google.dev/gemini-api/docs/models#gemini-2.5-pro-preview-03-25",
-            ),
-            icon_url="https://workflowai.blob.core.windows.net/workflowai-public/google.svg",
-            release_date=date(2025, 5, 8),
-            quality_data=QualityData(
-                gpqa_diamond=83,
-                source="https://deepmind.google/technologies/gemini/pro/",
-            ),
-            provider_name=DisplayedProvider.GOOGLE.value,
-            supports_tool_calling=True,
-            fallback=ModelFallback.default(
-                "medium",
-                content_moderation=Model.GPT_41_LATEST,
-                context_exceeded="no",
-            ),
-        ),
+        Model.GEMINI_2_5_PRO_PREVIEW_0506: DeprecatedModel(replacement_model=Model.GEMINI_2_5_PRO_PREVIEW_0605),
         Model.GEMINI_2_5_PRO_PREVIEW_0325: DeprecatedModel(replacement_model=Model.GEMINI_2_5_PRO_PREVIEW_0605),
         Model.GEMINI_2_5_PRO_EXP_0325: DeprecatedModel(replacement_model=Model.GEMINI_2_5_PRO_PREVIEW_0605),
         Model.GEMINI_2_0_PRO_EXP: DeprecatedModel(replacement_model=Model.GEMINI_2_5_PRO_PREVIEW_0605),
@@ -848,10 +856,10 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             is_default=True,
         ),
         Model.GEMINI_2_0_FLASH_THINKING_EXP_0121: DeprecatedModel(
-            replacement_model=Model.GEMINI_2_5_FLASH_THINKING_PREVIEW_0417,
+            replacement_model=Model.GEMINI_2_5_FLASH_THINKING_PREVIEW_0520,
         ),
         Model.GEMINI_2_0_FLASH_THINKING_EXP_1219: DeprecatedModel(
-            replacement_model=Model.GEMINI_2_5_FLASH_THINKING_PREVIEW_0417,
+            replacement_model=Model.GEMINI_2_5_FLASH_THINKING_PREVIEW_0520,
         ),
         Model.GEMINI_1_5_PRO_002: ModelData(
             display_name="Gemini 1.5 Pro (002)",

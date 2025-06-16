@@ -166,13 +166,21 @@ class AnthropicMessage(BaseModel):
             )
         if file.is_image:
             if not file.content_type:
-                raise InternalError("Content type is required for Anthropic", extras={"file": file.model_dump()})
+                raise ProviderBadRequestError(
+                    "Content type is required for Anthropic",
+                    extras={"file": file.model_dump()},
+                    capture=True,
+                )
             return ImageContent(
                 type="image",
                 source=FileSource(type="base64", media_type=file.content_type, data=file.data),
             )
 
-        raise InternalError("Unsupported file type", extras={"file": file.model_dump()})
+        raise ProviderBadRequestError(
+            f"Unsupported file type: {file.content_type}",
+            extras={"file": file.model_dump(exclude={"data"})},
+            capture=True,
+        )
 
     @classmethod
     def from_domain(cls, message: MessageDeprecated):

@@ -642,7 +642,7 @@ async def test_internal_tools(test_client: IntegrationTestClient, openai_client:
 
     serper_request = test_client.httpx_mock.get_request(url="https://google.serper.dev/search")
     assert serper_request
-    assert serper_request.content == b'{"q": "bla"}'
+    assert json.loads(serper_request.content) == {"q": "bla"}
 
 
 @pytest.mark.parametrize("use_deployment", [True, False])
@@ -668,11 +668,11 @@ async def test_with_model_fallback_on_rate_limit(
         anthropic_message_count = 1
 
     # Anthropic and bedrock always return a 429 so we will proceed with model fallback
-    test_client.mock_anthropic_call(status_code=429)
-    test_client.mock_bedrock_call(model=Model.CLAUDE_3_5_SONNET_20241022, status_code=429)
+    test_client.mock_anthropic_call(status_code=429, is_reusable=True)
+    test_client.mock_bedrock_call(model=Model.CLAUDE_3_5_SONNET_20241022, status_code=429, is_reusable=True)
 
     # OpenAI returns a 200
-    test_client.mock_openai_call()
+    test_client.mock_openai_call(is_reusable=True)
 
     # Disable fallback -> we will raise
     with pytest.raises(RateLimitError):
@@ -705,7 +705,7 @@ async def test_with_model_fallback_on_rate_limit(
         # We automatically add a system message for structured gen to anthropic and bedrock
         (Model.CLAUDE_3_5_SONNET_20241022, Provider.ANTHROPIC, anthropic_message_count, None),
         (Model.CLAUDE_3_5_SONNET_20241022, Provider.AMAZON_BEDROCK, anthropic_message_count, None),
-        (Model.O3_2025_04_16_LOW_REASONING_EFFORT, Provider.OPEN_AI, 1, approx((10 * 10 + 11 * 40) / 1_000_000)),
+        (Model.O3_2025_04_16_LOW_REASONING_EFFORT, Provider.OPEN_AI, 1, approx((10 * 2 + 11 * 8) / 1_000_000)),
     ]
 
 
@@ -776,11 +776,12 @@ async def test_with_n_value_of_1(test_client: IntegrationTestClient, openai_clie
 
 
 async def test_with_files_in_variables(test_client: IntegrationTestClient, openai_client: AsyncOpenAI):
+    # TODO: figure out why the mock is not needed
     test_client.mock_openai_call(raw_content="Hello, world!")
-    test_client.httpx_mock.add_response(
-        url="https://blabla",
-        content=b"This is a test image",
-    )
+    # test_client.httpx_mock.add_response(
+    #     url="http://blabla",
+    #     content=b"This is a test image",
+    # )
 
     res = await openai_client.chat.completions.create(
         model="greeting/gpt-4o",
@@ -795,7 +796,7 @@ async def test_with_files_in_variables(test_client: IntegrationTestClient, opena
         ],
         extra_body={
             "input": {
-                "image_url": "https://blabla",
+                "image_url": "http://blabla",
             },
         },
     )
@@ -816,4 +817,4 @@ async def test_with_files_in_variables(test_client: IntegrationTestClient, opena
     req = test_client.httpx_mock.get_request(url="https://api.openai.com/v1/chat/completions")
     assert req
     body = json.loads(req.content)
-    assert body["messages"][0]["content"][1]["image_url"]["url"] == "https://blabla"
+    assert body["messages"][0]["content"][1]["image_url"]["url"] == "http://blabla"

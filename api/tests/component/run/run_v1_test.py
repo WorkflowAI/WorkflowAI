@@ -34,6 +34,7 @@ from tests.component.common import (
     create_version,
     extract_stream_chunks,
     fetch_run,
+    gemini_url,
     get_amplitude_events,
     list_groups,
     mock_openai_call,
@@ -43,6 +44,7 @@ from tests.component.common import (
     run_task_v1,
     stream_run_task_v1,
     task_schema_url,
+    vertex_url,
     wait_for_completed_tasks,
 )
 from tests.utils import approx, fixture_bytes, fixtures_json, request_json_body
@@ -429,7 +431,7 @@ class TestChainOfThought:
             {"title": "step title", "step": "step explaination"},
         ]
 
-        test_client.httpx_mock.reset(assert_all_responses_were_requested=False)
+        test_client.reset_httpx_mock(assert_all_responses_were_requested=False)
 
         # Re-run and trigger the cache
         cached_run = await test_client.run_task_v1(
@@ -583,6 +585,7 @@ async def test_run_schema_insufficient_credits(
             "prompt_tokens": 6 * tokens_for_one_dollar,
             "completion_tokens": 0,  # No completion tokens
         },
+        is_reusable=True,
     )
 
     # Create and run a task that consumes $6 worth of prompt tokens
@@ -638,6 +641,7 @@ async def test_run_public_task_with_different_tenant(
             "prompt_tokens": int(round(2 * 1 / 0.000_002_5)),  # prompt count for 2$ on GPT_4O_2024_11ß_20
             "completion_tokens": 0,  # No completion tokens
         },
+        is_reusable=True,
     )
 
     # No groups yet
@@ -1089,7 +1093,8 @@ async def test_run_with_private_fields(
 
     file_url = "https://media3.giphy.com/media/giphy.png"
 
-    httpx_mock.add_response(url=file_url, content=b"1234")
+    # URL is never fetched
+    # httpx_mock.add_response(url=file_url, content=b"1234")
 
     run = await run_task_v1(
         int_api_client,
@@ -1367,6 +1372,8 @@ async def test_tool_call_recursion_streaming(test_client: IntegrationTestClient)
         },
     )
 
+    test_client.mock_internal_task("detect-chain-of-thought", task_output={"should_use_chain_of_thought": False})
+
     # Create a version that includes a tool call
     version = await test_client.create_version(
         task,
@@ -1598,6 +1605,8 @@ You can also use the FAQ agent response if that is useful to your answer: "{{ fa
     assert completions[0]["messages"][0]["content"] == messages[0]["content"]
     assert completions[0]["messages"][1]["content"] == messages[1]["content"]
 
+    test_client.mock_openai_call()
+
     # Check with missing variables
     run = await test_client.run_task_v1(
         task,
@@ -1620,6 +1629,7 @@ async def test_fallback_on_unknown_provider(test_client: IntegrationTestClient):
     assert e.value.response.status_code == 400
     assert e.value.response.json()["error"]["code"] == "unknown_provider_error"
 
+    test_client.mock_openai_call(status_code=400, json={"error": {"message": "This should not happen"}})
     test_client.mock_openai_call(provider="azure_openai")
 
     res = await test_client.run_task_v1(task, model=Model.GPT_4O_2024_11_20)
@@ -1774,6 +1784,7 @@ class TestMultiProviderConfigs:
             url="https://api.fireworks.ai/inference/v1/chat/completions",
             method="POST",
             callback=_callback,
+            is_reusable=True,
         )
 
         for _ in range(10):
@@ -1816,6 +1827,7 @@ class TestMultiProviderConfigs:
             url="https://api.fireworks.ai/inference/v1/chat/completions",
             method="POST",
             callback=_callback,
+            is_reusable=True,
         )
 
         for _ in range(3):
@@ -1863,6 +1875,7 @@ class TestMultiProviderConfigs:
             url="https://api.anthropic.com/v1/messages",
             method="POST",
             callback=_callback,
+            is_reusable=True,
         )
 
         for _ in range(4):
@@ -2025,6 +2038,8 @@ async def test_with_raw_code_in_template(test_client: IntegrationTestClient):
     task = await test_client.create_task()
     test_client.mock_openai_call()
 
+    test_client.mock_internal_task("detect-chain-of-thought", task_output={"should_use_chain_of_thought": False})
+
     version = await test_client.create_version_v1(
         task,
         version_properties={
@@ -2082,11 +2097,11 @@ async def test_with_model_fallback_on_rate_limit(test_client: IntegrationTestCli
         )
 
     # Anthropic and bedrock always return a 429 so we will proceed with model fallback
-    test_client.mock_anthropic_call(status_code=429)
-    test_client.mock_bedrock_call(model=Model.CLAUDE_3_5_SONNET_20241022, status_code=429)
+    test_client.mock_anthropic_call(status_code=429, is_reusable=True)
+    test_client.mock_bedrock_call(model=Model.CLAUDE_3_5_SONNET_20241022, status_code=429, is_reusable=True)
 
     # OpenAI returns a 200
-    test_client.mock_openai_call()
+    test_client.mock_openai_call(is_reusable=True)
 
     # Disable fallback -> we will raise
     with pytest.raises(HTTPStatusError) as e:
@@ -2115,7 +2130,7 @@ async def test_with_model_fallback_on_rate_limit(test_client: IntegrationTestCli
     assert [(c["model"], c["provider"], len(c["messages"]), c.get("cost_usd")) for c in completions2] == [
         (Model.CLAUDE_3_5_SONNET_20241022, Provider.ANTHROPIC, 2, None),
         (Model.CLAUDE_3_5_SONNET_20241022, Provider.AMAZON_BEDROCK, 2, None),
-        (Model.O3_2025_04_16_LOW_REASONING_EFFORT, Provider.OPEN_AI, 2, approx((10 * 10 + 11 * 40) / 1_000_000)),
+        (Model.O3_2025_04_16_LOW_REASONING_EFFORT, Provider.OPEN_AI, 2, approx((10 * 2 + 11 * 8) / 1_000_000)),
     ]
 
 
@@ -2139,10 +2154,11 @@ async def test_with_model_fallback_on_failed_generation(test_client: Integration
         # Not a JSON
         raw_content="hello",
         usage={"input_tokens": 10, "output_tokens": 10},
+        is_reusable=True,
     )
 
     # OpenAI returns a 200
-    test_client.mock_openai_call()
+    test_client.mock_openai_call(is_reusable=True)
 
     # Disable fallback -> we will raise the failed error
     with pytest.raises(HTTPStatusError) as e:
@@ -2173,7 +2189,7 @@ async def test_with_model_fallback_on_failed_generation(test_client: Integration
         (Model.CLAUDE_3_5_SONNET_20241022, Provider.ANTHROPIC, 2, approx(10 * (3 + 15) / 1_000_000)),
         # Second time we retry with different messages
         (Model.CLAUDE_3_5_SONNET_20241022, Provider.ANTHROPIC, 4, approx(10 * (3 + 15) / 1_000_000)),  # 2 + 2
-        (Model.O3_2025_04_16_LOW_REASONING_EFFORT, Provider.OPEN_AI, 2, approx((10 * 10 + 11 * 40) / 1_000_000)),
+        (Model.O3_2025_04_16_LOW_REASONING_EFFORT, Provider.OPEN_AI, 2, approx((10 * 2 + 11 * 8) / 1_000_000)),
     ]
 
 
@@ -2289,7 +2305,7 @@ async def test_with_inlined_files_with_url(test_client: IntegrationTestClient):
     )
 
     # Run the version
-    test_client.mock_openai_call()
+    test_client.mock_openai_call(is_reusable=True)
 
     run = await test_client.run_task_v1(
         task,
@@ -2339,3 +2355,59 @@ async def test_with_inlined_files_with_url(test_client: IntegrationTestClient):
             "image_url": {"url": "data:image/png;base64,helloi=="},
         },
     ]
+
+
+async def test_with_messages(test_client: IntegrationTestClient):
+    """There was an issue with a conflict with the use of a key named messages in the input schema
+    for non proxy agents"""
+    task = await test_client.create_task(
+        input_schema={
+            "type": "object",
+            "properties": {"messages": {"type": "string"}},
+        },
+    )
+    test_client.mock_openai_call()
+    run = await test_client.run_task_v1(task, task_input={"messages": "world"})
+    assert run
+
+
+@pytest.mark.parametrize("google_status", [500, 429])
+async def test_no_model_fallback_on_provider_internal_error_gemini(
+    test_client: IntegrationTestClient,
+    google_status: int,
+):
+    task = await test_client.create_task()
+
+    # Vertex is only configured on a single region here so we only need to mock one call
+    test_client.mock_vertex_call(
+        model=Model.GEMINI_1_5_PRO_002,
+        status_code=google_status,  # Force an error
+        url=vertex_url(Model.GEMINI_1_5_PRO_002.value),
+        is_reusable=True,
+    )
+
+    # Gemini will also return a 500
+    test_client.mock_vertex_call(
+        model=Model.GEMINI_1_5_PRO_002,
+        status_code=google_status,  # Force an  error
+        url=gemini_url(Model.GEMINI_1_5_PRO_002.value),
+        is_reusable=True,
+    )
+
+    # OpenAI will return a 200
+    test_client.mock_openai_call()
+
+    res = await test_client.run_task_v1(
+        task,
+        model=Model.GEMINI_1_5_PRO_002,
+        use_fallback=None,  # auto
+    )
+
+    assert res
+
+    vertex_reqs = test_client.httpx_mock.get_requests(url=vertex_url(Model.GEMINI_1_5_PRO_002.value))
+    gemini_reqs = test_client.httpx_mock.get_requests(url=gemini_url(Model.GEMINI_1_5_PRO_002.value))
+    openai_reqs = test_client.httpx_mock.get_requests(url=openai_endpoint())
+    assert len(vertex_reqs) >= 1
+    assert len(gemini_reqs) >= 1
+    assert len(openai_reqs) == 1

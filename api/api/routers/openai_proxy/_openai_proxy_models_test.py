@@ -307,62 +307,148 @@ class TestOpenAIProxyChatCompletionRequestToolChoice:
 
 
 class TestOpenAIProxyChatCompletionRequestExtractReferences:
-    def test_model_only(self):
-        """Test when only model is provided"""
+    @pytest.mark.parametrize(
+        ("req", "agent_id"),
+        [
+            pytest.param({}, None, id="model only"),
+            pytest.param({"model": "my-agent/gpt-4o"}, "my-agent", id="model with agent_id"),
+            pytest.param({"metadata": {"agent_id": "my-agent"}}, "my-agent", id="agent id in metadata"),
+            pytest.param({"agent_id": "my-agent"}, "my-agent", id="model with agent_id"),
+            # Model has a provider prefix but agent_id is provided so it takes precedence
+            pytest.param(
+                {"model": "openai/gpt-4o", "agent_id": "my-agent"},
+                "my-agent",
+                id="model with provider prefix",
+            ),
+            # Model has a provider prefix but agent id is provided in metadata so it takes precedence
+            pytest.param(
+                {"model": "openai/gpt-4o", "metadata": {"agent_id": "my-agent"}},
+                "my-agent",
+                id="model with provider prefix and agent id in metadata",
+            ),
+            # agent_id and metadata are set so agent_id takes precedence
+            pytest.param(
+                {"model": "openai/gpt-4o", "agent_id": "my-agent", "metadata": {"agent_id": "metadata-agent"}},
+                "my-agent",
+                id="model with provider prefix, agent id in body and metadata",
+            ),
+            # When the environment in metadata is not a valid WAI environment we just ignore it
+            # to avoid collisions with user provided environment
+            pytest.param(
+                {"model": "gpt-4o", "metadata": {"agent_id": "my-agent", "environment": "whatever"}},
+                "my-agent",
+                id="environment in metadata does not have the proper format",
+            ),
+            pytest.param(
+                {"model": "gpt-4o", "metadata": {"agent_id": "my-agent", "environment": "#123/invalid"}},
+                "my-agent",
+                id="environment in metadata does not have a correct environment",
+            ),
+        ],
+    )
+    def test_model_ref(self, req: dict[str, Any], agent_id: str | None):
+        """Test cases where the request points to a model, not a deployment"""
         payload = OpenAIProxyChatCompletionRequest.model_validate(
             {
                 "messages": [{"role": "user", "content": "Hello, world!"}],
                 "model": "gpt-4o",
+                **req,
             },
         )
         refs = payload.extract_references()
         assert isinstance(refs, ModelRef)
         assert refs.model == Model.GPT_4O_LATEST
-        assert refs.agent_id is None
+        assert refs.agent_id == agent_id
 
-    def test_agent_model_format(self):
-        """Test when model is in format agent_id/model"""
+    @pytest.mark.parametrize(
+        ("req", "expected_agent_id", "expected_schema_id", "expected_environment"),
+        [
+            pytest.param(
+                {"model": "my-agent/#123/production"},
+                "my-agent",
+                123,
+                VersionEnvironment.PRODUCTION,
+                id="agent_schema_env_format",
+            ),
+            pytest.param(
+                {
+                    "model": "gpt-4o",
+                    "agent_id": "my-agent",
+                    "schema_id": 123,
+                    "environment": "production",
+                },
+                "my-agent",
+                123,
+                VersionEnvironment.PRODUCTION,
+                id="body_parameters",
+            ),
+            pytest.param(
+                {"model": "my-agent/#123/prod"},
+                "my-agent",
+                123,
+                VersionEnvironment.PRODUCTION,
+                id="environment_alias",
+            ),
+            pytest.param(
+                {
+                    "model": "gpt-4o",
+                    "metadata": {
+                        "agent_id": "metadata-agent",
+                        "environment": "#456/production",
+                    },
+                },
+                "metadata-agent",
+                456,
+                VersionEnvironment.PRODUCTION,
+                id="metadata_with_environment_deployment",
+            ),
+            pytest.param(
+                {
+                    "model": "gpt-4o",
+                    "metadata": {
+                        "agent_id": "metadata-agent",
+                        "environment": "#789/prod",
+                    },
+                },
+                "metadata-agent",
+                789,
+                VersionEnvironment.PRODUCTION,
+                id="metadata_with_environment_alias",
+            ),
+            pytest.param(
+                {
+                    "model": "gpt-4o",
+                    "metadata": {
+                        "agent_id": "metadata-agent",
+                        "environment": "#101/development",
+                    },
+                },
+                "metadata-agent",
+                101,
+                VersionEnvironment.DEV,
+                id="metadata_with_development_env",
+            ),
+        ],
+    )
+    def test_environment_ref(
+        self,
+        req: dict[str, Any],
+        expected_agent_id: str,
+        expected_schema_id: int,
+        expected_environment: VersionEnvironment,
+    ):
+        """Test cases where the request points to an environment deployment"""
         payload = OpenAIProxyChatCompletionRequest.model_validate(
             {
                 "messages": [{"role": "user", "content": "Hello, world!"}],
-                "model": "my-agent/gpt-4o",
-            },
-        )
-        refs = payload.extract_references()
-        assert isinstance(refs, ModelRef)
-        assert refs.model == Model.GPT_4O_LATEST
-        assert refs.agent_id == "my-agent"
-
-    def test_agent_schema_env_format(self):
-        """Test when model is in format agent_id/#schema_id/environment"""
-        payload = OpenAIProxyChatCompletionRequest.model_validate(
-            {
-                "messages": [{"role": "user", "content": "Hello, world!"}],
-                "model": "my-agent/#123/production",
+                **req,
             },
         )
         refs = payload.extract_references()
         assert isinstance(refs, EnvironmentRef)
-        assert refs.agent_id == "my-agent"
-        assert refs.schema_id == 123
-        assert refs.environment == "production"
-
-    def test_body_parameters(self):
-        """Test when references are provided in body parameters"""
-        payload = OpenAIProxyChatCompletionRequest.model_validate(
-            {
-                "messages": [{"role": "user", "content": "Hello, world!"}],
-                "model": "gpt-4o",
-                "agent_id": "my-agent",
-                "schema_id": 123,
-                "environment": "production",
-            },
-        )
-        refs = payload.extract_references()
-        assert isinstance(refs, EnvironmentRef)
-        assert refs.agent_id == "my-agent"
-        assert refs.schema_id == 123
-        assert refs.environment == "production"
+        assert refs.agent_id == expected_agent_id
+        assert refs.schema_id == expected_schema_id
+        assert refs.environment == expected_environment
 
     def test_invalid_model(self):
         """Test with invalid model"""
@@ -375,75 +461,91 @@ class TestOpenAIProxyChatCompletionRequestExtractReferences:
         with pytest.raises(MissingModelError):
             payload.extract_references()
 
-    def test_invalid_environment(self):
-        """Test with invalid environment"""
+    @pytest.mark.parametrize(
+        ("req", "expected_error_message"),
+        [
+            pytest.param(
+                {
+                    "model": "",  # model is empty here otherwise we fallback on the model in the body
+                    "agent_id": "my-agent",
+                    "schema_id": 123,
+                    "environment": "invalid-env",
+                },
+                "is not a valid environment",
+                id="invalid_environment",
+            ),
+            pytest.param(
+                {
+                    "model": "gpt-4o",
+                    "agent_id": "my-agent",
+                    "environment": "production",
+                    # schema_id is missing
+                },
+                "agent_id, environment and schema_id must be provided",
+                id="missing_required_fields",
+            ),
+            pytest.param(
+                {"model": "my-agent/#123/invalid-env"},
+                "does not refer to a valid model or deployment",
+                id="invalid_deployment_string",
+            ),
+        ],
+    )
+    def test_environment_ref_errors(self, req: dict[str, Any], expected_error_message: str):
+        """Test cases where environment reference extraction should raise errors"""
         payload = OpenAIProxyChatCompletionRequest.model_validate(
             {
                 "messages": [{"role": "user", "content": "Hello, world!"}],
-                "model": "",  # model is empty here otherwise we fallback on the model in the body
-                "agent_id": "my-agent",
-                "schema_id": 123,
-                "environment": "invalid-env",
+                **req,
             },
         )
         with pytest.raises(BadRequestError) as exc_info:
             payload.extract_references()
-        assert "is not a valid environment" in str(exc_info.value)
+        assert expected_error_message in str(exc_info.value)
 
-    def test_missing_required_fields(self):
-        """Test when some required fields are missing"""
+    def test_metadata_without_agent_id_returns_none(self):
+        """Test when metadata exists but has no agent_id"""
         payload = OpenAIProxyChatCompletionRequest.model_validate(
             {
                 "messages": [{"role": "user", "content": "Hello, world!"}],
                 "model": "gpt-4o",
-                "agent_id": "my-agent",
-                "environment": "production",
-                # schema_id is missing
-            },
-        )
-        with pytest.raises(BadRequestError) as exc_info:
-            payload.extract_references()
-        assert "agent_id, environment and schema_id must be provided" in str(exc_info.value)
-
-    def test_provider_prefixed_model(self):
-        """Test when model has provider prefix"""
-        payload = OpenAIProxyChatCompletionRequest.model_validate(
-            {
-                "messages": [{"role": "user", "content": "Hello, world!"}],
-                "model": "openai/gpt-4o",
-                "agent_id": "my-agent",  # otherwise the agent id will be `openai`
+                "metadata": {"other_field": "value"},
             },
         )
         refs = payload.extract_references()
         assert isinstance(refs, ModelRef)
         assert refs.model == Model.GPT_4O_LATEST
-        assert refs.agent_id == "my-agent"
+        assert refs.agent_id is None
 
-    def test_invalid_deployment_string(self):
-        """Test when environment is invalid"""
+    def test_metadata_invalid_environment_format(self):
+        """Test when metadata contains invalid environment format"""
         payload = OpenAIProxyChatCompletionRequest.model_validate(
             {
                 "messages": [{"role": "user", "content": "Hello, world!"}],
-                "model": "my-agent/#123/invalid-env",
-            },
-        )
-        with pytest.raises(BadRequestError) as e:
-            payload.extract_references()
-        assert "does not refer to a valid model or deployment" in str(e.value)
-
-    def test_invalid_environment_alias(self):
-        """Test when environment is an alias"""
-        payload = OpenAIProxyChatCompletionRequest.model_validate(
-            {
-                "messages": [{"role": "user", "content": "Hello, world!"}],
-                "model": "my-agent/#123/prod",
+                "model": "gpt-4o",
+                "metadata": {
+                    "agent_id": "metadata-agent",
+                    "environment": "invalid-format",
+                },
             },
         )
         refs = payload.extract_references()
-        assert isinstance(refs, EnvironmentRef)
-        assert refs.agent_id == "my-agent"
-        assert refs.schema_id == 123
-        assert refs.environment == VersionEnvironment.PRODUCTION
+        assert isinstance(refs, ModelRef)
+        assert refs.model == Model.GPT_4O_LATEST
+        assert refs.agent_id == "metadata-agent"
+
+    def test_metadata_with_no_metadata(self):
+        """Test when no metadata is provided"""
+        payload = OpenAIProxyChatCompletionRequest.model_validate(
+            {
+                "messages": [{"role": "user", "content": "Hello, world!"}],
+                "model": "gpt-4o",
+            },
+        )
+        refs = payload.extract_references()
+        assert isinstance(refs, ModelRef)
+        assert refs.model == Model.GPT_4O_LATEST
+        assert refs.agent_id is None
 
 
 class TestOpenAIProxyChatCompletionRequestApplyTo:

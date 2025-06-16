@@ -4,7 +4,7 @@ from json import JSONDecodeError
 from typing import Any, AsyncGenerator, AsyncIterator, Generic, TypeVar
 
 from httpx import Response
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from typing_extensions import override
 
 from core.domain.errors import (
@@ -21,7 +21,7 @@ from core.domain.structured_output import StructuredOutput
 from core.domain.tool_call import ToolCallRequestWithID
 from core.providers.base.abstract_provider import ProviderConfigVar, RawCompletion
 from core.providers.base.httpx_provider_base import HTTPXProviderBase
-from core.providers.base.provider_error import ProviderError
+from core.providers.base.provider_error import ProviderError, ProviderInternalError
 from core.providers.base.provider_options import ProviderOptions
 from core.providers.base.streaming_context import ParsedResponse, StreamingContext, ToolCallRequestBuffer
 from core.utils.background import add_background_task
@@ -107,7 +107,23 @@ class HTTPXProvider(HTTPXProviderBase[ProviderConfigVar, dict[str, Any]], Generi
             res = self._unknown_error(response)
             res.set_response(response)
             raise res
-        response_model = self._response_model_cls().model_validate(raw)
+        try:
+            response_model = self._response_model_cls().model_validate(raw)
+        except ValidationError as e:
+            # That should not happen. It means that there is a discrepancy between the response model and
+            # whatever the provider sent
+            # However here, we want to trigger provider and model fallback since from experience
+            # sometimes models return weird unexpected values and falling back is better than
+            # returning a 500
+            raise ProviderInternalError(
+                "Model returned an unexpected response payload",
+                extras={
+                    "raw": raw,
+                },
+                capture=True,
+                store_task_run=True,
+            ) from e
+
         # Initialize content_str with the response text so that
         # if we raise an error, we have the original response text
         content_str = response.text

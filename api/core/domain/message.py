@@ -1,10 +1,10 @@
 from collections.abc import Sequence
 from enum import StrEnum, auto
-from typing import Literal
+from typing import Any, Literal
 
-from pydantic import AliasChoices, BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
-from core.domain.consts import INPUT_KEY_MESSAGES, INPUT_KEY_MESSAGES_DEPRECATED
+from core.domain.consts import INPUT_KEY_MESSAGES
 from core.domain.fields.file import File
 from core.domain.fields.image_options import ImageOptions
 from core.domain.tool_call import ToolCall, ToolCallRequestWithID
@@ -85,9 +85,15 @@ class Message(BaseModel):
 class Messages(BaseModel):
     messages: list[Message] = Field(
         default_factory=list,
-        serialization_alias=INPUT_KEY_MESSAGES,
-        validation_alias=AliasChoices(INPUT_KEY_MESSAGES, "messages", INPUT_KEY_MESSAGES_DEPRECATED),
+        alias=INPUT_KEY_MESSAGES,
     )
+
+    model_config = ConfigDict(serialize_by_alias=True)
+
+    @classmethod
+    def with_messages(cls, *messages: Message):
+        kwargs: dict[str, Any] = {INPUT_KEY_MESSAGES: messages}
+        return cls(**kwargs)
 
     def to_deprecated(self) -> list[MessageDeprecated]:
         return [m.to_deprecated() for m in self.messages]

@@ -2,9 +2,9 @@ import hashlib
 import json
 from typing import Any, Iterator, Self
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, ModelWrapValidatorHandler, RootModel, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ModelWrapValidatorHandler, RootModel, model_validator
 
-from core.domain.consts import INPUT_KEY_MESSAGES, INPUT_KEY_MESSAGES_DEPRECATED
+from core.domain.consts import INPUT_KEY_MESSAGES
 from core.domain.fields.file import File
 from core.domain.message import Message, MessageContent
 from core.domain.task_group_properties import TaskGroupProperties
@@ -71,9 +71,12 @@ class StoredMessages(BaseModel):
     messages: list[StoredMessage] = Field(
         alias=INPUT_KEY_MESSAGES,
         default_factory=list,
-        # TODO: remove this once we have removed the deprecated field
-        validation_alias=AliasChoices(INPUT_KEY_MESSAGES, "messages", INPUT_KEY_MESSAGES_DEPRECATED),
     )
+
+    @classmethod
+    def with_messages(cls, *messages: StoredMessage):
+        kwargs: dict[str, Any] = {INPUT_KEY_MESSAGES: messages}
+        return cls(**kwargs)
 
     # Any other field will be allowed in stored in extras
     model_config = ConfigDict(extra="allow", serialize_by_alias=True)

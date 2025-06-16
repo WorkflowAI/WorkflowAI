@@ -1,7 +1,15 @@
+import re
+
 import pytest
 
 from core.domain.models import Model
 from tests.component.common import IntegrationTestClient, task_schema_url_v1
+
+
+@pytest.fixture(autouse=True)
+def return_503_from_models_endpoint(test_client: IntegrationTestClient):
+    # Making sure the call to the models endpoint fail
+    test_client.httpx_mock.add_response(url=re.compile(r".*/v1/models\?raw=true$"), status_code=503, is_reusable=True)
 
 
 @pytest.mark.parametrize("is_authenticated", [True, False])

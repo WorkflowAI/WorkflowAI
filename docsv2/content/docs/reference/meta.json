@@ -1,0 +1,12 @@
+{
+  "title": "Reference",
+  "icon": "BookMarked",
+  "pages": [
+    "authentication",
+    "supported-models",
+    "supported-parameters",
+    "api-responses",
+    "api-errors",
+    "prompt-templating"
+  ]
+} 

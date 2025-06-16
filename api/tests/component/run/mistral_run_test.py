@@ -194,7 +194,7 @@ async def test_mistral_tool_calls(test_client: IntegrationTestClient):
             "id": "@perplexity-sonar-pro_465b30607cde64f606265b77bbdd3d96",
             "name": "@perplexity-sonar-pro",
             "input_preview": 'query: "What is the score of the latest Jazz - Lakers game of Feb 12th, 2025"',
-            "output_preview": '{"answer": "131-119"}',
+            "output_preview": '{"answer":"131-119"}',
         },
     ]
     assert (

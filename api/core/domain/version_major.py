@@ -34,6 +34,9 @@ class VersionMajor(BaseModel):
         instructions: str | None = None
         messages: list[Message] | None = None
         task_variant_id: str | None = None
+        top_p: float | None = None
+        frequency_penalty: float | None = None
+        presence_penalty: float | None = None
 
     properties: Properties
 

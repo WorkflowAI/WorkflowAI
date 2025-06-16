@@ -26,7 +26,7 @@ class TestHandleRun:
         """No assistant message. Run should have a conversation id assigned and the input should be untouched"""
         run = test_models.task_run_ser(
             task_input={
-                "messages": [
+                "workflowai.messages": [
                     {
                         "role": "user",
                         "content": [{"text": "Hello, world!"}],
@@ -67,7 +67,7 @@ class TestHandleRun:
         """With assistant message. Run should have a conversation id assigned and the input should be untouched"""
         run = test_models.task_run_ser(
             task_input={
-                "messages": [
+                "workflowai.messages": [
                     {
                         "role": "user",
                         "content": [{"text": "Hello, world!"}],
@@ -111,7 +111,7 @@ class TestHandleRun:
         run = test_models.task_run_ser(
             task_input={
                 "name": "Cecily",
-                "workflowai.replies": [
+                "workflowai.messages": [
                     {
                         "role": "assistant",
                         "content": [{"text": "Hello, world!"}],

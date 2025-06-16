@@ -14,11 +14,8 @@ METADATA_KEY_INTEGRATION = "workflowai.integration"
 
 
 INPUT_KEY_MESSAGES = "workflowai.messages"
-INPUT_KEY_MESSAGES_DEPRECATED = "workflowai.replies"
 """
-When using the OpenAI proxy and input variables, the extra messages passed
-are appended to the end of the messages list.
-This is done by adding a key to the input with this value.
+The messages from the proxy are added to the input as a key with this value.
 """
 
 WORKFLOWAI_RUN_URL = os.getenv("WORKFLOWAI_API_URL", "https://run.workflowai.com")

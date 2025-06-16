@@ -140,12 +140,12 @@ async def _is_different_tenant_allowed(
 ) -> bool:
     # Condition for allowing a tenant different from the token are:
     # - method is GET or (user is authenticated and path is whitelisted)
-    # - task_id is in the path
+    # - agent_id is in the path
     # - the corresponding task is public
     if request.method != "GET" and (not is_authenticated or not _is_path_whitelisted(request.url.path)):
         return False
 
-    if "task_id" not in request.path_params:
+    if "agent_id" not in request.path_params:
         return False
 
     s = storage.storage_for_tenant(
@@ -154,8 +154,8 @@ async def _is_different_tenant_allowed(
         encryption=encryption,
         event_router=no_op.event_router,
     ).tasks
-    task_id = request.path_params["task_id"]
-    return await s.is_task_public(task_id)
+    agent_id = request.path_params["agent_id"]
+    return await s.is_task_public(agent_id)
 
 
 def system_storage(encryption: EncryptionDep) -> SystemBackendStorage:

@@ -43,6 +43,19 @@ class FewShotConfiguration(BaseModel):
         return compute_tags(self.model_dump(exclude_none=True))
 
 
+_SIMILARITY_HASH_FIELDS = {
+    "instructions",
+    "temperature",
+    "task_variant_id",
+    "messages",
+    "top_p",
+    "frequency_penalty",
+    "presence_penalty",
+}
+"""The portion of version properties that are used to compute the similarity hash,
+meaning that any change in any of these fields will cause a new major version to be created."""
+
+
 class ToolChoiceFunction(BaseModel):
     name: str
 
@@ -144,12 +157,7 @@ class TaskGroupProperties(BaseModel):
     def similarity_hash(self) -> str:
         properties_dict = self.model_dump(
             exclude_none=True,
-            include={
-                "instructions",
-                "temperature",
-                "task_variant_id",
-                "messages",
-            },
+            include=_SIMILARITY_HASH_FIELDS,
         )
         return compute_obj_hash(properties_dict)
 

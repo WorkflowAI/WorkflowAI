@@ -219,7 +219,7 @@ class SlackApiClient:
             # We implemented a Redis lock mechanism because events are sometimes sent 2-3 times by Slack
             client_msg_id = getattr(webhook_event.event, "client_msg_id", None)
             if not client_msg_id:
-                _logger.warning(
+                _logger.info(
                     "No client_msg_id found in event, skipping",
                     extra={"event": webhook_event.event},
                 )

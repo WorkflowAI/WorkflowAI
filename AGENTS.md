@@ -13,8 +13,8 @@ Dependency management is done with `poetry`. `poetry install` installs dependenc
 
 When modifying the API, ensure that:
 
-- ruff check still passes. The command to run is `pyright run ruff check .` to check the entire codebase or `pyright run ruff check path-to-file.py` to check a specific file.
-- pyright check still passes. The command to run is `pyright run pyright .` to check the entire codebase or `pyright run pyright path-to-file.py` to check a specific file.
+- ruff check still passes. The command to run is `poetry run ruff check .` to check the entire codebase or `poetry run ruff check path-to-file.py` to check a specific file.
+- pyright check still passes. The command to run is `poetry run pyright .` to check the entire codebase or `poetry run pyright path-to-file.py` to check a specific file.
 - the affected tests pass or new tests are added. See [testing infrastructure](#testing-infrastructure).
 
 ### Testing infrastructure
@@ -76,3 +76,13 @@ Useful commands:
 - `yarn format` to format the code.
 - `yarn workspace workflowai lint` run eslint on the client code
 - `yarn workspace workflowai build` to build the client, including checking for type errors.
+
+## Docs
+
+The [documentation](./docsv2) is written in [MDX](https://mdxjs.com/) and uses [FumaDocs](https://fumadocs.com/) as a framework.
+
+Useful commands:
+
+- `yarn workspace docs dev` to start the development server.
+- `yarn workspace docs build` to build the documentation. Make sure to run this before pushing the PR to make sure it builds
+- `yarn workspace docs lint` to lint the documentation.

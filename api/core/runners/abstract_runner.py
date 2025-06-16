@@ -268,7 +268,7 @@ class AbstractRunner(
             status = "workflowai_internal_error"
             raise e
         finally:
-            await send_counter(
+            send_counter(
                 "workflowai_inference",
                 model=self.properties.model or "unknown",
                 provider=self.properties.provider or "workflowai",

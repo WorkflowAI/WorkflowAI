@@ -226,7 +226,7 @@ async def test_fireworks_tool_calls(test_client: IntegrationTestClient):
             "id": "@perplexity-sonar-pro_f7183fac8d081982e6e31028119345b2",
             "name": "@perplexity-sonar-pro",
             "input_preview": 'query: "Jazz vs Lakers score Feb 12th 2025"',
-            "output_preview": '{"answer": "131-119"}',
+            "output_preview": '{"answer":"131-119"}',
         },
     ]
     assert (

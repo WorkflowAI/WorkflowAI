@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Path, Query
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field, model_validator
 
-from api.dependencies.path_params import TaskID, TaskSchemaID
+from api.dependencies.path_params import AgentID, TaskSchemaID
 from api.dependencies.security import RequiredUserDep
 from api.dependencies.services import (
     GroupServiceDep,
@@ -42,7 +42,7 @@ from core.utils.streams import format_model_for_sse
 
 _logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/v1/{tenant}/agents/{task_id}", tags=[RouteTags.VERSIONS])
+router = APIRouter(prefix="/v1/{tenant}/agents/{agent_id}", tags=[RouteTags.VERSIONS])
 
 
 def version_identifier_dep(
@@ -98,7 +98,7 @@ class CreateVersionResponse(BaseModel):
     response_model_exclude_none=True,
 )
 async def create_version(
-    task_id: TaskID,
+    agent_id: AgentID,
     task_schema_id: TaskSchemaID,
     request: CreateVersionRequest,
     user: RequiredUserDep,
@@ -106,14 +106,14 @@ async def create_version(
     groups_service: GroupServiceDep,
 ) -> CreateVersionResponse:
     grp = await groups_service.create_task_group(
-        task_id=task_id,
+        task_id=agent_id,
         task_schema_id=task_schema_id,
         properties=request.properties,
         user=user.identifier(),
         disable_autosave=request.save is False,
     )
     if request.save:
-        grp = await versions_service.save_version(task_id, grp.id)
+        grp = await versions_service.save_version(agent_id, grp.id)
 
     return CreateVersionResponse.from_domain(grp)
 
@@ -245,6 +245,9 @@ class MajorVersionProperties(BaseModel):
     instructions: str | None
     messages: list[Message] | None
     task_variant_id: str | None = Field(description="The id of the full schema, including versions and examples")
+    top_p: float | None
+    frequency_penalty: float | None
+    presence_penalty: float | None
 
     @classmethod
     def from_domain(cls, properties: VersionMajor.Properties):
@@ -253,6 +256,9 @@ class MajorVersionProperties(BaseModel):
             instructions=properties.instructions,
             messages=properties.messages,
             task_variant_id=properties.task_variant_id,
+            top_p=properties.top_p,
+            frequency_penalty=properties.frequency_penalty,
+            presence_penalty=properties.presence_penalty,
         )
 
 
@@ -473,24 +479,24 @@ async def get_version(
     "Saving a version that has already been saved is a no-op.",
 )
 async def save_version(
-    task_id: TaskID,
+    agent_id: AgentID,
     # Not using a version identifier here, only checking for hashes
     version_id: Annotated[str, Path(description="The id of the version to save, as returned when listing runs")],
     versions_service: VersionsServiceDep,
 ) -> CreateVersionResponse:
-    grp = await versions_service.save_version(task_id, version_id)
+    grp = await versions_service.save_version(agent_id, version_id)
     return CreateVersionResponse.from_domain(grp)
 
 
 @router.post("/versions/{version_id}/favorite", description="Favorite a version")
 async def favorite_version(
-    task_id: TaskID,
+    agent_id: AgentID,
     version_id: VersionIdentifierDep,
     storage: StorageDep,
     user: RequiredUserDep,
 ) -> None:
     await storage.task_groups.update_task_group_by_id(
-        task_id,
+        agent_id,
         version_id,
         TaskGroupUpdate(is_favorite=True),
         user.identifier(),
@@ -499,13 +505,13 @@ async def favorite_version(
 
 @router.delete("/versions/{version_id}/favorite", description="Unfavorite a version")
 async def unfavorite_version(
-    task_id: TaskID,
+    agent_id: AgentID,
     version_id: Annotated[str, Path(description="The id of the version to unfavorite, as returned when listing runs")],
     storage: StorageDep,
     user: RequiredUserDep,
 ) -> None:
     await storage.task_groups.update_task_group_by_id(
-        task_id,
+        agent_id,
         version_id,
         TaskGroupUpdate(is_favorite=False),
         user.identifier(),
@@ -518,14 +524,14 @@ class UpdateVersionNotesRequest(BaseModel):
 
 @router.patch("/versions/{version_id}/notes", description="Update the notes for a version")
 async def update_version_notes(
-    task_id: TaskID,
+    agent_id: AgentID,
     version_id: VersionIdentifierDep,
     storage: StorageDep,
     user: RequiredUserDep,
     request: UpdateVersionNotesRequest,
 ) -> None:
     await storage.task_groups.update_task_group_by_id(
-        task_id,
+        agent_id,
         version_id,
         TaskGroupUpdate(notes=request.notes),
         user.identifier(),

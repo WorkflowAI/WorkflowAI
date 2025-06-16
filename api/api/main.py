@@ -1,17 +1,17 @@
-import datetime
+import contextlib
 import logging
 import os
 import time
 from collections.abc import Iterator
 from contextlib import asynccontextmanager
-from typing import Annotated, Any, Awaitable, Callable, Literal
+from typing import Annotated, Awaitable, Callable
 
 import stripe
 from fastapi import FastAPI, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 from sentry_sdk.integrations.logging import ignore_logger
 
+from api._standard_model_response import StandardModelResponse
 from api.errors import configure_scope_for_error
 from api.routers.openai_proxy import openai_proxy_router
 from api.services.analytics import close_analytics, start_analytics
@@ -30,7 +30,6 @@ from api.utils import (
 from core.domain.errors import DefaultError
 from core.domain.models import Model
 from core.domain.models.model_data import FinalModelData, LatestModel
-from core.domain.models.model_data_supports import ModelDataSupports
 from core.domain.models.model_datas_mapping import MODEL_DATAS
 from core.providers.base.httpx_provider_base import HTTPXProviderBase
 from core.providers.base.provider_error import ProviderError
@@ -75,8 +74,23 @@ async def _prepare_storage():
         logger.exception(e)
 
 
+_ONLY_RUN_ROUTES = os.getenv("ONLY_RUN_ROUTES") == "true"
+
+
+def _mcp_app():
+    if _ONLY_RUN_ROUTES:
+        return None
+
+    from .routers.mcp.mcp_server import mcp_http_app
+
+    return mcp_http_app()
+
+
+mcp_app = _mcp_app()
+
+
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def _lifespan(app: FastAPI):
     metrics_service = await setup_metrics()
     await start_analytics()
 
@@ -94,6 +108,7 @@ async def lifespan(app: FastAPI):
     logger.info(f"Prepared providers {', '.join(list(factory.available_providers()))}")  # noqa: G004
 
     logger.info("Starting services")
+
     yield
 
     # Closing the metrics service to send whatever is left in the buffer
@@ -103,8 +118,20 @@ async def lifespan(app: FastAPI):
     await HTTPXProviderBase.close()
 
 
+if mcp_app:
 
-_ONLY_RUN_ROUTES = os.getenv("ONLY_RUN_ROUTES") == "true"
+    @asynccontextmanager
+    async def _combined_lifespan(app: FastAPI):
+        async with contextlib.AsyncExitStack() as stack:
+            await stack.enter_async_context(_lifespan(app))
+            if mcp_app:
+                await stack.enter_async_context(mcp_app.lifespan(app))  # pyright: ignore [reportUnknownMemberType]
+            yield
+
+    lifespan = _combined_lifespan
+else:
+    lifespan = _lifespan
+
 
 app = FastAPI(
     title="WorkflowAI",
@@ -129,6 +156,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+if mcp_app:
+    app.mount("/mcp", mcp_app)
+
 
 WORKFLOWAI_ALLOWED_ORIGINS = os.environ.get("WORKFLOWAI_ALLOWED_ORIGINS", os.environ.get("WORKFLOWAI_APP_URL"))
 if WORKFLOWAI_ALLOWED_ORIGINS:
@@ -143,45 +173,6 @@ if WORKFLOWAI_ALLOWED_ORIGINS:
 app.include_router(probes.router)
 app.include_router(run.router)
 app.include_router(openai_proxy_router.router)
-
-if not _ONLY_RUN_ROUTES:
-    from .main_router import main_router
-
-    app.include_router(main_router)
-
-
-class StandardModelResponse(BaseModel):
-    """A model response compatible with the OpenAI API"""
-
-    object: Literal["list"] = "list"
-
-    class ModelItem(BaseModel):
-        id: str
-        object: Literal["model"] = "model"
-        created: int
-        owned_by: str
-        display_name: str
-        icon_url: str
-        supports: dict[str, Any]
-
-        @classmethod
-        def from_model_data(cls, id: str, model: FinalModelData):
-            return cls(
-                id=id,
-                created=int(datetime.datetime.combine(model.release_date, datetime.time(0, 0)).timestamp()),
-                owned_by=model.provider_name,
-                display_name=model.display_name,
-                icon_url=model.icon_url,
-                supports={
-                    k.removeprefix("supports_"): v
-                    for k, v in model.model_dump(
-                        mode="json",
-                        include=set(ModelDataSupports.model_fields.keys()),
-                    ).items()
-                },
-            )
-
-    data: list[ModelItem]
 
 
 # Because the run and api containers are deployed at different times,
@@ -209,6 +200,13 @@ async def list_all_available_models(
                 continue
 
     return StandardModelResponse(data=list(_model_data_iterator()))
+
+
+if not _ONLY_RUN_ROUTES:
+    # Include router containing all the other routes
+    from .main_router import main_router
+
+    app.include_router(main_router)
 
 
 @app.exception_handler(ObjectNotFoundException)

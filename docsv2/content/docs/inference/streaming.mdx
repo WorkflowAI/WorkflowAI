@@ -1,0 +1,97 @@
+---
+title: Streaming
+description: Learn how to stream model responses from the WorkflowAI API using server-sent events.
+---
+
+By default, when you make a request to the WorkflowAI API, the model generates the entire output before returning it in a single HTTP response. For longer outputs, this can mean waiting until the full response is ready. With streaming, you can start receiving and processing the model's output as it is generated, allowing you to display or use partial results in real time.
+
+## Enable streaming
+
+<Callout type="success">
+  Streaming is available exactly like in the OpenAI API. If you are already streaming from the OpenAI API, no code change is required.
+</Callout>
+
+To stream completions, set `stream=True` in the request.
+
+The response is sent back incrementally in chunks with an event stream. You can iterate over the event stream with a for loop, like this:
+
+```python
+from openai import OpenAI
+client = OpenAI(
+    base_url="https://run.workflowai.com/v1",
+    api_key="wai--***",
+)
+
+stream = client.chat.completions.create(
+    model="gpt-4.1",
+    messages=[
+        {
+            "role": "user",
+            "content": "Say 'double bubble bath' ten times fast.",
+        },
+    ],
+    stream=True, # [!code highlight]
+)
+
+for chunk in stream:
+    print(chunk)
+    print(chunk.choices[0].delta)
+    print("****************")
+```
+
+## Read the responses
+
+When you stream a chat completion, the responses has a `delta` field rather than a `message` field. The `delta` field can hold a role token, content token, or nothing.
+
+```
+{ role: 'assistant', content: '', refusal: null }
+****************
+{ content: 'Why' }
+****************
+{ content: " don't" }
+****************
+{ content: ' scientists' }
+****************
+{ content: ' trust' }
+****************
+{ content: ' atoms' }
+****************
+{ content: '?\n\n' }
+****************
+{ content: 'Because' }
+****************
+{ content: ' they' }
+****************
+{ content: ' make' }
+****************
+{ content: ' up' }
+****************
+{ content: ' everything' }
+****************
+{ content: '!' }
+****************
+{}
+****************
+```
+
+To stream only the text response of your chat completion, your code would like this:
+
+```python
+from openai import OpenAI
+client = OpenAI()
+
+stream = client.chat.completions.create(
+    model="gpt-4.1",
+    messages=[
+        {
+            "role": "user",
+            "content": "Say 'double bubble bath' ten times fast.",
+        },
+    ],
+    stream=True,
+)
+
+for chunk in stream:
+    if chunk.choices[0].delta.content is not None:
+        print(chunk.choices[0].delta.content, end="")
+```

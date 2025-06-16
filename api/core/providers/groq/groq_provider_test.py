@@ -287,6 +287,7 @@ class TestComplete:
             url="https://api.groq.com/openai/v1/chat/completions",
             json=fixtures_json("groq", "failed_generation.json"),
             status_code=400,
+            is_reusable=True,
         )
 
         with pytest.raises(FailedGenerationError):
@@ -305,6 +306,7 @@ class TestComplete:
             url="https://api.groq.com/openai/v1/chat/completions",
             json=fixtures_json("groq", "content_moderation.json"),
             status_code=200,
+            is_reusable=True,  # TODO: figure out why it needs to be reusable
         )
 
         with pytest.raises(ContentModerationError):

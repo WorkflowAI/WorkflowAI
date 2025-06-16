@@ -350,6 +350,9 @@ _environment_aliases = {
 _agent_schema_env_regex = re.compile(
     rf"^([^/]+)/#(\d+)/({'|'.join([*VersionEnvironment, *_environment_aliases.keys()])})$",
 )
+_metadata_env_regex = re.compile(
+    rf"^#(\d+)/({'|'.join([*VersionEnvironment, *_environment_aliases.keys()])})$",
+)
 
 
 def _alias_generator(field_name: str):
@@ -638,6 +641,34 @@ class OpenAIProxyChatCompletionRequest(_OpenAIProxyExtraFields):
             return out
         return self.use_fallback
 
+    def _reference_from_metadata(self, model: Model, agent_id: str | None) -> EnvironmentRef | ModelRef | None:
+        if not self.metadata or "agent_id" not in self.metadata:
+            return None
+
+        # Overriding if the agent_id is None or not provided directly in the request
+        if not agent_id or not self.agent_id:
+            agent_id = self.metadata.get("agent_id")
+        if not agent_id:
+            return None
+
+        if "environment" in self.metadata:
+            match = _metadata_env_regex.match(self.metadata["environment"])
+            if match:
+                try:
+                    return EnvironmentRef(
+                        agent_id=self.metadata["agent_id"],
+                        schema_id=int(match.group(1)),
+                        environment=VersionEnvironment(_environment_aliases.get(match.group(2), match.group(2))),
+                    )
+                except Exception:
+                    _logger.exception("Failed to parse environment from metadata", extra={"metadata": self.metadata})
+                    return None
+
+        return ModelRef(
+            model=model,
+            agent_id=agent_id,
+        )
+
     def extract_references(self) -> EnvironmentRef | ModelRef:
         """Extracts the model, agent_id, schema_id and environment from the model string
         and other body optional parameters.
@@ -672,6 +703,9 @@ class OpenAIProxyChatCompletionRequest(_OpenAIProxyExtraFields):
                     extras={"model": self.model},
                 )
             raise MissingModelError(model=splits[-1])
+
+        if from_metadata := self._reference_from_metadata(model=model, agent_id=agent_id):
+            return from_metadata
 
         return ModelRef(
             model=model,
@@ -810,6 +844,7 @@ class OpenAIProxyChatCompletionResponse(BaseModel):
     object: Literal["chat.completion"] = "chat.completion"
     usage: OpenAIProxyCompletionUsage | None = None
 
+    version_id: str = Field(description="The version id of the completion, WorkflowAI specific")
     metadata: dict[str, Any] | None = Field(description="Metadata about the completion, WorkflowAI specific")
 
     @classmethod
@@ -836,6 +871,7 @@ class OpenAIProxyChatCompletionResponse(BaseModel):
             model=model,
             usage=OpenAIProxyCompletionUsage.from_domain(run.llm_completions[-1]) if run.llm_completions else None,
             metadata=run.metadata,
+            version_id=run.group.id,
         )
 
 

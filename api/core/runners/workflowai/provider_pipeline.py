@@ -5,6 +5,7 @@ from contextlib import contextmanager
 from typing import Any, Literal, NoReturn, Protocol
 
 from core.domain.errors import InternalError, NoProviderSupportingModelError
+from core.domain.metrics import send_counter
 from core.domain.models.model_data import FinalModelData, ModelData
 from core.domain.models.models import Model
 from core.domain.models.providers import Provider
@@ -294,6 +295,15 @@ class ProviderPipeline:
 
         # Yielding the final model fallback
         while fallback_model_data := self._pick_fallback_model(self.errors[-1]):
+            if not self._has_used_model_fallback:
+                # First time only we send a metric to count model fallback
+                send_counter(
+                    "model_fallback",
+                    1,
+                    original_model=self._options.model,
+                    fallback_model=fallback_model_data.model,
+                    error_code=self.errors[-1].code if self.errors else None,
+                )
             self._has_used_model_fallback = True
 
             provider, provider_data = fallback_model_data.providers[0]

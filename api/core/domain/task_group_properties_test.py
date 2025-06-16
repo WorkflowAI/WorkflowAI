@@ -1,3 +1,5 @@
+# pyright: reportPrivateUsage=false
+
 from typing import Any
 
 import pytest
@@ -5,7 +7,7 @@ import pytest
 from core.domain.tool import Tool
 from core.tools import ToolKind
 
-from .task_group_properties import FewShotConfiguration, FewShotExample, TaskGroupProperties
+from .task_group_properties import _SIMILARITY_HASH_FIELDS, FewShotConfiguration, FewShotExample, TaskGroupProperties
 
 
 class TestComputeTags:
@@ -72,6 +74,9 @@ class TestComputeSimilarityHash:
             pytest.param({"instructions": "You are not a helpful assistant."}, id="instructions"),
             pytest.param({"task_variant_id": "bla1"}, id="task_variant_id"),
             pytest.param({"messages": [{"role": "user", "content": [{"text": "Hello, world!"}]}]}, id="messages"),
+            pytest.param({"top_p": 0.5}, id="top_p"),
+            pytest.param({"frequency_penalty": 0.5}, id="frequency_penalty"),
+            pytest.param({"presence_penalty": 0.5}, id="presence_penalty"),
         ],
     )
     def test_different_properties(self, overrides: dict[str, Any]):
@@ -128,3 +133,28 @@ class TestModelHash:
         )
         assert properties.model_hash() == "b80049b0a1735ec3eed8fff127a32494"
         assert properties.similarity_hash == "0f47ae72d7ef5a74553690c258476737"
+
+
+def test_similarity_hash_fields():
+    # Check that all required fields in the version properties are included
+    # This is just to make sure that we think twice about whether a new field in version
+    # properties should be included in the similarity hash or not
+    all_fields = {*set(TaskGroupProperties.model_fields), "task_variant_id"}
+    excluded_fields = {
+        "model",
+        "provider",
+        "max_tokens",
+        "runner_name",
+        "runner_version",
+        "is_chain_of_thought_enabled",
+        "enabled_tools",
+        "is_structured_generation_enabled",
+        "has_templated_instructions",
+        "image_options",
+        "tool_choice",
+        "few_shot",
+        "parallel_tool_calls",
+        "template_name",
+    }
+
+    assert all_fields - excluded_fields == _SIMILARITY_HASH_FIELDS

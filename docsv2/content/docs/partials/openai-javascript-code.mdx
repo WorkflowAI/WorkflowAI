@@ -1,0 +1,17 @@
+---
+title: OpenAI JavaScript Code
+---
+
+```javascript
+import OpenAI from 'openai';
+
+// setup WorkflowAI client
+const client = new OpenAI({
+  baseURL: 'https://run.workflowai.com/v1', // [!code highlight]
+  apiKey: 'wai-***', // workflowai.com/keys // [!code highlight]
+});
+
+client.chat.completions.create({
+  // your existing code
+})
+``` 

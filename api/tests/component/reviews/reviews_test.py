@@ -10,7 +10,7 @@ async def test_reviews(test_client: IntegrationTestClient):
     task = await test_client.create_task()
 
     # First we create a run
-    test_client.mock_openai_call()
+    test_client.mock_openai_call(is_reusable=True)
     # run1 and run2 will have the same input / output hash
     run1 = await test_client.run_task_v1(task)
     run2 = await test_client.run_task_v1(task, use_cache="never")
@@ -65,7 +65,7 @@ async def test_reviews(test_client: IntegrationTestClient):
 async def test_extra_fields(test_client: IntegrationTestClient):
     task = await test_client.create_task()
 
-    test_client.httpx_mock.reset(False)
+    test_client.reset_httpx_mock()
     # First we create a run with some extra fields
     test_client.mock_openai_call(
         json_content={"greeting": "Hello James!", "internal_steps": ["bla"]},
@@ -73,11 +73,12 @@ async def test_extra_fields(test_client: IntegrationTestClient):
     run1 = await test_client.run_task_v1(task, use_cache="never")
     assert run1["task_output"] == {"greeting": "Hello James!", "internal_steps": ["bla"]}, "sanity"
 
-    test_client.httpx_mock.reset(False)
+    test_client.reset_httpx_mock()
     # Now same run but without other extra fields
     test_client.mock_openai_call(
         json_content={"greeting": "Hello James!"},
         model=Model.GPT_4O_2024_11_20.value,
+        is_reusable=True,
     )
     run2 = await test_client.run_task_v1(task, model=Model.GPT_4O_2024_11_20.value, use_cache="never")
     assert run2["task_output"] == {"greeting": "Hello James!"}, "sanity"
@@ -105,6 +106,7 @@ async def test_extra_fields(test_client: IntegrationTestClient):
     test_client.mock_openai_call(
         json_content={"greeting": "Hello John!", "internal_steps": ["blablo"]},
         model=Model.GPT_4O_2024_11_20.value,
+        is_reusable=True,
     )
     test_client.mock_ai_review(outcome="negative")
     run3 = await test_client.run_task_v1(task, model=Model.GPT_4O_2024_11_20.value, use_cache="never")
@@ -124,12 +126,13 @@ async def test_extra_fields(test_client: IntegrationTestClient):
     assert body["task_input"]["correct_outputs"] == ['{"greeting": "Hello James!"}']
 
     # Resetting the httpx mock
-    test_client.httpx_mock.reset(False)
+    test_client.reset_httpx_mock()
 
     # Finally make another run with an input / output that match above except with some extra fields
     test_client.mock_openai_call(
         json_content={"greeting": "Hello James!", "internal_steps": ["blabloblu"]},
         model=Model.GPT_4O_2024_11_20.value,
+        is_reusable=True,
     )
     run4 = await test_client.run_task_v1(task, model=Model.GPT_4O_2024_11_20.value, use_cache="never")
     assert run4["id"] not in [run1["id"], run2["id"], run3["id"]]
@@ -157,7 +160,7 @@ async def test_update_ai_evaluator(test_client: IntegrationTestClient):
     # Mock the AI review
     test_client.mock_ai_review(outcome="negative")
     # Next run will have a different output and trigger an AI review
-    test_client.mock_openai_call(json_content={"greeting": "Hello not James!"})
+    test_client.mock_openai_call(json_content={"greeting": "Hello not James!"}, is_reusable=True)
     run2 = await test_client.run_task_v1(task, use_cache="never")
     assert run2["task_output"] != run1["task_output"], "sanity"
     await test_client.wait_for_completed_tasks()
@@ -228,7 +231,7 @@ async def test_update_ai_evaluator(test_client: IntegrationTestClient):
 
     # Let's trigger an AI review again and make sure it uses the updated instructions
     test_client.mock_ai_review(outcome="negative")
-    test_client.mock_openai_call(json_content={"greeting": "Hello John!"})
+    test_client.mock_openai_call(json_content={"greeting": "Hello John!"}, is_reusable=True)
     run3 = await test_client.run_task_v1(task, use_cache="never")
     assert run3["task_output"] != run2["task_output"], "sanity"
     assert run3["task_output"] != run1["task_output"], "sanity"
@@ -257,11 +260,12 @@ async def test_image_evaluations(test_client: IntegrationTestClient):
     # Create a task with an image input and create a reviewable input
     task = await test_client.create_task(input_schema={"properties": {"image": {"$ref": "#/$defs/Image"}}})
     # First we create a run
-    test_client.mock_openai_call()
+    test_client.mock_openai_call(is_reusable=True)
     test_client.httpx_mock.add_response(
         url="https://example.com/image.png",
         method="GET",
         content=b"image_data",
+        is_reusable=True,
     )
     # run1 and run2 will have the same input / output hash
     run1 = await test_client.run_task_v1(task, task_input={"image": {"url": "https://example.com/image.png"}})
@@ -269,9 +273,9 @@ async def test_image_evaluations(test_client: IntegrationTestClient):
     await test_client.user_review(task, run1, "positive")
 
     # Now we create a second run with a different output to trigger an AI review
-    test_client.mock_openai_call(json_content={"greeting": "Hello not James!"})
+    test_client.mock_openai_call(json_content={"greeting": "Hello not James!"}, is_reusable=True)
     test_client.mock_ai_review(outcome="negative")
-    test_client.mock_internal_task("describe-images-with-context", {"description": "A cat"})
+    test_client.mock_internal_task("describe-images-with-context", {"description": "A cat"}, is_reusable=True)
 
     run2 = await test_client.run_task_v1(
         task,

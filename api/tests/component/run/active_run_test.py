@@ -320,7 +320,7 @@ async def test_run_combined_source_last_active_at_test(
     httpx_mock: HTTPXMock,
     patched_broker: InMemoryBroker,
 ):
-    mock_openai_call(httpx_mock)
+    mock_openai_call(httpx_mock, is_reusable=True)
     task = await create_task(int_api_client, patched_broker, httpx_mock, name="greet")
     # No groups yet
     groups = await list_groups(int_api_client, task)

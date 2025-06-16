@@ -1,0 +1,17 @@
+---
+title: OpenAI Python Code
+---
+
+```python
+from openai import OpenAI
+
+# setup WorkflowAI client
+client = OpenAI(
+  base_url="https://run.workflowai.com/v1", # [!code highlight]
+  api_key="wai-***", # workflowai.com/keys // [!code highlight]
+)
+
+response = client.chat.completions.create(
+  # your existing code
+)
+``` 

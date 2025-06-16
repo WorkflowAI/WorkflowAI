@@ -1,7 +1,8 @@
 {
   "private": true,
   "workspaces": [
-    "client"
+    "client",
+    "docsv2"
   ],
   "scripts": {
     "format": "prettier --write client",

@@ -187,31 +187,48 @@ def _get_or_set_type(schema: dict[str, Any] | list[Any]):
 _RefHandler: TypeAlias = Callable[[str, dict[str, Any]], dict[str, Any] | None]
 
 
-def _streamline_array(schema: dict[str, Any], handle_ref: _RefHandler, defs: dict[str, Any]):
+def _streamline_array(schema: dict[str, Any], handle_ref: _RefHandler, defs: dict[str, Any], processing_refs: set[str]):
     items = schema.get("items")
     if not items:
         # not sure what to do here, just skipping for now
         return schema
     if isinstance(items, dict):
-        return {**schema, "items": _inner_streamline_schema(cast(dict[str, Any], items), handle_ref, defs, True)}
+        return {
+            **schema,
+            "items": _inner_streamline_schema(cast(dict[str, Any], items), handle_ref, defs, True, processing_refs),
+        }
     if isinstance(items, list):
         items = cast(list[dict[str, Any]], items)
         # Avoiding lists of a single item
         if len(items) == 1:
-            return {**schema, "items": _inner_streamline_schema(items[0], handle_ref, defs, True)}
-        return {**schema, "items": [_inner_streamline_schema(item, handle_ref, defs, True) for item in items]}
+            return {
+                **schema,
+                "items": _inner_streamline_schema(items[0], handle_ref, defs, True, processing_refs),
+            }
+        return {
+            **schema,
+            "items": [_inner_streamline_schema(item, handle_ref, defs, True, processing_refs) for item in items],
+        }
     raise InvalidSchemaError(f"Unexpected items type: {type(items)}")
 
 
-def _streamline_object(schema: dict[str, Any], handle_ref: _RefHandler, defs: dict[str, Any]):
+def _streamline_object(
+    schema: dict[str, Any],
+    handle_ref: _RefHandler,
+    defs: dict[str, Any],
+    processing_refs: set[str],
+):
     required = set(schema.get("required", []))
-    properties = schema.get("properties", {})
+    properties = schema.get("properties")
     if not properties:
         return schema
 
     base = {
         **schema,
-        "properties": {k: _inner_streamline_schema(v, handle_ref, defs, k in required) for k, v in properties.items()},
+        "properties": {
+            k: _inner_streamline_schema(v, handle_ref, defs, k in required, processing_refs)
+            for k, v in properties.items()
+        },
     }
     if required:
         base["required"] = sorted(list(required))
@@ -223,6 +240,7 @@ def _handle_one_any_all_ofs(
     handle_ref: _RefHandler,
     defs: dict[str, Any],
     is_required: bool,
+    processing_refs: set[str],
 ):
     of_keys = {"oneOf", "anyOf", "allOf"}
     used_keys = [key for key in of_keys if key in schema]
@@ -251,9 +269,18 @@ def _handle_one_any_all_ofs(
         # It's not clear what to do in this case
         # TODO: we should attempt a sort here to make the output deterministic
         # Any of, etc. are a pretty niche case so ok for now
-        return {**remaining, key: [_inner_streamline_schema(item, handle_ref, defs, is_required) for item in sub]}
+        return {
+            **remaining,
+            key: [_inner_streamline_schema(item, handle_ref, defs, is_required, processing_refs) for item in sub],
+        }
 
-    streamlined_not_null = _inner_streamline_schema({**remaining, **not_null[0]}, handle_ref, defs, is_required)
+    streamlined_not_null = _inner_streamline_schema(
+        {**remaining, **not_null[0]},
+        handle_ref,
+        defs,
+        is_required,
+        processing_refs,
+    )
 
     if len(sub) > 1 and is_required and "type" in streamlined_not_null:
         # We removed a null type but the field is required. So we add it back as
@@ -263,10 +290,15 @@ def _handle_one_any_all_ofs(
     return streamlined_not_null
 
 
-def _remove_falsy_key(schema: dict[str, Any], key: str):
-    if key in schema and not schema[key]:
-        return {k: v for k, v in schema.items() if k != key}
-    return schema
+def _remove_falsy_keys(schema: dict[str, Any], keys: set[str]):
+    return {k: v for k, v in schema.items() if k not in keys or v}
+
+
+_FALSY_KEYS_TO_REMOVE = {"examples", "description", "items", "properties"}
+
+
+class _CircularReferenceError(Exception):
+    pass
 
 
 def _inner_streamline_schema(
@@ -274,21 +306,28 @@ def _inner_streamline_schema(
     handle_ref: _RefHandler,
     defs: dict[str, Any],
     is_required: bool,
+    processing_refs: set[str],
 ) -> dict[str, Any]:
     obj_type = _get_or_set_type(schema)
-    schema = _remove_falsy_key(schema, "examples")
-    schema = _remove_falsy_key(schema, "description")
+    schema = _remove_falsy_keys(schema, _FALSY_KEYS_TO_REMOVE)
 
     if obj_type == "array":
-        return _streamline_array(schema, handle_ref, defs)
+        return _streamline_array(schema, handle_ref, defs, processing_refs)
 
     if obj_type == "object":
-        return _streamline_object(schema, handle_ref, defs)
+        return _streamline_object(schema, handle_ref, defs, processing_refs)
 
     if ref := schema.get("$ref"):
         if not isinstance(ref, str):
             raise InvalidSchemaError(f"Unexpected ref type: {type(ref)}")
+
         ref_name = ref.removeprefix("#/$defs/")
+
+        # Check for circular reference to prevent infinite recursion
+        if ref_name in processing_refs:
+            # Return the ref as-is to avoid infinite recursion
+            raise _CircularReferenceError(f"Circular reference detected: {ref_name}")
+
         if replacement := handle_ref(ref_name, schema):
             return replacement
 
@@ -297,9 +336,19 @@ def _inner_streamline_schema(
             definition = defs[ref_name]
         except KeyError:
             raise InvalidSchemaError(f"Can't find the definition of the ref: {ref}")
-        return _inner_streamline_schema({**definition, **schema}, handle_ref, defs, is_required)
 
-    return _handle_one_any_all_ofs(schema, handle_ref, defs, is_required)
+        processing_refs.add(ref_name)
+        result = _inner_streamline_schema(
+            {**definition, **schema},
+            handle_ref,
+            defs,
+            is_required,
+            processing_refs,
+        )
+        processing_refs.discard(ref_name)
+        return result
+
+    return _handle_one_any_all_ofs(schema, handle_ref, defs, is_required, processing_refs)
 
 
 def _handle_internal_ref(ref_name: str, ref: dict[str, Any], used_refs: set[str], internal_defs: dict[str, Any]):
@@ -357,6 +406,7 @@ def _streamline_schema(schema: dict[str, Any], internal_defs: dict[str, Any]):
         _handle_ref,
         schema.get("$defs", {}),
         is_required=True,
+        processing_refs=set(),
     )
     # Sanitize the definitions
     defs = streamlined.setdefault("$defs", {})
@@ -407,7 +457,13 @@ def streamline_schema(schema: dict[str, Any], internal_defs: dict[str, Any] | No
     The base idea is to have a unique representation of the schema so that we can properly match
     schemas regardless of their implementation details.
     """
-    return _streamline_schema(schema, _INTERNAL_DEFS if internal_defs is None else internal_defs)
+    try:
+        return _streamline_schema(schema, _INTERNAL_DEFS if internal_defs is None else internal_defs)
+    except _CircularReferenceError:
+        return schema
+    except Exception:
+        logger.exception("Error while streamlining schema", extra={"schema": schema})
+        return schema
 
 
 def get_file_format(ref_name: str, schema: dict[str, Any]):

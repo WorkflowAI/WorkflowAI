@@ -22,6 +22,7 @@ from core.domain.search_query import (
     SearchOperationSingle,
     SearchOperator,
     SearchQuery,
+    SearchQueryNested,
     StatusSearchOptions,
 )
 from core.domain.task_group import TaskGroup
@@ -724,8 +725,10 @@ class ClickhouseRun(BaseModel):
                 )
             case SearchField.INPUT | SearchField.OUTPUT:
                 field = "input" if query.field == SearchField.INPUT else "output"
-                query.validate_keypath()
-                return json_query(query.field_type, field, query.key_path, query.operation)
+                if isinstance(query, SearchQueryNested):
+                    query.validate_keypath()
+                    return json_query(query.field_type, field, query.key_path, query.operation)
+                return clickhouse_query(field, query.operation, type="String")
 
             case _:
                 raise InternalError("Unsupported query", extras={"query": safe_dump_pydantic_model(query)})

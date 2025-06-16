@@ -100,9 +100,9 @@ export function NewTaskModal() {
     redirectToPlaygrounds: redirectToPlaygroundsValue,
     variantId,
     prefilledMessage,
-    flow,
     integrationId,
-  } = useParsedSearchParams('mode', 'redirectToPlaygrounds', 'variantId', 'prefilledMessage', 'flow', 'integrationId');
+  } = useParsedSearchParams('mode', 'redirectToPlaygrounds', 'variantId', 'prefilledMessage', 'integrationId');
+  const flow = 'create';
 
   const { versions } = useOrFetchVersions(tenant, taskId);
 

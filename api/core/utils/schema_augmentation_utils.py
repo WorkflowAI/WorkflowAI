@@ -19,9 +19,15 @@ def _add_schema_to_output_schema(
     property_name: str,
 ) -> None:
     if "properties" not in output_schema:
-        # In case the output schema is not an "object" (ex: is an array), we do not use the feature
-        logger.exception("Output schema has no properties, skipping schema addition")
-        return
+        if output_schema.get("type") != "object":
+            # In case the output schema is not an "object" (ex: is an array), we do not use the feature
+            logger.exception(
+                "Output schema has no properties, skipping schema addition",
+                extra={"output_schema": output_schema},
+            )
+            return
+        output_schema["properties"] = {}
+
     if property_name in output_schema["properties"]:
         # TODO: there is currently a bug that tries to add the same property twice when tools are used.
         # Warning is commented to avoid spam.

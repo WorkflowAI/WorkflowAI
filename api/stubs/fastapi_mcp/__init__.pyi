@@ -1,0 +1,6 @@
+# TODO: we should remove when FastAPI MCP starts including types
+from fastapi import FastAPI
+
+class FastApiMCP:
+    def __init__(self, app: FastAPI, include_tags: list[str] | None = None) -> None: ...
+    def mount(self) -> None: ...

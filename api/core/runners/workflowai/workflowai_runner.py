@@ -137,7 +137,6 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
         custom_configs: list[ProviderSettings] | None = None,
         cache_fetcher: Optional[CacheFetcher] = None,
         metadata: dict[str, Any] | None = None,
-        disable_fallback: bool = False,
         stream_deltas: bool = False,
         # TODO: this is not set anywhere for now
         timeout: float | None = None,
@@ -158,7 +157,6 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
 
         self._custom_configs = custom_configs
 
-        self.disable_fallback = disable_fallback
         # internal tool cache contains the result of internal tool calls
         self._internal_tool_cache = ToolCache()
         # For external tools we still use a cache to ensure the unicity of tool calls
@@ -541,7 +539,7 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
         await self._handle_files_in_messages(messages, provider)
         messages = self._fix_messages(messages)
 
-        final = Messages(messages=messages)
+        final = Messages.with_messages(*messages)
 
         if structured_output or self._prepared_output_schema.prepared_schema is None:
             return final.to_deprecated()
@@ -578,6 +576,9 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
         return final.to_deprecated()
 
     async def _extract_raw_messages(self, input: AgentInput) -> Sequence[Message] | None:
+        if not self.task.input_schema.uses_messages and not self._options.messages:
+            return None
+
         builder = MessageBuilder(self.template_manager, self.task.input_schema, self._options.messages, logger)
         return await builder.extract(input)
 

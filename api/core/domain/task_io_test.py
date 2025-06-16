@@ -7,7 +7,7 @@ import pytest
 from core.domain.errors import JSONSchemaValidationError
 from tests.utils import fixtures_json
 
-from .task_io import RawJSONMessageSchema, RawStringMessageSchema, SerializableTaskIO
+from .task_io import RawJSONMessageSchema, RawMessagesSchema, RawStringMessageSchema, SerializableTaskIO
 
 
 @pytest.fixture
@@ -414,3 +414,72 @@ class TestEnforce:
             },
             files_as_strings=False,
         )
+
+
+class TestUsesMessages:
+    @pytest.mark.parametrize(
+        "json_schema",
+        [
+            pytest.param({"format": "messages"}, id="empty"),
+            pytest.param({"format": "messages", "properties": {"message": {"type": "string"}}}, id="with properties"),
+            pytest.param(
+                {"format": "messages", "type": "object", "properties": {"message": {"type": "string"}}},
+                id="with types",
+            ),
+        ],
+    )
+    def test_uses_messages_is_true(self, json_schema: dict[str, Any]):
+        task_io = SerializableTaskIO.from_json_schema(
+            json_schema,
+        )
+        assert task_io.uses_messages
+
+    @pytest.mark.parametrize(
+        "json_schema",
+        [
+            pytest.param({"format": "message"}, id="empty"),
+            pytest.param({"properties": {"messages": {"type": "array"}}}, id="messages properties"),
+        ],
+    )
+    def test_uses_messages_is_false(self, json_schema: dict[str, Any]):
+        task_io = SerializableTaskIO.from_json_schema(json_schema)
+        assert not task_io.uses_messages
+
+    def test_sanity_raw_messages(self):
+        assert RawMessagesSchema.uses_messages
+
+
+class TestUsesRawMessages:
+    @pytest.mark.parametrize(
+        "json_schema",
+        [
+            pytest.param({"format": "messages"}, id="format messages only"),
+            pytest.param({"format": "messages", "properties": {}}, id="format messages only"),
+            pytest.param({"format": "messages", "type": "object"}, id="format messages with type"),
+        ],
+    )
+    def test_uses_raw_messages_is_true(self, json_schema: dict[str, Any]):
+        task_io = SerializableTaskIO.from_json_schema(json_schema)
+        assert task_io.uses_raw_messages
+
+    @pytest.mark.parametrize(
+        "json_schema",
+        [
+            pytest.param(
+                {"format": "messages", "properties": {"message": {"type": "string"}}},
+                id="format messages with properties",
+            ),
+            pytest.param(
+                {"format": "messages", "type": "object", "properties": {"message": {"type": "string"}}},
+                id="format messages with type and properties",
+            ),
+            pytest.param({"format": "message"}, id="format message not messages"),
+            pytest.param({"properties": {"messages": {"type": "array"}}}, id="no format messages"),
+        ],
+    )
+    def test_uses_raw_messages_is_false(self, json_schema: dict[str, Any]):
+        task_io = SerializableTaskIO.from_json_schema(json_schema)
+        assert not task_io.uses_raw_messages
+
+    def test_sanity_raw_messages(self):
+        assert RawMessagesSchema.uses_raw_messages

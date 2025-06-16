@@ -295,6 +295,19 @@ class TestParseResponse:
         assert raw_completion.response == "hello"
         mocked_provider.mock._extract_content_str.assert_called_once_with(DummyResponseModel(content="hello"))
 
+    def test_unexpected_response(self, mocked_provider: MockedProvider):
+        response = Mock(spec=Response)
+        # Provider will not be able to validate the response
+        response.json = Mock(return_value={"content": 1})
+        response.status_code = 200
+
+        raw_completion = RawCompletion(response="", usage=LLMUsage())
+
+        output_factory = Mock(side_effect=JSONDecodeError("Failed to decode JSON", "Arf", 0))
+
+        with pytest.raises(ProviderInternalError):
+            mocked_provider._parse_response(response, output_factory, raw_completion, {})  # pyright: ignore[reportPrivateUsage]
+
     def test_success(self, mocked_provider: MockedProvider):
         response = Mock(spec=Response)
         response.json = Mock(return_value={"content": '{"hello": "world"}'})
@@ -412,7 +425,7 @@ class TestReadErrors:
         assert len(requests) == 2
 
     async def test_max_retry_count(self, httpx_mock: HTTPXMock):
-        httpx_mock.add_exception(ReadError("Failed to read"))
+        httpx_mock.add_exception(ReadError("Failed to read"), is_reusable=True)
 
         with pytest.raises(ProviderUnavailableError):
             await MockedProvider().complete(  # pyright: ignore[reportPrivateUsage]

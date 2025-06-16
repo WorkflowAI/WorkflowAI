@@ -1,0 +1,11 @@
+{
+  "title": "Evaluations",
+  "icon": "ClipboardCheck",
+  "pages": [
+    "index",
+    "side-by-side",
+    "reviews",
+    "benchmarks",
+    "user-feedback"
+  ]
+} 

@@ -164,6 +164,8 @@ type SimpleSearchField = Literal[
     SearchField.TIME,
     SearchField.STATUS,
     SearchField.EVAL_HASH,
+    SearchField.INPUT,
+    SearchField.OUTPUT,
 ]
 
 
