@@ -15,7 +15,7 @@ Notes from Yann: I've tried to find the session id in the request but could not 
 
 
 ## Data analysis with `MCP Tool Call Analyzer Agent`
-Once this data is captured, we'll run an agent to "vibe check" that the MCP tool call went well.
+Once this data is captured, we'll run an agent to "vibe check" that the MCP tool call went well. This agent's runs will be our "audit trail" of the MCP server.
 
 Agent input variables:
 - The MCP tool name
