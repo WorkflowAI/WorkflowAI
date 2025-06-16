@@ -856,7 +856,7 @@ class MCPService:
 
             return MCPToolReturn(
                 success=True,
-                result={
+                data={
                     "message": "MCP client feedback received and sent for processing",
                     "feedback_length": len(feedback),
                     "has_context": context is not None,

@@ -15,7 +15,7 @@ from core.agents.mcp_feedback_processing_agent import (
         ("MCP server functioned as expected", "neutral"),
     ],
 )
-async def test_mcp_feedback_basic_sentiment_classification(feedback, expected_sentiment):
+async def test_mcp_feedback_basic_sentiment_classification(feedback: str, expected_sentiment: str):
     """Basic test to ensure sentiment classification works"""
     input_data = MCPFeedbackProcessingInput(feedback=feedback, context=None)
 
