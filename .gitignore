@@ -261,3 +261,4 @@ install-state.gz
 junit
 openapi_fixed.json
 .ignored
+docsv2/.source
