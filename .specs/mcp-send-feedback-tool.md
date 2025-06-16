@@ -2,15 +2,26 @@
 
 ## Overview
 
-This specification outlines the implementation of a new MCP tool `send_feedback` that allows MCP clients to submit feedback which will be sent to a dedicated AI agent running on WorkflowAI. The agent will categorize and summarize feedback using structured output, but the MCP tool will only acknowledge receipt.
+This specification outlines the implementation of a new MCP tool `send_feedback` that allows MCP clients (AI agents) to automatically send feedback about their experience using the MCP server. This feedback will be processed by a dedicated AI agent running on WorkflowAI for analysis and categorization, but the MCP tool will only acknowledge receipt.
 
 ## Goal
 
 Add a new MCP tool in `api/api/routers/mcp/mcp_server.py` that:
-1. Accepts feedback from MCP clients
+1. Accepts feedback from MCP clients about their MCP server experience
 2. Sends the feedback to a dedicated AI agent for processing (fire-and-forget)
 3. Returns simple acknowledgment that feedback was received and sent for processing
 4. Uses metadata to track organization and user information for analytics
+
+## Use Case
+
+This tool enables MCP clients (AI agents) to automatically provide feedback about:
+- Their experience using MCP server tools
+- Success/failure of MCP operations
+- Performance or usability issues
+- Suggestions for improvement
+- Overall satisfaction with MCP server capabilities
+
+The feedback is sent automatically by the MCP client after completing operations, not triggered by end-users.
 
 ## Current State Analysis
 
@@ -73,17 +84,19 @@ async def mcp_feedback_processing_agent(
 ) -> AsyncIterator[MCPFeedbackProcessingResponse]:
     """Process MCP client feedback and provide structured analysis"""
     
-    system_message = """You are a feedback agent that receives feedback from MCP clients. 
+    system_message = """You are a feedback agent that receives feedback from MCP clients about their experience using the MCP server. 
     Your goal is to summarize the feedback and categorize the feedback into a sentiment: positive, negative, neutral.
+    
+    The feedback comes from AI agents (MCP clients) reporting on their experience with MCP server tools and operations.
     
     Provide structured analysis including:
     - A concise summary of the main points
     - Sentiment classification (positive, negative, neutral)
-    - Key themes or topics identified
+    - Key themes or topics identified in the feedback
     - Confidence score for your sentiment classification
     """
 
-    user_message = """Please analyze the following feedback:
+    user_message = """Please analyze the following MCP client feedback:
 
 Feedback: {{feedback}}
 {% if context %}Context: {{context}}{% endif %}
@@ -134,14 +147,15 @@ Analyze this feedback and provide a structured response with summary, sentiment 
 **Tool Implementation**:
 ```python
 class SendFeedbackRequest(BaseModel):
-    feedback: str = Field(description="The feedback text to be processed")
-    context: str | None = Field(default=None, description="Optional context about the feedback")
+    feedback: str = Field(description="Feedback about the MCP client's experience using the MCP server")
+    context: str | None = Field(default=None, description="Optional context about the MCP operations that generated this feedback")
 
 @_mcp.tool()
 async def send_feedback(request: SendFeedbackRequest) -> MCPToolReturn:
     """<when_to_use>
-    When the user wants to submit feedback that will be processed by an AI agent.
-    This tool accepts feedback and sends it for analysis, returning a simple acknowledgment.
+    When an MCP client (AI agent) wants to provide feedback about its experience using the MCP server.
+    This tool is designed for automated feedback collection from MCP clients after they complete operations,
+    not for end-user feedback. The feedback helps improve MCP server functionality and user experience.
     </when_to_use>
     <returns>
     Returns acknowledgment that the feedback was received and sent for processing.
@@ -160,7 +174,7 @@ async def send_feedback(request: SendFeedbackRequest) -> MCPToolReturn:
 import asyncio
 
 async def send_feedback(self, feedback: str, context: str | None = None) -> MCPToolReturn:
-    """Send feedback to processing agent and return acknowledgment"""
+    """Send MCP client feedback to processing agent and return acknowledgment"""
     try:
         from core.agents.mcp_feedback_processing_agent import (
             mcp_feedback_processing_agent, 
@@ -184,7 +198,7 @@ async def send_feedback(self, feedback: str, context: str | None = None) -> MCPT
         return MCPToolReturn(
             success=True,
             result={
-                "message": "Feedback received and sent for processing",
+                "message": "MCP client feedback received and sent for processing",
                 "feedback_length": len(feedback),
                 "has_context": context is not None
             }
@@ -192,7 +206,7 @@ async def send_feedback(self, feedback: str, context: str | None = None) -> MCPT
     except Exception as e:
         return MCPToolReturn(
             success=False,
-            error=f"Failed to send feedback for processing: {str(e)}"
+            error=f"Failed to send MCP client feedback for processing: {str(e)}"
         )
 
 async def _process_feedback_async(
@@ -201,7 +215,7 @@ async def _process_feedback_async(
     organization_name: str | None, 
     user_email: str | None
 ):
-    """Background task to process feedback with the agent"""
+    """Background task to process MCP client feedback with the agent"""
     try:
         from core.agents.mcp_feedback_processing_agent import mcp_feedback_processing_agent
         
@@ -213,92 +227,70 @@ async def _process_feedback_async(
         ):
             # Log the analysis or store it somewhere if needed
             # For now, just log that processing completed
-            print(f"Feedback processed for {organization_name}: {response.analysis.sentiment} sentiment")
+            print(f"MCP client feedback processed for {organization_name}: {response.analysis.sentiment} sentiment")
             
     except Exception as e:
         # Log error but don't fail the MCP tool response
-        print(f"Error processing feedback: {str(e)}")
+        print(f"Error processing MCP client feedback: {str(e)}")
 ```
 
-### 4. Testing Strategy
+### 4. Testing Strategy (Simplified)
 
-**Unit Tests**: `api/core/agents/mcp_feedback_processing_agent_test.py`
-- Test various feedback scenarios (positive, negative, neutral)
-- Test edge cases (empty feedback, very long feedback)
-- Test confidence scoring accuracy
-- Test structured output parsing
-- Test metadata handling
+Since this is not a critical feature, we'll keep testing minimal but effective:
 
-**Integration Tests**: `api/api/routers/mcp/mcp_server_test.py`
-- Test MCP tool registration and execution
-- Test error handling and validation
-- Test acknowledgment response format
-- Test that background processing doesn't block tool response
-- Test organization/user context extraction
+**Basic Unit Tests**: `api/core/agents/mcp_feedback_processing_agent_test.py`
+- Test one positive, one negative, one neutral sentiment classification
+- Test basic structured output parsing
+- No extensive edge case testing
 
-**Example Test Cases**:
+**Basic Integration Tests**: `api/api/routers/mcp/mcp_server_test.py`
+- Test MCP tool returns successful acknowledgment
+- Test error handling for malformed requests
+- No complex scenario testing
+
+**Example Minimal Test Cases**:
 ```python
 @pytest.mark.parametrize("feedback,expected_sentiment", [
-    ("This is amazing! Great work!", "positive"),
-    ("This is terrible and broken", "negative"),
-    ("It works as expected", "neutral"),
+    ("MCP server worked great, all tools responded quickly", "positive"),
+    ("MCP operations failed, tools were unresponsive", "negative"),
+    ("MCP server functioned as expected", "neutral"),
 ])
-async def test_mcp_feedback_sentiment_classification(feedback, expected_sentiment):
-    input_data = MCPFeedbackProcessingInput(
-        feedback=feedback,
-        context=None
-    )
+async def test_mcp_feedback_basic_sentiment_classification(feedback, expected_sentiment):
+    """Basic test to ensure sentiment classification works"""
+    input_data = MCPFeedbackProcessingInput(feedback=feedback, context=None)
     
     responses = []
-    async for response in mcp_feedback_processing_agent(
-        input_data, 
-        organization_name="test-org", 
-        user_email="test@example.com"
-    ):
+    async for response in mcp_feedback_processing_agent(input_data, "test-org", None):
         responses.append(response)
     
     assert len(responses) == 1
     assert responses[0].analysis.sentiment == expected_sentiment
-    assert 0.0 <= responses[0].analysis.confidence <= 1.0
 
-async def test_send_feedback_mcp_tool():
-    """Test that MCP tool returns acknowledgment without waiting for processing"""
-    request = SendFeedbackRequest(
-        feedback="This is test feedback",
-        context="Testing context"
-    )
-    
+async def test_send_feedback_mcp_tool_basic():
+    """Basic test to ensure MCP tool returns acknowledgment"""
+    request = SendFeedbackRequest(feedback="Basic test feedback")
     result = await send_feedback(request)
     
     assert result.success is True
     assert "received and sent for processing" in result.result["message"]
-    assert result.result["feedback_length"] == len(request.feedback)
-    assert result.result["has_context"] is True
-
-async def test_metadata_tracking():
-    """Test that agent runs are tagged with proper metadata for tracking"""
-    # This would require integration testing with actual WorkflowAI backend
-    # to verify the metadata is properly attached to the run
-    pass
 ```
 
 ## Benefits of Metadata Approach
 
-### 1. **Tracking and Analytics**
-- Can filter runs by organization: `metadata.organization_name = "acme-corp"`
-- Can filter runs by user: `metadata.user_email = "john@acme-corp.com"`
-- Can analyze feedback patterns per organization
-- Can track usage by different teams/users
+### 1. **MCP Client Analytics**
+- Track feedback patterns by organization using MCP server
+- Identify common issues or successful patterns
+- Monitor MCP server performance from client perspective
 
 ### 2. **Simplified Architecture**
-- No need to pass datetime information
-- Agent identification via metadata instead of model parameter
-- Cleaner separation of concerns
+- Minimal testing overhead for non-critical feature
+- Clean separation between acknowledgment and processing
+- Automated feedback collection without user intervention
 
 ### 3. **Searchability**
-Using the existing `search_runs_by_metadata` MCP tool, users can find feedback processing runs:
+Using the existing `search_runs_by_metadata` MCP tool, administrators can find MCP client feedback:
 ```python
-# Find all feedback processing runs for a specific organization
+# Find all MCP client feedback for a specific organization
 search_runs_by_metadata({
     "agent_id": "mcp-feedback-processing-agent",
     "field_queries": [
@@ -315,85 +307,73 @@ search_runs_by_metadata({
 
 ### 1. Agent Location in Codebase
 **Recommendation**: `api/core/agents/mcp_feedback_processing_agent.py`
-- **Rationale**: Follows existing pattern in `core/agents/` directory with "mcp" prefix to indicate it's specifically for MCP feedback
+- **Rationale**: Follows existing pattern in `core/agents/` directory with "mcp" prefix
 
 ### 2. API Key Configuration
 **Recommendation**: Use `WORKFLOWAI_API_KEY` environment variable
-- **Rationale**: 
-  - Consistent with existing agent patterns (see `integration_code_block_agent.py`)
-  - Already available in the environment based on existing usage
-  - Follows security best practices for internal agent-to-agent communication
+- **Rationale**: Consistent with existing agent patterns
 - **Implementation**: `api_key=os.environ["WORKFLOWAI_API_KEY"]`
 
 ### 3. Additional Configuration Questions
 
 **Model Selection**:
-- **Recommendation**: `gemini-2.0-flash-latest` (in model parameter, not embedded in agent name)
-- **Rationale**: Cost-effective for sentiment analysis, sufficient capability for this task
+- **Recommendation**: `gemini-2.0-flash-latest`
+- **Rationale**: Cost-effective, fast, good for sentiment analysis
 
-**Metadata Extraction**:
-- **Question**: What's the best way to extract user email from MCP context?
-- **Recommendation**: Start with organization name from tenant, add user email later if available
+**Testing Strategy**:
+- **Recommendation**: Minimal testing since feature is not critical
+- **Focus**: Basic functionality validation only
 
 **Background Processing**:
-- **Question**: Should we implement proper background task queue or use simple asyncio.create_task()?
-- **Recommendation**: Start with asyncio.create_task(), upgrade to proper task queue later if needed
-
-**Error Handling Strategy**:
-- **Recommendation**: MCP tool always succeeds with acknowledgment, background processing errors are logged but don't affect tool response
+- **Recommendation**: Simple asyncio.create_task() approach
+- **Rationale**: Keep it simple for non-critical feature
 
 ## Implementation Steps
 
 1. **Phase 1: Core Agent**
    - [ ] Create `mcp_feedback_processing_agent.py` with simplified OpenAI SDK pattern
    - [ ] Implement metadata-based agent identification
-   - [ ] Add unit tests for the agent
+   - [ ] Add minimal unit tests (3-4 basic test cases)
 
 2. **Phase 2: MCP Integration**
    - [ ] Add `send_feedback` tool to MCP server
    - [ ] Implement `MCPService.send_feedback()` method with metadata extraction
-   - [ ] Add integration tests focusing on acknowledgment response
+   - [ ] Add basic integration tests (2-3 test cases)
 
-3. **Phase 3: Testing & Validation**
-   - [ ] End-to-end testing with actual MCP clients
-   - [ ] Verify metadata tracking works correctly
-   - [ ] Test searchability using existing metadata search tools
+3. **Phase 3: Validation**
+   - [ ] Basic end-to-end testing with MCP client
+   - [ ] Verify feedback processing works
+   - [ ] No extensive testing needed
 
-4. **Phase 4: Production Readiness**
-   - [ ] Error handling and monitoring for background processing
-   - [ ] Analytics dashboard for feedback patterns by organization
-   - [ ] Consider task queue for background processing
+4. **Phase 4: Deployment**
+   - [ ] Basic error monitoring
+   - [ ] Simple logging for processed feedback
+   - [ ] No complex analytics needed initially
 
 ## Dependencies
 
 - No new external dependencies required
 - Uses existing WorkflowAI agent infrastructure (OpenAI SDK pattern)
 - Leverages existing MCP tool framework
-- Relies on existing OpenAI SDK integration
-- Uses existing metadata search capabilities
+- Minimal testing dependencies
 
 ## Security Considerations
 
-- Feedback content should be sanitized/validated
-- Organization and user information handled securely
-- Use existing authentication patterns for internal agent communication
+- MCP client feedback should be sanitized/validated
+- Organization information handled securely
+- No sensitive information should be logged in feedback
 - Consider feedback content size limits
-- Background processing errors should not expose internal details
 
 ## Monitoring & Observability
 
-- Track feedback submission success/failure rates per organization
-- Monitor MCP tool response times (should be fast)
-- Log background processing completion/failure
-- Monitor feedback processing agent performance
-- Analytics on feedback sentiment patterns by organization
-- Alert on background processing errors
+- Basic logging for feedback submission success/failure
+- Simple monitoring of MCP tool response times
+- Log background processing completion (no complex metrics needed)
+- Basic alerting on processing errors
 
 ## Future Enhancements
 
-1. **Advanced Analytics**: Dashboard showing feedback trends by organization
-2. **User Email Tracking**: Extract user email from MCP context for finer-grained analytics
-3. **Proper Task Queue**: Replace asyncio.create_task with proper background job system
-4. **Feedback Categorization**: Extend beyond sentiment to functional categories
-5. **Integration with Existing Feedback System**: Connect with current feedback token workflow
-6. **Rate Limiting**: Add rate limiting for feedback submissions per organization
+1. **Analytics Dashboard**: Simple view of MCP client feedback trends
+2. **Feedback Aggregation**: Basic reports on common issues
+3. **Integration with Existing Systems**: Connect with current feedback workflows if needed
+4. **Enhanced Categorization**: Extend beyond sentiment if patterns emerge
