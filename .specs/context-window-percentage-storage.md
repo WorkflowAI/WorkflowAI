@@ -33,7 +33,7 @@ ALTER TABLE runs ADD COLUMN context_window_usage_percent UInt8 DEFAULT 0;
 **Rationale for UInt8:**
 - Range 0-255 is sufficient (we only need 0-100 for percentages)
 - Consistent with existing fields like `version_temperature_percent`
-- Space efficient (1 byte per row)
+- Space efficient (1 byte per row) - **optimal storage for percentages**
 - 0 as default indicates unknown/unavailable context window data
 
 #### 1.2 ClickhouseRun Model Updates
@@ -97,7 +97,7 @@ def _calculate_context_window_usage_percent(cls, run: AgentRun) -> int:
     if total_tokens == 0:
         return 0
     
-    # Get context window size from LLM completions
+    # Get context window size from LLM completions (use the largest available)
     context_window_size = cls._extract_context_window_size(run)
     
     if not context_window_size or context_window_size <= 0:
@@ -112,16 +112,19 @@ def _extract_context_window_size(cls, run: AgentRun) -> int | None:
     """
     Extract context window size from run's LLM completions.
     
-    Prioritizes the first completion with a valid context window size.
+    For multiple completions, selects the one with the longest context window
+    to provide the most accurate usage percentage calculation.
     """
     if not run.llm_completions:
         return None
     
+    max_context_window = 0
+    
     for completion in run.llm_completions:
         if completion.usage and completion.usage.model_context_window_size:
-            return completion.usage.model_context_window_size
+            max_context_window = max(max_context_window, completion.usage.model_context_window_size)
     
-    return None
+    return max_context_window if max_context_window > 0 else None
 ```
 
 ### 3. Search and Query Support
@@ -214,6 +217,39 @@ def test_context_window_usage_calculation():
     
     clickhouse_run = ClickhouseRun.from_domain(1, run)
     assert clickhouse_run.context_window_usage_percent == 100  # (800+200)/1000 * 100
+
+def test_context_window_usage_multiple_completions():
+    """Test context window percentage with multiple completions - should use the largest context window."""
+    run = task_run_ser(
+        id=str(uuid7()),
+        task_uid=1,
+        input_token_count=1600,
+        output_token_count=400,
+        llm_completions=[
+            LLMCompletion(
+                messages=[{"role": "user", "content": "test1"}],
+                usage=LLMUsage(
+                    prompt_token_count=800,
+                    completion_token_count=200,
+                    model_context_window_size=4000  # Smaller context window
+                ),
+                provider=Provider.OPEN_AI,
+            ),
+            LLMCompletion(
+                messages=[{"role": "user", "content": "test2"}],
+                usage=LLMUsage(
+                    prompt_token_count=800,
+                    completion_token_count=200,
+                    model_context_window_size=8000  # Larger context window - should be used
+                ),
+                provider=Provider.ANTHROPIC,
+            )
+        ]
+    )
+    
+    clickhouse_run = ClickhouseRun.from_domain(1, run)
+    # Should use the larger context window: (1600+400)/8000 * 100 = 25%
+    assert clickhouse_run.context_window_usage_percent == 25
 
 def test_context_window_usage_unknown():
     """Test context window percentage when size is unknown."""
