@@ -41,6 +41,16 @@ After adding the configuration:
 
 Once configured, you'll be able to use WorkflowAI's capabilities directly within Cursor through the MCP integration.
 
+## Alternative Setup: Using Claude Code
+
+If you prefer to use Claude Code, you can set up the MCP server with a single command:
+
+```bash
+claude mcp add workflowai https://api.workflowai.com/mcp/sse/ -H "Authorization: Bearer <API_KEY_HERE>" --transport http
+```
+
+Replace `<API_KEY_HERE>` with your actual WorkflowAI API token.
+
 <!-- TODO: Add a direct link to install the MCP using Cursor deeplinks (see https://docs.cursor.com/deeplinks#markdown) -->
 
 <Callout type="info">
