@@ -77,7 +77,8 @@ The Model Context Protocol (MCP) is Anthropic's open standard for connecting AI 
 | Decorator-based Tools | ✅ | ✅ | SDK includes FastMCP 1.0 |
 | HTTP Transport | ✅ | ✅ | Both support modern transports |
 | Client Libraries | ✅ | ✅ | FastMCP more comprehensive |
-| Authentication | ✅ | ✅ | FastMCP more batteries-included |
+| Authentication | ✅ | ✅ | Both support OAuth 2.0, FastMCP more batteries-included |
+| OAuth 2.0 Support | ✅ | ✅ | Official SDK has built-in OAuth provider |
 | OpenAPI Integration | ✅ | ❌ | FastMCP exclusive |
 | Server Composition | ✅ | ❌ | FastMCP exclusive |
 | Proxy Servers | ✅ | ❌ | FastMCP exclusive |
@@ -128,6 +129,64 @@ def list_models() -> dict:
     """List available models"""
     return {"models": ["gpt-4", "claude-3"]}
 ```
+
+### Authentication Implementation
+
+#### OAuth 2.0 with Official MCP SDK
+
+The official MCP Python SDK provides comprehensive OAuth 2.0 support through built-in authentication providers and settings:
+
+```python
+from mcp import FastMCP
+from mcp.server.auth.provider import OAuthAuthorizationServerProvider
+from mcp.server.auth.settings import (
+    AuthSettings,
+    ClientRegistrationOptions,
+    RevocationOptions,
+)
+
+
+class MyOAuthServerProvider(OAuthAuthorizationServerProvider):
+    # See an example on how to implement at `examples/servers/simple-auth`
+    ...
+
+
+mcp = FastMCP(
+    "My App",
+    auth_server_provider=MyOAuthServerProvider(),
+    auth=AuthSettings(
+        issuer_url="https://myapp.com",
+        revocation_options=RevocationOptions(
+            enabled=True,
+        ),
+        client_registration_options=ClientRegistrationOptions(
+            enabled=True,
+            valid_scopes=["myscope", "myotherscope"],
+            default_scopes=["myscope"],
+        ),
+        required_scopes=["myscope"],
+    ),
+)
+```
+
+**Key OAuth 2.0 Features in Official SDK:**
+
+1. **Built-in OAuth Provider**: `OAuthAuthorizationServerProvider` base class for custom implementations
+2. **Scope Management**: Define valid and default scopes for authorization
+3. **Token Revocation**: Built-in support for token revocation endpoints
+4. **Client Registration**: Dynamic client registration capabilities
+5. **Issuer Configuration**: Standard OAuth 2.0 issuer URL configuration
+6. **Security Settings**: Comprehensive security configuration options
+
+**Authentication Benefits:**
+
+- **Standards Compliant**: Full OAuth 2.0 and OpenID Connect compliance
+- **Extensible**: Custom OAuth provider implementation through inheritance
+- **Production Ready**: Built-in security features and token management
+- **Scope-based Authorization**: Fine-grained access control through scopes
+- **Enterprise Ready**: Supports enterprise authentication patterns
+
+This shows that the official MCP SDK is not lacking in authentication capabilities compared to FastMCP 2.0, providing enterprise-grade OAuth 2.0 support with proper standards compliance.
 
 ## Migration Considerations
 
