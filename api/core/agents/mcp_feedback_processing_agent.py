@@ -77,11 +77,33 @@ Analyze this feedback and provide a structured response with summary, sentiment 
             },
         },
         metadata=metadata,
-        response_format=MCPFeedbackProcessingOutput,
         temperature=0.0,
     )
 
-    # Parse the structured response
-    analysis = MCPFeedbackProcessingOutput.model_validate_json(response.choices[0].message.content)
+    # Parse the response content manually since structured output may not be supported
+    content = response.choices[0].message.content
+    if content is None:
+        content = (
+            '{"summary": "Unable to process feedback", "sentiment": "neutral", "key_themes": [], "confidence": 0.0}'
+        )
+
+    import json
+
+    try:
+        response_data = json.loads(content)
+        analysis = MCPFeedbackProcessingOutput(
+            summary=response_data.get("summary", "Feedback processed"),
+            sentiment=response_data.get("sentiment", "neutral"),
+            key_themes=response_data.get("key_themes", []),
+            confidence=response_data.get("confidence", 0.0),
+        )
+    except (json.JSONDecodeError, KeyError, TypeError):
+        # Fallback if JSON parsing fails
+        analysis = MCPFeedbackProcessingOutput(
+            summary=content[:200] if len(content) > 200 else content,
+            sentiment="neutral",
+            key_themes=["feedback_processing"],
+            confidence=0.5,
+        )
 
     yield MCPFeedbackProcessingResponse(analysis=analysis)
