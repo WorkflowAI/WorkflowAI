@@ -214,12 +214,7 @@ User Query → Validation → Tenant Injection → Execution → Result Formatti
 {
   "tool": "clickhouse_query",
   "parameters": {
-    "query": "SELECT COUNT(*) FROM runs WHERE created_at_date >= today() - INTERVAL 7 DAY",
-    "parameters": {
-      "agent_id": 12345
-    },
-    "timeout_seconds": 30,
-    "max_rows": 1000
+    "query": "SELECT COUNT(*) FROM runs WHERE created_at_date >= today() - INTERVAL 7 DAY"
   }
 }
 ```
@@ -235,7 +230,6 @@ User Query → Validation → Tenant Injection → Execution → Result Formatti
     "rows_returned": 1
   },
   "metadata": {
-    "query_hash": "abc123",
     "tenant_uid": 123,
     "executed_at": "2025-01-09T10:30:00Z"
   }
@@ -252,8 +246,7 @@ User Query → Validation → Tenant Injection → Execution → Result Formatti
 5. **AuditLogger**: Logs all queries for monitoring
 
 #### Configuration:
-- Query timeout limits (default: 30 seconds)
-- Maximum result rows (default: 1000)
+- Default query timeout limits configured at service level
 - Allowed query complexity limits
 - Rate limiting per tenant
 
@@ -271,23 +264,6 @@ User Query → Validation → Tenant Injection → Execution → Result Formatti
 - Query performance metrics
 - Security violations and blocked queries
 - Error rates and failure reasons
-
-## Rollout Strategy
-
-### Phase 1: Internal Testing
-- Deploy to staging environment
-- Test with internal users and common queries
-- Validate security restrictions and tenant isolation
-
-### Phase 2: Limited Beta
-- Roll out to select customers
-- Gather feedback on query patterns and performance
-- Iterate on security and usability
-
-### Phase 3: General Availability
-- Full rollout with monitoring and alerting
-- Documentation and query examples
-- Support for advanced features like query caching
 
 ## Future Enhancements
 

@@ -281,18 +281,6 @@ class ClickHouseQueryRequest(BaseModel):
     query: str = Field(
         description="The SQL query to execute on the ClickHouse runs table. Must be a SELECT statement only. The query will automatically be scoped to the authenticated tenant's data.",
     )
-    timeout_seconds: int = Field(
-        default=30,
-        description="Query timeout in seconds (max 60 seconds)",
-        ge=1,
-        le=60,
-    )
-    max_rows: int = Field(
-        default=1000,
-        description="Maximum number of rows to return (max 10000)",
-        ge=1,
-        le=10000,
-    )
 
 
 # @_mcp.tool() WIP
@@ -623,8 +611,8 @@ async def execute_clickhouse_query(request: ClickHouseQueryRequest) -> MCPToolRe
     **Security and Limitations:**
     - Only SELECT queries are allowed (no INSERT, UPDATE, DELETE, etc.)
     - All queries are automatically scoped to your tenant data
-    - Queries are limited by timeout and maximum row count
-    - Complex queries may be terminated if they exceed resource limits
+    - Queries have default timeout and resource limits configured at the service level
+    - Complex queries may be terminated if they exceed system resource limits
     - All queries are logged for audit purposes
     </security_notes>
 
@@ -634,15 +622,10 @@ async def execute_clickhouse_query(request: ClickHouseQueryRequest) -> MCPToolRe
     - rows: Array of result rows (each row is an array of values)
     - execution_time_ms: Query execution time in milliseconds
     - rows_returned: Number of rows in the result
-    - query_hash: Hash of the executed query for caching/tracking
     </returns>"""
     service = await get_mcp_service()
     # Implementation would go here - not implemented per user request
-    # return await service.execute_clickhouse_query(
-    #     query=request.query,
-    #     timeout_seconds=request.timeout_seconds,
-    #     max_rows=request.max_rows,
-    # )
+    # return await service.execute_clickhouse_query(query=request.query)
     return MCPToolReturn(
         success=False,
         message="ClickHouse query execution not yet implemented",
