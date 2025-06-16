@@ -109,10 +109,8 @@ export function AdvancedSettingsSliderEntry(props: Props) {
               data-1p-ignore
               autoFocus={false}
               tabIndex={-1}
-              className={cn(
-                'text-gray-900 text-right rounded-[2px] text-[13px] placeholder:text-gray-400 py-0.5 px-1 border border-gray-300 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none focus:outline-none focus:ring-0',
-                textWidth ? `w-[${textWidth}px]` : 'w-[50px]'
-              )}
+              className='text-gray-900 text-right rounded-[2px] text-[13px] placeholder:text-gray-400 py-0.5 px-1 border border-gray-300 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none focus:outline-none focus:ring-0'
+              style={{ width: textWidth ? `${textWidth}px` : '50px' }}
               value={formatValue(valueToUse, step)}
               onChange={(e) => onUpdateValue(e.target.value)}
               placeholder='0.0'

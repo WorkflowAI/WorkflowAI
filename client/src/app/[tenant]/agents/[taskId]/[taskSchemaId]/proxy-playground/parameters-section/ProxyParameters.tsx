@@ -141,7 +141,7 @@ export function ProxyParameters(props: ProxyParametersProps) {
           <div className='flex flex-col gap-1 px-4 pt-3 pb-3'>
             <div className='flex w-full items-center font-medium text-[13px] text-gray-900'>Temperature</div>
             <TemperatureSelector
-              temperature={Number(advancedSettings.temperature)}
+              temperature={advancedSettings.temperature ? Number(advancedSettings.temperature) : 0}
               setTemperature={(temperature) => advancedSettings.setTemperature(String(temperature))}
             />
           </div>

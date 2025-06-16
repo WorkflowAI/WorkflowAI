@@ -76,7 +76,7 @@ export const useAIModels = create<AIModelsState>((set, get) => ({
 
     set(
       produce((state) => {
-        state.isLoading = true;
+        state.isLoadingFeatureModels = true;
       })
     );
 
@@ -86,7 +86,7 @@ export const useAIModels = create<AIModelsState>((set, get) => ({
       const response = await client.get<Page_ModelResponse_>(path);
       set(
         produce((state) => {
-          state.models = response.items;
+          state.featureModels = response.items;
         })
       );
     } catch (error) {
@@ -94,8 +94,8 @@ export const useAIModels = create<AIModelsState>((set, get) => ({
     } finally {
       set(
         produce((state) => {
-          state.isLoading = false;
-          state.isInitialized = true;
+          state.isLoadingFeatureModels = false;
+          state.isInitializedFeatureModels = true;
         })
       );
     }

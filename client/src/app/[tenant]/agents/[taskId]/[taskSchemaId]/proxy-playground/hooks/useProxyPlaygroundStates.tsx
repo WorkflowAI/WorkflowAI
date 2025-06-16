@@ -13,8 +13,19 @@ function useSetPropertyFromVersionIfNeeded(
   setProperty: (property: string | undefined) => void
 ) {
   const propertyRef = useRef<string | undefined>(property);
+  useEffect(() => {
+    propertyRef.current = property;
+  }, [property]);
+
   const keyRef = useRef<string>(key);
+  useEffect(() => {
+    keyRef.current = key;
+  }, [key]);
+
   const setPropertyRef = useRef<((property: string | undefined) => void) | undefined>(setProperty);
+  useEffect(() => {
+    setPropertyRef.current = setProperty;
+  }, [setProperty]);
 
   useEffect(() => {
     const property = propertyRef.current;
