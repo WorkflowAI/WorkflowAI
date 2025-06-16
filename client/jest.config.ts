@@ -6,6 +6,7 @@ const config: Config = {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
     '\\.webp$': '<rootDir>/src/tests/mocks/imageFileMock.ts',
+    '^nanoid$': 'nanoid/non-secure',
   },
   transform: {
     '^.+\\.(ts|tsx)$': [
@@ -15,6 +16,7 @@ const config: Config = {
       },
     ],
   },
+  transformIgnorePatterns: ['node_modules/(?!(nanoid)/)'],
   setupFiles: ['<rootDir>/src/tests/mocks/resizeObserverMock.ts'],
 };
 

@@ -410,3 +410,25 @@ export function createAssistantMessageFromRun(run: RunV1): ProxyMessage {
     content: [...content, { text: assistantText }],
   };
 }
+
+/**
+ * Generates element ID for a message based on its position in the message list
+ * @param index - The index of the message in the messages array
+ * @param totalMessages - The total number of messages
+ * @returns The element ID string or undefined for middle messages
+ */
+export function elementIdForMessage(index: number, totalMessages: number): string | undefined {
+  if (totalMessages <= 0) {
+    return undefined;
+  }
+  
+  if (index === 0) {
+    return 'first-message';
+  }
+  
+  if (index === totalMessages - 1) {
+    return 'last-message';
+  }
+  
+  return undefined;
+}

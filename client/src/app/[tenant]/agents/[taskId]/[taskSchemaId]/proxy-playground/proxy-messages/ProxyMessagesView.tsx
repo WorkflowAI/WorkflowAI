@@ -4,7 +4,13 @@ import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 import { ProxyMessage } from '@/types/workflowAI';
 import { ProxyMessageView } from './ProxyMessageView';
-import { ExtendedMessageType, allExtendedMessageTypes, cleanMessagesAndAddIDs, createEmptyMessage } from './utils';
+import {
+  ExtendedMessageType,
+  allExtendedMessageTypes,
+  cleanMessagesAndAddIDs,
+  createEmptyMessage,
+  elementIdForMessage,
+} from './utils';
 
 type Props = {
   messages: ProxyMessage[] | undefined;
@@ -138,7 +144,7 @@ export function ProxyMessagesView(props: Props) {
     >
       {cleanedMessages?.map((message, index) => (
         <ProxyMessageView
-          id={index === 0 ? 'first-message' : index === cleanedMessages.length - 1 ? 'last-message' : undefined}
+          id={elementIdForMessage(index, cleanedMessages.length)}
           key={message.internal_id ?? index}
           message={message}
           setMessage={(message) => onMessageChange(message, index)}
