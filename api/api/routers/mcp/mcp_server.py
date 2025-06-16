@@ -277,6 +277,24 @@ class SearchRunsByMetadataRequest(BaseModel):
     offset: int = Field(default=0, description="Number of results to skip")
 
 
+class ClickHouseQueryRequest(BaseModel):
+    query: str = Field(
+        description="The SQL query to execute on the ClickHouse runs table. Must be a SELECT statement only. The query will automatically be scoped to the authenticated tenant's data.",
+    )
+    timeout_seconds: int = Field(
+        default=30,
+        description="Query timeout in seconds (max 60 seconds)",
+        ge=1,
+        le=60,
+    )
+    max_rows: int = Field(
+        default=1000,
+        description="Maximum number of rows to return (max 10000)",
+        ge=1,
+        le=10000,
+    )
+
+
 # @_mcp.tool() WIP
 async def search_runs_by_metadata(request: SearchRunsByMetadataRequest) -> MCPToolReturn:
     """<when_to_use>
@@ -377,6 +395,258 @@ async def search_runs_by_metadata(request: SearchRunsByMetadataRequest) -> MCPTo
         field_queries=request.field_queries,
         limit=request.limit,
         offset=request.offset,
+    )
+
+
+@_mcp.tool()
+async def execute_clickhouse_query(request: ClickHouseQueryRequest) -> MCPToolReturn:
+    """<when_to_use>
+    When the user needs to run custom analytics queries on their WorkflowAI agent runs stored in ClickHouse. This is ideal for:
+
+    - **Cost Analysis**: Total costs, daily/weekly cost breakdowns, cost per agent or model
+    - **Performance Analysis**: Average latency, response times, performance trends over time
+    - **Usage Analytics**: Run counts, token usage, success rates, error analysis
+    - **Custom Reporting**: Any complex aggregations or filtering not available through other tools
+    - **Troubleshooting**: Finding runs with specific characteristics or patterns
+    - **Business Intelligence**: Custom metrics and KPIs for agent performance
+
+    Use this tool when standard agent statistics tools don't provide enough flexibility for your specific analytical needs.
+    </when_to_use>
+
+    <table_structure>
+    The `runs` table contains all WorkflowAI agent execution data with the following structure:
+
+    **Core Identifiers:**
+    - `tenant_uid` (UInt32): Your tenant identifier (automatically filtered)
+    - `task_uid` (UInt32): The agent/task identifier
+    - `run_uuid` (UInt128): Unique identifier for each run
+    - `conversation_id` (UInt128): Groups related runs in a conversation
+
+    **Timing & Versioning:**
+    - `created_at_date` (Date): Date when the run was created (YYYY-MM-DD format)
+    - `updated_at` (DateTime): Last update timestamp
+    - `task_schema_id` (UInt16): Schema version of the agent
+    - `version_id` (FixedString(32)): MD5 hash of version properties
+    - `version_iteration` (UInt16): Version iteration (deprecated, use version_id)
+    - `version_model` (LowCardinality(String)): AI model used (e.g., 'gpt-4', 'claude-3')
+    - `version_temperature_percent` (UInt8): Temperature * 100 (e.g., 70 = 0.7 temperature)
+
+    **Performance Metrics:**
+    - `duration_ds` (UInt16): Duration in tenths of seconds (divide by 10 for seconds)
+    - `overhead_ms` (UInt8): Overhead in milliseconds
+    - `cost_millionth_usd` (UInt32): Cost in millionths of USD (divide by 1,000,000 for USD)
+    - `input_token_count` (UInt32): Number of input tokens
+    - `output_token_count` (UInt32): Number of output tokens
+
+    **Input/Output Data:**
+    - `input_preview` (String): Preview of the input data
+    - `input` (String): Full input data (JSON string)
+    - `output_preview` (String): Preview of the output data
+    - `output` (String): Full output data (JSON string)
+
+    **Status & Errors:**
+    - `error_payload` (String): Error details (empty string = success)
+    - `is_active` (Boolean): Whether run was created via SDK/API
+
+    **Content Hashes:**
+    - `input_hash` (FixedString(32)): MD5 hash of input
+    - `output_hash` (FixedString(32)): MD5 hash of output
+    - `eval_hash` (FixedString(32)): MD5 hash for evaluation
+    - `cache_hash` (FixedString(32)): MD5 hash for caching
+
+    **Additional Data:**
+    - `metadata` (Map(String, String)): Custom metadata key-value pairs
+    - `tool_calls` (Array(String)): Tool calls made during execution
+    - `reasoning_steps` (Array(String)): Reasoning steps taken
+    - `llm_completions` (Array(String)): LLM completion details
+    - `provider_config_uuid` (UUID): Provider configuration identifier
+    - `author_uid` (UInt32): User who created the run
+
+    **Important Notes:**
+    - All queries are automatically filtered to your tenant data
+    - Use `cost_millionth_usd > 0` to filter out zero-cost runs
+    - Use `duration_ds > 0` to filter out zero-duration runs
+    - Use `error_payload = ''` to filter for successful runs only
+    - Use `error_payload != ''` to filter for failed runs only
+    </table_structure>
+
+    <query_examples>
+    Here are example queries for common use cases:
+
+    **1. Total cost for all agents in the last week:**
+    ```sql
+    SELECT
+        SUM(cost_millionth_usd) / 1000000.0 AS total_cost_usd,
+        COUNT(*) AS total_runs
+    FROM runs
+    WHERE created_at_date >= today() - INTERVAL 7 DAY
+        AND cost_millionth_usd > 0;
+    ```
+
+    **2. Daily cost breakdown for a specific agent:**
+    ```sql
+    SELECT
+        created_at_date,
+        SUM(cost_millionth_usd) / 1000000.0 AS daily_cost_usd,
+        COUNT(*) AS daily_runs,
+        AVG(duration_ds) / 10.0 AS avg_duration_seconds
+    FROM runs
+    WHERE task_uid = 12345
+        AND created_at_date >= today() - INTERVAL 7 DAY
+        AND cost_millionth_usd > 0
+    GROUP BY created_at_date
+    ORDER BY created_at_date;
+    ```
+
+    **3. Weekly cost aggregation for the last 4 weeks:**
+    ```sql
+    SELECT
+        toStartOfWeek(created_at_date) AS week_start,
+        SUM(cost_millionth_usd) / 1000000.0 AS weekly_cost_usd,
+        COUNT(*) AS weekly_runs
+    FROM runs
+    WHERE task_uid = 12345
+        AND created_at_date >= today() - INTERVAL 28 DAY
+        AND cost_millionth_usd > 0
+    GROUP BY week_start
+    ORDER BY week_start;
+    ```
+
+    **4. Average latency analysis for a specific agent:**
+    ```sql
+    SELECT
+        AVG(duration_ds) / 10.0 AS avg_latency_seconds,
+        PERCENTILE(duration_ds / 10.0, 0.5) AS median_latency_seconds,
+        PERCENTILE(duration_ds / 10.0, 0.95) AS p95_latency_seconds,
+        MAX(duration_ds) / 10.0 AS max_latency_seconds,
+        AVG(overhead_ms) AS avg_overhead_ms
+    FROM runs
+    WHERE task_uid = 12345
+        AND duration_ds > 0
+        AND error_payload = '';
+    ```
+
+    **5. Performance comparison by model:**
+    ```sql
+    SELECT
+        version_model,
+        COUNT(*) AS run_count,
+        AVG(duration_ds) / 10.0 AS avg_latency_seconds,
+        SUM(cost_millionth_usd) / 1000000.0 AS total_cost_usd,
+        AVG(input_token_count + output_token_count) AS avg_total_tokens
+    FROM runs
+    WHERE created_at_date >= today() - INTERVAL 7 DAY
+        AND duration_ds > 0
+    GROUP BY version_model
+    ORDER BY run_count DESC;
+    ```
+
+    **6. Error rate analysis by agent:**
+    ```sql
+    SELECT
+        task_uid,
+        COUNT(*) AS total_runs,
+        SUM(CASE WHEN error_payload != '' THEN 1 ELSE 0 END) AS error_count,
+        (SUM(CASE WHEN error_payload != '' THEN 1 ELSE 0 END) * 100.0 / COUNT(*)) AS error_rate_percent
+    FROM runs
+    WHERE created_at_date >= today() - INTERVAL 7 DAY
+    GROUP BY task_uid
+    HAVING total_runs > 10
+    ORDER BY error_rate_percent DESC;
+    ```
+
+    **7. Token usage patterns:**
+    ```sql
+    SELECT
+        task_uid,
+        SUM(input_token_count) AS total_input_tokens,
+        SUM(output_token_count) AS total_output_tokens,
+        AVG(input_token_count) AS avg_input_tokens,
+        AVG(output_token_count) AS avg_output_tokens,
+        SUM(cost_millionth_usd) / 1000000.0 AS total_cost_usd
+    FROM runs
+    WHERE created_at_date >= today() - INTERVAL 7 DAY
+        AND error_payload = ''
+    GROUP BY task_uid
+    ORDER BY total_input_tokens + total_output_tokens DESC;
+    ```
+
+    **8. Usage patterns by metadata:**
+    ```sql
+    SELECT
+        metadata['environment'] AS environment,
+        metadata['user_type'] AS user_type,
+        COUNT(*) AS run_count,
+        AVG(duration_ds) / 10.0 AS avg_latency_seconds,
+        SUM(cost_millionth_usd) / 1000000.0 AS total_cost_usd
+    FROM runs
+    WHERE created_at_date >= today() - INTERVAL 7 DAY
+        AND metadata['environment'] != ''
+    GROUP BY metadata['environment'], metadata['user_type']
+    ORDER BY run_count DESC;
+    ```
+
+    **9. Recent runs with high latency:**
+    ```sql
+    SELECT
+        task_uid,
+        run_uuid,
+        created_at_date,
+        duration_ds / 10.0 AS duration_seconds,
+        cost_millionth_usd / 1000000.0 AS cost_usd,
+        version_model,
+        input_preview,
+        output_preview
+    FROM runs
+    WHERE created_at_date >= today() - INTERVAL 1 DAY
+        AND duration_ds > 300  -- More than 30 seconds
+        AND error_payload = ''
+    ORDER BY duration_ds DESC
+    LIMIT 20;
+    ```
+
+    **10. Hourly usage patterns:**
+    ```sql
+    SELECT
+        toHour(updated_at) AS hour_of_day,
+        COUNT(*) AS runs_count,
+        AVG(duration_ds) / 10.0 AS avg_duration_seconds,
+        SUM(cost_millionth_usd) / 1000000.0 AS total_cost_usd
+    FROM runs
+    WHERE created_at_date >= today() - INTERVAL 7 DAY
+    GROUP BY hour_of_day
+    ORDER BY hour_of_day;
+    ```
+    </query_examples>
+
+    <security_notes>
+    **Security and Limitations:**
+    - Only SELECT queries are allowed (no INSERT, UPDATE, DELETE, etc.)
+    - All queries are automatically scoped to your tenant data
+    - Queries are limited by timeout and maximum row count
+    - Complex queries may be terminated if they exceed resource limits
+    - All queries are logged for audit purposes
+    </security_notes>
+
+    <returns>
+    Returns query results in a structured format with:
+    - columns: Array of column names
+    - rows: Array of result rows (each row is an array of values)
+    - execution_time_ms: Query execution time in milliseconds
+    - rows_returned: Number of rows in the result
+    - query_hash: Hash of the executed query for caching/tracking
+    </returns>"""
+    service = await get_mcp_service()
+    # Implementation would go here - not implemented per user request
+    # return await service.execute_clickhouse_query(
+    #     query=request.query,
+    #     timeout_seconds=request.timeout_seconds,
+    #     max_rows=request.max_rows,
+    # )
+    return MCPToolReturn(
+        success=False,
+        message="ClickHouse query execution not yet implemented",
+        data=None,
     )
 
 
