@@ -32,7 +32,7 @@ Agent output:
     - Is it a server error? (tool failed)
     - Propose an enhancement suggestion (those enhancement suggestions can be used to improve the MCP server)
 
-# Evaluating "conversations" as a whole
+## Evaluating "conversations" as a whole
 It could be useful to evaluate a whole Cursor chat at once instead of every turn of back and forth between Cursor and the MCP server.
 
 Possible implementation:
