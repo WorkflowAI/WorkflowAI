@@ -1,3 +1,4 @@
+# pyright: reportPrivateUsage=false
 import pytest
 
 from core.agents.mcp_feedback_processing_agent import (
@@ -18,9 +19,7 @@ async def test_mcp_feedback_basic_sentiment_classification(feedback, expected_se
     """Basic test to ensure sentiment classification works"""
     input_data = MCPFeedbackProcessingInput(feedback=feedback, context=None)
 
-    responses = []
-    async for response in mcp_feedback_processing_agent(input_data, "test-org", None):
-        responses.append(response)
+    responses = [response async for response in mcp_feedback_processing_agent(input_data, "test-org", None)]
 
     assert len(responses) == 1
     assert responses[0].analysis.sentiment == expected_sentiment
@@ -33,9 +32,9 @@ async def test_mcp_feedback_with_context():
         context="Testing during peak load hours",
     )
 
-    responses = []
-    async for response in mcp_feedback_processing_agent(input_data, "test-org", "test@example.com"):
-        responses.append(response)
+    responses = [
+        response async for response in mcp_feedback_processing_agent(input_data, "test-org", "test@example.com")
+    ]
 
     assert len(responses) == 1
     assert responses[0].analysis.summary is not None
@@ -50,9 +49,7 @@ async def test_mcp_feedback_structured_output():
         context=None,
     )
 
-    responses = []
-    async for response in mcp_feedback_processing_agent(input_data, "test-org", None):
-        responses.append(response)
+    responses = [response async for response in mcp_feedback_processing_agent(input_data, "test-org", None)]
 
     assert len(responses) == 1
     analysis = responses[0].analysis

@@ -31,11 +31,11 @@ async def mcp_feedback_processing_agent(
 ) -> AsyncIterator[MCPFeedbackProcessingResponse]:
     """Process MCP client feedback and provide structured analysis"""
 
-    system_message = """You are a feedback agent that receives feedback from MCP clients about their experience using the MCP server. 
+    system_message = """You are a feedback agent that receives feedback from MCP clients about their experience using the MCP server.
     Your goal is to summarize the feedback and categorize the feedback into a sentiment: positive, negative, neutral.
-    
+
     The feedback comes from AI agents (MCP clients) reporting on their experience with MCP server tools and operations.
-    
+
     Provide structured analysis including:
     - A concise summary of the main points
     - Sentiment classification (positive, negative, neutral)
