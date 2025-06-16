@@ -277,9 +277,9 @@ class SearchRunsByMetadataRequest(BaseModel):
     offset: int = Field(default=0, description="Number of results to skip")
 
 
-class ClickHouseQueryRequest(BaseModel):
+class ExecuteQueryRequest(BaseModel):
     query: str = Field(
-        description="The SQL query to execute on the ClickHouse runs table. Must be a SELECT statement only. The query will automatically be scoped to the authenticated tenant's data.",
+        description="The SQL query to execute on the agent runs database. Must be a SELECT statement only. The query will automatically be scoped to the authenticated tenant's data.",
     )
 
 
@@ -387,9 +387,9 @@ async def search_runs_by_metadata(request: SearchRunsByMetadataRequest) -> MCPTo
 
 
 @_mcp.tool()
-async def execute_clickhouse_query(request: ClickHouseQueryRequest) -> MCPToolReturn:
+async def execute_query(request: ExecuteQueryRequest) -> MCPToolReturn:
     """<when_to_use>
-    When the user needs to run custom analytics queries on their WorkflowAI agent runs stored in ClickHouse. This is ideal for:
+    When the user needs to run custom analytics queries on their WorkflowAI agent runs database. This is ideal for:
 
     - **Cost Analysis**: Total costs, daily/weekly cost breakdowns, cost per agent or model
     - **Performance Analysis**: Average latency, response times, performance trends over time
@@ -500,18 +500,23 @@ async def execute_clickhouse_query(request: ClickHouseQueryRequest) -> MCPToolRe
     ORDER BY week_start;
     ```
 
-    **4. Average latency analysis for a specific agent:**
+    **4. Latency distribution analysis for a specific agent:**
     ```sql
     SELECT
+        COUNT(*) AS total_runs,
         AVG(duration_ds) / 10.0 AS avg_latency_seconds,
         PERCENTILE(duration_ds / 10.0, 0.5) AS median_latency_seconds,
+        PERCENTILE(duration_ds / 10.0, 0.90) AS p90_latency_seconds,
         PERCENTILE(duration_ds / 10.0, 0.95) AS p95_latency_seconds,
+        PERCENTILE(duration_ds / 10.0, 0.99) AS p99_latency_seconds,
         MAX(duration_ds) / 10.0 AS max_latency_seconds,
+        MIN(duration_ds) / 10.0 AS min_latency_seconds,
         AVG(overhead_ms) AS avg_overhead_ms
     FROM runs
     WHERE task_uid = 12345
         AND duration_ds > 0
-        AND error_payload = '';
+        AND error_payload = ''
+        AND created_at_date >= today() - INTERVAL 7 DAY;
     ```
 
     **5. Performance comparison by model:**
@@ -605,6 +610,34 @@ async def execute_clickhouse_query(request: ClickHouseQueryRequest) -> MCPToolRe
     GROUP BY hour_of_day
     ORDER BY hour_of_day;
     ```
+
+    **11. Context window usage analysis (requires model context limits):**
+    ```sql
+    -- Note: This query requires knowing the context window limits for each model
+    -- Currently we only store input_token_count and output_token_count
+    -- To get percentage usage, we would need either:
+    -- 1. A lookup table of model -> max_context_window, or
+    -- 2. Store context_window_usage_percent directly in the runs table
+
+    SELECT
+        version_model,
+        toStartOfWeek(created_at_date) AS week_start,
+        COUNT(*) AS total_runs,
+        AVG(input_token_count + output_token_count) AS avg_total_tokens,
+        MAX(input_token_count + output_token_count) AS max_total_tokens,
+        -- Example with hardcoded limits (not ideal):
+        AVG(CASE
+            WHEN version_model LIKE '%gpt-4%' THEN (input_token_count + output_token_count) / 128000.0 * 100
+            WHEN version_model LIKE '%gpt-3.5%' THEN (input_token_count + output_token_count) / 16385.0 * 100
+            ELSE NULL
+        END) AS avg_context_usage_percent
+    FROM runs
+    WHERE created_at_date >= today() - INTERVAL 28 DAY
+        AND error_payload = ''
+        AND (input_token_count + output_token_count) > 0
+    GROUP BY version_model, week_start
+    ORDER BY week_start DESC, version_model;
+    ```
     </query_examples>
 
     <security_notes>
@@ -625,10 +658,10 @@ async def execute_clickhouse_query(request: ClickHouseQueryRequest) -> MCPToolRe
     </returns>"""
     service = await get_mcp_service()
     # Implementation would go here - not implemented per user request
-    # return await service.execute_clickhouse_query(query=request.query)
+    # return await service.execute_query(query=request.query)
     return MCPToolReturn(
         success=False,
-        message="ClickHouse query execution not yet implemented",
+        message="Query execution not yet implemented",
         data=None,
     )
 
