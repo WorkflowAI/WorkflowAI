@@ -261,6 +261,12 @@ async def get_agent_versions(
 
     return await service.list_agent_versions(task_tuple)
 
+class SendFeedbackRequest(BaseModel):
+    feedback: str = Field(description="Feedback about the MCP client's experience using the MCP server")
+    context: str | None = Field(
+        default=None,
+        description="Optional context about the MCP operations that generated this feedback",
+    )
 
 # @_mcp.tool() WIP
 async def search_runs_by_metadata(
@@ -490,6 +496,21 @@ async def deploy_agent_version(
         environment=environment,
         deployed_by=user_identifier,
     )
+
+
+@_mcp.tool()
+async def send_feedback(request: SendFeedbackRequest) -> MCPToolReturn:
+    """<when_to_use>
+    When an MCP client (AI agent) wants to provide feedback about its experience using the MCP server.
+    This tool is designed for automated feedback collection from MCP clients after they complete operations,
+    not for end-user feedback. The feedback helps improve MCP server functionality and user experience.
+    </when_to_use>
+    <returns>
+    Returns acknowledgment that the feedback was received and sent for processing.
+    The actual analysis is handled asynchronously by the feedback processing agent.
+    </returns>"""
+    service = await get_mcp_service()
+    return await service.send_feedback(request.feedback, request.context)
 
 
 def mcp_http_app():
