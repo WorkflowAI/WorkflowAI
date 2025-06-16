@@ -83,6 +83,13 @@ async def mcp_feedback_processing_agent(
     - Confidence score for your sentiment classification
     """
 
+    user_message = """Please analyze the following feedback:
+
+Feedback: {{feedback}}
+{% if context %}Context: {{context}}{% endif %}
+
+Analyze this feedback and provide a structured response with summary, sentiment classification, key themes, and confidence score."""
+
     client = AsyncOpenAI(
         api_key=os.environ["WORKFLOWAI_API_KEY"],
         base_url=f"{os.environ['WORKFLOWAI_API_URL']}/v1",
@@ -98,10 +105,10 @@ async def mcp_feedback_processing_agent(
         metadata["user_email"] = user_email
     
     response = await client.chat.completions.create(
-        model="gpt-4o-mini-latest",
+        model="gemini-2.0-flash-latest",
         messages=[
             {"role": "system", "content": system_message},
-            {"role": "user", "content": "Analyze the provided feedback and return structured analysis."},
+            {"role": "user", "content": user_message},
         ],
         extra_body={
             "input": {
@@ -321,7 +328,7 @@ search_runs_by_metadata({
 ### 3. Additional Configuration Questions
 
 **Model Selection**:
-- **Recommendation**: `gpt-4o-mini-latest` (in model parameter, not embedded in agent name)
+- **Recommendation**: `gemini-2.0-flash-latest` (in model parameter, not embedded in agent name)
 - **Rationale**: Cost-effective for sentiment analysis, sufficient capability for this task
 
 **Metadata Extraction**:
