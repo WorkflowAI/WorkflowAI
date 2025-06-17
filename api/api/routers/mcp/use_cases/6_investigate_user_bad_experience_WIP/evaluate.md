@@ -1,0 +1,5 @@
+user-specific runs must be retrieved successfully
+specific user interaction must be analyzed
+root cause of bad experience must be identified
+recommendations to prevent similar issues must be provided
+pattern analysis across multiple users should be performed if applicable

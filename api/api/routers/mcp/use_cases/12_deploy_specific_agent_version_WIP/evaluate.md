@@ -1,0 +1,5 @@
+specific agent version must be identified
+deployment to production must be successful
+deployment status must be verified
+production environment must be properly configured
+deployment process must be completed without errors

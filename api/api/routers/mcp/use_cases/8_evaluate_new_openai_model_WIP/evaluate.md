@@ -1,0 +1,7 @@
+new model configuration must be successfully set up
+A/B testing between old and new model must be performed
+quality comparison between models must be provided
+speed/latency metrics must be compared
+cost analysis between models must be performed
+recommendation on whether to upgrade must be given
+test results must demonstrate model performance differences

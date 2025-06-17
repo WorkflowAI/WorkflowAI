@@ -1,0 +1,5 @@
+playground access must be provided or guidance given
+agent version must be retrievable from WorkflowAI
+code must be successfully exported to IDE
+version synchronization must be demonstrated
+updated agent code must be functional in IDE

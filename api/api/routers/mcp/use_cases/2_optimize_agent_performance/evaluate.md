@@ -1,0 +1,7 @@
+the migrated code must run on WorkflowAI
+the code must include run.workflowai.com endpoint
+the code must include the user's API key
+performance comparison must be provided (speed, cost, quality)
+faster model recommendations must be given with pros/cons
+output consistency between old and new models must be validated
+structured output must be maintained in migration

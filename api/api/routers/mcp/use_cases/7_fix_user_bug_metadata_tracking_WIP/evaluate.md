@@ -1,0 +1,5 @@
+agent code must be updated to include metadata tracking
+user_id and relevant metadata must be collected for all runs
+updated agent must be successfully deployed
+metadata tracking must be functional and tested
+user's specific bug must be investigated and resolved
