@@ -1,0 +1,180 @@
+---
+title: Persistent Memory
+description: Add ChatGPT-style memory to your conversation agents in minutes
+---
+
+import { Callout } from "fumadocs-ui/components/callout"
+import { Tabs, Tab } from "fumadocs-ui/components/tabs"
+
+# Persistent memory
+
+<Callout type="info">
+TODO:
+- [ ] Check memory prompt ChatGPT
+- [ ] Link to lower memory primitives
+- [ ] UX/UI
+- [ ] API
+</Callout>
+
+Learn how to implement persistent memory for your conversation agents so they can remember context, preferences, and previous interactions across chat sessions.
+
+## Overview
+
+Adding memory to conversation agents transforms them from stateless responders to intelligent assistants that can:
+- Remember user preferences and personal details
+- Maintain context across multiple chat sessions
+- Reference previous conversations naturally
+- Build relationships over time
+- Provide personalized experiences
+
+<Callout type="info">
+**Persistent Memory vs. Chat Continuity:** While [Chat Continuity](/docs/agents/memory/chat-continuity) maintains context within a single conversation using `reply_to_run_id`, persistent memory stores facts across completely separate conversations and chat sessions.
+</Callout>
+
+## The challenge
+
+Basic chatbots forget everything between conversations:
+
+```python
+# Current limitation
+user: "My name is Sarah"
+bot: "Nice to meet you, Sarah!"
+
+# Later session (different conversation)
+user: "What's my name?"
+bot: "I don't have any information about your name."
+```
+
+With persistent memory, the agent maintains continuity:
+
+```python
+# With memory
+user: "My name is Sarah" 
+bot: "Nice to meet you, Sarah! I'll remember that."
+
+# Later session (different conversation)
+user: "What's my name?"
+bot: "Your name is Sarah! How can I help you today?"
+```
+
+## Quick start: ChatGPT-style memory
+
+- Add a `memory` object inside the **extra body** of your completion call.  
+- Set `enabled: true` to turn on memory.  
+- Use the `context` field to attach key-value pairs (for example a user ID, chat ID, or any business identifiers).
+
+<Callout type="info">
+**Context Requirement:** The `context` object must contain at least one key-value pair. Without any context keys, WorkflowAI cannot determine who the memory belongs to. Use `"user_id"` for per-user memory, or a static value like `"app": "my-app"` if you want shared memory for all users.
+</Callout>
+
+```python
+response = client.chat.completions.create(
+    messages=conversation_history,
+    metadata={
+        "agent_id": "conversation-agent"
+    },
+    # 👇 Memory lives in the extra body so it works with the standard OpenAI SDK
+    extra_body={
+        "memory": { # [!code highlight]
+            "enabled": True, # [!code highlight]
+            "context": { # [!code highlight]
+                "user_id": "usr_12345",   # Who this memory belongs to # [!code highlight]
+            } # [!code highlight]
+        } # [!code highlight]
+    }
+)
+
+print(response.choices[0].message.content)
+```
+
+Behind the scenes WorkflowAI will:
+1. Look up any existing memory associated with the provided `context` values and inject it into the prompt.
+2. Store new facts the model marks as _worth remembering_ back under the same `context`.
+
+That's it—no separate database or custom code required. You get ChatGPT-level memory behaviour out of the box.
+
+## Memory scoping strategies
+
+Memory context is **shared across all agents** that use the same context keys. Choose your approach based on your needs:
+
+<Callout type="info">
+**Important:** Memory is **NOT** scoped by agent ID. If two different agents use the same context values, they will share the exact same memory. This enables seamless user experiences but requires careful context design.
+</Callout>
+
+<Tabs items={["Shared User Memory", "Agent-Specific Memory", "Custom Memory Domains"]}>
+<Tab value="Shared User Memory">
+Memory follows the user across all agents using the same context:
+
+```python
+# Customer support agent remembers user preferences
+response = client.chat.completions.create(
+    messages=[{"role": "user", "content": "I need help with my account"}],
+    metadata={"agent_id": "customer-support"},
+    extra_body={
+        "memory": { # [!code highlight]
+            "enabled": True, # [!code highlight]
+            "context": {"user_id": "usr_12345"} # [!code highlight]
+        } # [!code highlight]
+    }
+)
+
+# Sales agent has access to same user memory
+response = client.chat.completions.create(
+    messages=[{"role": "user", "content": "Tell me about premium features"}],
+    metadata={"agent_id": "sales-assistant"},
+    extra_body={
+        "memory": { # [!code highlight]
+            "enabled": True, # [!code highlight]
+            "context": {"user_id": "usr_12345"}  # Same context - shared memory! # [!code highlight]
+        } # [!code highlight]
+    }
+)
+```
+
+**Best for:** Consistent user experience across all your agents, unified customer journey, seamless handoffs between specialized agents.
+</Tab>
+<Tab value="Agent-Specific Memory">
+Isolate memory per agent by including the agent identifier in context:
+
+```python
+# Memory specific to customer support agent
+response = client.chat.completions.create(
+    messages=[{"role": "user", "content": "I need help with my account"}],
+    metadata={"agent_id": "customer-support"},
+    extra_body={
+        "memory": { # [!code highlight]
+            "enabled": True, # [!code highlight]
+            "context": { # [!code highlight]
+                "user_id": "usr_12345", # [!code highlight]
+                "agent": "customer-support"  # Agent-specific memory # [!code highlight]
+            } # [!code highlight]
+        } # [!code highlight]
+    }
+)
+```
+
+**Best for:** Privacy boundaries between different agent functions, specialized knowledge domains, compliance requirements that need data separation.
+</Tab>
+<Tab value="Custom Memory Domains">
+Create your own memory boundaries with custom identifiers:
+
+```python
+# E-commerce domain memory
+response = client.chat.completions.create(
+    messages=[{"role": "user", "content": "Show me my order history"}],
+    metadata={"agent_id": "order-assistant"},
+    extra_body={
+        "memory": { # [!code highlight]
+            "enabled": True, # [!code highlight]
+            "context": { # [!code highlight]
+                "user_id": "usr_12345", # [!code highlight]
+                "domain": "ecommerce"  # Custom domain scoping # [!code highlight]
+            } # [!code highlight]
+        } # [!code highlight]
+    }
+)
+```
+
+**Best for:** Multi-tenant applications, distinct business domains, compliance with data residency requirements, complex organizational structures.
+</Tab>
+</Tabs>
