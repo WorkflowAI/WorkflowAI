@@ -167,26 +167,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             supports_tool_calling=True,
             fallback=_openai_fallback("cheapest", context_exceeded="no"),
         ),
-        Model.GPT_45_PREVIEW_2025_02_27: ModelData(
-            display_name="GPT-4.5-preview (2025-02-27)",
-            supports_json_mode=True,
-            supports_input_image=True,
-            supports_input_pdf=False,
-            supports_input_audio=False,
-            supports_structured_output=True,
-            max_tokens_data=MaxTokensData(
-                max_tokens=128_000,
-                max_output_tokens=16_384,
-                source="https://platform.openai.com/docs/models",
-            ),
-            icon_url="https://workflowai.blob.core.windows.net/workflowai-public/openai.svg",
-            release_date=date(2025, 2, 27),
-            quality_data=QualityData(mmlu=85.10, gpqa=71.40),
-            latest_model=Model.GPT_4O_LATEST,
-            provider_name=DisplayedProvider.OPEN_AI.value,
-            supports_tool_calling=True,
+        Model.GPT_45_PREVIEW_2025_02_27: DeprecatedModel(
+            replacement_model=Model.GPT_41_LATEST,
             aliases=["gpt-4.5-preview"],
-            fallback=_openai_fallback("expensive"),
         ),
         Model.GPT_4O_2024_05_13: DeprecatedModel(replacement_model=Model.GPT_4O_2024_11_20),
         Model.GPT_4_TURBO_2024_04_09: DeprecatedModel(

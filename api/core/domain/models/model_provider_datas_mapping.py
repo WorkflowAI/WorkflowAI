@@ -386,14 +386,6 @@ OPENAI_PROVIDER_DATA: ProviderDataByModel = {
             source="https://openai.com/api/pricing/",
         ),
     ),
-    Model.GPT_45_PREVIEW_2025_02_27: ModelProviderData(
-        text_price=TextPricePerToken(
-            prompt_cost_per_token=75 * ONE_MILLION_TH,
-            prompt_cached_tokens_discount=0.5,
-            completion_cost_per_token=150 * ONE_MILLION_TH,
-            source="https://openai.com/api/pricing/",
-        ),
-    ),
     Model.GPT_4O_MINI_2024_07_18: ModelProviderData(
         text_price=TextPricePerToken(
             prompt_cost_per_token=0.15 * ONE_MILLION_TH,
