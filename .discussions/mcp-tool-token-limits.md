@@ -24,6 +24,14 @@ We're experiencing issues with MCP (Model Context Protocol) tools returning resp
   - Should be paginated
   - Return the models that are most used in WorkflowAI first (prioritize popular models)
   - Should also include recent models (newly added models might be interesting to users)
+- **Pierre's Refined Suggestions**:
+  - Should be paginated
+  - Add a `sort_by` parameter to let the MCP client decide ordering:
+    - `popularity` - most used models first
+    - `price` - cheapest models first
+    - `recent` - newly added models first  
+    - `intelligence` - most capable models first
+  - This gives clients control over what they prioritize while keeping responses manageable
 
 ### `list_agents(from_date)`
 - **Current Issue**: Returns 249,108 tokens - extremely large response (10x over limit)
@@ -38,6 +46,13 @@ We're experiencing issues with MCP (Model Context Protocol) tools returning resp
   - Should be paginated
   - Return active agents first (prioritize agents that are currently being used)
   - Should also include recently created agents (new agents might need attention/debugging)
+- **Pierre's Refined Suggestions**:
+  - Should be paginated
+  - Add a `sort_by` parameter to let the MCP client decide ordering:
+    - `active` - currently active agents first
+    - `runs` - agents with most runs first
+    - `recently_created` - newest agents first
+  - This gives clients control over what they prioritize while keeping responses manageable
 
 ### `fetch_run_details(agent_id, run_id, run_url)`
 - **Potential Issues**: Could return large responses for runs with extensive input/output data
