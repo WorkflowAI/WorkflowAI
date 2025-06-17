@@ -131,7 +131,7 @@ stripe = "^11.4.1"
 html2text = "^2024.2.26"
 jinja2 = "^3.1.5"
 clickhouse-connect = "^0.8.16"
-fastmcp = "^2.8.0"
+mcp = { extras = ["cli"], version = "^1.9.4" }
 
 [tool.poetry.group.dev.dependencies]
 freezegun = "^1.5.1"

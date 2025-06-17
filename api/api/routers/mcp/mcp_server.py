@@ -1,149 +1,20 @@
 from typing import Annotated, Any
 
-from fastmcp import FastMCP
-from fastmcp.server.dependencies import get_http_request
-from starlette.exceptions import HTTPException
+from mcp.server.fastmcp import FastMCP
 
-from api.dependencies.task_info import TaskTuple
-from api.routers.mcp._mcp_models import MCPToolReturn
-from api.routers.mcp._mcp_service import MCPService
-from api.services import file_storage, storage
-from api.services.analytics import analytics_service
-from api.services.event_handler import system_event_router, tenant_event_router
-from api.services.feedback_svc import FeedbackService
-from api.services.groups import GroupService
-from api.services.internal_tasks.internal_tasks_service import InternalTasksService
-from api.services.internal_tasks.meta_agent_service import MetaAgentService
-from api.services.models import ModelsService
-from api.services.providers_service import shared_provider_factory
-from api.services.reviews import ReviewsService
-from api.services.run import RunService
-from api.services.runs.runs_service import RunsService
-from api.services.security_service import SecurityService
-from api.services.task_deployments import TaskDeploymentsService
-from api.services.versions import VersionsService
-from core.domain.analytics_events.analytics_events import OrganizationProperties, UserProperties
-from core.domain.users import UserIdentifier
-
-_mcp = FastMCP("WorkflowAI 🚀", stateless_http=True)  # pyright: ignore [reportUnknownVariableType]
-
-
-# TODO: test auth
-async def get_mcp_service():
-    request = get_http_request()
-
-    _system_storage = storage.system_storage(storage.shared_encryption())
-    auth_header = request.headers.get("Authorization")
-    if not auth_header or not auth_header.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Missing bearer token")
-
-    security_service = SecurityService(
-        _system_storage.organizations,
-        system_event_router(),
-        analytics_service(user_properties=None, organization_properties=None, task_properties=None),
-    )
-    tenant = await security_service.find_tenant(None, auth_header.split(" ")[1])
-    if not tenant:
-        raise HTTPException(status_code=401, detail="Invalid bearer token")
-    org_properties = OrganizationProperties.build(tenant)
-    # TODO: user analytics
-    user_properties: UserProperties | None = None
-    event_router = tenant_event_router(tenant.tenant, tenant.uid, user_properties, org_properties, None)
-    _storage = storage.storage_for_tenant(tenant.tenant, tenant.uid, event_router, storage.shared_encryption())
-    analytics = analytics_service(
-        user_properties=user_properties,
-        organization_properties=org_properties,
-        task_properties=None,
-    )
-    models_service = ModelsService(storage=_storage)
-    runs_service = RunsService(
-        storage=_storage,
-        provider_factory=shared_provider_factory(),
-        event_router=event_router,
-        analytics_service=analytics,
-        file_storage=file_storage.shared_file_storage,
-    )
-    feedback_service = FeedbackService(storage=_storage.feedback)
-    versions_service = VersionsService(storage=_storage, event_router=event_router)
-    internal_tasks = InternalTasksService(event_router=event_router, storage=_storage)
-    reviews_service = ReviewsService(
-        backend_storage=_storage,
-        internal_tasks=internal_tasks,
-        event_router=event_router,
-    )
-
-    # Create GroupService and RunService for TaskDeploymentsService
-    user_identifier = UserIdentifier(user_id=None, user_email=None)  # System user for MCP operations
-    group_service = GroupService(
-        storage=_storage,
-        event_router=event_router,
-        analytics_service=analytics,
-        user=user_identifier,
-    )
-    run_service = RunService(
-        storage=_storage,
-        event_router=event_router,
-        analytics_service=analytics,
-        group_service=group_service,
-        user=user_identifier,
-    )
-    task_deployments_service = TaskDeploymentsService(
-        storage=_storage,
-        run_service=run_service,
-        group_service=group_service,
-        analytics_service=analytics,
-    )
-
-    meta_agent_service = MetaAgentService(
-        storage=_storage,
-        event_router=event_router,
-        runs_service=runs_service,
-        models_service=models_service,
-        feedback_service=feedback_service,
-        versions_service=versions_service,
-        reviews_service=reviews_service,
-    )
-
-    return MCPService(
-        storage=_storage,
-        meta_agent_service=meta_agent_service,
-        runs_service=runs_service,
-        versions_service=versions_service,
-        models_service=models_service,
-        task_deployments_service=task_deployments_service,
-    )
-
-
-async def get_task_tuple_from_task_id(task_id: str) -> TaskTuple:
-    """Helper function to create TaskTuple from task_id for MCP tools that need it"""
-    request = get_http_request()
-    auth_header = request.headers.get("Authorization")
-    if not auth_header or not auth_header.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Missing bearer token")
-
-    _system_storage = storage.system_storage(storage.shared_encryption())
-    security_service = SecurityService(
-        _system_storage.organizations,
-        system_event_router(),
-        analytics_service(user_properties=None, organization_properties=None, task_properties=None),
-    )
-    tenant = await security_service.find_tenant(None, auth_header.split(" ")[1])
-    if not tenant:
-        raise HTTPException(status_code=401, detail="Invalid bearer token")
-
-    return (task_id, tenant.uid)
+_mcp = FastMCP("WorkflowAI 🚀", stateless_http=True)
 
 
 @_mcp.tool()
-async def list_available_models() -> MCPToolReturn:
+async def list_available_models() -> dict[str, Any]:
     """<when_to_use>
     When you need to pick a model for the user's WorkflowAI agent, or any model-related goal.
     </when_to_use>
     <returns>
     Returns a list of all available AI models from WorkflowAI.
     </returns>"""
-    service = await get_mcp_service()
-    return await service.list_available_models()
+    # TODO: Implement with proper authentication
+    return {"error": "Authentication not yet implemented with official MCP SDK", "models": []}
 
 
 @_mcp.tool()
@@ -152,15 +23,15 @@ async def list_agents(
         str,
         "ISO date string to filter stats from (e.g., '2024-01-01T00:00:00Z'). Defaults to 7 days ago if not provided.",
     ],
-) -> MCPToolReturn:
+) -> dict[str, Any]:
     """<when_to_use>
     When the user wants to see all agents they have created, along with their statistics (run counts and costs on the last 7 days).
     </when_to_use>
     <returns>
     Returns a list of all agents for the user along with their statistics (run counts and costs).
     </returns>"""
-    service = await get_mcp_service()
-    return await service.list_agents(from_date)
+    # TODO: Implement with proper authentication
+    return {"error": "Authentication not yet implemented with official MCP SDK", "agents": []}
 
 
 @_mcp.tool()
@@ -177,7 +48,7 @@ async def fetch_run_details(
         str | None,
         "The url of the run to fetch details for",
     ] = None,
-) -> MCPToolReturn:
+) -> dict[str, Any]:
     """<when_to_use>
     When the user wants to investigate a specific run of a WorkflowAI agent, for debugging, improving the agent, fixing a problem on a specific use case, or any other reason. This is particularly useful for:
     - Debugging failed runs by examining error details and input/output data
@@ -216,8 +87,8 @@ async def fetch_run_details(
 
     This data structure provides everything needed for debugging, performance analysis, cost tracking, and understanding the complete execution context of your WorkflowAI agent.
     </returns>"""
-    service = await get_mcp_service()
-    return await service.fetch_run_details(agent_id, run_id, run_url)
+    # TODO: Implement with proper authentication
+    return {"error": "Authentication not yet implemented with official MCP SDK", "run": None}
 
 
 @_mcp.tool()
@@ -227,140 +98,15 @@ async def get_agent_versions(
         str | None,
         "An optional version id, e-g 1.1. If not provided all versions are returned",
     ] = None,
-) -> MCPToolReturn:
+) -> dict[str, Any]:
     """<when_to_use>
     When the user wants to retrieve details of versions of a WorkflowAI agent, or when they want to compare a specific version of an agent.
     </when_to_use>
     <returns>
     Returns the details of one or more versions of a WorkflowAI agent.
     </returns>"""
-    service = await get_mcp_service()
-    task_tuple = await get_task_tuple_from_task_id(task_id)
-
-    if version_id:
-        return await service.get_agent_version(task_tuple, version_id)
-
-    return await service.list_agent_versions(task_tuple)
-
-
-# @_mcp.tool() WIP
-async def search_runs_by_metadata(
-    agent_id: Annotated[
-        str,
-        "The agent ID of the agent to search runs for",
-    ],
-    field_queries: Annotated[
-        list[dict[str, Any]],
-        "List of metadata field queries. Each query should have: field_name (string starting with 'metadata.'), operator (string like 'is', 'contains', etc.), values (list of values), and optionally type (string like 'string', 'number', etc.)",
-    ],
-    limit: Annotated[
-        int,
-        "Maximum number of results to return",
-    ] = 20,
-    offset: Annotated[
-        int,
-        "Number of results to skip",
-    ] = 0,
-) -> MCPToolReturn:
-    """<when_to_use>
-    When the user wants to search agent runs based on metadata values, such as filtering runs by custom metadata fields they've added to their WorkflowAI agent calls.
-    </when_to_use>
-
-    <how_to_query_metadata>
-    To search by metadata, you need to construct field queries with the following structure:
-
-    1. field_name: Must start with "metadata." followed by the metadata field name
-       - Example: "metadata.user_id", "metadata.session_id", "metadata.environment"
-
-    2. operator: One of these search operators:
-       - "is" - exact match
-       - "is not" - not equal to
-       - "contains" - string contains (for text fields)
-       - "does not contain" - string does not contain
-       - "greater than" - numeric comparison
-       - "less than" - numeric comparison
-       - "is empty" - field has no value
-       - "is not empty" - field has a value
-
-    3. values: List of values to search for (usually just one value)
-
-    4. type: Optional field type ("string", "number", "boolean", "date")
-    </how_to_query_metadata>
-
-    <examples>
-    Example 1 - Search for runs with specific user_id:
-    {
-        "agent_id": "email-classifier",
-        "field_queries": [
-            {
-                "field_name": "metadata.user_id",
-                "operator": "is",
-                "values": ["user123"],
-                "type": "string"
-            }
-        ]
-    }
-
-    Example 2 - Search for runs in production environment with high priority:
-    {
-        "agent_id": "data-processor",
-        "field_queries": [
-            {
-                "field_name": "metadata.environment",
-                "operator": "is",
-                "values": ["production"],
-                "type": "string"
-            },
-            {
-                "field_name": "metadata.priority",
-                "operator": "greater than",
-                "values": [5],
-                "type": "number"
-            }
-        ]
-    }
-
-    Example 3 - Search for runs that contain specific text in a notes field:
-    {
-        "agent_id": "content-moderator",
-        "field_queries": [
-            {
-                "field_name": "metadata.notes",
-                "operator": "contains",
-                "values": ["urgent"]
-            }
-        ]
-    }
-
-    Example 4 - Search for runs where a field is empty:
-    {
-        "agent_id": "task-analyzer",
-        "field_queries": [
-            {
-                "field_name": "metadata.reviewer",
-                "operator": "is empty",
-                "values": []
-            }
-        ]
-    }
-    </examples>
-
-    <returns>
-    Returns a paginated list of agent runs that match the metadata search criteria, including run details like:
-    - Full task input and output data (task_input, task_output)
-    - Input/output previews (task_input_preview, task_output_preview)
-    - Run status, duration, cost, and timestamps
-    - User and AI reviews
-    - Error details if the run failed
-    </returns>"""
-    service = await get_mcp_service()
-    task_tuple = await get_task_tuple_from_task_id(agent_id)
-    return await service.search_runs_by_metadata(
-        task_tuple=task_tuple,
-        field_queries=field_queries,
-        limit=limit,
-        offset=offset,
-    )
+    # TODO: Implement with proper authentication
+    return {"error": "Authentication not yet implemented with official MCP SDK", "versions": []}
 
 
 @_mcp.tool()
@@ -385,7 +131,7 @@ async def ask_ai_engineer(
         str | None,
         "The code you are working on to improve the user's agent, if any. Please DO NOT include API keys or other sensitive information.",
     ] = None,
-) -> MCPToolReturn:
+) -> dict[str, Any]:
     """
     <when_to_use>
     Most user request about WorkflowAI must be processed by starting a conversation with the AI engineer agent to get insight about the WorkflowAI platform and the user's agents.
@@ -396,14 +142,8 @@ async def ask_ai_engineer(
     </returns>
     Get a response from WorkflowAI's AI engineer (meta agent) to help improve your agent.
     """
-    service = await get_mcp_service()
-    return await service.ask_ai_engineer(
-        agent_schema_id=agent_schema_id,
-        agent_id=agent_id,
-        message=message,
-        user_programming_language=user_programming_language,
-        user_code_extract=user_code_extract,
-    )
+    # TODO: Implement with proper authentication
+    return {"error": "Authentication not yet implemented with official MCP SDK", "response": ""}
 
 
 @_mcp.tool()
@@ -417,7 +157,7 @@ async def deploy_agent_version(
         str,
         "The deployment environment. Must be one of: 'dev', 'staging', or 'production'",
     ],
-) -> MCPToolReturn:
+) -> dict[str, Any]:
     """<when_to_use>
     When the user wants to deploy a specific version of their WorkflowAI agent to an environment (dev, staging, or production).
 
@@ -439,19 +179,8 @@ async def deploy_agent_version(
       - migration_instructions: Step-by-step examples for both scenarios (with and without input variables)
       - important_notes: Key considerations for the migration
     </returns>"""
-    service = await get_mcp_service()
-    task_tuple = await get_task_tuple_from_task_id(agent_id)
-
-    # Get user identifier for deployment tracking
-    # Since we already validated the token in get_mcp_service, we can create a basic user identifier
-    user_identifier = UserIdentifier(user_id=None, user_email=None)  # System user for MCP deployments
-
-    return await service.deploy_agent_version(
-        task_tuple=task_tuple,
-        version_id=version_id,
-        environment=environment,
-        deployed_by=user_identifier,
-    )
+    # TODO: Implement with proper authentication
+    return {"error": "Authentication not yet implemented with official MCP SDK", "deployment": None}
 
 
 def mcp_http_app():
