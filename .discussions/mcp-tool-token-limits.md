@@ -12,45 +12,98 @@ We're experiencing issues with MCP (Model Context Protocol) tools returning resp
 
 ## Discussion Points by MCP Tool
 
-### `workflowai:list_agents`
-- **Current Issue**: Returns 249,108 tokens - extremely large response
-- **Discussion Points**:
-  - Should we implement pagination by default?
-  - What filtering options could reduce response size?
-  - Should we limit the number of agents returned per call?
-  - What fields in agent data are essential vs. optional?
-  - Could we implement a "summary" vs "detailed" response mode?
-
-### `list_available_models`
+### `list_available_models()`
 - **Current Issue**: Returns 32,007 tokens - moderately over limit
 - **Discussion Points**:
-  - Are we returning too much metadata per model?
-  - Should we group models by category/provider?
-  - Could we implement model filtering by capability/type?
-  - What model information is essential for client decision-making?
-  - Should we have separate endpoints for model listing vs. model details?
+  - Are we returning too much metadata per model (descriptions, capabilities, pricing, etc.)?
+  - Should we implement a "summary" mode that returns only essential fields (model_id, provider, basic capabilities)?
+  - Could we group models by provider/category to reduce redundant information?
+  - Should we have separate endpoints for model listing vs. detailed model specs?
+  - Can we implement model filtering by provider, capability, or cost tier?
+
+### `list_agents(from_date)`
+- **Current Issue**: Returns 249,108 tokens - extremely large response (10x over limit)
+- **Discussion Points**:
+  - Should we implement pagination by default with a reasonable page size (e.g., 20-50 agents)?
+  - What agent fields are essential vs. optional (stats, configurations, full schemas)?
+  - Could we implement a "summary" vs "detailed" response mode?
+  - Should statistics be optional or computed on-demand?
+  - Can we limit the date range for statistics to reduce computation and response size?
+  - Should we filter out inactive/archived agents by default?
+
+### `fetch_run_details(agent_id, run_id, run_url)`
+- **Potential Issues**: Could return large responses for runs with extensive input/output data
+- **Discussion Points**:
+  - Should we truncate large input/output data and provide "show more" functionality?
+  - Can we implement field selection (sparse fieldsets) to only return requested details?
+  - Should we separate run metadata from run data (input/output) into different calls?
+  - Could we implement content compression for large text fields?
+  - Should we provide preview vs. full content modes for task input/output?
+
+### `get_agent_versions(task_id, version_id)`
+- **Potential Issues**: Returning all versions might include large schema data
+- **Discussion Points**:
+  - Should we paginate version lists for agents with many versions?
+  - Can we return version summaries vs. full schema data by default?
+  - Should schema details be fetched separately on-demand?
+  - Could we implement version filtering (e.g., only published, only recent)?
+  - Should we limit the number of versions returned unless explicitly requested?
+
+### `search_runs_by_metadata(agent_id, field_queries, limit, offset)` *(WIP - commented out)*
+- **Potential Issues**: Already implements pagination but could return large run data
+- **Discussion Points**:
+  - Should we enforce stricter default limits (currently allows up to arbitrary numbers)?
+  - Can we implement progressive loading (metadata first, then full details on request)?
+  - Should we return run summaries vs. full run details in search results?
+  - Could we implement field selection for returned run data?
+  - Should large input/output data be truncated in search results?
+
+### `ask_ai_engineer(agent_id, message, ...)`
+- **Potential Issues**: AI responses could be very long, especially for complex queries
+- **Discussion Points**:
+  - Should we implement response length limits on the AI engineer responses?
+  - Can we provide streaming responses for long AI engineer conversations?
+  - Should we break down complex responses into multiple smaller messages?
+  - Could we implement response summarization for very long responses?
+  - Should we limit the context provided to the AI engineer to control response size?
+
+### `deploy_agent_version(agent_id, version_id, environment)`
+- **Low Risk**: Deployment responses are typically small (confirmation + migration guide)
+- **Discussion Points**:
+  - Migration guides could potentially become large - should we limit their size?
+  - Could we provide basic vs. detailed migration instructions?
+  - Should detailed migration examples be provided separately?
 
 ## General Solution Approaches to Discuss
 
 ### Pagination Strategies
-- Cursor-based pagination
-- Offset/limit pagination
-- Page size recommendations
+- Cursor-based pagination for time-ordered data (runs, versions)
+- Offset/limit pagination for search results
+- Page size recommendations (20-50 items for lists, 10-20 for detailed items)
+- Default pagination for all list operations
 
 ### Response Filtering
-- Field selection (sparse fieldsets)
-- Conditional inclusion of expensive fields
+- Field selection (sparse fieldsets) - let clients specify which fields they need
+- Response modes: "summary", "detailed", "full"
+- Conditional inclusion of expensive fields (statistics, large text content)
 - Client-specified response formats
 
 ### Data Structure Optimization
-- Removing redundant information
+- Removing redundant information across items
+- Using references instead of full nested objects
 - Compressing common patterns
-- Using references instead of full objects
+- Truncating large text fields with "show more" functionality
 
-### Alternative Approaches
-- Streaming responses
-- Multi-call patterns with smaller chunks
-- Caching strategies for frequently requested data
+### Progressive Loading
+- Return minimal data first, allow clients to request details
+- Separate metadata from content calls
+- Lazy loading of expensive computations (statistics, reviews)
+
+### Content Management
+- Implement content size limits per field
+- Truncate with clear indicators ("... [truncated, X more characters]")
+- Provide content preview functionality
+- Compress repetitive content
 
 ## Questions for Team Discussion
 
@@ -64,15 +117,33 @@ We're experiencing issues with MCP (Model Context Protocol) tools returning resp
 
 5. **Monitoring**: Should we track token usage patterns to proactively identify tools that might hit limits?
 
+6. **Performance vs. Usability**: How do we balance response size limits with developer experience?
+
 ## Next Steps
 
-- [ ] Analyze each MCP tool's typical response sizes
-- [ ] Define token budgeting guidelines for tool responses
-- [ ] Prototype pagination/filtering solutions for high-volume tools
-- [ ] Create usage guidelines for MCP clients
-- [ ] Implement token usage monitoring
+- [ ] Analyze each MCP tool's typical response sizes and token usage patterns
+- [ ] Define token budgeting guidelines for tool responses (target: <15,000 tokens to leave buffer)
+- [ ] Prototype pagination/filtering solutions for high-volume tools (`list_agents`, `list_available_models`)
+- [ ] Implement response size monitoring and alerting
+- [ ] Create usage guidelines and best practices for MCP clients
+- [ ] Design progressive enhancement patterns for large data responses
+- [ ] Consider implementing streaming responses for tools that could benefit
+
+## Implementation Priority
+
+**High Priority** (actively failing):
+- `list_agents` - Implement pagination and summary mode
+- `list_available_models` - Implement model filtering and summary mode
+
+**Medium Priority** (likely to fail with growth):
+- `fetch_run_details` - Implement content truncation and field selection
+- `get_agent_versions` - Implement pagination and schema summary mode
+
+**Low Priority** (monitoring needed):
+- `ask_ai_engineer` - Monitor response lengths, implement length limits if needed
+- `search_runs_by_metadata` - Ensure pagination is enforced when uncommented
 
 ---
 
-*Created: December 2024*
+*Created: June 2025*
 *Status: Initial discussion - awaiting team input*
