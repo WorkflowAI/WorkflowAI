@@ -1,4 +1,4 @@
-import { filterActiveTasksIDs } from '@/lib/taskUtils';
+import { getLatestActivityDate } from '@/lib/taskUtils';
 import { SerializableTask } from '@/types/workflowAI';
 
 export function filterTasks(tasks: SerializableTask[], searchQuery: string) {
@@ -26,33 +26,19 @@ export function filterTasks(tasks: SerializableTask[], searchQuery: string) {
 }
 
 export function sortTasks(tasks: SerializableTask[]) {
-  const activeTasksIds = filterActiveTasksIDs(tasks);
-
   return tasks.sort((a, b) => {
-    // First priority: run_count
-    if (!!a.run_count && !!b.run_count) {
-      return b.run_count - a.run_count;
-    }
+    const aDate = getLatestActivityDate(a);
+    const bDate = getLatestActivityDate(b);
 
-    if (!a.run_count && !!b.run_count) {
-      return 1;
-    }
-    if (!!a.run_count && !b.run_count) {
+    if (aDate && bDate) {
+      if (aDate > bDate) return -1;
+      if (aDate < bDate) return 1;
+    } else if (aDate && !bDate) {
       return -1;
-    }
-
-    // Second priority: active status
-    const aIsActive = activeTasksIds.includes(a.id);
-    const bIsActive = activeTasksIds.includes(b.id);
-
-    if (aIsActive && !bIsActive) {
-      return -1;
-    }
-    if (!aIsActive && bIsActive) {
+    } else if (!aDate && bDate) {
       return 1;
     }
 
-    // Last priority: alphabetical by name/id
     const aName = a.name.length === 0 ? a.id : a.name;
     const bName = b.name.length === 0 ? b.id : b.name;
     return aName.localeCompare(bName);

@@ -382,13 +382,15 @@ class OpenAIProxyHandler:
         except MissingModelError as e:
             raise await self.missing_model_error(e.extras.get("model"), prefix="fallback ")
 
+        aggregate_content = body.stream_options.valid_json_chunks if body.stream_options else None
+
         runner, _ = await self._group_service.sanitize_groups_for_internal_runner(
             task_id=prepared_run.variant.task_id,
             task_schema_id=prepared_run.variant.task_schema_id,
             reference=VersionReference(properties=prepared_run.properties),
             provider_settings=None,
             variant=prepared_run.variant,
-            stream_deltas=body.stream is True,
+            stream_deltas=body.stream is True and not aggregate_content,
             use_fallback=parsed_fallback,
         )
 
@@ -447,13 +449,16 @@ class OpenAIProxyHandler:
                 chunk_serializer=OpenAIProxyChatCompletionChunk.stream_serializer(
                     agent_id=prepared_run.variant.task_id,
                     model=body.model,
+                    output_mapper=output_mapper,
                     deprecated_function=body.uses_deprecated_functions,
+                    aggregate_content=aggregate_content,
                 ),
                 serializer=OpenAIProxyChatCompletionChunk.serializer(
                     model=body.model,
                     deprecated_function=body.uses_deprecated_functions,
                     output_mapper=output_mapper,
                     feedback_generator=_feedback_generator,
+                    aggregate_content=aggregate_content,
                 ),
                 source=source,
             ),
