@@ -56,4 +56,4 @@ if __name__ == "__main__":
         email_content=sample_email["body"],
     )
 
-    print(priority)
+    print(priority)  # noqa: T201
