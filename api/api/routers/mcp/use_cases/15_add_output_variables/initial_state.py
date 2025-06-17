@@ -53,7 +53,7 @@ Be concise but thorough in your analysis.""",
         ],
         response_format=EmailPriority,
         extra_body={
-            "output": {
+            "input": {
                 "email_content": email_content,
             },
         },
