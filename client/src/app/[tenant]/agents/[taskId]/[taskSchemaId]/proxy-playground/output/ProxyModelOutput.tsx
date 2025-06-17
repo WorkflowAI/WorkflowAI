@@ -11,11 +11,11 @@ import { VersionV1 } from '@/types/workflowAI';
 import { ModelResponse } from '@/types/workflowAI';
 import { TaskInputDict } from '@/types/workflowAI';
 import { RunV1 } from '@/types/workflowAI';
-import { CreateTaskRunButton } from '../../playground/components/CreateTaskRunButton';
 import { ModelOutputErrorInformation } from '../../playground/components/ModelOutputErrorInformation';
 import { TaskRunner } from '../../playground/hooks/useTaskRunners';
 import { PlaygroundModels } from '../../playground/hooks/utils';
 import { ProxyModelOutputContent } from './ProxyModelOutputContent';
+import { ProxyRunButton } from './ProxyRunButton';
 
 type Props = {
   version: VersionV1 | undefined;
@@ -119,10 +119,13 @@ export function ProxyModelOutput(props: Props) {
             isProxy={true}
             taskId={taskId}
           />
-          <CreateTaskRunButton
+          <ProxyRunButton
             taskRunner={taskRunner}
             disabled={areInstructionsLoading}
             containsError={!!errorForModel}
+            version={version}
+            tenant={tenant}
+            taskId={taskId}
           />
         </div>
       </div>
