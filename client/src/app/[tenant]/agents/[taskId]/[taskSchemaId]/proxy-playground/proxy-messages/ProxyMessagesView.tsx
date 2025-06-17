@@ -104,7 +104,16 @@ export function ProxyMessagesView(props: Props) {
       const previouseMessage = cleanedMessages?.[previouseIndex];
 
       const allMessages = cleanedMessages ?? [];
-      const newMessage = createEmptyMessage(defaultType, previouseMessage);
+
+      let newMessageType = defaultType;
+      if (defaultType === 'system' && index !== undefined && index >= 1) {
+        const previouseMessageType = cleanedMessages?.[index - 1]?.role;
+        if (previouseMessageType === 'user') {
+          newMessageType = 'user';
+        }
+      }
+
+      const newMessage = createEmptyMessage(newMessageType, previouseMessage);
 
       if (index === undefined || index >= allMessages.length) {
         setMessages([...allMessages, newMessage]);
