@@ -20,6 +20,10 @@ We're experiencing issues with MCP (Model Context Protocol) tools returning resp
   - Could we group models by provider/category to reduce redundant information?
   - Should we have separate endpoints for model listing vs. detailed model specs?
   - Can we implement model filtering by provider, capability, or cost tier?
+- **Pierre's Suggestions**:
+  - Should be paginated
+  - Return the models that are most used in WorkflowAI first (prioritize popular models)
+  - Should also include recent models (newly added models might be interesting to users)
 
 ### `list_agents(from_date)`
 - **Current Issue**: Returns 249,108 tokens - extremely large response (10x over limit)
@@ -30,6 +34,10 @@ We're experiencing issues with MCP (Model Context Protocol) tools returning resp
   - Should statistics be optional or computed on-demand?
   - Can we limit the date range for statistics to reduce computation and response size?
   - Should we filter out inactive/archived agents by default?
+- **Pierre's Suggestions**:
+  - Should be paginated
+  - Return active agents first (prioritize agents that are currently being used)
+  - Should also include recently created agents (new agents might need attention/debugging)
 
 ### `fetch_run_details(agent_id, run_id, run_url)`
 - **Potential Issues**: Could return large responses for runs with extensive input/output data
