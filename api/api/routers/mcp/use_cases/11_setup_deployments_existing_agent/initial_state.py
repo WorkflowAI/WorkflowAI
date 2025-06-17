@@ -24,7 +24,7 @@ class MeetingSummarizerOutput(BaseModel):
 
 
 response = client.beta.chat.completions.parse(
-    model="claude-3-5-sonnet-latest",
+    model="meeting-summarizer/claude-3-5-sonnet-latest",
     messages=[  # Message contains the "static" parts of the agents instructions, with same placeholder {{}} where variables will be injected at runtime
         {
             "role": "system",
@@ -81,9 +81,6 @@ Alex Chen: Just one - should we schedule a follow-up specifically for the Europe
 Sarah Johnson: Yes, let's do that. I'll send out a calendar invite for next Thursday. Thanks everyone, great meeting.
             """,
         },
-    },
-    metadata={
-        "agent_id": "meeting-summarizer",
     },
 )
 

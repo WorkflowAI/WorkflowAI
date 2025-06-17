@@ -21,23 +21,15 @@ class MeetingSummarizerOutput(BaseModel):
 
 
 response = client.beta.chat.completions.parse(
-    model="claude-3-5-sonnet-latest",
+    model="gpt-4o",
     messages=[  # Message contains the "static" parts of the agents instructions, with same placeholder {{}} where variables will be injected at runtime
         {
             "role": "system",
-            "content": "You are a helpful assistant that summarizes meetings. You will be given a meeting transcript and you will need to summarize the meeting in a concise manner and extract the key points and todos. Current datetime is {{current_datetime}}",
+            "content": "You are a helpful assistant that summarizes meetings. You will be given a meeting transcript and you will need to summarize the meeting in a concise manner and extract the key points and todos. Current datetime is 2025-06-10 10:00:00",
         },
         {
             "role": "user",
-            "content": "Here is the meeting transcript: {{meeting_transcript}}",
-        },
-    ],
-    response_format=MeetingSummarizerOutput,  # Defines the output format for the agent (uses structured generation)
-    extra_body={  # Extra body contains the variables, the "dynamic" parts of the agents instructions, with same placeholder {{}} where variables will be injected at runtime
-        "input": {
-            "current_datetime": "2025-06-10 10:00:00",
-            "meeting_transcript": """
-Sarah Johnson (Product Manager): Good morning everyone, thank you for joining our Q2 product roadmap review. We have about an hour to cover our progress and plan for the next quarter. Let's start with Alex updating us on the mobile app development.
+            "content": """Here is the meeting transcript: Sarah Johnson (Product Manager): Good morning everyone, thank you for joining our Q2 product roadmap review. We have about an hour to cover our progress and plan for the next quarter. Let's start with Alex updating us on the mobile app development.
 
 Alex Chen (Engineering Lead): Thanks Sarah. We've made solid progress on the mobile app. The authentication system is complete, and we've finished the core user interface. However, we're running about two weeks behind schedule due to some technical challenges with the payment integration. We discovered the third-party API we planned to use has some limitations that weren't apparent in the initial evaluation.
 
@@ -75,10 +67,10 @@ Sarah Johnson: Great. David, please prepare a support ticket analysis for our ne
 
 Alex Chen: Just one - should we schedule a follow-up specifically for the European expansion planning?
 
-Sarah Johnson: Yes, let's do that. I'll send out a calendar invite for next Thursday. Thanks everyone, great meeting.
-            """,
+Sarah Johnson: Yes, let's do that. I'll send out a calendar invite for next Thursday. Thanks everyone, great meeting.""",
         },
-    },
+    ],
+    response_format=MeetingSummarizerOutput,  # Defines the output format for the agent (uses structured generation)
 )
 
 
