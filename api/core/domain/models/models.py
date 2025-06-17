@@ -78,6 +78,9 @@ class Model(StrEnum):
     # Gemini Models
     # --------------------------------------------------------------------------
     # GEMINI_2_0_FLASH_LATEST = "gemini-2.0-flash-latest"
+    GEMINI_2_5_PRO = "gemini-2.5-pro"
+    GEMINI_2_5_FLASH = "gemini-2.5-flash"
+    GEMINI_2_5_FLASH_LITE = "gemini-2.5-flash-lite"
     GEMINI_2_5_PRO_PREVIEW_0605 = "gemini-2.5-pro-preview-06-05"
     GEMINI_2_5_FLASH_PREVIEW_0520 = "gemini-2.5-flash-preview-05-20"
     GEMINI_2_5_FLASH_THINKING_PREVIEW_0520 = "gemini-2.5-flash-thinking-preview-05-20"
