@@ -1,0 +1,723 @@
+---
+title: Setup
+description: Automatically evaluate your AI agent outputs for quality, accuracy, and custom metrics.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout'
+
+## What are Evaluations?
+
+Evaluations provide real-time quality assessment of your AI agent outputs. Instead of manually reviewing responses or relying on user feedback alone, Evaluations automatically score every interaction based on your custom criteria.
+
+You can define multiple evaluation types that run after each completion - from simple code checks to sophisticated model-based assessments. This continuous evaluation becomes the foundation for quality monitoring and agent improvement.
+
+**Key Benefits:**
+- **Automated quality control**: Score every output without manual review
+- **Custom metrics**: Define any evaluation criteria specific to your use case
+- **Real-time monitoring**: Catch quality issues as they happen
+- **Performance tracking**: Track quality trends over time
+
+## Evaluation Architecture: Client-Side vs Server-Side
+
+Unlike platforms like OpenAI that run evaluations server-side (where you upload configurations and run evaluations from their UI), WorkflowAI executes evaluations client-side in your environment alongside your agent code. While server-side evaluation works well for basic model interactions, it becomes limiting when your agents use custom tools, RAG systems, or complex workflows that require access to your infrastructure.
+
+Client-side execution means your evaluations have full access to the same tools, databases, and external systems your agents use. This is essential for evaluating agents that integrate with custom APIs, retrieve private data, or execute multi-step workflows - scenarios where server-side evaluation simply cannot assess the complete agent capability.
+
+## Evaluation Types
+
+### Code Evaluations
+
+Code evaluations run Python code to score your outputs. They're perfect for deterministic checks like format validation, length requirements, or pattern matching.
+
+**Function signature:**
+Your evaluation function must be named `evaluate` and accept these parameters:
+- `output`: The assistant's response - either a string (`output.choices[0].message.content` for standard chat completions) or dictionary (`output.object` when using `response_format`)
+- ...
+
+**Required return:**
+- Must return a dictionary with `score` (float between 0-1)
+- Can optionally include `details` as a key/value object for additional context (will be stored in the run's evaluation metadata)
+
+**Example: Response Length Check**
+
+```python
+{
+    "type": "code",
+    "name": "response_length_check",
+    "description": "Ensures response is appropriate length",
+    "source": """def evaluate(output):
+    text_content = output.choices[0].message.content
+    word_count = len(text_content.split())
+    
+    if word_count < 20:
+        score = 0.0
+        details = {"reason": "Response too short", "word_count": word_count}
+    elif word_count > 500:
+        score = 0.0
+        details = {"reason": "Response too long", "word_count": word_count}
+    else:
+        score = 1.0
+        details = {"reason": "Good length", "word_count": word_count}
+    
+    return {'score': score, 'details': details}"""
+}
+```
+
+### Model Evaluations
+
+Model evaluations use another language model to assess your outputs. They use structured output to ensure consistent, reliable scoring.
+
+<Callout type="info">
+**Important**: Use [reasoning models](/docs/inference/reasoning) like `o3-latest-medium` for evaluations to ensure accurate and reliable assessment of your agent outputs.
+</Callout>
+
+**Configuration options:**
+- `model`: Which model to use for evaluation (e.g., "o3-latest-medium")
+- `messages`: The full conversation history (list)
+- `user_input`: The last user message (string)
+- `metadata`: Any metadata from the completion request (dict) # optional
+- `input`: Values for the input variables (separates dynamic data from evaluation logic)
+- `response_format`: Structured schema defining the expected response format (required)
+
+**Why separate input variables?** Input variables help separate your evaluation logic (the prompt template) from the dynamic data being evaluated. This allows you to:
+- Test the same evaluation logic with different inputs
+- Modify evaluation criteria without changing the data
+- Create reusable evaluation templates
+
+<Callout type="info">
+**How Model Evaluations Work**: Each model evaluation runs as a separate agent execution within your tenant. These evaluation runs are fully visible in your observability dashboard with their own agent IDs (typically formatted as `{agent_id}:evaluations:{evaluation_name}`, e.g., `"event-extraction:evaluations:correctness"`). This means you can monitor, debug, and analyze your evaluation processes just like any other agent in your system.
+</Callout>
+
+#### Understanding the Sample Parameter
+
+Model evaluations receive a `sample` parameter that contains the output from the original completion. The format depends on whether structured output was used:
+
+**With Structured Output (response_format specified):**
+- `sample.output` contains the parsed structured object
+- Access fields directly: `sample.output.title`, `sample.output.start_time`, etc.
+
+**Without Structured Output (standard chat completion):**
+- `sample` contains the full OpenAI response format
+- Access content via: `sample.choices[0].message.content`
+
+```json
+{
+  "sample": {
+    "output": {
+      "title": "Meeting about the project",
+      "description": "The meeting is about the project. The meeting is at the office.",
+      "start_time": "2025-06-11T10:00:00",
+      "end_time": "2025-06-11T11:00:00",
+      "location": "The office"
+    },
+    "choices": [
+        {
+          "message": {
+              "content": "The meeting is about the project. The meeting is at the office."
+          }
+        }
+    ]
+}
+```
+
+**Example A: Structured Output Evaluation (Calendar Event)**
+
+```python
+from openai import OpenAI
+from pydantic import BaseModel
+from typing import List
+
+class CalendarEvent(BaseModel):
+    title: str
+    description: str
+    start_time: str
+    end_time: str
+    location: str
+
+class EvaluationResult(BaseModel):
+    reasons: List[str]
+    score: float # required
+
+client = OpenAI(
+    base_url="https://run.workflowai.com/v1",
+    api_key="wai-***"
+)
+
+correct_answer = CalendarEvent(
+    title="Meeting about the project",
+    description="The meeting is about the project. The meeting is at the office.",
+    start_time="2025-06-11T10:00:00",
+    end_time="2025-06-11T11:00:00",
+    location="The office"
+)
+
+email = "You are invited to a meeting on Monday at 10am. The meeting is about the project. The meeting is at the office."
+
+response = client.beta.chat.completions.parse(
+    model="gpt-4o",
+    messages=[
+        {"role": "system", "content": "You are a great calendar assistant. You are given an email and you need to extract the calendar event from the email."},
+        {"role": "user", "content": "Here is the email: {{email}}"}
+    ],
+    metadata={
+        "agent_id": "event-extraction"
+    },
+    input={
+        "email": email
+    },
+    response_format=CalendarEvent,
+    evaluations=[
+        {
+            "type": "score_model",
+            "name": "correctness",
+            "model": "o3-latest-medium",
+            "messages": [
+                {"role": "system", "content": "Based on the {{sample.output}} how similar with {{answer.calendar_event}}? Give me a score between 0 and 1 and a list of reasons why you gave that score."}
+            ],
+            "input": {
+                "answer": {
+                    "calendar_event": correct_answer
+                }
+                # explain that sample is automatically added (it's the output schema of the evaluated run)
+            },
+            "response_format": EvaluationResult.model_json_schema(),
+            "metadata": {
+                # "agent_id": "my-own-agent-name-here" # Optional: customize the evaluation agent name
+                # By default, evaluation agent ID will be: "event-extraction:evaluations:correctness"
+                # This evaluation run will appear in your observability dashboard as a separate agent
+            }
+        }
+    ]
+)
+```
+
+**Example B: Standard Chat Completion Evaluation (Customer Support)**
+
+```python
+# Customer support chatbot without structured output
+response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[
+        {"role": "system", "content": "You are a helpful customer support agent."},
+        {"role": "user", "content": "How do I reset my password?"}
+    ],
+    metadata={
+        "agent_id": "customer-support"
+    },
+    evaluations=[
+        {
+            "type": "score_model",
+            "name": "helpfulness_score",
+            "model": "o3-latest-medium",
+            "messages": [
+                {"role": "system", "content": "Evaluate this customer support response for helpfulness, clarity, and completeness. User asked: {user_question}. Assistant responded: {assistant_response}. Context: {context}. Rate from 0 to 1."}
+            ],
+            "input": {
+                "user_question": "{user_input}",
+                "assistant_response": "{sample.choices[0].message.content}",  # Standard OpenAI format
+                "context": "Password reset support request"
+            },
+            "response_format": EvaluationResult.model_json_schema()
+        }
+    ]
+)
+```
+
+<Callout type="info">
+**Parameter Differences**: 
+- **Code Evaluations**: Receive `output` parameter - either `output.choices[0].message.content` (standard) or `output.object` (structured)
+- **Model Evaluations**: Receive `sample` parameter - either `sample.choices[0].message.content` (standard) or `sample.output` (structured)
+- **Structured Output**: Access fields directly via `output.object.field_name` or `sample.output.field_name`
+- **Standard Output**: Access via `output.choices[0].message.content` or `sample.choices[0].message.content`
+- **Special Variables**: `{user_input}` is automatically provided and contains the user's input
+</Callout>
+
+<Callout type="info">
+**Important**: Evaluations require an `agent_id` in the metadata to properly group and analyze results at the conversation level.
+</Callout>
+
+## Getting Evaluation Results
+
+Evaluation results are automatically stored as a dedicated field in the run object, making them easily accessible when you fetch the run data.
+
+### Primary Method: Get from Run Data
+
+```python
+import requests
+
+# Get run data with evaluation results
+response = requests.get(
+    "https://run.workflowai.com/v1/runs/run_event_001",
+    headers={"Authorization": "Bearer wai-***"}
+)
+
+# Example response structure
+{
+  "id": "run_event_001",
+  "created_at": "2024-01-15T10:30:00Z",
+  "model": "gpt-4o",
+  "messages": [...],
+  "choices": [...],
+  "metadata": {
+    "agent_id": "event-extraction"
+  },
+  "evaluations": {
+    "correctness": {
+      "type": "score_model",
+      "result": {
+        "reasons": [
+          "Event title correctly extracted from email",
+          "Meeting time accurately identified as 10am Monday",
+          "Location properly captured as 'the office'"
+        ],
+        "score": 0.92
+      },
+      "executed_at": "2024-01-15T10:30:01Z"
+    }
+  }
+}
+```
+
+### Alternative Method: Dedicated Evaluations Endpoint
+
+For convenience, you can also access evaluations through a dedicated endpoint:
+
+```python
+# Get evaluations only for a specific run
+response = requests.get(
+    "https://run.workflowai.com/v1/runs/run_event_001/evaluations",
+    headers={"Authorization": "Bearer wai-***"}
+)
+
+# Example response
+{
+  "evaluations": {
+    "correctness": {
+      "type": "score_model",
+      "result": {
+        "reasons": [
+          "Event title correctly extracted from email",
+          "Meeting time accurately identified as 10am Monday",
+          "Location properly captured as 'the office'"
+        ],
+        "score": 1
+      },
+      "executed_at": "2024-01-15T10:30:01Z",
+      "model": "o3-latest-medium",
+      "usage": {
+        ...
+      }
+    }
+  }
+}
+```
+
+## Submitting Evaluations After Completion
+
+If you have already computed evaluations elsewhere or want to run evaluations after a completion has finished, you can submit them directly using the dedicated evaluations endpoint.
+
+```bash
+curl -X POST https://run.workflowai.com/v1/runs/run_event_001/evaluations \
+  -H "Authorization: Bearer wai-***" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "evaluations": {
+      "correctness": {
+        "type": "score_model",
+        "result": {
+          "reasons": [
+            "Event title correctly extracted from email",
+            "Meeting time accurately identified as 10am Monday",
+            "Location properly captured as the office"
+          ],
+          "score": 0.92
+        },
+        "executed_at": "2024-01-15T10:30:01Z"
+      },
+      "helpfulness": {
+        "type": "code",
+        "result": {
+          "score": 0.85,
+          "details": {
+            "reason": "Response is helpful but could be more detailed",
+            "word_count": 45
+          }
+        },
+        "executed_at": "2024-01-15T10:30:02Z"
+      }
+    }
+  }'
+```
+
+The evaluation payload uses the same structure as the `evaluations` field in completion requests. This is useful for:
+- Running evaluations after the fact when you have additional context
+- Computing evaluations in external systems and submitting results
+- Re-evaluating existing runs with updated criteria
+
+## Observability and Monitoring
+
+[TODO: review/simplify this section]
+
+Since model evaluations run as separate agents within your tenant, you get full observability into your evaluation processes:
+
+- **Separate Agent Runs**: Each model evaluation appears as its own agent execution in your dashboard
+- **Default Naming**: Evaluation agents are automatically named `{parent_agent_id}:evaluations:{evaluation_name}`
+- **Custom Agent IDs**: Override the default by setting `agent_id` in the evaluation's metadata
+- **Full Monitoring**: Track evaluation performance, costs, latency, and failures just like any other agent
+- **Debugging**: Access complete logs, traces, and error details for evaluation runs
+
+This visibility helps you:
+- Monitor evaluation reliability and performance
+- Debug evaluation logic when scores seem incorrect
+- Track evaluation costs separately from main agent costs
+- Optimize evaluation prompts based on usage patterns
+
+## Running Evaluations Against a Dataset
+
+For systematic testing and performance measurement, you can run evaluations against entire datasets rather than individual examples. This approach is essential for measuring agent performance statistically and catching regressions when making changes.
+
+<Callout type="info">
+Ask your WorkflowAI AI engineer to setup the dataset evaluations.
+
+```bash
+I have this dataset: <dataset.csv> and I want to run evaluations against it.
+```
+</Callout>
+
+### Dataset Structure
+
+Here's an example CSV dataset for testing calendar event extraction:
+
+**evaluation_dataset.csv**
+```csv
+email,expected_title,expected_description,expected_start_time,expected_end_time,expected_location
+"You are invited to a meeting on Monday at 10am. The meeting is about the project. The meeting is at the office.","Meeting about the project","The meeting is about the project. The meeting is at the office.","2025-06-11T10:00:00","2025-06-11T11:00:00","The office"
+"Team standup tomorrow at 9:30am in conference room B. We'll discuss sprint progress.","Team standup","We'll discuss sprint progress.","2025-06-12T09:30:00","2025-06-12T10:00:00","Conference room B"
+"Lunch with Sarah next Tuesday at 12:30pm at Mario's Restaurant.","Lunch with Sarah","","2025-06-17T12:30:00","2025-06-17T13:30:00","Mario's Restaurant"
+"Doctor appointment on Friday at 2pm at City Medical Center.","Doctor appointment","","2025-06-13T14:00:00","2025-06-13T15:00:00","City Medical Center"
+```
+
+### Batch Evaluation Code
+
+```python
+import pandas as pd
+from openai import OpenAI
+from pydantic import BaseModel
+
+class CalendarEvent(BaseModel):
+    title: str
+    description: str
+    start_time: str
+    end_time: str
+    location: str
+
+class EvaluationResult(BaseModel):
+    reasons: list[str]
+    score: float
+
+# Load dataset and run evaluations
+df = pd.read_csv("evaluation_dataset.csv")
+client = OpenAI(base_url="https://run.workflowai.com/v1", api_key="wai-***")
+
+for _, row in df.iterrows():
+  expected_event = CalendarEvent(
+    title=row['expected_title'],
+    description=row['expected_description'],
+    start_time=row['expected_start_time'],
+    end_time=row['expected_end_time'],
+    location=row['expected_location']
+  )
+  
+  response = client.beta.chat.completions.parse(
+    model="gpt-4o",
+    messages=[
+      {"role": "system", "content": "Extract calendar event from this email."},
+      {"role": "user", "content": "Here is the email: {{email}}"}
+    ],
+    extra_body={
+      "input": {
+        "email": row['email']
+      }
+    },
+    metadata={"agent_id": "event-extraction"},
+    response_format=CalendarEvent,
+    evaluations=[{
+      "type": "score_model",
+      "name": "correctness",
+      "model": "o3-latest-medium",
+      "messages": [
+        {"role": "system", "content": "Compare {{sample.output}} to {{expected_event}}. Score 0-1 with reasons."}
+      ],
+      "input": {"expected_event": expected_event.model_dump()},
+      "response_format": EvaluationResult.model_json_schema()
+    }]
+  )
+
+### Why Input Variables Matter for Dataset Evaluation
+
+Using input variables (like `{{email}}` above) instead of directly embedding data in messages is crucial for dataset evaluation:
+[TODO: explain here]
+
+### Use Cases for Dataset Evaluation
+
+**Model Comparison**: Test different models on the same dataset to compare performance
+```python
+models = ["gpt-4o", "gpt-4o-mini", "claude-3-5-sonnet"]
+for model in models:
+    results = run_batch_evaluation("evaluation_dataset.csv", model=model)
+    print(f"{model}: {results.average_score:.3f} average score")
+```
+
+**Prompt Optimization**: A/B test different prompts systematically
+```python
+prompts = [
+    "Extract calendar event from this email:",
+    "You are a calendar assistant. Parse this email for meeting details:",
+    "Identify meeting information in the following email:"
+]
+for prompt in prompts:
+    results = run_batch_evaluation("evaluation_dataset.csv", system_prompt=prompt)
+    print(f"Prompt variant: {results.average_score:.3f} average score")
+```
+
+**Regression Testing**: Ensure changes don't break existing functionality
+```python
+# Run before making changes
+baseline_results = run_batch_evaluation("evaluation_dataset.csv")
+
+# Make your changes to the agent...
+
+# Run after changes
+new_results = run_batch_evaluation("evaluation_dataset.csv")
+
+# Compare results
+score_diff = new_results.average_score - baseline_results.average_score
+print(f"Score change: {score_diff:+.3f}")
+if score_diff < -0.05:  # 5% degradation threshold
+    print("⚠️ Performance regression detected!")
+```
+
+This systematic approach helps you build confidence in your agent's performance and catch issues before they reach production.
+
+## Building Datasets from Production Data
+
+Instead of creating evaluation datasets from scratch, you can build high-quality test cases directly from production runs using MCP (Model Context Protocol) tools in your IDE.
+
+### The Problem with Synthetic Test Data
+
+Traditional evaluation datasets often use artificial examples that may not reflect real-world usage patterns. This can lead to:
+- **Overconfidence** from passing tests that don't match actual user scenarios
+- **Blind spots** where your agent fails on real inputs that weren't anticipated
+- **Maintenance burden** of manually creating and updating test cases
+
+### Production-Driven Evaluation Workflow
+
+With MCP integration, you can turn production issues into systematic test cases:
+
+1. **Identify Issues**: Notice a production run with suboptimal output
+2. **Specify Correction**: Use MCP tool in your IDE to mark what the correct output should have been
+3. **Automatic Dataset Update**: The MCP tool fetches the run data and adds it to your evaluation dataset
+
+### Example MCP Prompts
+
+```bash
+This run <URL> is not correct.
+The correct output should have been <correct output>.
+Add to the evaluation dataset in <dataset.csv>.
+
+(Improve the prompt and run the evaluations again.)
+```
+
+```bash
+This customer <email> just got a response that is not correct.
+Can you check with WorkflowAI and add the correct output to the evaluation dataset in <dataset.csv>?
+```
+
+### Benefits of Production-Driven Datasets
+
+**Real-World Relevance**: Every test case represents an actual user scenario that caused issues
+
+**High-Value Coverage**: You're testing the scenarios that matter most - the ones that failed in production
+
+**Continuous Improvement**: Your evaluation suite grows stronger with each production issue you encounter
+
+**Reduced Manual Work**: No need to brainstorm test cases - they come from real usage patterns
+
+**Regression Prevention**: Production fixes automatically become permanent regression tests
+
+This approach transforms evaluation from a one-time setup task into a continuous feedback loop that makes your agent more robust over time.
+
+## Assertion-Based Evaluation Example
+
+Here's an example of LLM-as-a-judge evaluation that tests multiple specific assertions about the agent's output and requires detailed reasoning with evidence.
+
+### Structured Judgment Models
+
+```python
+from pydantic import BaseModel, Field
+from typing import List
+
+class ChatAnswerJudgment(BaseModel):
+    assertion: str = Field(
+        description="The assertion to judge, as passed in, must repeat EXACTLY the assertion passed in, char per char"
+    )
+    reason: str = Field(description="The reason for the judgment")
+    verbatims: List[str] = Field(
+        description="The verbatims from the answer that support the judgment, verbatim must be exactly the same as in the answer to judge, char per char"
+    )
+    is_assertion_enforced: bool = Field(description="Whether the assertion is satisfied (true) or not (false)")
+
+class ChatAnswerJudgmentResponse(BaseModel):
+    judgements: List[ChatAnswerJudgment]
+    score: float = Field(description="Overall score: number of satisfied assertions divided by total assertions")
+```
+
+### Example Usage
+
+```python
+# Define assertions to test
+assertions = [
+    "The response includes a specific meeting time",
+    "The response mentions a location for the meeting", 
+    "The response is professional and polite in tone"
+]
+
+response = client.beta.chat.completions.parse(
+    model="gpt-4o",
+    messages=[
+        {"role": "system", "content": "Extract meeting details from this email: {{email}}"},
+        {"role": "user", "content": "Please help me understand this email."}
+    ],
+    extra_body={
+        "input": {"email": "Team meeting tomorrow at 2pm in room 201."}
+    },
+    metadata={"agent_id": "meeting-extraction"},
+    response_format=CalendarEvent,
+    evaluations=[{
+        "type": "score_model",
+        "name": "correctness",
+        "model": "o3-latest-medium", 
+        "messages": [
+            {"role": "system", "content": """You are an expert judge evaluating AI responses.
+
+For each assertion provided, determine if it's enforced in the given answer.
+
+For each assertion, provide:
+1. The exact assertion (repeat it exactly)
+2. Your reasoning
+3. Verbatim quotes from the answer that support your judgment  
+4. True/false whether the assertion is satisfied
+
+Then calculate an overall score as: (number of satisfied assertions) / (total assertions)
+
+Answer to evaluate: {{sample.output}}
+Assertions to judge: {{assertions}}"""}
+        ],
+        "input": {"assertions": assertions},
+        "response_format": ChatAnswerJudgmentResponse.model_json_schema()
+    }]
+)
+
+# Access detailed judgment results
+result = response.evaluations["correctness"]["result"]
+print(f"Overall score: {result['score']}")
+print(f"Passed {sum(j['is_assertion_enforced'] for j in result['judgements'])}/{len(result['judgements'])} assertions")
+print()
+
+for judgment in result['judgements']:
+    print(f"Assertion: {judgment['assertion']}")
+    print(f"Satisfied: {judgment['is_assertion_enforced']}")
+    print(f"Reason: {judgment['reason']}")
+    print(f"Evidence: {judgment['verbatims']}")
+    print("---")
+```
+
+### What This Example Provides
+
+**Detailed Feedback**: Get specific reasoning and evidence for each assertion tested
+
+**Multi-Criteria Assessment**: Test multiple assertions simultaneously with individual verdicts
+
+**Evidence-Based**: The judge must cite specific text that supports its decision
+
+**Explainable Results**: Understand exactly why each assertion passed or failed
+
+This assertion-based approach is useful when you need to verify specific claims about your agent's output with supporting evidence.
+
+## Example-Based Evaluation with Detailed Feedback
+
+Here's an example that evaluates outputs by comparing them against correct and incorrect examples, providing confidence scores and detailed positive/negative feedback.
+
+### Structured Evaluation Models
+
+```python
+from pydantic import BaseModel
+from typing import List, Optional
+from enum import Enum
+
+class EvaluationResult(Enum):
+    positive = "positive"
+    negative = "negative" 
+    unsure = "unsure"
+
+class EvaluateOutputTaskOutput(BaseModel):
+    evaluation_result: Optional[EvaluationResult] = None
+    confidence_score: Optional[float] = None
+    positive_aspects: Optional[List[str]] = None
+    negative_aspects: Optional[List[str]] = None
+    score: float = Field(description="Overall score from 0 to 1")  # required for score_model
+```
+
+### Example Usage
+
+```python
+response = client.beta.chat.completions.parse(
+    model="gpt-4o",
+    messages=[
+        {"role": "system", "content": "Extract meeting details from: {{email}}"},
+        {"role": "user", "content": "When is our next meeting?"}
+    ],
+    extra_body={
+        "input": {"email": "Team sync on Friday at 3pm in the main conference room."}
+    },
+    metadata={"agent_id": "meeting-assistant"},
+    response_format=MeetingDetails,
+    evaluations=[{
+        "type": "score_model",
+        "name": "quality_assessment",
+        "model": "o3-latest-medium",
+        "messages": [
+            {"role": "system", "content": """Evaluate the given output against the correct and incorrect examples.
+
+Task Input: {{task_input}}
+Correct Examples: {{correct_outputs}}
+Incorrect Examples: {{incorrect_outputs}}
+Evaluation Instructions: {{evaluation_instruction}}
+Input Evaluation Instructions: {{input_evaluation_instruction}}
+Output to Evaluate: {{evaluated_output}}
+
+Consider the task input and evaluation instructions to assess the quality.
+
+Provide:
+1. Evaluation result: 'positive', 'negative', or 'unsure'
+2. Confidence score (0-1)
+3. List of positive aspects (if any)
+4. List of negative aspects (if any)
+5. Overall score (0-1): 1.0 for positive, 0.0 for negative, 0.5 for unsure
+
+Focus on content and relevance. Exclude generic observations.
+Consider semantic similarity, synonyms, nicknames, or alternative names.
+
+Assistant's actual output: {{sample.output}}"""}
+        ],
+        "input": {
+            "task_input": {"email": "Team sync on Friday at 3pm in the main conference room."},
+            "correct_outputs": ["Meeting on Friday at 3pm in conference room", "Friday 3:00 PM - Conference Room"],
+            "incorrect_outputs": ["No meeting information found", "Unable to extract details"],
+            "evaluation_instruction": "Check if all meeting details are correctly extracted",
+            "input_evaluation_instruction": "Ensure the time, date, and location are all present"
+        },
+        "response_format": EvaluateOutputTaskOutput.model_json_schema()
+    }]
+)
+```

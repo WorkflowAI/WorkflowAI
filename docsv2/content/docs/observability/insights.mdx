@@ -171,6 +171,10 @@ The OpenAI-compatible completion API accepts an optional `insights` field alongs
 }
 ```
 
+<Callout type="info">
+**How Insights Work Under the Hood**: Similar to evaluations, each insight analysis runs as a separate LLM agent execution within your tenant. These insight computation runs are fully visible in your observability dashboard with their own agent IDs (typically formatted as `{agent_id}:insights`, e.g., `"customer-support:insights"`). This means insights are not just passive data extraction - they're active AI agents that you can monitor, debug, and optimize just like any other agent in your system.
+</Callout>
+
 ### Implementation Examples
 
 <Tabs items={['Python', 'cURL']}>
