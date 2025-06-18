@@ -28,20 +28,14 @@ class ModelSupports(BaseModel):
         description="Whether the model supports output of the given modality. "
         "If false, the model will not return any output.",
     )
-    parallel_tool_calls: bool = Field(
-        description="Whether the model supports parallel tool calls, i.e. if the model can return multiple tool calls "
-        "in a single inference. If the model does not support parallel tool calls, the parallel_tool_calls parameter "
-        "will be ignored.",
-    )
     tools: bool = Field(
         description="Whether the model supports tools. If false, the model will not support tool calling. "
         "Requests containing tools will be rejected.",
     )
-    top_p: bool = Field(
-        description="Whether the model supports top_p. If false, the top_p parameter will be ignored.",
-    )
-    temperature: bool = Field(
-        description="Whether the model supports temperature. If false, the temperature parameter will be ignored.",
+    parallel_tool_calls: bool = Field(
+        description="Whether the model supports parallel tool calls, i.e. if the model can return multiple tool calls "
+        "in a single inference. If the model does not support parallel tool calls, the parallel_tool_calls parameter "
+        "will be ignored.",
     )
 
 
@@ -160,7 +154,7 @@ class StandardModelResponse(BaseModel):
             return cls(
                 id=id,
                 created=int(datetime.datetime.combine(model.release_date, datetime.time(0, 0)).timestamp()),
-                owned_by=model.provider_name,
+                owned_by="WorkflowAI",
                 display_name=model.display_name,
                 icon_url=model.icon_url,
                 supports=ModelSupports(
@@ -176,10 +170,8 @@ class StandardModelResponse(BaseModel):
                         pdf=False,  # No models currently support PDF output
                         text=model.supports_output_text,
                     ),
-                    parallel_tool_calls=model.supports_parallel_tool_calls,
                     tools=model.supports_tool_calling,
-                    top_p=True,  # Most models support top_p parameter
-                    temperature=True,  # Most models support temperature parameter
+                    parallel_tool_calls=model.supports_parallel_tool_calls,
                 ),
                 pricing=cls.Pricing(
                     input_token_usd=provider_data.text_price.prompt_cost_per_token,
