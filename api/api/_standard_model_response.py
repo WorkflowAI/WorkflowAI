@@ -37,6 +37,12 @@ class ModelSupports(BaseModel):
         "in a single inference. If the model does not support parallel tool calls, the parallel_tool_calls parameter "
         "will be ignored.",
     )
+    top_p: bool = Field(
+        description="Whether the model supports top_p. If false, the top_p parameter will be ignored.",
+    )
+    temperature: bool = Field(
+        description="Whether the model supports temperature. If false, the temperature parameter will be ignored.",
+    )
 
 
 class ModelPricing(BaseModel):
