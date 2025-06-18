@@ -306,10 +306,13 @@ class MCPService:
             run = await self.runs_service.run_by_id(task_tuple, run_id)
 
             # Convert the run to a serializable format
+            # TODO: use a Pydantic model for the run
+            # See Run model in _mcp_models.py for the expected format
             run_data = {
                 "id": run.id,
                 "agent_id": run.task_id,
                 "agent_schema_id": run.task_schema_id,
+                # "agent_version_id": ...,
                 "status": run.status,
                 "agent_input": run.task_input,
                 "agent_output": run.task_output,
@@ -430,6 +433,7 @@ class MCPService:
         MajorVersion,
     ]:  # We return a paginated response for typing simplicity to align with list_agent_versions
         try:
+            # TODO: use a Pydantic model for the version
             version_data = await self.versions_service.get_version(task_tuple, version_id, self.models_service)
 
             # Convert to the same format as the existing endpoint

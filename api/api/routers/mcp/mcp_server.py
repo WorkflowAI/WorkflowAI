@@ -294,6 +294,9 @@ async def get_agent_versions(
 ) -> PaginatedMCPToolReturn[None, MajorVersion]:
     """<when_to_use>
     When the user wants to retrieve details of versions of a WorkflowAI agent, or when they want to compare a specific version of an agent.
+
+    Example:
+    - when debugging a failed run, you can use this tool to get the parameters of the agent that was used.
     </when_to_use>
     <returns>
     Returns the details of one or more versions of a WorkflowAI agent.
