@@ -1,18 +1,13 @@
 # pyright: reportPrivateUsage=false
 # pyright: reportUnknownMemberType=false
 
-
-from typing import TYPE_CHECKING
-
+import pytest
 from pytest import raises
 
 from core.domain.errors import JSONSchemaValidationError
 from core.domain.task_io import SerializableTaskIO
 
 from .task_variant import SerializableTaskVariant
-
-if TYPE_CHECKING:  # pragma: no cover
-    from pytest import ExceptionInfo
 
 
 class TestComputeHashes:
@@ -74,7 +69,7 @@ class TestValidateOutput:
         with raises(JSONSchemaValidationError) as exc_info:
             variant.validate_output({})
 
-        exc_info_typed: ExceptionInfo[JSONSchemaValidationError] = exc_info  # type: ignore[valid-type]
+        exc_info_typed: pytest.ExceptionInfo[JSONSchemaValidationError] = exc_info  # type: ignore[valid-type]
         msg = str(exc_info_typed.value)
         # The error message should still start with the generic prefix
         assert msg.startswith("Task output does not match schema"), msg
