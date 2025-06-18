@@ -1,4 +1,5 @@
 # pyright: reportPrivateUsage=false
+# pyright: reportUnknownMemberType=false
 
 
 import pytest
