@@ -51,7 +51,7 @@ class SerializableTaskVariant(BaseModel):
         try:
             self.output_schema.enforce(task_output, strip_extras=strip_extras, strip_opt_none_and_empty_strings=True)
         except JSONSchemaValidationError as e:
-            raise JSONSchemaValidationError(f"Task output does not match schema: {e}")
+            raise JSONSchemaValidationError(f"Task output does not match schema: {e}") from e
 
     def model_hash(self) -> str:
         # the model hash depends on the full json schema for both input and outputs
@@ -87,7 +87,11 @@ class SerializableTaskVariant(BaseModel):
             )
             return output
         except JSONSchemaValidationError as e:
-            raise JSONSchemaValidationError("Task output does not match schema") from e
+            # Preserve the underlying validation error details so that callers can
+            # surface helpful information to the user instead of an opaque message.
+            # Example final message:
+            #   "Task output does not match schema: at [greeting], 1 is not of type 'string'"
+            raise JSONSchemaValidationError(f"Task output does not match schema: {e}") from e
 
     def output_json_schema(self) -> JsonSchema:
         return JsonSchema(schema=self.output_schema.json_schema)

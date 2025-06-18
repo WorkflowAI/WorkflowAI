@@ -1,3 +1,6 @@
+import pytest
+
+from core.domain.errors import JSONSchemaValidationError
 from core.domain.task_io import SerializableTaskIO
 
 from .task_variant import SerializableTaskVariant
@@ -27,3 +30,43 @@ class TestComputeHashes:
         output_hash1 = task.compute_output_hash({"b": "b", "a": "a"})
         assert input_hash1 == input_hash
         assert output_hash1 == output_hash
+
+
+class TestValidateOutput:
+    def _build_task_variant(self) -> SerializableTaskVariant:
+        """Helper to create a minimal task variant with simple schemas"""
+        input_schema = SerializableTaskIO.from_json_schema(
+            {
+                "type": "object",
+                "properties": {"a": {"type": "string"}},
+                "required": ["a"],
+            },
+        )
+        output_schema = SerializableTaskIO.from_json_schema(
+            {
+                "type": "object",
+                "properties": {"b": {"type": "string"}},
+                "required": ["b"],
+            },
+        )
+        # id will be computed automatically based on schemas
+        return SerializableTaskVariant(
+            id="",  # will be populated by the model validator
+            task_id="test_task",
+            name="Test Task",
+            input_schema=input_schema,
+            output_schema=output_schema,
+        )
+
+    def test_validate_output_includes_error_details(self):
+        variant = self._build_task_variant()
+
+        # Missing required field 'b' so validation must fail
+        with pytest.raises(JSONSchemaValidationError) as exc_info:
+            variant.validate_output({})
+
+        msg = str(exc_info.value)
+        # The error message should still start with the generic prefix
+        assert msg.startswith("Task output does not match schema"), msg
+        # And it should include details from the underlying jsonschema error
+        assert "required property" in msg or "is not of type" in msg, msg
