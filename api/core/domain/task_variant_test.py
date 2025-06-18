@@ -1,3 +1,7 @@
+# pyright: reportPrivateUsage=false
+
+from typing import cast
+
 import pytest
 
 from core.domain.errors import JSONSchemaValidationError
@@ -65,7 +69,8 @@ class TestValidateOutput:
         with pytest.raises(JSONSchemaValidationError) as exc_info:
             variant.validate_output({})
 
-        msg = str(exc_info.value)
+        error_val = cast(JSONSchemaValidationError, exc_info.value)
+        msg = str(error_val)
         # The error message should still start with the generic prefix
         assert msg.startswith("Task output does not match schema"), msg
         # And it should include details from the underlying jsonschema error
