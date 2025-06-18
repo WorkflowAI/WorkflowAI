@@ -2940,12 +2940,49 @@ export type OpenAIProxyMessage = {
 };
 
 export type OpenAIProxyChatCompletionRequest = {
+  /**
+   * An input to template the messages with.This field is not defined by the default OpenAI api.When provided, an input schema is generated and the messages are used as a template.
+   */
+  input?: Record<string, unknown> | null;
+  /**
+   * A specific provider to use for the request. When provided, multi provider fallback is disabled.The attribute is ignored if the provider is not supported.
+   */
+  provider?: string | null;
+  /**
+   * The id of the agent to use for the request. If not provided, the default agent is used.
+   */
+  agent_id?: string | null;
+  /**
+   * A reference to an environment where the agent is deployed. It can also be provided in the model with the format `agent_id/#schema_id/environment`
+   */
+  environment?: string | null;
+  /**
+   * The agent schema id. Required when using a deployment. It can also be provided in the model with the format `agent_id/#schema_id/environment`
+   */
+  schema_id?: number | null;
+  use_cache?: 'auto' | 'always' | 'never' | null;
+  /**
+   * A list of WorkflowAI hosted tools. Possible values are `@search-google`, `@perplexity-sonar`, `@perplexity-sonar-reasoning`, `@perplexity-sonar-pro`, `@browser-text`.When not provided, we attempt to detect tools in the system message.
+   */
+  workflowai_tools?: Array<string> | null;
+  /**
+   * A way to configure the fallback behavior
+   */
+  use_fallback?: 'auto' | 'never' | Array<string> | null;
+  /**
+   * The conversation id to associate with the run. If not provided, WorkflowAI will attempt to match the message history to an existing conversation. If no conversation is found, a new conversation will be created.
+   */
+  conversation_id?: string | null;
   messages: Array<OpenAIProxyMessage>;
   model: string;
   frequency_penalty?: number | null;
   function_call?: string | OpenAIProxyToolChoiceFunction | null;
   functions?: Array<OpenAIProxyFunctionDefinition> | null;
+  logit_bias?: Record<string, number> | null;
+  logprobs?: boolean | null;
+  max_completion_tokens?: number | null;
   max_tokens?: number | null;
+  metadata?: Record<string, unknown> | null;
   modalities?: Array<'text' | 'audio'> | null;
   n?: number | null;
   parallel_tool_calls?: boolean | null;
@@ -2966,13 +3003,5 @@ export type OpenAIProxyChatCompletionRequest = {
   top_p?: number | null;
   user?: string | null;
   web_search_options?: OpenAIProxyWebSearchOptions | null;
-  input?: Record<string, unknown> | null;
-  provider?: string | null;
-  agent_id?: string | null;
-  environment?: string | null;
-  schema_id?: number | null;
-  use_cache?: 'auto' | 'always' | 'never' | null;
-  workflowai_tools?: Array<string> | null;
-  use_fallback?: 'auto' | 'never' | Array<string> | null;
   [key: string]: unknown;
 };

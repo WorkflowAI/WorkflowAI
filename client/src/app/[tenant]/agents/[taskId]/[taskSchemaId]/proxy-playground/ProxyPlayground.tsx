@@ -13,13 +13,14 @@ import { useDemoMode } from '@/lib/hooks/useDemoMode';
 import { useIsMobile } from '@/lib/hooks/useIsMobile';
 import {
   useOrFetchOrganizationSettings,
+  useOrFetchSchema,
   useOrFetchTask,
   useOrFetchVersions,
   useScheduledMetaAgentMessages,
 } from '@/store';
 import { useOrExtractTemplete } from '@/store/extract_templete';
 import { ToolCallName, usePlaygroundChatStore } from '@/store/playgroundChatStore';
-import { GeneralizedTaskInput, TaskSchemaResponseWithSchema } from '@/types';
+import { GeneralizedTaskInput } from '@/types';
 import { ModelOptional, TaskID, TaskSchemaID, TenantID } from '@/types/aliases';
 import {
   MajorVersion,
@@ -52,11 +53,10 @@ export type Props = {
   taskId: TaskID;
   tenant: TenantID | undefined;
   schemaId: TaskSchemaID;
-  schema: TaskSchemaResponseWithSchema;
 };
 
 export function ProxyPlayground(props: Props) {
-  const { tenant, taskId, schemaId: urlSchemaId, schema } = props;
+  const { tenant, taskId, schemaId: urlSchemaId } = props;
 
   const { task, isInitialized: isTaskInitialized } = useOrFetchTask(tenant, taskId);
 
@@ -89,6 +89,8 @@ export function ProxyPlayground(props: Props) {
     advancedSettings,
     maxTokens,
   } = useProxyPlaygroundStates(tenant, taskId, urlSchemaId);
+
+  const { taskSchema: schema } = useOrFetchSchema(tenant, taskId, urlSchemaId);
 
   useEffect(() => {
     if (scrollToBottom) {
@@ -165,6 +167,7 @@ export function ProxyPlayground(props: Props) {
       tenant,
       taskId,
       schemaId,
+      variantId: schema?.latest_variant_id ?? undefined,
       taskRunId1,
       taskRunId2,
       taskRunId3,

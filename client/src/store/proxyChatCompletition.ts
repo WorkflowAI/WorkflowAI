@@ -5,7 +5,7 @@ import {
 } from '@/app/[tenant]/agents/[taskId]/[taskSchemaId]/proxy-playground/hooks/useProxyPlaygroundSearchParams';
 import { Method, SSEClient } from '@/lib/api/client';
 import { API_URL } from '@/lib/constants';
-import { TaskID, TaskSchemaID } from '@/types/aliases';
+import { TaskID } from '@/types/aliases';
 import {
   OpenAIProxyChatCompletionRequest,
   OpenAIProxyTool,
@@ -13,6 +13,30 @@ import {
   ToolKind,
   Tool_Output,
 } from '@/types/workflowAI';
+
+type OpenAIProxyChatCompletionResponse = {
+  id: string;
+  choices?: { delta?: { content?: string } }[];
+};
+
+function getRunId(id: string): string {
+  const parts = id.split('/');
+  if (parts.length > 1) {
+    return parts[1];
+  }
+  return id;
+}
+
+function getContent(response: OpenAIProxyChatCompletionResponse): Record<string, unknown> {
+  const text = response.choices?.[0]?.delta?.content;
+  try {
+    const output = JSON.parse(text ?? '{}');
+    return output;
+  } catch (error) {
+    console.error(error);
+    return { content: text };
+  }
+}
 
 function getWorkflowAITools(toolCalls?: (ToolKind | Tool_Output)[]): string[] | undefined {
   if (!toolCalls) {
@@ -62,26 +86,27 @@ function getOpenAITools(tools?: (ToolKind | Tool_Output)[]): OpenAIProxyTool[] |
 interface ProxyChatCompletitionState {
   performRun(
     taskId: TaskID,
-    schemaId: TaskSchemaID,
+    variantId: string,
     model: string,
     input: Record<string, unknown> | undefined,
-    messages: ProxyMessage[],
+    versionMessages: ProxyMessage[],
     advancedSettings: AdvancedSettings | undefined,
     tools?: (ToolKind | Tool_Output)[],
+    onMessage?: (runId: string, output: Record<string, unknown>) => void,
     signal?: AbortSignal
   ): Promise<string>;
 }
 
 export const useProxyChatCompletition = create<ProxyChatCompletitionState>(() => ({
-  performRun: async (taskId, schemaId, model, input, messages, advancedSettings, tools, signal) => {
-    const fullInput = {
-      ...input,
-      'workflowai.messages': messages,
-    };
+  performRun: async (taskId, variantId, model, input, versionMessages, advancedSettings, tools, onMessage, signal) => {
+    const stream_options =
+      advancedSettings?.stream_options_include_usage !== undefined
+        ? { include_usage: advancedSettings?.stream_options_include_usage === 'true', valid_json_chunks: true }
+        : { valid_json_chunks: true };
 
     const body: OpenAIProxyChatCompletionRequest = {
       agent_id: taskId,
-      input: fullInput,
+      input,
       messages: [],
       model: model,
       temperature: advancedSettings?.temperature !== undefined ? Number(advancedSettings.temperature) : undefined,
@@ -92,26 +117,35 @@ export const useProxyChatCompletition = create<ProxyChatCompletitionState>(() =>
       presence_penalty:
         advancedSettings?.presence_penalty !== undefined ? Number(advancedSettings.presence_penalty) : undefined,
       stream: advancedSettings?.stream !== undefined ? advancedSettings.stream === 'true' : undefined,
-      stream_options:
-        advancedSettings?.stream_options_include_usage !== undefined
-          ? { include_usage: advancedSettings?.stream_options_include_usage === 'true' }
-          : undefined,
+      stream_options,
       stop: advancedSettings?.stop !== undefined ? advancedSettings.stop : undefined,
       use_cache: getCacheValue(advancedSettings?.cache),
       workflowai_tools: getWorkflowAITools(tools),
       tools: getOpenAITools(tools),
+      workflowai_internal: {
+        variant_id: variantId,
+        version_messages: versionMessages,
+      },
     };
 
     const path = `${API_URL}/v1/chat/completions`;
 
-    const lastMessage = await SSEClient<OpenAIProxyChatCompletionRequest, { id: string }>(
+    const lastMessage = await SSEClient<OpenAIProxyChatCompletionRequest, OpenAIProxyChatCompletionResponse>(
       path,
       Method.POST,
       body,
-      () => {},
+      (message) => {
+        const runId = getRunId(message.id);
+        const content = getContent(message);
+        onMessage?.(runId, content);
+      },
       signal
     );
 
-    return lastMessage.id;
+    const runId = getRunId(lastMessage.id);
+    const content = getContent(lastMessage);
+    onMessage?.(runId, content);
+
+    return runId;
   },
 }));

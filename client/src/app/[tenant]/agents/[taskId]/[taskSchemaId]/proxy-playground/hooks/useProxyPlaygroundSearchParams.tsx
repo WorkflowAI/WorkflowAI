@@ -211,13 +211,17 @@ export function useProxyPlaygroundSearchParams(
 
   const changeURLSchemaId = useCallback(
     (taskSchemaId: TaskSchemaID, scrollToBottom?: boolean) => {
-      const params = paramsRef.current;
-      if (scrollToBottom) {
-        params.scrollToBottom = 'true';
-      }
-      const newUrl = replaceTaskSchemaId(pathname, taskSchemaId);
-      const newParamsString = stringifyQueryParams(params);
-      router.replace(`${newUrl}${newParamsString}`, { scroll: false });
+      setTimeout(() => {
+        const params = paramsRef.current;
+        if (scrollToBottom) {
+          params.scrollToBottom = 'true';
+        }
+        const newUrl = replaceTaskSchemaId(pathname, taskSchemaId);
+        const newParamsString = stringifyQueryParams(params);
+        const newUrlWithParams = `${newUrl}${newParamsString}`;
+
+        router.replace(newUrlWithParams, { scroll: false });
+      }, 500);
     },
     [pathname, router]
   );
