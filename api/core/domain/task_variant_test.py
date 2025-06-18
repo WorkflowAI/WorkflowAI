@@ -2,7 +2,7 @@
 
 from typing import cast
 
-from _pytest._code.code import ExceptionInfo  # type: ignore
+import pytest
 from pytest import raises
 
 from core.domain.errors import JSONSchemaValidationError
@@ -70,7 +70,9 @@ class TestValidateOutput:
         with raises(JSONSchemaValidationError) as exc_info:
             variant.validate_output({})
 
-        error_val = cast(ExceptionInfo[JSONSchemaValidationError], exc_info)
+        # exc_info is a pytest.ExceptionInfo but importing the type directly is optional
+        # We use a cast for static type checkers.
+        error_val = cast("pytest.ExceptionInfo[JSONSchemaValidationError]", exc_info)
         msg = str(error_val.value)
         # The error message should still start with the generic prefix
         assert msg.startswith("Task output does not match schema"), msg
