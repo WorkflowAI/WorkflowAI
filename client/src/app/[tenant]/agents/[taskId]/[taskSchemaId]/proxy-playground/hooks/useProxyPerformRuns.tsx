@@ -363,7 +363,10 @@ export function useProxyPerformRuns(props: Props) {
       await fetchOrganizationSettings();
 
       if (newSchema) {
-        changeURLSchemaId(newSchema, true);
+        // Timeout set to prevent blinking when refreashing the inputs
+        setTimeout(() => {
+          changeURLSchemaId(newSchema, true);
+        }, 500);
       }
 
       const message = getScheduledPlaygroundStateMessageToSendAfterRuns();
