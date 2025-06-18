@@ -2,7 +2,8 @@
 
 from typing import cast
 
-import pytest
+from _pytest._code.code import ExceptionInfo  # type: ignore
+from pytest import raises
 
 from core.domain.errors import JSONSchemaValidationError
 from core.domain.task_io import SerializableTaskIO
@@ -66,11 +67,11 @@ class TestValidateOutput:
         variant = self._build_task_variant()
 
         # Missing required field 'b' so validation must fail
-        with pytest.raises(JSONSchemaValidationError) as exc_info:
+        with raises(JSONSchemaValidationError) as exc_info:
             variant.validate_output({})
 
-        error_val = cast(JSONSchemaValidationError, exc_info.value)
-        msg = str(error_val)
+        error_val = cast(ExceptionInfo[JSONSchemaValidationError], exc_info)
+        msg = str(error_val.value)
         # The error message should still start with the generic prefix
         assert msg.startswith("Task output does not match schema"), msg
         # And it should include details from the underlying jsonschema error
