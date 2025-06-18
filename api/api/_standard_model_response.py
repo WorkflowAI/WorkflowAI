@@ -160,7 +160,7 @@ class StandardModelResponse(BaseModel):
             return cls(
                 id=id,
                 created=int(datetime.datetime.combine(model.release_date, datetime.time(0, 0)).timestamp()),
-                owned_by="WorkflowAI",
+                owned_by="WorkflowAI",  # we are not exposing what underlying providers are used
                 display_name=model.display_name,
                 icon_url=model.icon_url,
                 supports=ModelSupports(
