@@ -2,17 +2,16 @@ import contextlib
 import logging
 import os
 import time
-from collections.abc import Iterator
 from contextlib import asynccontextmanager
-from typing import Annotated, Awaitable, Callable
+from typing import Awaitable, Callable
 
 import stripe
-from fastapi import FastAPI, Query, Request, Response
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from sentry_sdk.integrations.logging import ignore_logger
 
-from api._standard_model_response import StandardModelResponse
 from api.errors import configure_scope_for_error
+from api.routers import models_router
 from api.routers.openai_proxy import openai_proxy_router
 from api.services.analytics import close_analytics, start_analytics
 from api.services.storage import storage_for_tenant
@@ -28,9 +27,6 @@ from api.utils import (
     setup_metrics,
 )
 from core.domain.errors import DefaultError
-from core.domain.models import Model
-from core.domain.models.model_data import FinalModelData, LatestModel
-from core.domain.models.model_datas_mapping import MODEL_DATAS
 from core.providers.base.httpx_provider_base import HTTPXProviderBase
 from core.providers.base.provider_error import ProviderError
 from core.storage import ObjectNotFoundException
@@ -173,33 +169,7 @@ if WORKFLOWAI_ALLOWED_ORIGINS:
 app.include_router(probes.router)
 app.include_router(run.router)
 app.include_router(openai_proxy_router.router)
-
-
-# Because the run and api containers are deployed at different times,
-# the run container must be the source of truth for available models, otherwise
-# the API might believe that some models are available when they are not.
-@app.get("/v1/models", description="List all available models", include_in_schema=False)
-async def list_all_available_models(
-    raw: Annotated[bool, Query()] = False,
-    omit_latest: Annotated[bool, Query()] = False,
-):
-    # No need to filter anything here as the raw models will not be exposed
-    # The api container will filter the models based on the task schema
-    if raw:
-        return list(Model)
-
-    def _model_data_iterator() -> Iterator[StandardModelResponse.ModelItem]:
-        for model in Model:
-            data = MODEL_DATAS[model]
-            if isinstance(data, LatestModel) and not omit_latest:
-                yield StandardModelResponse.ModelItem.from_model_data(model.value, MODEL_DATAS[data.model])  # pyright: ignore [reportArgumentType]
-            elif isinstance(data, FinalModelData):
-                yield StandardModelResponse.ModelItem.from_model_data(model.value, data)
-            else:
-                # Skipping deprecated models
-                continue
-
-    return StandardModelResponse(data=list(_model_data_iterator()))
+app.include_router(models_router.router)
 
 
 if not _ONLY_RUN_ROUTES:

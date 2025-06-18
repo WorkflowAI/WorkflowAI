@@ -86,7 +86,7 @@ class ModelsService:
     async def _available_models_from_run_endpoint(cls) -> list[Model]:
         try:
             async with httpx.AsyncClient() as client:
-                response = await client.get(f"{WORKFLOWAI_RUN_URL}/v1/models?raw=true")
+                response = await client.get(f"{WORKFLOWAI_RUN_URL}/v1/models/ids")
                 response.raise_for_status()
                 model_json = response.json()
 

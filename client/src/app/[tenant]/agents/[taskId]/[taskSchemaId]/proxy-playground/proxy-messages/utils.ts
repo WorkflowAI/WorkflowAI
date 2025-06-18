@@ -154,11 +154,11 @@ export function getTextAndIconFotContentType(type: ContentType): { text: string;
 export function getTitleForType(type: ExtendedMessageType) {
   switch (type) {
     case 'user':
-      return 'User Message';
+      return 'User';
     case 'system':
-      return 'System Message';
+      return 'System';
     case 'assistant':
-      return 'Assistant Message';
+      return 'Assistant';
     case 'toolCallResult':
       return 'Tool Call Result';
     case 'toolCallRequest':

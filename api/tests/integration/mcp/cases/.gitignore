@@ -1,0 +1,4 @@
+.claude_steps
+claude_steps.json
+# CLAUDE.md are dynamically added by the test runner and should then not be committed
+CLAUDE.md

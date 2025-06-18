@@ -71,6 +71,10 @@ and executing the test with `poetry run pytest api/tests/integration/my_test_fil
 - `prettier` is used to check for formatting errors.
 - `typescript` is used for type checking.
 
+### React Performance Guidelines
+
+- Do not use `useMemo` when the computation is simple and the result is a scalar (string, number) since it would unnecessarily add overhead.
+
 Useful commands:
 
 - `yarn prettier-check` check for formatting errors.

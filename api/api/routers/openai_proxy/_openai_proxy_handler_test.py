@@ -12,7 +12,7 @@ from api.routers.openai_proxy._openai_proxy_models import (
     OpenAIProxyChatCompletionRequest,
     OpenAIProxyMessage,
     OpenAIProxyTool,
-    OpenAIProxyToolFunction,
+    OpenAIProxyToolDefinition,
 )
 from api.services.feedback_svc import FeedbackTokenGenerator
 from core.domain.consts import INPUT_KEY_MESSAGES
@@ -66,7 +66,7 @@ class TestPrepareRun:
         completion_request.tools = [
             OpenAIProxyTool(
                 type="function",
-                function=OpenAIProxyToolFunction(
+                function=OpenAIProxyToolDefinition(
                     name="my_function",
                     parameters={},
                     strict=True,

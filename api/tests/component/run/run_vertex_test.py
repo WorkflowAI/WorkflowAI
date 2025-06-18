@@ -48,11 +48,11 @@ async def test_vertex_global(test_client: IntegrationTestClient):
 
     # Mock only one failed region at a time
     test_client.mock_vertex_call(
-        model=Model.GEMINI_2_5_FLASH_PREVIEW_0520,
-        url=vertex_url(Model.GEMINI_2_5_FLASH_PREVIEW_0520, region="global"),
+        model=Model.GEMINI_2_5_FLASH,
+        url=vertex_url(Model.GEMINI_2_5_FLASH, region="global"),
     )
 
-    run = await test_client.run_task_v1(task, model=Model.GEMINI_2_5_FLASH_PREVIEW_0520)
+    run = await test_client.run_task_v1(task, model=Model.GEMINI_2_5_FLASH)
     assert run
 
 
@@ -61,16 +61,16 @@ async def test_vertex_invalid_response(test_client: IntegrationTestClient):
 
     # Mock only one failed region at a time
     test_client.mock_vertex_call(
-        model=Model.GEMINI_2_5_FLASH_PREVIEW_0520,
-        url=vertex_url(Model.GEMINI_2_5_FLASH_PREVIEW_0520, region="global"),
+        model=Model.GEMINI_2_5_FLASH,
+        url=vertex_url(Model.GEMINI_2_5_FLASH, region="global"),
         # parts have a missing name so the validation will fail
         parts=[{"functionCall": {"args": {"url": "https://pastacaponi.it/"}}}],
     )
     # So we will fallback to gemin
-    mock_gemini_call(test_client.httpx_mock, model=Model.GEMINI_2_5_FLASH_PREVIEW_0520)
+    mock_gemini_call(test_client.httpx_mock, model=Model.GEMINI_2_5_FLASH)
 
     # assert provider.config.vertex_location == ["us-central1", "us-east4", "us-west1"]
-    run = await test_client.run_task_v1(task, model=Model.GEMINI_2_5_FLASH_PREVIEW_0520)
+    run = await test_client.run_task_v1(task, model=Model.GEMINI_2_5_FLASH)
     assert run
 
 

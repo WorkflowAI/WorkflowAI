@@ -546,6 +546,11 @@ async def test_list_models(openai_client: AsyncOpenAI):
     assert Model.GPT_41_LATEST in model_ids
     assert Model.GPT_3_5_TURBO_1106 not in model_ids
 
+    first_model = res.data[0]
+    assert first_model.supports and isinstance(first_model.supports, dict)  # type: ignore
+    assert first_model.pricing and isinstance(first_model.pricing, dict)  # type: ignore
+    assert first_model.release_date and isinstance(first_model.release_date, str)  # type: ignore
+
 
 async def test_deployed_version_no_messages(test_client: IntegrationTestClient, openai_client: AsyncOpenAI):
     test_client.mock_openai_call(raw_content="Hello James!")

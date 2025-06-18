@@ -1,0 +1,1 @@
+Can I add email title and sender as extra variables?

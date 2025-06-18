@@ -1,0 +1,3 @@
+- this AI agent is too slow, i want to use a faster model.
+- make sure the faster model give similar results than the current model.
+- compare the faster models with the current model.
