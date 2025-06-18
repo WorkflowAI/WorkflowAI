@@ -1,10 +1,9 @@
 import datetime
-from typing import Any, Literal
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
 from core.domain.models.model_data import FinalModelData
-from core.domain.models.model_data_supports import ModelDataSupports
 
 
 class SupportsModality(BaseModel):
@@ -145,7 +144,7 @@ class StandardModelResponse(BaseModel):
         owned_by: str
         display_name: str
         icon_url: str
-        supports: dict[str, Any]
+        supports: ModelSupports
 
         class Pricing(BaseModel):
             input_token_usd: float
@@ -164,13 +163,24 @@ class StandardModelResponse(BaseModel):
                 owned_by=model.provider_name,
                 display_name=model.display_name,
                 icon_url=model.icon_url,
-                supports={
-                    k.removeprefix("supports_"): v
-                    for k, v in model.model_dump(
-                        mode="json",
-                        include=set(ModelDataSupports.model_fields.keys()),
-                    ).items()
-                },
+                supports=ModelSupports(
+                    input=SupportsModality(
+                        image=model.supports_input_image,
+                        audio=model.supports_input_audio,
+                        pdf=model.supports_input_pdf,
+                        text=True,  # Text input is always supported
+                    ),
+                    output=SupportsModality(
+                        image=model.supports_output_image,
+                        audio=False,  # No models currently support audio output
+                        pdf=False,  # No models currently support PDF output
+                        text=model.supports_output_text,
+                    ),
+                    parallel_tool_calls=model.supports_parallel_tool_calls,
+                    tools=model.supports_tool_calling,
+                    top_p=True,  # Most models support top_p parameter
+                    temperature=True,  # Most models support temperature parameter
+                ),
                 pricing=cls.Pricing(
                     input_token_usd=provider_data.text_price.prompt_cost_per_token,
                     output_token_usd=provider_data.text_price.completion_cost_per_token,
