@@ -1,7 +1,7 @@
 # pyright: reportPrivateUsage=false
 # pyright: reportUnknownMemberType=false
 
-import pytest
+import pytest  # type: ignore[import-not-found]
 from pytest import raises
 
 from core.domain.errors import JSONSchemaValidationError
