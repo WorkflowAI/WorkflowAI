@@ -1,6 +1,5 @@
 # pyright: reportPrivateUsage=false
 
-from typing import cast
 
 import pytest
 from pytest import raises
@@ -70,7 +69,7 @@ class TestValidateOutput:
         with raises(JSONSchemaValidationError) as exc_info:
             variant.validate_output({})
 
-        exc_info_typed = cast(pytest.ExceptionInfo[JSONSchemaValidationError], exc_info)
+        exc_info_typed: "pytest.ExceptionInfo[JSONSchemaValidationError]" = exc_info  # type: ignore[valid-type]
         msg = str(exc_info_typed.value)
         # The error message should still start with the generic prefix
         assert msg.startswith("Task output does not match schema"), msg
