@@ -38,12 +38,14 @@ export function ProxyTaskRunHoverableInputOutputContent(props: Props) {
     return numberOfInputVariblesInInputSchema(schema.input_schema.json_schema as JsonSchema) > 0;
   }, [schema.input_schema]);
 
+  const inputTitle = !inputAndOutputMessages || inputAndOutputMessages.length <= 1 ? 'Input' : 'Context';
+
   return (
     <div className='flex flex-row w-[50vw] max-w-[50vw] h-[50vh] text-gray-700 border border-gray-200 rounded-[2px] overflow-hidden'>
       {showInputVariables && (
         <div className='flex flex-1 h-full border-r border-gray-200 border-dashed'>
           <div className='flex h-full w-full overflow-hidden'>
-            <ProxyInputVariablesView input={cleanInput} schema={schema} />
+            <ProxyInputVariablesView input={cleanInput} schema={schema} title={inputTitle} />
           </div>
         </div>
       )}
