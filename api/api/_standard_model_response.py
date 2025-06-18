@@ -178,6 +178,8 @@ class StandardModelResponse(BaseModel):
                     ),
                     tools=model.supports_tool_calling,
                     parallel_tool_calls=model.supports_parallel_tool_calls,
+                    top_p=True,  # Most models support top_p parameter
+                    temperature=True,  # Most models support temperature parameter
                 ),
                 pricing=cls.Pricing(
                     input_token_usd=provider_data.text_price.prompt_cost_per_token,
