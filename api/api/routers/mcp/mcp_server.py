@@ -572,7 +572,7 @@ async def ask_ai_engineer(
     service = await get_mcp_service()
     return await service.ask_ai_engineer(
         agent_schema_id=agent_schema_id,
-        agent_id=agent_id,
+        agent_id=agent_id if agent_id != "NEW_AGENT" else None,
         message=message,
         user_programming_language=user_programming_language,
         user_code_extract=user_code_extract,
