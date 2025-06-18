@@ -70,10 +70,8 @@ class TestValidateOutput:
         with raises(JSONSchemaValidationError) as exc_info:
             variant.validate_output({})
 
-        # exc_info is a pytest.ExceptionInfo but importing the type directly is optional
-        # We use a cast for static type checkers.
-        error_val = cast("pytest.ExceptionInfo[JSONSchemaValidationError]", exc_info)
-        msg = str(error_val.value)
+        exc_info_typed = cast(pytest.ExceptionInfo[JSONSchemaValidationError], exc_info)
+        msg = str(exc_info_typed.value)
         # The error message should still start with the generic prefix
         assert msg.startswith("Task output does not match schema"), msg
         # And it should include details from the underlying jsonschema error
