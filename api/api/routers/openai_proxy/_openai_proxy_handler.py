@@ -232,6 +232,25 @@ class OpenAIProxyHandler:
 
         return self.PreparedRun(properties=properties, variant=variant, final_input=final_input)
 
+    async def _prepare_for_variant_id(
+        self,
+        agent_id: str,
+        model: str,
+        variant_id: str,
+        version_messages: list[Message] | None,
+        input: dict[str, Any] | None,
+        tenant_data: PublicOrganizationData,
+    ) -> PreparedRun:
+        variant = await self._storage.task_version_resource_by_id(
+            agent_id,
+            variant_id,
+        )
+        properties = TaskGroupProperties(model=model, messages=version_messages)
+        properties.task_variant_id = variant.id
+        self._update_task_properties(tenant_data, variant)
+        # Here the input is exactly what we expect in run.task_input
+        return self.PreparedRun(properties=properties, variant=variant, final_input=input or {})
+
     async def _prepare_for_model(
         self,
         agent_ref: ModelRef,
@@ -252,7 +271,7 @@ class OpenAIProxyHandler:
         if new_variant_created:
             self._event_router(
                 ProxyAgentCreatedEvent(
-                    agent_slug=raw_variant.task_id,
+                    agent_slug=variant.task_id,
                     task_id=variant.task_id,
                     task_schema_id=variant.task_schema_id,
                 ),
@@ -328,6 +347,29 @@ class OpenAIProxyHandler:
         input_io.enforce(final_input, files_as_strings=True)
 
     async def _prepare_run(self, body: OpenAIProxyChatCompletionRequest, tenant_data: PublicOrganizationData):
+        if body.workflowai_internal:
+            # "Internal way" of using the proxy endpoint
+            # this is used by the playground to easily run a single variant, since it already
+            # knows:
+            # - the variant that should be used (including the schema)
+            # - the agent_id
+            # - the messages that go into the version vs the ones in the input
+            # -
+            if not body.agent_id:
+                raise BadRequestError("Agent id is required when a variant id is provided")
+            if body.messages:
+                raise BadRequestError("Messages are not supported when a variant id is provided")
+            if body.response_format:
+                raise BadRequestError("Response format is not supported when a variant id is provided")
+            return await self._prepare_for_variant_id(
+                agent_id=body.agent_id,
+                model=body.model,
+                variant_id=body.workflowai_internal.variant_id,
+                version_messages=body.workflowai_internal.version_messages,
+                input=body.input,
+                tenant_data=tenant_data,
+            )
+
         messages = Messages.with_messages(*body.domain_messages())
 
         # First we need to locate the agent
@@ -382,13 +424,15 @@ class OpenAIProxyHandler:
         except MissingModelError as e:
             raise await self.missing_model_error(e.extras.get("model"), prefix="fallback ")
 
+        aggregate_content = body.stream_options.valid_json_chunks if body.stream_options else None
+
         runner, _ = await self._group_service.sanitize_groups_for_internal_runner(
             task_id=prepared_run.variant.task_id,
             task_schema_id=prepared_run.variant.task_schema_id,
             reference=VersionReference(properties=prepared_run.properties),
             provider_settings=None,
             variant=prepared_run.variant,
-            stream_deltas=body.stream is True,
+            stream_deltas=body.stream is True and not aggregate_content,
             use_fallback=parsed_fallback,
         )
 
@@ -447,13 +491,16 @@ class OpenAIProxyHandler:
                 chunk_serializer=OpenAIProxyChatCompletionChunk.stream_serializer(
                     agent_id=prepared_run.variant.task_id,
                     model=body.model,
+                    output_mapper=output_mapper,
                     deprecated_function=body.uses_deprecated_functions,
+                    aggregate_content=aggregate_content,
                 ),
                 serializer=OpenAIProxyChatCompletionChunk.serializer(
                     model=body.model,
                     deprecated_function=body.uses_deprecated_functions,
                     output_mapper=output_mapper,
                     feedback_generator=_feedback_generator,
+                    aggregate_content=aggregate_content,
                 ),
                 source=source,
             ),

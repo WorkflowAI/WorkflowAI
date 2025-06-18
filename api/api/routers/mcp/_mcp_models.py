@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 from api.schemas.user_identifier import UserIdentifier
 from api.schemas.version_properties import ShortVersionProperties
+from api.services.models import ModelForTask
 from core.domain.message import Message
 from core.domain.models.model_data import FinalModelData
 from core.domain.models.model_data_supports import ModelDataSupports
@@ -16,11 +17,60 @@ from core.domain.version_major import VersionDeploymentMetadata, VersionMajor
 from core.utils.fields import datetime_zero
 
 
+class ConciseLatestModelResponse(BaseModel):
+    id: str
+    currently_points_to: str
+
+
+class ConciseModelResponse(BaseModel):
+    id: str
+    maker: str
+    display_name: str
+    supports: list[str]
+    quality_index: int
+    cost_per_input_token_usd: float
+    cost_per_output_token_usd: float
+    release_date: str
+
+    @classmethod
+    def from_model_data(cls, id: str, model: FinalModelData):
+        IGNORE_SUPPORTS = {"structured_output", "support_system_messages", "json_mode"}
+
+        provider_data = model.providers[0][1]
+        return cls(
+            id=id,
+            maker=model.provider_name,
+            display_name=model.display_name,
+            supports=[
+                k.removeprefix("supports_")
+                for k, v in model.model_dump().items()
+                if v is True and k.startswith("supports_") and k not in IGNORE_SUPPORTS
+            ],
+            quality_index=model.quality_index,
+            cost_per_input_token_usd=provider_data.text_price.prompt_cost_per_token,
+            cost_per_output_token_usd=provider_data.text_price.completion_cost_per_token,
+            release_date=model.release_date.isoformat(),
+        )
+
+    @classmethod
+    def from_model_for_task(cls, model: ModelForTask):
+        return cls(
+            id=model.id,
+            maker=model.provider_name,
+            display_name=model.name,
+            supports=model.modes,
+            quality_index=model.quality_index,
+            cost_per_input_token_usd=model.price_per_input_token_usd,
+            cost_per_output_token_usd=model.price_per_output_token_usd,
+            release_date=model.release_date.isoformat(),
+        )
+
+
 class MCPToolReturn(BaseModel):
     """Standardized return format for MCP tools"""
 
     success: bool
-    data: Any | None = None
+    data: dict[str, Any] | None = None
     error: str | None = None
     messages: list[str] | None = None
 

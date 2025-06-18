@@ -50,7 +50,7 @@ export function buildScopeKey({
   searchParams,
 }: {
   tenant: TenantID | undefined;
-  taskId: TaskID;
+  taskId: TaskID | undefined;
   taskSchemaId?: string;
   searchParams?: string;
 }) {

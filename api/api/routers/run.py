@@ -106,7 +106,7 @@ class RunRequest(BaseModel):
 
     metadata: dict[str, Any] | None = Field(default=None, description="Additional metadata to store with the task run.")
 
-    private_fields: set[Literal["task_input", "task_input"] | str] | None = Field(
+    private_fields: set[Literal["task_input", "task_output"] | str] | None = Field(
         default=None,
         description="Fields marked as private will not be saved, none by default.",
     )

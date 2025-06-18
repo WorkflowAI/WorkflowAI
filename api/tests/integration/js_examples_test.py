@@ -46,3 +46,13 @@ def test_js_openai_example(example: Path, api_server: str):
     )
 
     assert result.returncode == 0, f"Command failed with stderr: {result.stderr}\nstdout: {result.stdout}"
+
+
+def test_stream_json_objects(api_server: str):
+    result = subprocess.run(
+        ["yarn", "tsx", "stream_json_objects.ts"],
+        capture_output=True,
+        text=True,
+        cwd=_js_dir(),
+    )
+    assert result.returncode == 0, f"Command failed with stderr: {result.stderr}\nstdout: {result.stdout}"

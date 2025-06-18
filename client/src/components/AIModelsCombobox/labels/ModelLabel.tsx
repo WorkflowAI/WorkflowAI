@@ -60,11 +60,10 @@ export function ModelLabel(props: ModelLabelProps) {
   const onCopyModelId = useCallback(
     (event: React.MouseEvent<HTMLButtonElement>) => {
       event.stopPropagation();
-      const text = taskId ? `${taskId}/${model.id}` : model.id;
-      copy(text);
+      copy(model.id);
       displaySuccessToaster('Copied to clipboard');
     },
-    [model.id, copy, taskId]
+    [model.id, copy]
   );
 
   return (
@@ -98,7 +97,7 @@ export function ModelLabel(props: ModelLabelProps) {
               content={
                 <div>
                   <span>Copy model id: </span>
-                  <span className='text-gray-300'>{`${taskId}/${model.id}`}</span>
+                  <span className='text-gray-300'>{model.id}</span>
                 </div>
               }
               side='top'

@@ -157,8 +157,9 @@ Backend                              Frontend                             Workfl
 
   # JSON Body
   {
-     "model": "my-agent-name/model",
-     "messages": [...]
+     "model": "gpt-4o-mini",
+     "messages": [...],
+     "metadata": {"agent_id": "my-agent-name"}
   }
 
   # Response
@@ -175,8 +176,11 @@ Backend                              Frontend                             Workfl
   <Tab>
   ```python
   res = client.chat.completions.create(
-      model="my-agent-name/model",
+      model="...",
       messages=[...],
+      metadata={
+        "agent_id": "my-agent-name"
+      }
   )
 
   # The following will likely raise typing errors since
@@ -189,8 +193,9 @@ Backend                              Frontend                             Workfl
   <Tab>
   ```typescript
   const response = await openai.chat.completions.create({
-      model: "my-agent-name/model",
+      model: "gpt-4o-mini",
       messages: ...,
+      metadata: {"agent_id": "my-agent-name"}
   })
 
   // "@ts-expect-error - is needed here if using TypeScript since the OpenAI types
@@ -259,6 +264,16 @@ Backend                              Frontend                             Workfl
 
 ## View user feedback
 
+### Via the UI
+
 Go to the "User Feedbacks" section from the menu, and you'll see a list of feedback.
 
 ![User Feedback Screen](</images/evaluations/user-feedback/user-feedback.png>)
+
+### Via the API
+
+[TODO: add API documentation]
+
+### Via MCP
+
+[TODO: add MCP documentation]

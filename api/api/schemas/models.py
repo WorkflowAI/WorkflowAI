@@ -15,7 +15,7 @@ class ModelMetadata(BaseModel):
     quality_index: int = Field(description="The quality index of the model")
 
     @classmethod
-    def from_service(cls, model: "models.ModelsService.ModelForTask"):
+    def from_service(cls, model: "models.ModelForTask"):
         return cls(
             provider_name=model.provider_name,
             price_per_input_token_usd=model.price_per_input_token_usd,
@@ -48,7 +48,7 @@ class ModelResponse(BaseModel):
     metadata: ModelMetadata = Field(description="The metadata of the model")
 
     @classmethod
-    def from_service(cls, model: "models.ModelsService.ModelForTask"):
+    def from_service(cls, model: "models.ModelForTask"):
         return cls(
             id=model.id,
             name=model.name,

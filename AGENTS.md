@@ -13,6 +13,7 @@ Dependency management is done with `poetry`. `poetry install` installs dependenc
 
 When modifying the API, ensure that:
 
+- you have read the [CONTRIBUTING.md](./CONTRIBUTING.md) file.
 - ruff check still passes. The command to run is `poetry run ruff check .` to check the entire codebase or `poetry run ruff check path-to-file.py` to check a specific file.
 - pyright check still passes. The command to run is `poetry run pyright .` to check the entire codebase or `poetry run pyright path-to-file.py` to check a specific file.
 - the affected tests pass or new tests are added. See [testing infrastructure](#testing-infrastructure).

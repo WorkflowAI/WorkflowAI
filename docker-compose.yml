@@ -69,7 +69,7 @@ services:
       - '8000:8000'
     volumes:
       - ./api/api:/app/api
-      - ./docs:/app/docs
+      - ./docsv2:/app/docsv2
       - ./api/core:/app/core
       - ./api/stubs:/app/stubs
     env_file:

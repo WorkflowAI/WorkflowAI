@@ -27,9 +27,10 @@ TODO:
       score: float
 
   answer, completion = client.chat.completions.create_with_completion(
-      model="sentiment-analysis-agent/gpt-4o-mini",
+      model="gpt-4o-mini",
       response_model=Answer,
       messages=[{"role": "user", "content": "I love Workflow AI!"}],
+      metadata={"agent_id": "sentiment-analysis-agent"}
   )
 
   cost = completion.model_extra.get('cost_usd')

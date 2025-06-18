@@ -3,11 +3,13 @@ title: Streaming
 description: Learn how to stream model responses from the WorkflowAI API using server-sent events.
 ---
 
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
 By default, when you make a request to the WorkflowAI API, the model generates the entire output before returning it in a single HTTP response. For longer outputs, this can mean waiting until the full response is ready. With streaming, you can start receiving and processing the model's output as it is generated, allowing you to display or use partial results in real time.
 
 ## Enable streaming
 
-<Callout type="success">
+<Callout type='success'>
   Streaming is available exactly like in the OpenAI API. If you are already streaming from the OpenAI API, no code change is required.
 </Callout>
 
@@ -41,7 +43,7 @@ for chunk in stream:
 
 ## Read the responses
 
-When you stream a chat completion, the responses has a `delta` field rather than a `message` field. The `delta` field can hold a role token, content token, or nothing.
+When you stream a chat completion, the responses have a `delta` field rather than a `message` field. The `delta` field can hold a role token, content token, or nothing.
 
 ```
 { role: 'assistant', content: '', refusal: null }
@@ -74,11 +76,14 @@ When you stream a chat completion, the responses has a `delta` field rather than
 ****************
 ```
 
-To stream only the text response of your chat completion, your code would like this:
+To stream only the text response of your chat completion, your code would look like this:
 
 ```python
 from openai import OpenAI
-client = OpenAI()
+client = OpenAI(
+    base_url="https://run.workflowai.com/v1",
+    api_key="wai--***",
+)
 
 stream = client.chat.completions.create(
     model="gpt-4.1",
@@ -95,3 +100,101 @@ for chunk in stream:
     if chunk.choices[0].delta.content is not None:
         print(chunk.choices[0].delta.content, end="")
 ```
+
+## Streaming complete JSON outputs
+
+When using JSON outputs, it can be quite complicated to piece together the deltas in order to get a usable partial JSON object. The final payload is split into multiple chunks that only amount to a valid JSON object at the very end.
+
+For example, when trying to extract a user with a name, age and email in JSON form:
+
+```json
+{
+  "name": "John Doe",
+  "age": 30,
+  "email": "john.doe@example.com"
+}
+```
+
+The chunks can have the following content deltas:
+
+```sh
+{"name
+":"
+"John
+Doe
+",
+...
+```
+
+By setting the `stream_options.valid_json_chunks` parameter to `true`, WorkflowAI can aggregate the deltas into valid partial JSON objects, transforming the above deltas into:
+
+```sh
+# Chunks that do not represent an update of the JSON object are ignored
+# Each chunk is a valid JSON object
+{"name": "John"}
+{"name": "John Doe"}
+...
+```
+
+<Tabs items={["Python", "TypeScript", "curl"]}>
+<Tab>
+
+```python
+streamer = await openai_client.chat.completions.create(
+    model="gpt-4o",
+    metadata={"agent_id": "my-agent"},
+    messages=...,
+    stream=True,
+    # The following can break typing since `valid_json_chunks` is not supported by OpenAI,
+    # one solution is to cast to ChatCompletionStreamOptionsParam
+    stream_options={"valid_json_chunks": True},
+    response_format={"type": "json_object"}, # or "json_schema"
+)
+
+async for chunk in streamer: # Every content delta is a valid JSON object
+    print(json.loads(chunk.choices[0].delta.content))
+```
+
+</Tab>
+<Tab>
+```typescript
+const completion = await openai.chat.completions.create({
+    model: 'gpt-4o',
+    metadata: { agent_id: 'my-agent' },
+    messages: ...,
+    response_format: { type: 'json_object' }, // or "json_schema"
+    stream: true,
+    stream_options: {
+      //@ts-expect-error - valid_json_chunks is not supported by OpenAI
+      valid_json_chunks: true,
+    },
+})
+for await (const chunk of completion) {
+    if (chunk.choices[0].delta.content) {
+        console.log(JSON.parse(chunk.choices[0].delta.content));
+    }
+}
+```
+</Tab>
+<Tab>
+```sh
+curl -X POST https://run.workflowai.com/v1/chat/completions \
+  -H "Authorization: Bearer wai--***" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gpt-4o",
+    "messages": [],
+    "stream": true,
+    "stream_options": {
+      "valid_json_chunks": true
+    },
+    "response_format": {
+      "type": "json_object"
+    },
+    "metadata": {
+      "agent_id": "my-agent"
+    }
+}'
+```
+</Tab>
+</Tabs>

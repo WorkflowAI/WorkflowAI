@@ -9,7 +9,13 @@ from freezegun import freeze_time
 from httpx import AsyncClient
 
 from api.dependencies.security import user_organization
-from api.routers.run import DeprecatedVersionReference, RunResponse, RunResponseStreamChunk, version_reference_to_domain
+from api.routers.run import (
+    DeprecatedVersionReference,
+    RunRequest,
+    RunResponse,
+    RunResponseStreamChunk,
+    version_reference_to_domain,
+)
 from core.domain.agent_run import AgentRun
 from core.domain.ban import Ban
 from core.domain.llm_completion import LLMCompletion
@@ -683,3 +689,39 @@ class TestReply:
                 },
             },
         }
+
+
+class TestRunRequestValidation:
+    @pytest.mark.parametrize(
+        "private_fields,expected_contains",
+        [
+            pytest.param(["task_input"], ["task_input"], id="task_input_only"),
+            pytest.param(["task_output"], ["task_output"], id="task_output_only"),
+            pytest.param(["task_input", "task_output"], ["task_input", "task_output"], id="both_task_input_and_output"),
+            pytest.param(
+                ["task_input.image", "metadata.secret"],
+                ["task_input.image", "metadata.secret"],
+                id="custom_field_paths",
+            ),
+        ],
+    )
+    def test_private_fields_accepts_task_input_and_task_output(
+        self,
+        private_fields: list[str],
+        expected_contains: list[str],
+    ):
+        """Test that private_fields accepts both 'task_input' and 'task_output' as valid literal values.
+
+        This test ensures that the private_fields type annotation correctly includes both
+        'task_input' and 'task_output' (not a duplicate 'task_input').
+        """
+        request = RunRequest.model_validate(
+            {
+                "task_input": {"test": "data"},
+                "version": 1,
+                "private_fields": private_fields,
+            },
+        )
+        assert request.private_fields
+        for expected_field in expected_contains:
+            assert expected_field in request.private_fields

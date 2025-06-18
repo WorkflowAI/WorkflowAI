@@ -56,6 +56,17 @@ response = client.completions.create(
 ```
 
 <Callout type="info">
+You can also set the agent ID by prefixing the `model` parameter with your agent ID and a slash `/`. This is useful when you cannot modify the `metadata` parameter directly, such as when using third-party libraries or frameworks that don't expose metadata configuration.
+</Callout>
+
+```python
+response = client.completions.create(
+    model="my-agent-id/gpt-4o", # [!code highlight]
+    messages=[...],
+)
+```
+
+<Callout type="info">
   Runs for un-named agents will be visible in the "Default" agent.
 </Callout>
 

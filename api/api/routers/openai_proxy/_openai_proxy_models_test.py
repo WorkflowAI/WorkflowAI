@@ -42,6 +42,34 @@ class TestOpenAIProxyChatCompletionRequest:
         )
         assert payload
 
+    def test_workflowai_internal(self):
+        payload = OpenAIProxyChatCompletionRequest.model_validate(
+            {
+                "model": "gpt-4o-mini",
+                "messages": [],
+                "workflowai_internal": {
+                    "variant_id": "123",
+                    "version_messages": [
+                        {
+                            "role": "system",
+                            "content": [{"type": "text", "text": "You are a helpful assistant"}],
+                        },
+                    ],
+                },
+                "agent_id": "123",
+                "stream": True,
+                "stream_options": {
+                    "valid_json_chunks": True,
+                },
+            },
+        )
+        assert payload
+        assert payload.workflowai_internal is not None
+        assert payload.workflowai_internal.variant_id == "123"
+        assert payload.workflowai_internal.version_messages == [
+            Message.with_text("You are a helpful assistant", role="system"),
+        ]
+
     @pytest.mark.parametrize(
         "extra",
         (
@@ -166,6 +194,7 @@ class TestOpenAIProxyMessageToDomain:
             tool_call_id=None,
         )
         domain_message = message.to_domain()
+        assert domain_message is not None
         assert domain_message.role == "assistant"
         assert len(domain_message.content) == 2
         assert (
@@ -184,6 +213,7 @@ class TestOpenAIProxyMessageToDomain:
             },
         )
         domain_message = message.to_domain()
+        assert domain_message is not None
         assert len(domain_message.content) == 1
         assert domain_message.content[0].tool_call_result
 
@@ -196,6 +226,7 @@ class TestOpenAIProxyMessageToDomain:
             tool_call_id="1",
         )
         domain_message = message.to_domain()
+        assert domain_message is not None
         assert domain_message.role == "user"
         assert domain_message.content[0] == MessageContent(
             tool_call_result=ToolCall(
@@ -205,6 +236,14 @@ class TestOpenAIProxyMessageToDomain:
                 result="Hello, world!",
             ),
         )
+
+    def test_empty_message(self):
+        message = OpenAIProxyMessage(
+            role="user",
+            content="",
+        )
+        domain_message = message.to_domain()
+        assert domain_message is None
 
 
 class TestOpenAIProxyChatCompletionRequestDomainMessages:
@@ -254,6 +293,17 @@ class TestOpenAIProxyChatCompletionRequestDomainMessages:
                 ),
             ],
         )
+
+    def test_empty_message(self):
+        payload = OpenAIProxyChatCompletionRequest.model_validate(
+            {
+                "messages": [{"role": "system", "content": "Hello, world!"}, {"role": "user", "content": ""}],
+                "model": "gpt-4o",
+            },
+        )
+        messages = list(payload.domain_messages())
+        assert len(messages) == 1
+        assert messages[0] == Message(role="system", content=[MessageContent(text="Hello, world!")])
 
 
 class TestOpenAIProxyChatCompletionRequestToolChoice:

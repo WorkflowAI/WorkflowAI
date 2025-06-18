@@ -1973,30 +1973,3 @@ Please double check:
             yield ret
 
         self.dispatch_new_assistant_messages_event(ret)
-
-    async def stream_ai_engineer_without_agent_id_response(
-        self,
-        messages: list[MetaAgentChatMessage],
-    ) -> AsyncIterator[list[MetaAgentChatMessage]]:
-        """This is a very simple agent that returns relevant documentation based on other agent's (ex: Cursor)message.
-
-        But if you think about it, if we don't have an agent ID, we have no other context that the user's messaged. So we can just return relevant documentation and we don't need an agent to process the messages on our side.
-        This is WIP and can evolve.
-
-        This comes in addition to the 'stream_proxy_meta_agent_response' that is used when we have an existing agent to work on.
-        """
-
-        relevant_docs = await DocumentationService().get_relevant_doc_sections(
-            chat_messages=[message.to_chat_message() for message in messages],
-            agent_instructions="",
-        )
-
-        yield [
-            MetaAgentChatMessage(
-                role="ASSISTANT",
-                content=f"""Here are some relevant documentation from WorkflowAI for your request:
-                {"\n".join([f"- {doc.title}: {doc.content}" for doc in relevant_docs])}
-                """,
-                sent_at=datetime.datetime.now(tz=datetime.timezone.utc),
-            ),
-        ]

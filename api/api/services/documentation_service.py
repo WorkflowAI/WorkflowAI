@@ -25,7 +25,8 @@ DEFAULT_DOC_SECTIONS: list[DocumentationSection] = [
 
 
 class DocumentationService:
-    _DOCS_DIR: str = "docs"
+    _DOCS_DIR: str = "docsv2"
+    FILE_EXTENSIONS: list[str] = [".mdx", ".md"]
 
     def get_all_doc_sections(self) -> list[DocumentationSection]:
         doc_sections: list[DocumentationSection] = []
@@ -36,6 +37,8 @@ class DocumentationService:
 
         for root, _, files in os.walk(base_dir):
             for file in files:
+                if not file.endswith(tuple(self.FILE_EXTENSIONS)):
+                    continue
                 if file.startswith("."):  # Ignore hidden files like .DS_Store
                     continue
                 full_path: str = os.path.join(root, file)

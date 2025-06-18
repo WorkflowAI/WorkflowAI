@@ -6,6 +6,9 @@
     "runs",
     "conversations",
     "versions",
-    "costs"
+    "costs",
+    "insights",
+    "search",
+    "reports"
   ]
 } 

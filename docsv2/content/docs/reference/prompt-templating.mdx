@@ -20,10 +20,11 @@ The email address is:
 {{email_address}}"
 
 client.chat.completions.create(
-    model="email-classifier-agent/gpt-4o-mini",
+    model="gpt-4o-mini",
     response_model=EmailAddressClassificationOutput,
     messages=[{"role": "system", "content": instructions}],
     extra_body={"input": {"email_address": "john@gmail.com"}},
+    metadata={"agent_id": "email-classifier-agent"}
 )
 ```
 

@@ -9,7 +9,7 @@ import pytest
 from api.services.documentation_service import DEFAULT_DOC_SECTIONS, DocumentationService
 from core.domain.documentation_section import DocumentationSection
 
-API_DOCS_DIR = "api/docs"
+API_DOCS_DIR = "api/docsv2"
 EXPECTED_FILE_COUNT = 48
 
 

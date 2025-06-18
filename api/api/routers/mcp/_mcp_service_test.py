@@ -13,11 +13,13 @@ class TestMCPServiceExtractAgentIdAndRunId:
         # We only need to test the URL parsing method, so we can pass None for dependencies
         return MCPService(
             storage=Mock(),
-            meta_agent_service=Mock(),
+            ai_engineer_service=Mock(),
             runs_service=Mock(),
             versions_service=Mock(),
             models_service=Mock(),
             task_deployments_service=Mock(),
+            user_email=None,
+            tenant_slug=None,
         )
 
     @pytest.mark.parametrize(

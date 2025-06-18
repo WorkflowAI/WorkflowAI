@@ -96,6 +96,10 @@ if __name__ == "__main__":
 
 ## Identify your agent
 
+<Callout type="info">
+  **Alternative Method**: This example shows how to identify your agent using the model parameter prefix. This is useful when working with frameworks that don't support custom metadata. The preferred method is to use `agent_id` in the metadata field when possible. Learn more about [both methods](/docs/observability#identify-your-agent).
+</Callout>
+
 ```python
 translation_agent = Agent(
     name="Translator",

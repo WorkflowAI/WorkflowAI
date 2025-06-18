@@ -85,40 +85,43 @@ The exhaustive fallback definitions are visible in the [codebase](https://github
 
 ##### OpenAI SDK
 
-<Tabs items={["Python", "TypeScript", "cURL"]}>
-  <Tab>
-  ```python
-  completion = openai.chat.completions.create(
-      model="user-extraction/gpt-4o",
-      messages=...,
-      extra_body={
-          use_fallback=["gemini-2.0-flash-001", "o3-mini-latest-medium"] # | "auto" | "never"
-      }
-  )
-  ```
-  </Tab>
-  <Tab>
-  ```typescript
-  const completion = await openai.chat.completions.create({
-      model: "user-extraction/gpt-4o",
-      messages: [...],
-      use_fallback: ["gemini-2.0-flash-001", "o3-mini-latest-medium"] // | "auto" | "never"
-  })
-  ```
-  </Tab>
-  <Tab>
-  ```sh
-  curl -X POST https://run.workflowai.com/v1/chat/completions \
-  -H "Authorization: Bearer $WORKFLOWAI_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-      "model": "user-extraction/gpt-4o",
-      "messages": [...],
-      "use_fallback": ["gemini-2.0-flash-001", "o3-mini-latest-medium"]
-  }'
-  # use_fallback="auto" | "never" | ["gemini-2.0-flash-001", "o3-mini-latest-medium"]
-  ```
-  </Tab>
+<Tabs items={['Python', 'TypeScript', 'cURL']}>
+<Tab value="Python">
+```python
+completion = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[{"role": "user", "content": "Extract the name and email"}],
+    extra_body={
+        "model_fallback": ["gpt-4o-mini", "claude-3-5-haiku-20241022"]
+    },
+    metadata={"agent_id": "user-extraction"}
+)
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+const completion = await openai.chat.completions.create({
+    model: "gpt-4o",
+    messages: [{"role": "user", "content": "Extract the name and email"}],
+    // @ts-ignore
+    model_fallback: ["gpt-4o-mini", "claude-3-5-haiku-20241022"],
+    metadata: {"agent_id": "user-extraction"}
+});
+```
+</Tab>
+<Tab value="cURL">
+```sh
+curl -X POST https://run.workflowai.com/v1/chat/completions \
+-H "Authorization: Bearer $WORKFLOWAI_API_KEY" \
+-H "Content-Type: application/json" \
+-d '{
+    "model": "gpt-4o",
+    "messages": [{"role": "user", "content": "Extract the name and email"}],
+    "model_fallback": ["gpt-4o-mini", "claude-3-5-haiku-20241022"],
+    "metadata": {"agent_id": "user-extraction"}
+}'
+```
+</Tab>
 </Tabs>
 
 ##### WorkflowAI SDK

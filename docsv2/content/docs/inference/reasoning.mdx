@@ -6,7 +6,7 @@ description: Enable reasoning on capable models and retrieve the reasoning conte
 import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
 import { Callout } from 'fumadocs-ui/components/callout';
 
-## What is Reasoning?
+## What is reasoning?
 
 Reasoning mode is a capability available in certain AI models that allows them to engage in explicit step-by-step reasoning before providing their final answer. When reasoning mode is enabled, the model generates internal "thoughts" that show its reasoning process, problem-solving steps, and decision-making logic.
 
@@ -22,22 +22,53 @@ All providers have a different way of configuring reasoning mode or returning th
 To reconcile differences between providers, WorkflowAI converts back and forth between a reasoning effort and a reasoning budget (also called thinking budget).
 
 Each reasoning effort level corresponds to a reasoning budget that allocates a specific percentage of the model's maximum output tokens.
-- `disabled` disables reasoning when possible
-- `low` reasoning effort uses at most **20%** of the maximum output tokens of the model
-- `medium` reasoning effort uses at most **50%** of the maximum output tokens of the model
-- `high` reasoning effort uses at most **80%** of the maximum output tokens of the model
+
+| Reasoning Effort | Maximum Token Budget |
+|------------------|---------------------|
+| `disabled` | Disables reasoning when possible |
+| `low` | **20%** of maximum output tokens |
+| `medium` | **50%** of maximum output tokens |
+| `high` | **80%** of maximum output tokens |
 
 In the inverse, the reasoning budget is converted to a reasoning effort:
-- `0` disables reasoning when possible
-- up to **20%** of the maximum output tokens of the model is converted to `low`
-- between **20%** and **50%** of the maximum output tokens of the model is converted to `medium`
-- above **50%** of the maximum output tokens of the model is converted to `high`
+
+| Token Budget Range | Converted to Effort |
+|-------------------|-------------------|
+| `0`% | `disabled` (disables reasoning when possible) |
+| Up to **20%** of max tokens | `low` |
+| **20%** - **50%** of max tokens | `medium` |
+| Above **50%** of max tokens | `high` |
 
 Reasoning can be configured via the `reasoning` request parameter which is an object with the following fields:
 - `budget`: integer, the reasoning budget in tokens
 - `effort`: string, the reasoning effort, one of `disabled`, `low`, `medium`, `high`
 
-Either budget or effort can be provided, but not both.
+<Tabs items={["Budget", "Effort"]}>
+  <Tab>
+  ```json
+  {
+    "reasoning": {
+      "budget": 10000
+    }
+  }
+  ```
+  </Tab>
+  <Tab>
+  ```json
+  {
+    "reasoning": {
+      "effort": "medium"
+    }
+  }
+  ```
+  </Tab>
+</Tabs>
+
+Either `budget` or `effort` can be provided, but not both.
+
+<Callout type="error">
+TODO: add table about reasoning effort and budget for each provider by calling the /v1/models endpoint
+</Callout>
 
 
 <Callout type="info">
@@ -159,7 +190,7 @@ The [WorkflowAI models endpoint](https://run.workflowai.com/v1/models) exposes t
 }
 ```
 
-It is also possible to filter out reasoning models via the `reasoning` query parameter.
+It is also possible to filter for reasoning models via the `reasoning` query parameter.
 
 <Tabs items={["Python", "Curl"]}>
 <Tab>
@@ -175,7 +206,6 @@ curl https://run.workflowai.com/v1/models?reasoning=true
 ```
 </Tab>
 </Tabs>
-
 
 
 

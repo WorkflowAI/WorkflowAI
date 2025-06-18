@@ -9,7 +9,7 @@ import { useTaskSchemaParams } from '@/lib/hooks/useTaskParams';
 import { useParsedSearchParams, useRedirectWithParams } from '@/lib/queryString';
 import { getVersionsDictionary } from '@/lib/versionUtils';
 import {
-  useOrFetchCurrentTaskSchema,
+  useOrFetchSchema,
   useOrFetchTask,
   useOrFetchTaskRunsSearchFields,
   useOrFetchVersions,
@@ -110,7 +110,7 @@ export function TaskRunsContainer() {
 
   const taskRunIds = taskRunItems.map((taskRun) => taskRun.id);
 
-  const { taskSchema, isInitialized: isTaskSchemaInitialized } = useOrFetchCurrentTaskSchema(
+  const { taskSchema, isInitialized: isTaskSchemaInitialized } = useOrFetchSchema(
     tenant,
     taskId,
     taskSchemaIdFromParams

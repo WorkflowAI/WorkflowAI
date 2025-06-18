@@ -143,8 +143,9 @@ curl https://run.workflowai.com/v1/chat/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer wai-xxx" \
   -d '{
-    "model": "security-analyst/claude-3-7-sonnet-latest",
+    "model": "claude-3-7-sonnet-latest",
     "messages": [{"role": "user", "content": "Check my repositories for security issues"}],
+    "metadata": {"agent_id": "security-analyst"},
     "tools": [
       {
         "type": "mcp_server",
@@ -164,8 +165,9 @@ curl https://run.workflowai.com/v1/chat/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer wai-xxx" \
   -d '{
-    "model": "security-analyst/claude-3-7-sonnet-latest",
+    "model": "claude-3-7-sonnet-latest",
     "messages": [{"role": "user", "content": "Check my repositories for security issues"}],
+    "metadata": {"agent_id": "security-analyst"},
     "extra_body": {
       "mcp_servers": [
         {
@@ -208,8 +210,9 @@ Remote servers using Server-Sent Events. Perfect for real-time data and cloud se
 
 ```python
 client.chat.completions.create(
-    model="security-analyst/claude-3-7-sonnet-latest", 
+    model="claude-3-7-sonnet-latest", 
     messages=[{"role": "user", "content": "Check this code for vulnerabilities"}],
+    metadata={"agent_id": "security-analyst"},
     extra_body={
         "mcp_servers": [{
             "type": "sse",
@@ -225,8 +228,9 @@ Servers using streamable HTTP transport for high-performance scenarios.
 
 ```python
 client.chat.completions.create(
-    model="data-analyst/gemini-2.5-pro-preview",
+    model="gemini-2.5-pro-preview",
     messages=[{"role": "user", "content": "Analyze sales data from Q4"}],
+    metadata={"agent_id": "data-analyst"},
     extra_body={
         "mcp_servers": [{
             "type": "http",
@@ -260,8 +264,9 @@ Pass authentication details directly in API requests for dynamic or temporary ac
 ```python
 # Dynamic authentication in request
 client.chat.completions.create(
-    model="research-assistant/gpt-4o",
+    model="gpt-4o",
     messages=[{"role": "user", "content": "Search GitHub repositories"}],
+    metadata={"agent_id": "research-assistant"},
     extra_body={
         "mcp_servers": [{
             "type": "sse",
@@ -331,9 +336,10 @@ Current implementation assumption:
 ```python
 # MCP tool calls respect WorkflowAI's caching behavior
 response = client.chat.completions.create(
-    model="research-assistant/gpt-4o",
+    model="gpt-4o",
     messages=[{"role": "user", "content": "What's the latest on quantum computing?"}],
     temperature=0,  # Enable caching
+    metadata={"agent_id": "research-assistant"},
     extra_body={
         "use_cache": "always",  # Force cache check
         "mcp_servers": [{

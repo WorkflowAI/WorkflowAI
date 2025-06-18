@@ -192,6 +192,53 @@ class TestPrepareRun:
         assert prepared.variant.task_id == "my-agent"
         assert prepared.variant.name == "my agent"
 
+    async def test_workflowai_internal(
+        self,
+        proxy_handler: OpenAIProxyHandler,
+        mock_storage: Mock,
+    ):
+        """Check that the workflowai_internal path works correctly"""
+
+        completion_request = OpenAIProxyChatCompletionRequest(
+            model="gpt-4o",
+            messages=[],  # Empty messages as required for workflowai_internal
+            agent_id="my-test-agent",
+            input={"name": "John", "age": 30},
+            workflowai_internal=OpenAIProxyChatCompletionRequest.WorkflowAIInternal(
+                variant_id="my-variant-id",
+                version_messages=[
+                    Message.with_text("You are a helpful assistant", role="system"),
+                    Message.with_text("Hello {{name}}, you are {{age}} years old!", role="user"),
+                ],
+            ),
+        )
+
+        mock_variant = test_models.task_variant(
+            id="my-variant-id",
+            task_id="my-test-agent",
+            input_io=RawMessagesSchema,
+            output_io=RawStringMessageSchema,
+        )
+        mock_storage.task_version_resource_by_id.return_value = mock_variant
+
+        result = await proxy_handler._prepare_run(completion_request, PublicOrganizationData())
+
+        # Verify that it called _prepare_for_variant_id correctly
+        mock_storage.task_version_resource_by_id.assert_called_once_with(
+            "my-test-agent",
+            "my-variant-id",
+        )
+
+        # Verify the result structure
+        assert result.variant == mock_variant
+        assert result.properties.model == "gpt-4o"
+        assert result.properties.messages == [
+            Message.with_text("You are a helpful assistant", role="system"),
+            Message.with_text("Hello {{name}}, you are {{age}} years old!", role="user"),
+        ]
+        assert result.properties.task_variant_id == "my-variant-id"
+        assert result.final_input == {"name": "John", "age": 30}
+
 
 class TestCheckForDuplicateMessages:
     def test_no_messages(self, proxy_handler: OpenAIProxyHandler):

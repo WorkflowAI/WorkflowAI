@@ -14,12 +14,14 @@ import { SimpleTooltip } from '../ui/Tooltip';
 type ProxyDeployBadgeButtonProps = {
   isInDemoMode: boolean;
   version: VersionV1;
-  tenant: TenantID;
+  tenant: TenantID | undefined;
   taskId: TaskID;
+  showLabels?: boolean;
+  tallButtons?: boolean;
 };
 
 export function ProxyDeployBadgeButton(props: ProxyDeployBadgeButtonProps) {
-  const { isInDemoMode, version, tenant, taskId } = props;
+  const { isInDemoMode, version, tenant, taskId, showLabels = true, tallButtons = false } = props;
 
   const { onDeployToClick: onDeploy } = useDeployVersionModal();
   const [isOpeningDeploy, setIsOpeningDeploy] = useState(false);
@@ -83,9 +85,14 @@ export function ProxyDeployBadgeButton(props: ProxyDeployBadgeButtonProps) {
         }
         onClick={onDeployToClick}
         disabled={isInDemoMode}
-        className='rounded-l-none rounded-r-[2px] shadow-none w-7 h-7 border-l-0'
+        className='rounded-l-none rounded-r-[2px] shadow-none border-l-0 px-2 text-[12px]'
+        style={{
+          height: tallButtons ? '38px' : '28px',
+        }}
         loading={isOpeningDeploy}
-      />
+      >
+        {showLabels ? 'Deploy' : undefined}
+      </Button>
     </SimpleTooltip>
   );
 }

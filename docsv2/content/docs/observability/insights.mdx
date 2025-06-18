@@ -1,0 +1,747 @@
+---
+title: Insights (draft)
+description: Understand your agents's performance.
+---
+
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs'
+
+## What are Insights?
+
+Insights turn your production AI agent data into actionable intelligence. Instead of guessing how to improve your agent, Insights automatically analyze real user interactions and extract the specific patterns that matter to your use case.
+
+You define completely customizable dimensions that get automatically analyzed for every interaction. This production data becomes the foundation for data-driven agent improvements.
+
+**Key Benefits:**
+- **Data-driven optimization**: Use real production data instead of assumptions to improve your agent
+- **Custom analytics**: Define any dimensions you want to track - sentiment, intent, complexity, accuracy, domain, etc.
+- **Pattern discovery**: Automatically identify trends and outliers across thousands of interactions
+- **Actionable intelligence**: Get specific insights that directly inform product decisions and agent improvements
+
+**Example dimensions across different use cases:**
+- **Customer chatbot**: response_quality (excellent/good/poor), toxicity_detected (yes/no), answer_accuracy (correct/incorrect/partial), user_satisfaction (satisfied/neutral/frustrated), escalation_needed (yes/no), topic_handled_well (yes/no)
+- **Sales assistant**: buying_intent (high/medium/low), objection_type (price/features/timing), lead_quality (hot/warm/cold), information_provided (complete/partial/insufficient)
+- **Content creation**: output_quality (professional/good/needs_work), brand_alignment (on-brand/neutral/off-brand), creativity_level (highly_creative/standard/generic)  
+- **Code assistant**: solution_correctness (correct/mostly_correct/incorrect), code_quality (clean/acceptable/messy), security_issues (none/minor/major)
+
+## Example Use Case
+
+Imagine you're running a customer support agent that handles hundreds of conversations daily. With Insights, you can automatically categorize each interaction:
+
+```json
+{
+  "insights": { // [!code highlight]
+    "sentiment": "negative",           // User seems frustrated // [!code highlight]
+    "question_type": "billing",        // This is a billing question // [!code highlight]
+    "is_documented": "yes",           // Answer exists in docs // [!code highlight]
+    "is_feature_supported": "yes",    // Feature is supported // [!code highlight]
+    "is_frustrated": "yes"            // User shows signs of frustration // [!code highlight]
+  }
+}
+```
+
+Over time, you might discover:
+- **60% of billing questions have negative sentiment** → Improve billing UX
+- **30% of "how-to" questions aren't documented** → Expand documentation
+- **85% of frustrated users are asking about billing or account issues** → Prioritize billing system improvements
+
+This data-driven approach helps you make informed decisions about product improvements, documentation updates, and resource allocation.
+
+## Insights + Reports Integration
+
+<Callout type="info">
+**Coming Soon**: Deep integration between Insights and Reports features to enable natural language analysis of your insights data.
+</Callout>
+
+Once you've collected insights data from your agent interactions, you can use the [Reports](/docs/observability/reports) feature to ask natural language questions about patterns in your insights. This creates a powerful workflow:
+
+1. **Collect Insights**: Configure dimensions like sentiment, question_type, is_frustrated, etc.
+2. **Ask Report Questions**: Use natural language to analyze your insights data
+3. **Get Actionable Intelligence**: Receive detailed analysis connecting insights to business outcomes
+
+**Example Report Queries:**
+- *"What are my frustrated users asking about?"* → Discovers that 85% of frustrated users have billing-related questions
+- *"Show me trends in negative sentiment over the last month"* → Identifies that negative sentiment spikes correlate with billing system outages
+- *"Which question types have the lowest documentation coverage?"* → Reveals that troubleshooting questions are 60% undocumented
+- *"Compare user satisfaction between feature requests and how-to questions"* → Shows feature requests have 3x higher positive sentiment
+
+This integration transforms raw insights data into strategic business intelligence, helping you prioritize product improvements, documentation updates, and resource allocation based on real user interaction patterns.
+
+## Conversations and Insights
+
+**Important**: Insights are computed at the **conversation level**, not per individual run. This prevents double-counting and provides more meaningful analysis.
+
+### Key Concept: 1 Conversation = 1 Insight Analysis
+
+When you have a multi-turn conversation, WorkflowAI automatically groups related runs together (see [Conversations](/docs/observability/conversations)). Insights are then computed **once per conversation** after the conversation ends, not after each individual turn.
+
+**How it works:**
+
+```
+Conversation Timeline:
+├─ Run 1: [S, U1] → A1                    (no insights yet)
+├─ Run 2: [S, U1, A1, U2] → A2            (no insights yet)  
+├─ Run 3: [S, U1, A1, U2, A2, U3] → A3    (no insights yet)
+└─ [1 hour expires - conversation ends] 
+   └─ Insights computed on complete conversation: [S, U1, A1, U2, A2, U3, A3]
+      └─ Result: sentiment="positive", quality="excellent", resolution_achieved="yes"
+```
+
+**Why this matters:**
+
+- **No Double-Counting**: A 5-turn conversation gets 1 sentiment score, not 5 separate scores
+- **Better Context**: Insights consider the full conversation arc, not just individual messages
+- **Accurate Metrics**: Your "conversations per day" and "insights per day" metrics align properly
+- **Resource Efficiency**: One insight computation per conversation instead of per run
+
+**Example**: Instead of getting 3 separate "billing" classifications for a 3-turn billing conversation, you get one comprehensive insight that analyzes whether the entire billing issue was resolved successfully.
+
+## API
+
+## Code as Source of Truth Approach
+
+Instead of pre-configuring insights at the agent level, we can embed insights configuration directly in completion requests. This makes insights declarative and self-contained.
+
+**Why This Approach?** The insights configuration acts like a simple database that lives in your code. It's structured enough for technical teams to version control and test, yet simple enough for non-technical team members (like customer success, product managers, or analysts) to modify dimensions and values without touching complex backend configurations.
+
+### Simplified Insights Configuration
+
+The OpenAI-compatible completion API accepts an optional `insights` field alongside the standard parameters.
+
+<Callout type="info">
+**Important**: Insights can only be attached to runs that include an `agent_id` in the metadata. This is required because insights are computed at the conversation level, and conversations must be grouped by agent. See [Observability Setup](/docs/observability#identify-your-agent) for more details.
+</Callout>
+
+**Naming Convention:**
+- `dimensions` - Different dimensions/aspects of the interaction to analyze
+- `description` - What this dimension measures
+- `values` - Possible values for this dimension
+
+```json
+{
+  "model": "gpt-4o",
+  "messages": [
+    {
+      "role": "user", 
+      "content": "I'm having trouble with your billing system, it's really frustrating!"
+    }
+  ],
+  "metadata": {
+    "agent_id": "customer-support" // [!code highlight]
+  },
+  "insights": { // [!code highlight]
+    "model": "gpt-4o-mini", // [!code highlight]
+    "dimensions": [ // [!code highlight]
+      {
+        "key": "sentiment", // [!code highlight]
+        "description": "What overall sentiment does the user express in their message?", // [!code highlight]
+        "values": ["positive", "negative", "neutral"] // [!code highlight]
+      },
+      {
+        "key": "question_type", // [!code highlight]
+        "description": "Which category best describes the user's question or request?", // [!code highlight]
+        "values": [ // [!code highlight]
+          "how_to",
+          "troubleshooting",
+          "feature_request", 
+          "comparison",
+          "pricing",
+          "billing",
+          "support_request",
+          "account_issue",
+          "other"
+        ]
+      },
+      {
+        "key": "is_documented", // [!code highlight]
+        "description": "Is a complete answer already documented in the official knowledge base or docs?", // [!code highlight]
+        "values": ["yes", "no", "n_a"] // [!code highlight]
+      },
+      {
+        "key": "is_feature_supported", // [!code highlight]
+        "description": "Is the feature or capability the user is asking about directly supported?", // [!code highlight]
+        "values": ["yes", "no", "n_a"] // [!code highlight]
+      },
+      {
+        "key": "is_frustrated", // [!code highlight]
+        "description": "Does the user show signs of frustration in their interaction?", // [!code highlight]
+        "values": ["yes", "no", "n_a"] // [!code highlight]
+      }
+    ]
+  }
+}
+```
+
+### Implementation Examples
+
+<Tabs items={['Python', 'cURL']}>
+<Tab value="Python">
+```python
+from openai import OpenAI
+
+# setup WorkflowAI client
+client = OpenAI(
+  base_url="https://run.workflowai.com/v1",
+  api_key="wai-***", # workflowai.com/keys
+)
+
+# completion with insights
+response = client.chat.completions.create(
+  model="gpt-4o",
+  messages=[
+    {
+      "role": "user", 
+      "content": "I'm frustrated with your billing system!"
+    }
+  ],
+  metadata={
+    "agent_id": "customer-support" # [!code highlight]
+  },
+  insights={ # [!code highlight]
+    "model": "gpt-4o-mini", # [!code highlight]
+    "dimensions": [ # [!code highlight]
+      {
+        "key": "sentiment", # [!code highlight]
+        "description": "What overall sentiment does the user express in their message?", # [!code highlight]
+        "values": ["positive", "negative", "neutral"] # [!code highlight]
+      },
+      {
+        "key": "question_type", # [!code highlight]
+        "description": "Which category best describes the user's question or request?", # [!code highlight]
+        "values": ["how_to", "troubleshooting", "feature_request", "billing", "other"] # [!code highlight]
+      },
+      {
+        "key": "is_documented", # [!code highlight]
+        "description": "Is a complete answer already documented in the official knowledge base or docs?", # [!code highlight]
+        "values": ["yes", "no", "n_a"] # [!code highlight]
+      },
+      {
+        "key": "is_feature_supported", # [!code highlight]
+        "description": "Is the feature or capability the user is asking about directly supported?", # [!code highlight]
+        "values": ["yes", "no", "n_a"] # [!code highlight]
+      },
+      {
+        "key": "is_frustrated", # [!code highlight]
+        "description": "Does the user show signs of frustration in their interaction?", # [!code highlight]
+        "values": ["yes", "no", "n_a"] # [!code highlight]
+      }
+    ]
+  }
+)
+
+# insights are processed in background
+# response contains standard OpenAI format
+print(response.choices[0].message.content)
+```
+</Tab>
+<Tab value="cURL">
+```bash
+curl -X POST https://run.workflowai.com/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer wai-***" \
+  -d '{
+    "model": "gpt-4o",
+    "messages": [
+      {
+        "role": "user",
+        "content": "I'\''m frustrated with your billing system!"
+      }
+    ],
+    "metadata": {
+      "agent_id": "customer-support" // [!code highlight]
+    },
+    "insights": { // [!code highlight]
+      "model": "gpt-4o-mini", // [!code highlight]
+      "dimensions": [ // [!code highlight]
+        {
+          "key": "sentiment", // [!code highlight]
+          "description": "What overall sentiment does the user express in their message?", // [!code highlight]
+          "values": ["positive", "negative", "neutral"] // [!code highlight]
+        },
+        {
+          "key": "question_type", // [!code highlight]
+          "description": "Which category best describes the user'\''s question or request?", // [!code highlight]
+          "values": ["how_to", "troubleshooting", "feature_request", "billing", "other"] // [!code highlight]
+        },
+        {
+          "key": "is_documented", // [!code highlight]
+          "description": "Is a complete answer already documented in the official knowledge base or docs?", // [!code highlight]
+          "values": ["yes", "no", "n_a"] // [!code highlight]
+        },
+        {
+          "key": "is_feature_supported", // [!code highlight]
+          "description": "Is the feature or capability the user is asking about directly supported?", // [!code highlight]
+          "values": ["yes", "no", "n_a"] // [!code highlight]
+        },
+        {
+          "key": "is_frustrated", // [!code highlight]
+          "description": "Does the user show signs of frustration in their interaction?", // [!code highlight]
+          "values": ["yes", "no", "n_a"] // [!code highlight]
+        }
+      ]
+    }
+  }'
+```
+</Tab>
+</Tabs>
+
+## Adding Insights to Existing Runs
+
+For runs that were completed before insights were configured, you can retroactively add insights using the dedicated endpoint.
+
+**When to use this:**
+- **Historical analysis**: Add insights to runs completed before you configured insights
+- **Updated configuration**: Recompute insights when you've updated dimensions, descriptions, or values
+- **New dimensions**: Add additional insight dimensions to existing runs
+- **Model upgrades**: Reanalyze runs with improved insight models
+
+<Callout type="info">
+**Updating Insights Configuration**: If you change your insights dimensions, descriptions, or values, existing insights were computed with the old configuration. To get insights with your new configuration, repost insights for the runs you want to recompute.
+</Callout>
+
+### API Endpoint
+
+```bash
+POST /v1/runs/{run_id}/insights
+```
+
+### Example: Single Run
+
+```bash
+curl -X POST https://run.workflowai.com/v1/runs/run_cs_prod_001/insights \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer wai-***" \
+  -d '{
+    "model": "gpt-4o-mini",
+    "dimensions": [
+      {
+        "key": "sentiment",
+        "description": "What overall sentiment does the user express in their message?",
+        "values": ["positive", "negative", "neutral"]
+      },
+      {
+        "key": "question_type",
+        "description": "Which category best describes the user'\''s question or request?",
+        "values": ["how_to", "troubleshooting", "feature_request", "other"]
+      },
+      {
+        "key": "is_documented",
+        "description": "Is a complete answer already documented in the official knowledge base or docs?",
+        "values": ["yes", "no", "n_a"]
+      }
+    ]
+  }'
+```
+
+### Bulk Processing Script
+
+```python
+import requests
+from workflowai import WorkflowAI
+
+# Initialize client
+client = WorkflowAI(api_key="wai-***")
+
+# Define insights configuration
+insights_config = {
+    "model": "gpt-4o-mini",
+    "dimensions": [
+        {
+            "key": "sentiment",
+            "description": "What overall sentiment does the user express in their message?",
+            "values": ["positive", "negative", "neutral"]
+        },
+        {
+            "key": "question_type", 
+            "description": "Which category best describes the user's question or request?",
+            "values": ["how_to", "troubleshooting", "feature_request", "billing", "other"]
+        },
+        {
+            "key": "is_documented",
+            "description": "Is a complete answer already documented in the official knowledge base or docs?",
+            "values": ["yes", "no", "n_a"]
+        },
+        {
+            "key": "is_feature_supported",
+            "description": "Is the feature or capability the user is asking about directly supported?", 
+            "values": ["yes", "no", "n_a"]
+        }
+    ]
+}
+
+# Get runs from last 30 days without insights
+runs = client.runs.list(
+    start_date="2024-01-01",
+    end_date="2024-01-31", 
+    has_insights=False  # Only runs without insights
+)
+
+print(f"Processing {len(runs)} runs...")
+
+for run in runs:
+    try:
+        # Add insights to existing run
+        response = requests.post(
+            f"https://run.workflowai.com/v1/runs/{run.id}/insights",
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": "Bearer wai-***"
+            },
+            json=insights_config
+        )
+        
+        if response.status_code == 200:
+            print(f"✅ Added insights to run {run.id}")
+        else:
+            print(f"❌ Failed to add insights to run {run.id}: {response.text}")
+            
+    except Exception as e:
+        print(f"❌ Error processing run {run.id}: {str(e)}")
+
+print("Bulk processing complete!")
+```
+
+## Getting Insights Data
+
+### Get Insights for a Single Run
+
+```bash
+curl -X GET https://run.workflowai.com/v1/runs/run_cs_prod_001/insights \
+  -H "Authorization: Bearer wai-***"
+```
+
+Response:
+```json
+{
+  "insights": {
+    "sentiment": "negative",
+    "question_type": "billing", 
+    "is_documented": "yes",
+    "is_feature_supported": "yes"
+  },
+  "generated_at": "2024-01-15T10:30:00Z",
+  "model": "gpt-4o-mini"
+}
+```
+
+### Search Runs with Field/Operator/Value Queries
+
+The search endpoint uses comma-separated arrays for `field_name`, `operator`, and `value` parameters (URL-encoded as `%2C`):
+
+```bash
+curl -X GET "https://run.workflowai.com/v1/runs/search?field_name=has_insights&operator=is&value=true" \
+  -H "Authorization: Bearer wai-***"
+```
+
+```bash
+curl -X GET "https://run.workflowai.com/v1/runs/search?field_name=has_insights%2Ccreated_at&operator=is%2Cis&value=true%2C2024-01-15" \
+  -H "Authorization: Bearer wai-***"
+```
+
+```bash
+curl -X GET "https://run.workflowai.com/v1/runs/search?field_name=has_insights%2Cmodel&operator=is%2Cis&value=true%2Cgpt-4o&limit=10" \
+  -H "Authorization: Bearer wai-***"
+```
+
+Response:
+```json
+{
+  "runs": [
+    {
+      "run_id": "run_cs_001",
+      "created_at": "2024-01-15T09:30:00Z",
+      "model": "gpt-4o",
+      "insights": {
+        "sentiment": "positive",
+        "question_type": "how_to",
+        "is_documented": "yes"
+      }
+    },
+    {
+      "run_id": "run_cs_002", 
+      "created_at": "2024-01-15T10:15:00Z",
+      "model": "gpt-4o",
+      "insights": {
+        "sentiment": "neutral",
+        "question_type": "feature_request",
+        "is_documented": "no"
+      }
+    },
+    {
+      "run_id": "run_cs_003",
+      "created_at": "2024-01-15T10:45:00Z",
+      "model": "gpt-4o", 
+      "insights": {
+        "sentiment": "negative",
+        "question_type": "troubleshooting", 
+        "is_documented": "yes"
+      }
+    }
+  ],
+  "total_count": 156,
+  "pagination": {
+    "limit": 10,
+    "has_more": true
+  }
+}
+```
+
+### Get Aggregated Insights for an Agent
+
+#### Option 1: Dedicated Insights Endpoint
+
+```bash
+curl -X POST https://run.workflowai.com/v1/agents/customer-support/insights \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer wai-***" \
+  -d '{
+    "start_date": "2024-01-01",
+    "end_date": "2024-01-31",
+    "interval": "days"
+  }'
+```
+
+#### Option 2: Enhanced Stats Endpoint (Alternative Approach)
+
+Extend the existing `/v1/{tenant}/agents/{task_id}/runs/stats` endpoint to include insights data:
+
+```bash
+curl -X GET "https://run.workflowai.com/v1/my-tenant/agents/customer-support/runs/stats?created_after=2024-01-01&include_insights=true" \
+  -H "Authorization: Bearer wai-***"
+```
+
+Response with daily breakdown including insights:
+```json
+{
+  "data": [
+    {
+      "total_count": 26,
+      "total_cost_usd": 3.45,
+      "date": "2024-01-15",
+      "insights": {
+        "sentiment": {
+          "positive": 15,
+          "negative": 3,
+          "neutral": 6
+        },
+        "question_type": {
+          "how_to": 10,
+          "troubleshooting": 5,
+          "feature_request": 2,
+          "billing": 4,
+          "other": 3
+        },
+        "is_documented": {
+          "yes": 18,
+          "no": 4,
+          "n_a": 2
+        },
+        "is_feature_supported": {
+          "yes": 20,
+          "no": 3,
+          "n_a": 1
+        }
+      }
+    },
+    {
+      "total_count": 31,
+      "total_cost_usd": 4.20,
+      "date": "2024-01-16",
+      "insights": {
+        "sentiment": {
+          "positive": 18,
+          "negative": 5,
+          "neutral": 5
+        },
+        "question_type": {
+          "how_to": 12,
+          "troubleshooting": 7,
+          "feature_request": 3,
+          "billing": 5,
+          "other": 1
+        },
+        "is_documented": {
+          "yes": 22,
+          "no": 5,
+          "n_a": 1
+        }
+      }
+    },
+    {
+      "total_count": 19,
+      "total_cost_usd": 2.15,
+      "date": "2024-01-17",
+      "insights": {
+        "sentiment": {
+          "positive": 11,
+          "negative": 2,
+          "neutral": 6
+        },
+        "question_type": {
+          "how_to": 8,
+          "troubleshooting": 4,
+          "billing": 3,
+          "other": 4
+        }
+      }
+    }
+  ]
+}
+```
+
+### Searching for Specific Insight Values
+
+You can search for runs that have specific insight values to analyze patterns and identify issues. **Important**: These searches only return runs that actually have insights computed - runs without insights are automatically excluded.
+
+#### Search Syntax
+
+To search for insights, use the pattern:
+- `field_name`: Always include `has_insights` first, then `insights.{dimension_key}`
+- `operator`: Use `is` for exact matches  
+- `value`: Start with `true` for has_insights, then the dimension value
+
+#### Examples
+
+**Find all runs with negative sentiment:**
+```bash
+curl -X GET "https://run.workflowai.com/v1/runs/search?field_name=has_insights%2Cinsights.sentiment&operator=is%2Cis&value=true%2Cnegative" \
+  -H "Authorization: Bearer wai-***"
+```
+
+**Find billing questions that aren't documented:**
+```bash
+curl -X GET "https://run.workflowai.com/v1/runs/search?field_name=has_insights%2Cinsights.question_type%2Cinsights.is_documented&operator=is%2Cis%2Cis&value=true%2Cbilling%2Cno" \
+  -H "Authorization: Bearer wai-***"
+```
+
+**Find troubleshooting questions with negative sentiment:**
+```bash
+curl -X GET "https://run.workflowai.com/v1/runs/search?field_name=has_insights%2Cinsights.question_type%2Cinsights.sentiment&operator=is%2Cis%2Cis&value=true%2Ctroubleshooting%2Cnegative" \
+  -H "Authorization: Bearer wai-***"
+```
+
+**Find runs where escalation was needed:**
+```bash
+curl -X GET "https://run.workflowai.com/v1/runs/search?field_name=has_insights%2Cinsights.escalation_needed&operator=is%2Cis&value=true%2Cyes" \
+  -H "Authorization: Bearer wai-***"
+```
+
+#### Common Use Cases
+
+- **Quality issues**: Find runs with poor response quality or accuracy
+- **Content moderation**: Identify conversations with toxicity detected
+- **Documentation gaps**: Find questions about undocumented features
+- **User satisfaction**: Track conversations where users seemed frustrated
+- **Process improvement**: Identify interactions that required escalation
+
+#### Time-based Analysis
+
+Combine insight searches with date filters to track trends:
+
+```bash
+# Negative sentiment trends over time
+curl -X GET "https://run.workflowai.com/v1/runs/search?field_name=has_insights%2Cinsights.sentiment%2Ccreated_at&operator=is%2Cis%2Cafter&value=true%2Cnegative%2C2024-01-01&sort=created_at&order=desc" \
+  -H "Authorization: Bearer wai-***"
+```
+
+### Use Cases for Retroactive Insights
+
+1. **Historical Analysis**: Analyze customer support patterns from the past 6 months
+2. **A/B Testing**: Compare insights before and after product changes
+3. **New Dimensions**: Add new insight dimensions to existing runs
+4. **Model Updates**: Re-analyze runs with improved insight models
+5. **Configuration Updates**: Recompute insights after updating dimension values or descriptions
+
+### Example: Updating Insights Configuration
+
+Imagine you initially configured insights with basic sentiment analysis:
+
+```json
+{
+  "key": "sentiment",
+  "description": "What sentiment does the user express?",
+  "values": ["positive", "negative", "neutral"]
+}
+```
+
+Later, you want more granular sentiment analysis:
+
+```json
+{
+  "key": "sentiment",
+  "description": "What sentiment does the user express?",
+  "values": ["very_positive", "positive", "neutral", "negative", "very_negative"] // [!code highlight]
+}
+```
+
+To update existing runs with the new 5-level sentiment scale, you'd repost insights for those runs using the retroactive insights endpoint with your updated configuration.
+
+## Cost Optimization with Sampling
+
+Since insights are configured per-run, you can easily implement sampling to control costs. Instead of analyzing every interaction, you can randomly sample a percentage of runs for insights analysis.
+
+### Example: 10% Sampling
+
+```python
+import random
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://run.workflowai.com/v1",
+    api_key="wai-***"
+)
+
+def make_completion_with_optional_insights(messages, sample_rate=0.1):
+    # Base completion parameters
+    completion_params = {
+        "model": "gpt-4o",
+        "messages": messages,
+        "metadata": {
+            "agent_id": "customer-support"
+        }
+    }
+    
+    # Add insights to only sample_rate % of requests
+    if random.random() < sample_rate: # [!code highlight]
+        completion_params["insights"] = { # [!code highlight]
+            "model": "gpt-4o-mini", # [!code highlight]
+            "dimensions": [ # [!code highlight]
+                {
+                    "key": "sentiment",
+                    "description": "What overall sentiment does the user express?",
+                    "values": ["positive", "negative", "neutral"]
+                },
+                {
+                    "key": "question_type", 
+                    "description": "Which category best describes the user's question?",
+                    "values": ["how_to", "billing", "feature_request", "other"]
+                }
+            ]
+        }
+    
+    return client.chat.completions.create(**completion_params)
+
+# Usage - insights added to ~10% of requests
+for user_message in user_messages:
+    response = make_completion_with_optional_insights(
+        messages=[{"role": "user", "content": user_message}],
+        sample_rate=0.1  # 10% sampling rate
+    )
+```
+
+**Benefits of random sampling:**
+- **Unbiased data**: Random sampling preserves statistical validity of insights
+- **Cost predictable**: Know exactly what percentage of runs will have insights  
+- **Representative metrics**: Sample accurately reflects your overall traffic patterns
+- **No backend changes**: Works immediately with existing API
+
+### Benefits of This Approach
+
+1. **Self-contained**: Each completion request specifies its own insights requirements
+2. **Version control friendly**: Insights configuration lives in code alongside agent usage
+3. **Non-technical friendly**: Simple JSON structure allows product managers, analysts, and customer success teams to modify dimensions without backend changes
+4. **Cost optimizable**: Easy to implement sampling strategies to control insights costs # [!code highlight]
+5. **Flexible**: Can mix agent-based and schema-based insights in the same application
+6. **No setup required**: No need to pre-configure insights at the agent level
+7. **Testable**: Easy to test different insight configurations without backend changes
+8. **Auditable**: Complete request context is preserved in logs and version control
+9. **Retroactive**: Can add insights to historical runs for comprehensive analysis

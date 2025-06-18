@@ -25,6 +25,25 @@ from core.utils.lru.lru_cache import TLRUCache
 from core.utils.models.dumps import safe_dump_pydantic_model
 
 
+class ModelForTask(NamedTuple):
+    id: str
+    name: str
+    modes: list[str]
+    icon_url: str
+    is_default: bool
+    release_date: date
+    price_per_input_token_usd: float
+    price_per_output_token_usd: float
+    context_window_tokens: int
+    provider_name: str
+    quality_index: int
+    providers: list[Provider]
+    supports_structured_output: bool
+    is_not_supported_reason: str | None = None
+    average_cost_per_run_usd: float | None = None
+    is_latest: bool = False
+
+
 def _token_cache_ttl(_: Any, value: TokenCounts):
     if value["count"] == 0:
         return timedelta(seconds=0)
@@ -86,24 +105,6 @@ class ModelsService:
             _logger.exception("Error fetching available models from run endpoint")
             return list(Model)
 
-    class ModelForTask(NamedTuple):
-        id: str
-        name: str
-        modes: list[str]
-        icon_url: str
-        is_default: bool
-        release_date: date
-        price_per_input_token_usd: float
-        price_per_output_token_usd: float
-        context_window_tokens: int
-        provider_name: str
-        quality_index: int
-        providers: list[Provider]
-        supports_structured_output: bool
-        is_not_supported_reason: str | None = None
-        average_cost_per_run_usd: float | None = None
-        is_latest: bool = False
-
     @classmethod
     def _build_model_for_task(
         cls,
@@ -143,7 +144,7 @@ class ModelsService:
             provider_data: ModelProviderData,
             average_cost_per_run_usd: float | None,
         ):
-            return cls.ModelForTask(
+            return ModelForTask(
                 id=model_id,
                 name=display_name,
                 icon_url=data.icon_url,
@@ -202,12 +203,38 @@ class ModelsService:
             task.task_schema_id,
         )
 
-        out: list[ModelsService.ModelForTask] = []
+        out: list[ModelForTask] = []
         for model in models:
             if m := self._build_model_for_task(
                 model,
                 task_typology,
                 price_calculator,
+                instructions,
+                requires_tools,
+            ):
+                out.append(m)  # noqa: PERF401
+        return out
+
+    async def model_for_task_typology(
+        self,
+        task_typology: TaskTypology,
+        instructions: str | None = None,
+        requires_tools: bool = False,
+    ) -> list[ModelForTask]:
+        models = await self._available_models_from_run_endpoint()
+
+        async def no_op_price_calculator():
+            def _compute_cost_estimate(model_provider_data: ModelProviderData, model: Model) -> float | None:
+                return None
+
+            return _compute_cost_estimate
+
+        out: list[ModelForTask] = []
+        for model in models:
+            if m := self._build_model_for_task(
+                model,
+                task_typology,
+                await no_op_price_calculator(),
                 instructions,
                 requires_tools,
             ):

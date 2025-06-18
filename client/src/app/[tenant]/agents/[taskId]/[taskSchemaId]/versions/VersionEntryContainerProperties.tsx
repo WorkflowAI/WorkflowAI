@@ -41,13 +41,15 @@ export function VersionEntryContainerProperties(props: VersionEntryContainerProp
   return (
     <div className='flex flex-col flex-1 border-l border-gray-200 border-dashed pt-3 pb-3 px-4 gap-3'>
       {!!messages ? (
-        <ProxyMessagesView messages={messages} />
+        <div className='max-h-[calc(100vh-260px)] overflow-y-auto'>
+          <ProxyMessagesView messages={messages} />
+        </div>
       ) : (
         !!instructions && (
           <div className='flex flex-col gap-1.5'>
             <div className='text-gray-900 text-[13px] font-medium'>Instructions:</div>
             <InstructionTooltip onCopy={() => onCopy(instructions)}>
-              <div className='text-gray-900 text-[13px] font-normal px-3 py-2 bg-white rounded-[2px] border border-gray-200 whitespace-pre-wrap'>
+              <div className='text-gray-900 text-[13px] font-normal px-3 py-2 bg-white rounded-[2px] border border-gray-200 whitespace-pre-wrap max-h-[calc(100vh-260px)] overflow-y-auto'>
                 {instructions}
               </div>
             </InstructionTooltip>

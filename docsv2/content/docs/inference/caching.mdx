@@ -4,8 +4,13 @@ description: Learn how to enable and configure caching in the WorkflowAI API.
 ---
 
 import { Steps, Step } from 'fumadocs-ui/components/steps';
+import { Callout } from 'fumadocs-ui/components/callout';
 
 ![Caching](/images/inference/caching/header.png)
+
+<Callout type="info">
+**Think of caching as free key-value storage**: The LLM input acts as the "key" and the generated output becomes the "value". Once cached, identical requests return the stored result instantly at no cost, effectively giving you a free key-value storage system backed by your LLM interactions.
+</Callout>
 
 WorkflowAI offers caching capabilities that allow you to reuse the results of identical requests, saving both time and cost. When enabled, the system will return stored results for matching requests for free, instead of making redundant calls to the LLM.
 
@@ -96,17 +101,19 @@ Therefore, a request will **not** use the cache unless you either:
 # Example 1: Cache is NEVER hit (Default behavior)
 # Reason: temperature defaults to 1, and use_cache defaults to "auto"
 completion = client.chat.completions.create(
-  model="my-chatbot/gpt-4o-mini",
-  messages=[{"role": "user", "content": "Describe the meaning of life"}]
+  model="gpt-4o-mini",
+  messages=[{"role": "user", "content": "Describe the meaning of life"}],
+  metadata={"agent_id": "my-chatbot"}
 )
 
 # Example 2: Cache CAN be hit
 # Reason: temperature is explicitly 0, meeting the "auto" cache condition.
 # A subsequent identical request will hit the cache.
 completion = client.chat.completions.create(
-  model="my-chatbot/gpt-4o-mini",
+  model="gpt-4o-mini",
   messages=[{"role": "user", "content": "Describe the meaning of life"}],
-  temperature=0
+  temperature=0,
+  metadata={"agent_id": "my-chatbot"}
 )
 
 # Example 3: Cache CAN be hit (using Deployment and "always")

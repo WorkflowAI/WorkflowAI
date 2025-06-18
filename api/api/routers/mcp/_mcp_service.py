@@ -4,27 +4,30 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from api._standard_model_response import StandardModelResponse
-from api.routers.mcp._mcp_models import MajorVersion, MCPToolReturn
-from api.services.documentation_service import DocumentationService
-from api.services.internal_tasks.meta_agent_service import MetaAgentChatMessage, PlaygroundState
-from api.services.internal_tasks.meta_agent_service import MetaAgentService as MetaAgentServiceType
+from api.routers.mcp._mcp_models import (
+    ConciseLatestModelResponse,
+    ConciseModelResponse,
+    MajorVersion,
+    MCPToolReturn,
+)
+from api.services.internal_tasks.ai_engineer_service import AIEngineerChatMessage, AIEngineerReponse, AIEngineerService
 from api.services.models import ModelsService
 from api.services.runs.runs_service import RunsService
 from api.services.runs_search import RunsSearchService
+from api.services.task_deployments import TaskDeploymentsService
 from api.services.versions import VersionsService
 from core.domain.agent_run import AgentRunBase
-from core.domain.fields.chat_message import ChatMessage
+from core.domain.consts import WORKFLOWAI_APP_URL
 from core.domain.models.model_data import FinalModelData, LatestModel
 from core.domain.models.model_datas_mapping import MODEL_DATAS
 from core.domain.models.models import Model
 from core.domain.search_query import FieldQuery, SearchOperator
+from core.domain.task_info import TaskInfo
 from core.domain.users import UserIdentifier
 from core.domain.version_environment import VersionEnvironment
 from core.storage import ObjectNotFoundException
 from core.storage.backend_storage import BackendStorage
 from core.utils.schemas import FieldType
-from core.utils.url_utils import IGNORE_URL_END_TAG, IGNORE_URL_START_TAG
 
 
 class RunSearchResult(BaseModel):
@@ -42,38 +45,188 @@ class RunSearchResult(BaseModel):
     error: dict[str, Any] | None
 
 
+class UsefulLinks(BaseModel):
+    class Link(BaseModel):
+        title: str
+        url: str
+        description: str
+
+    description: str = "A collection of useful link that the user can access in the browser, those link are NOT directly accessible without being authenticated in the browser"
+    useful_links: list[Link]
+
+
 class MCPService:
     def __init__(
         self,
         storage: BackendStorage,
-        meta_agent_service: MetaAgentServiceType,
+        ai_engineer_service: AIEngineerService,
         runs_service: RunsService,
         versions_service: VersionsService,
         models_service: ModelsService,
-        task_deployments_service: Any,  # TaskDeploymentsService
+        task_deployments_service: TaskDeploymentsService,
+        user_email: str | None,
+        tenant_slug: str | None,
     ):
         self.storage = storage
-        self.meta_agent_service = meta_agent_service
+        self.ai_engineer_service = ai_engineer_service
         self.runs_service = runs_service
         self.versions_service = versions_service
         self.models_service = models_service
         self.task_deployments_service = task_deployments_service
+        self.user_email = user_email
+        self.tenant_slug = tenant_slug
 
-    async def list_available_models(self) -> MCPToolReturn:
-        def _model_data_iterator() -> Iterator[StandardModelResponse.ModelItem]:
+    def _get_useful_links(self, agent_id: str | None, agent_schema_id: int | None) -> UsefulLinks:
+        if agent_id is None:
+            agent_id = "<example_agent_id>"
+
+        tenant_slug = self.tenant_slug
+
+        return UsefulLinks(
+            useful_links=[
+                UsefulLinks.Link(
+                    title="Agents list",
+                    url=f"{WORKFLOWAI_APP_URL}/{tenant_slug}/agents",
+                    description="View all agents in the user's organization, also allow to see the count of runs and cost of the last 7 days",
+                ),
+                UsefulLinks.Link(
+                    title="API Keys management model",
+                    url=f"{WORKFLOWAI_APP_URL}/keys",
+                    description="View and create API keys for the user's organization",
+                ),
+                UsefulLinks.Link(
+                    title="WorkflowAI playground",
+                    url=f"{WORKFLOWAI_APP_URL}/{tenant_slug}/agents/{agent_id}/{agent_schema_id or 1}",
+                    description="Main page of the WorkflowAI web app, allow to run agents on different models, update version messages, and more",
+                ),
+                UsefulLinks.Link(
+                    title="Agent runs",
+                    url=f"{WORKFLOWAI_APP_URL}/{tenant_slug}/agents/{agent_id}/{agent_schema_id or 1}/runs",
+                    description="View runs for a specific agent",
+                ),
+                UsefulLinks.Link(
+                    title="Agent versions",
+                    url=f"{WORKFLOWAI_APP_URL}/{tenant_slug}/agents/{agent_id}/{agent_schema_id or 1}/versions",
+                    description="View versions for a specific agent",
+                ),
+                UsefulLinks.Link(
+                    title="Deployments",
+                    url=f"{WORKFLOWAI_APP_URL}/{tenant_slug}/agents/{agent_id}/{agent_schema_id or 1}/deployments",
+                    description="View deployments (deployed versions) for a specific agent",
+                ),
+                UsefulLinks.Link(
+                    title="Agent side-by-side",
+                    url=f"{WORKFLOWAI_APP_URL}/{tenant_slug}/agents/{agent_id}/{agent_schema_id or 1}/side-by-side",
+                    description="View side-by-side comparison of two versions of an agent",
+                ),
+                UsefulLinks.Link(
+                    title="Agent reviews",
+                    url=f"{WORKFLOWAI_APP_URL}/{tenant_slug}/agents/{agent_id}/{agent_schema_id or 1}/reviews",
+                    description="View reviews for a specific agent created by staff members in the organization",
+                ),
+                UsefulLinks.Link(
+                    title="Agent benchmarks",
+                    url=f"{WORKFLOWAI_APP_URL}/{tenant_slug}/agents/{agent_id}/{agent_schema_id or 1}/benchmarks",
+                    description="View benchmarks for a specific agent, allow to compare different versions / models of an agent and compare their correctness, latency, and price",
+                ),
+                UsefulLinks.Link(
+                    title="Agent feedback",
+                    url=f"{WORKFLOWAI_APP_URL}/{tenant_slug}/agents/{agent_id}/{agent_schema_id or 1}/feedback",
+                    description="View feedback for a specific agent created by end users (customers)",
+                ),
+                UsefulLinks.Link(
+                    title="Agent cost",
+                    url=f"{WORKFLOWAI_APP_URL}/{tenant_slug}/agents/{agent_id}/{agent_schema_id or 1}/cost",
+                    description="View cost for a specific agent on different time frames (yesterday, last week, last month, last year, all time)",
+                ),
+                UsefulLinks.Link(
+                    title="WorkflowAI offical documentation",
+                    url="https://docs.workflowai.com",
+                    description="Official documentation for WorkflowAI, including guides, API references, and more",
+                ),
+            ],
+        )
+
+    async def _enrich_tool_return(
+        self,
+        success: bool,
+        data: dict[str, Any] = {},
+        error: str | None = None,
+        messages: list[str] | None = None,
+        agent_id: str | None = None,
+        agent_schema_id: int | None = None,
+        add_useful_links: bool = True,
+    ) -> MCPToolReturn:
+        """Enrich the tool return with useful links and other data."""
+
+        data = {"result": data}
+
+        if add_useful_links:
+            data["useful_links"] = self._get_useful_links(
+                agent_id=agent_id,
+                agent_schema_id=agent_schema_id,
+            ).model_dump(exclude_none=True)
+
+        return MCPToolReturn(
+            success=success,
+            data=data,
+            error=error,
+            messages=messages,
+        )
+
+    async def list_available_models(
+        self,
+        agent_id: str | None,
+        agent_schema_id: int | None,
+        agent_requires_tools: bool = False,
+    ) -> MCPToolReturn:
+        if agent_id:
+            if agent_schema_id is not None:
+                agent = await self.storage.task_variant_latest_by_schema_id(agent_id, agent_schema_id)
+            else:
+                agent = await self.storage.task_variants.get_latest_task_variant(agent_id)
+
+            if agent:
+                models = await self.models_service.models_for_task(
+                    agent,
+                    instructions=None,
+                    requires_tools=agent_requires_tools,
+                )
+                return await self._enrich_tool_return(
+                    success=True,
+                    data={
+                        "compatible_models": [
+                            ConciseModelResponse.from_model_for_task(m).model_dump(exclude_none=True)
+                            for m in models
+                            if m.is_not_supported_reason is None
+                        ],
+                    },
+                    agent_id=agent_id,
+                    agent_schema_id=agent_schema_id,
+                )
+
+        def _model_data_iterator() -> Iterator[ConciseLatestModelResponse | ConciseModelResponse]:
             for model in Model:
                 data = MODEL_DATAS[model]
                 if isinstance(data, LatestModel):
-                    yield StandardModelResponse.ModelItem.from_model_data(model.value, MODEL_DATAS[data.model])  # pyright: ignore [reportArgumentType]
+                    points_to_model = MODEL_DATAS[data.model]
+                    if isinstance(points_to_model, FinalModelData):
+                        yield ConciseLatestModelResponse(
+                            id=model.value,
+                            currently_points_to=points_to_model.model.value,
+                        )
+                    continue
                 elif isinstance(data, FinalModelData):
-                    yield StandardModelResponse.ModelItem.from_model_data(model.value, data)
+                    yield ConciseModelResponse.from_model_data(model.value, data)
                 else:
                     # Skipping deprecated models
                     continue
 
-        return MCPToolReturn(
+        return await self._enrich_tool_return(
             success=True,
-            data=StandardModelResponse(data=list(_model_data_iterator())).model_dump(),
+            data={
+                "all_models": [m.model_dump(exclude_none=True) for m in _model_data_iterator()],
+            },
         )
 
     def _extract_agent_id_and_run_id(self, run_url: str) -> tuple[str, str]:  # noqa: C901
@@ -172,27 +325,30 @@ class MCPService:
                 agent_id, run_id = self._extract_agent_id_and_run_id(run_url)
                 # find the task tuple from the agent id
             except ValueError:
-                return MCPToolReturn(
+                return await self._enrich_tool_return(
                     success=False,
                     error="Invalid run URL, must be in the format 'https://workflowai.com/workflowai/agents/agent-id/runs/run-id', or you must pass 'agent_id' and 'run_id'",
+                    agent_id=agent_id,
                 )
 
         if not agent_id:
-            return MCPToolReturn(
+            return await self._enrich_tool_return(
                 success=False,
                 error="Agent ID is required",
+                agent_id=agent_id,
             )
 
         if not run_id:
-            return MCPToolReturn(
+            return await self._enrich_tool_return(
                 success=False,
                 error="Run ID is required",
+                agent_id=agent_id,
             )
 
         task_info = await self.storage.tasks.get_task_info(agent_id)
         task_tuple = task_info.id_tuple
         if not task_tuple:
-            return MCPToolReturn(
+            return await self._enrich_tool_return(
                 success=False,
                 error=f"Agent {agent_id} not found",
             )
@@ -223,20 +379,23 @@ class MCPService:
                 "conversation_id": run.conversation_id,
             }
 
-            return MCPToolReturn(
+            return await self._enrich_tool_return(
                 success=True,
                 data=run_data,
+                agent_id=agent_id,
             )
 
         except ObjectNotFoundException:
-            return MCPToolReturn(
+            return await self._enrich_tool_return(
                 success=False,
                 error=f"Run {run_id} not found",
+                agent_id=agent_id,
             )
         except Exception as e:
-            return MCPToolReturn(
+            return await self._enrich_tool_return(
                 success=False,
                 error=f"Failed to fetch run details: {str(e)}",
+                agent_id=agent_id,
             )
 
     async def list_agents(self, from_date: str = "") -> MCPToolReturn:
@@ -299,7 +458,7 @@ class MCPService:
 
                 enriched_agents.append(agent_dict)
 
-            return MCPToolReturn(
+            return await self._enrich_tool_return(
                 success=True,
                 data={
                     "items": enriched_agents,
@@ -308,7 +467,7 @@ class MCPService:
             )
 
         except Exception as e:
-            return MCPToolReturn(
+            return await self._enrich_tool_return(
                 success=False,
                 error=f"Failed to list agents with stats: {str(e)}",
             )
@@ -325,20 +484,23 @@ class MCPService:
             # Convert to the same format as the existing endpoint
             major_version = MajorVersion.from_version(*version_data)
 
-            return MCPToolReturn(
+            return await self._enrich_tool_return(
                 success=True,
-                data=major_version.model_dump(),
+                data=major_version.model_dump(exclude_none=True),
+                agent_id=task_tuple[0],
             )
 
         except ObjectNotFoundException:
-            return MCPToolReturn(
+            return await self._enrich_tool_return(
                 success=False,
                 error=f"Version {version_id} not found for agent {task_tuple[0]}",
+                agent_id=task_tuple[0],
             )
         except Exception as e:
-            return MCPToolReturn(
+            return await self._enrich_tool_return(
                 success=False,
                 error=f"Failed to get agent version: {str(e)}",
+                agent_id=task_tuple[0],
             )
 
     async def list_agent_versions(
@@ -351,81 +513,88 @@ class MCPService:
             versions = await self.versions_service.list_version_majors(task_tuple, schema_id, self.models_service)
 
             # Convert to the same format as the existing endpoint
-            version_data = [MajorVersion.from_major(v).model_dump() for v in versions]
+            version_data = [MajorVersion.from_major(v).model_dump(exclude_none=True) for v in versions]
 
-            return MCPToolReturn(
+            return await self._enrich_tool_return(
                 success=True,
                 data={
                     "items": version_data,
                     "count": len(version_data),
                 },
+                agent_id=task_tuple[0],
+                agent_schema_id=schema_id,
             )
 
         except Exception as e:
-            return MCPToolReturn(
+            return await self._enrich_tool_return(
                 success=False,
                 error=f"Failed to list agent versions: {str(e)}",
+                agent_id=task_tuple[0],
+                agent_schema_id=schema_id,
             )
+
+    async def _get_agent_or_failed_tool_result(
+        self,
+        agent_id: str,
+    ) -> tuple[TaskInfo | None, MCPToolReturn | None]:
+        try:
+            agent_info = await self.storage.tasks.get_task_info(agent_id)
+        except ObjectNotFoundException:
+            list_agent_tool_answer = await self.list_agents()
+
+            return None, MCPToolReturn(
+                success=False,
+                error=f"Agent {agent_id} not found, please provide a valid agent id. Agent id can be found in either the model=... paramater (usually composed of '<agent_name>/<model_name>' or '<agent_name>/<agent_schema_id>/<deployment_environment>') or in the metadata of the agent run request. See 'data' for a list of existing agents for the user.",
+                data=list_agent_tool_answer.data,
+            )
+
+        return agent_info, None
 
     async def ask_ai_engineer(
         self,
         agent_schema_id: int | None,
         agent_id: str | None,
         message: str,
-        user_programming_language: str | None,
-        user_code_extract: str | None,
+        user_programming_language: str,
+        user_code_extract: str,
     ) -> MCPToolReturn:
         """Ask the AI Engineer a question (legacy endpoint)."""
 
         user_message = message
 
-        if user_programming_language:
-            user_message += f"""
-            The user is using the following programming language and integration:
-            {user_programming_language}
-            """
+        agent_info: TaskInfo | None = None
+        if agent_id:
+            agent_info, error_tool_result = await self._get_agent_or_failed_tool_result(agent_id)
+            if error_tool_result:
+                return error_tool_result
+            if agent_info:
+                agent_schema_id = agent_schema_id or agent_info.latest_schema_id or 1
 
-        if user_code_extract:
-            user_message += f"""
-            Here is a code extract from the user's code:
-            {IGNORE_URL_START_TAG}{user_code_extract}{IGNORE_URL_END_TAG}
-            """
-            # We add URL fetching ignore tags to avoid fetching URLs in the code extract
-
-        if not agent_id or agent_id == "new":
-            # Find the relevant section in the documentation
-            relevant_docs = await DocumentationService().get_relevant_doc_sections(
-                chat_messages=[ChatMessage(role="USER", content=user_message)],
-                agent_instructions="",
-            )
-            return MCPToolReturn(
-                success=True,
-                data=f"""Here are some relevant documentation from WorkflowAI for your request:
-                {"\n".join([f"- {doc.title}: {doc.content}" for doc in relevant_docs])}
-                """,
-            )
-
-        task_info = await self.storage.tasks.get_task_info(agent_id)
-        # TODO: figure out the right schema id to use here
-        schema_id = agent_schema_id or task_info.latest_schema_id or 1
-
-        last_messages: list[MetaAgentChatMessage] = []
-        async for messages in self.meta_agent_service.stream_proxy_meta_agent_response(
-            task_tuple=task_info.id_tuple,
-            agent_schema_id=schema_id,
-            user_email=None,  # TODO:
-            messages=[MetaAgentChatMessage(role="USER", content=user_message)],
-            playground_state=PlaygroundState(
-                is_proxy=True,
-                selected_models=PlaygroundState.SelectedModels(column_1=None, column_2=None, column_3=None),
-                agent_run_ids=[],
-            ),
+        # TODO: switch to a streamable MCP tool
+        last_chunk: AIEngineerReponse | None = None
+        async for chunk in self.ai_engineer_service.stream_ai_engineer_agent_response(
+            task_tuple=agent_info.id_tuple if agent_info else None,
+            agent_schema_id=agent_schema_id,
+            user_email=self.user_email,
+            messages=[AIEngineerChatMessage(role="USER", content=user_message)],
+            user_programming_language=user_programming_language,
+            user_code_extract=user_code_extract,
         ):
-            last_messages = messages
+            last_chunk = chunk
 
-        return MCPToolReturn(
+        if last_chunk is None:
+            return await self._enrich_tool_return(
+                success=False,
+                error="No response from AI Engineer",
+                agent_id=agent_id,
+                agent_schema_id=agent_schema_id,
+            )
+
+        return await self._enrich_tool_return(
             success=True,
-            data="\n\n".join([message.content for message in last_messages]),
+            data=last_chunk.model_dump(exclude_none=True),
+            agent_id=agent_id,
+            agent_schema_id=agent_schema_id,
         )
 
     async def deploy_agent_version(
@@ -499,7 +668,7 @@ class MCPService:
                 },
             }
 
-            return MCPToolReturn(
+            return await self._enrich_tool_return(
                 success=True,
                 data={
                     "version_id": deployment.version_id,
@@ -509,11 +678,14 @@ class MCPService:
                     "message": f"Successfully deployed version {version_id} to {environment} environment",
                     "migration_guide": migration_guide,
                 },
+                agent_id=task_tuple[0],
+                agent_schema_id=deployment.schema_id,
             )
         except Exception as e:
-            return MCPToolReturn(
+            return await self._enrich_tool_return(
                 success=False,
                 error=f"Failed to deploy version: {str(e)}",
+                agent_id=task_tuple[0],
             )
 
     async def search_runs_by_metadata(  # noqa: C901
@@ -532,30 +704,34 @@ class MCPService:
                 try:
                     # Validate required fields
                     if "field_name" not in query_dict:
-                        return MCPToolReturn(
+                        return await self._enrich_tool_return(
                             success=False,
                             error="Missing required field 'field_name' in field query",
+                            agent_id=task_tuple[0],
                         )
 
                     if "operator" not in query_dict:
-                        return MCPToolReturn(
+                        return await self._enrich_tool_return(
                             success=False,
                             error="Missing required field 'operator' in field query",
+                            agent_id=task_tuple[0],
                         )
 
                     if "values" not in query_dict:
-                        return MCPToolReturn(
+                        return await self._enrich_tool_return(
                             success=False,
                             error="Missing required field 'values' in field query",
+                            agent_id=task_tuple[0],
                         )
 
                     # Parse the operator
                     try:
                         operator = SearchOperator(query_dict["operator"])
                     except ValueError:
-                        return MCPToolReturn(
+                        return await self._enrich_tool_return(
                             success=False,
                             error=f"Invalid operator: {query_dict['operator']}. Valid operators are: {', '.join([op.value for op in SearchOperator])}",
+                            agent_id=task_tuple[0],
                         )
 
                     # Parse the field type if provided
@@ -620,7 +796,7 @@ class MCPService:
                         # Fetch the full AgentRun with task_input and task_output
                         full_run = await self.runs_service.run_by_id(task_tuple, run_summary.id)
                         full_run_data = {
-                            **run_summary.model_dump(),  # Convert RunSearchResult to dict
+                            **run_summary.model_dump(exclude_none=True),  # Convert RunSearchResult to dict
                             "task_input": full_run.task_input,
                             "task_output": full_run.task_output,
                             "task_input_preview": full_run.task_input_preview,
@@ -629,13 +805,15 @@ class MCPService:
                         full_runs.append(full_run_data)
                     except Exception:
                         # If we can't fetch the full run, include what we have
-                        full_runs.append(run_summary.model_dump())
-                items = [item.model_dump() if isinstance(item, BaseModel) else item for item in full_runs]
+                        full_runs.append(run_summary.model_dump(exclude_none=True))
+                items = [
+                    item.model_dump(exclude_none=True) if isinstance(item, BaseModel) else item for item in full_runs
+                ]
             else:
                 # Convert RunSearchResult objects to dicts
-                items = [item.model_dump() for item in items]
+                items = [item.model_dump(exclude_none=True) for item in items]
 
-            return MCPToolReturn(
+            return await self._enrich_tool_return(
                 success=True,
                 data={
                     "items": items,
@@ -643,10 +821,12 @@ class MCPService:
                     "limit": limit,
                     "offset": offset,
                 },
+                agent_id=task_tuple[0],
             )
 
         except Exception as e:
-            return MCPToolReturn(
+            return await self._enrich_tool_return(
                 success=False,
                 error=f"Failed to search runs by metadata: {str(e)}",
+                agent_id=task_tuple[0],
             )
