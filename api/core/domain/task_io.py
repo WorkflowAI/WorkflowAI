@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from core.domain.consts import FILE_DEFS
 from core.domain.errors import JSONSchemaValidationError
 from core.utils.hash import compute_obj_hash
+from core.utils.schema_error_formatter import format_validation_error
 from core.utils.schema_sanitation import streamline_schema
 from core.utils.schemas import (
     JsonSchema,
@@ -75,8 +76,9 @@ class SerializableTaskIO(BaseModel):
         try:
             validate(obj, schema)
         except SchemaValidationError as e:
-            kp = ".".join([str(p) for p in e.path])
-            raise JSONSchemaValidationError(f"at [{kp}], {e.message}")
+            # Format the error message with details
+            formatted_message = format_validation_error(e)
+            raise JSONSchemaValidationError(formatted_message, validation_errors=[e])
 
     def sanitize(self, obj: Any) -> Any:
         """Duplicate and enforce an object to match the schema"""
