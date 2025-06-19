@@ -1,3 +1,7 @@
+# pyright: reportUnknownMemberType=false
+# pyright: reportUnknownVariableType=false
+# pyright: reportUntypedFunctionDecorator=false
+# pyright: reportArgumentType=false
 from datetime import datetime
 from typing import Literal
 
@@ -5,6 +9,7 @@ import pytest
 
 from api.routers.mcp._mcp_models import AgentResponse
 from api.routers.mcp._utils.agent_sorting import sort_agents
+from api.routers.mcp._utils.sort_validation import InvalidSortFieldError, InvalidSortOrderError
 
 
 def create_test_agent(
@@ -260,3 +265,77 @@ class TestSortAgents:
         assert agents[0].run_count == 10
         assert agents[0].total_cost_usd == 100.0
         assert agents[0].schemas[0].last_active_at == "2024-01-01T00:00:00"
+
+
+class TestAgentSortingValidation:
+    """Test suite for agent sorting validation functionality."""
+
+    def test_invalid_sort_field_raises_error(self):
+        """Test that invalid sort fields raise InvalidSortFieldError."""
+        agents = [create_test_agent("agent1")]
+
+        with pytest.raises(InvalidSortFieldError) as exc_info:
+            sort_agents(agents, "invalid_field", "desc")  # type: ignore
+
+        error = exc_info.value
+        assert error.entity_type == "agent"
+        assert error.field == "invalid_field"
+        assert "last_active_at" in error.valid_fields
+
+    def test_invalid_sort_order_raises_error(self):
+        """Test that invalid sort orders raise InvalidSortOrderError."""
+        agents = [create_test_agent("agent1")]
+
+        with pytest.raises(InvalidSortOrderError) as exc_info:
+            sort_agents(agents, "last_active_at", "invalid_order")  # type: ignore
+
+        error = exc_info.value
+        assert error.order == "invalid_order"
+        assert "asc" in error.valid_orders
+        assert "desc" in error.valid_orders
+
+    def test_model_sort_field_invalid_for_agents(self):
+        """Test that model sort fields are rejected for agent sorting."""
+        agents = [create_test_agent("agent1")]
+
+        with pytest.raises(InvalidSortFieldError) as exc_info:
+            sort_agents(agents, "quality_index", "desc")  # type: ignore
+
+        error = exc_info.value
+        assert error.entity_type == "agent"
+        assert error.field == "quality_index"
+
+    @pytest.mark.parametrize("invalid_field", ["release_date", "cost", "quality_index"])
+    def test_model_fields_invalid_for_agents_parametrized(self, invalid_field: str):
+        """Test that all model sort fields are rejected for agent sorting."""
+        agents = [create_test_agent("agent1")]
+
+        with pytest.raises(InvalidSortFieldError) as exc_info:
+            sort_agents(agents, invalid_field, "desc")  # type: ignore
+
+        error = exc_info.value
+        assert error.entity_type == "agent"
+        assert error.field == invalid_field
+
+    def test_validation_does_not_affect_valid_sorting(self):
+        """Test that validation doesn't interfere with valid sorting operations."""
+        agents = [
+            create_test_agent("agent1", run_count=5),
+            create_test_agent("agent2", run_count=10),
+        ]
+
+        # Should work normally with valid parameters
+        sorted_agents = sort_agents(agents, "run_count", "desc")
+        assert [a.agent_id for a in sorted_agents] == ["agent2", "agent1"]
+
+    def test_validation_happens_before_sorting(self):
+        """Test that validation occurs before any sorting operations."""
+        # If validation didn't happen first, we might get a different error
+        # from the sorting logic itself
+        agents = [create_test_agent("agent1")]
+
+        with pytest.raises(InvalidSortFieldError):
+            sort_agents(agents, "nonexistent_field", "desc")  # type: ignore
+
+        # The list should be unchanged since validation failed
+        assert agents[0].agent_id == "agent1"

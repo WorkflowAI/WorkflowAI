@@ -3,6 +3,7 @@
 import logging
 
 from api.routers.mcp._mcp_models import ConciseLatestModelResponse, ConciseModelResponse, ModelSortField, SortOrder
+from api.routers.mcp._utils.sort_validation import validate_model_sort_params
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +27,14 @@ def sort_models(
 
     Returns:
         Sorted list of models (modifies in place and returns the list)
+
+    Raises:
+        InvalidSortFieldError: If the sort field is not valid for models
+        InvalidSortOrderError: If the sort order is not valid
     """
+    # Runtime validation of sort parameters
+    validate_model_sort_params(sort_by, order)
+
     # Separate latest models from concrete models for sorting
     latest_models = [m for m in models if isinstance(m, ConciseLatestModelResponse)]
     concrete_models = [m for m in models if isinstance(m, ConciseModelResponse)]

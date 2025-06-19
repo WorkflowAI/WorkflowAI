@@ -1,6 +1,7 @@
 """Agent sorting utilities for MCP service."""
 
 from api.routers.mcp._mcp_models import AgentResponse, AgentSortField, SortOrder
+from api.routers.mcp._utils.sort_validation import validate_agent_sort_params
 
 
 def sort_agents(
@@ -22,7 +23,14 @@ def sort_agents(
 
     Returns:
         Sorted list of agents (modifies in place and returns the list)
+
+    Raises:
+        InvalidSortFieldError: If the sort field is not valid for agents
+        InvalidSortOrderError: If the sort order is not valid
     """
+    # Runtime validation of sort parameters
+    validate_agent_sort_params(sort_by, order)
+
     reverse_sort = order == "desc"
 
     if sort_by == "last_active_at":
