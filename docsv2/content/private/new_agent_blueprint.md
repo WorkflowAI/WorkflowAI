@@ -112,8 +112,7 @@ def enrich_company_info(
             extra_body={
                 "input": {  # Variables corresponding to the input variables in the messages are passed as a dictionary here
                     "company_name": company_name,
-                    "additional_requirements": additional_requirements
-                    or "No additional requirements",
+                    "additional_requirements": additional_requirements or "",
                 }
             },
             metadata={
