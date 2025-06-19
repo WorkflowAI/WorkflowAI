@@ -13,7 +13,10 @@ class SortValidationError(Exception):
         super().__init__(message)
 
 
-def validate_agent_sort_params(sort_by: str, order: str) -> tuple[AgentSortField, SortOrder]:
+def validate_agent_sort_params(
+    sort_by: str,
+    order: str,
+) -> tuple[AgentSortField, SortOrder]:
     """Validate agent sorting parameters.
 
     Args:
@@ -32,21 +35,22 @@ def validate_agent_sort_params(sort_by: str, order: str) -> tuple[AgentSortField
 
     # Validate sort_by field
     if sort_by not in valid_sort_fields:
-        raise SortValidationError(
-            f"Invalid sort field '{sort_by}' for agents. Valid options are: {', '.join(valid_sort_fields)}",
-        )
+        message = f"Invalid sort field '{sort_by}' for agents. Valid options are: {', '.join(valid_sort_fields)}"
+        raise SortValidationError(message)
 
     # Validate order
     if order not in valid_orders:
-        raise SortValidationError(
-            f"Invalid sort order '{order}'. Valid options are: {', '.join(valid_orders)}",
-        )
+        message = f"Invalid sort order '{order}'. Valid options are: {', '.join(valid_orders)}"
+        raise SortValidationError(message)
 
     # Safe to cast after validation
     return cast(AgentSortField, sort_by), cast(SortOrder, order)
 
 
-def validate_model_sort_params(sort_by: str, order: str) -> tuple[ModelSortField, SortOrder]:
+def validate_model_sort_params(
+    sort_by: str,
+    order: str,
+) -> tuple[ModelSortField, SortOrder]:
     """Validate model sorting parameters.
 
     Args:
@@ -65,15 +69,13 @@ def validate_model_sort_params(sort_by: str, order: str) -> tuple[ModelSortField
 
     # Validate sort_by field
     if sort_by not in valid_sort_fields:
-        raise SortValidationError(
-            f"Invalid sort field '{sort_by}' for models. Valid options are: {', '.join(valid_sort_fields)}",
-        )
+        message = f"Invalid sort field '{sort_by}' for models. Valid options are: {', '.join(valid_sort_fields)}"
+        raise SortValidationError(message)
 
     # Validate order
     if order not in valid_orders:
-        raise SortValidationError(
-            f"Invalid sort order '{order}'. Valid options are: {', '.join(valid_orders)}",
-        )
+        message = f"Invalid sort order '{order}'. Valid options are: {', '.join(valid_orders)}"
+        raise SortValidationError(message)
 
     # Safe to cast after validation
     return cast(ModelSortField, sort_by), cast(SortOrder, order)
