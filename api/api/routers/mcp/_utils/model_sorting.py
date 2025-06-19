@@ -7,6 +7,31 @@ from api.routers.mcp._mcp_models import ConciseLatestModelResponse, ConciseModel
 logger = logging.getLogger(__name__)
 
 
+class InvalidSortFieldError(ValueError):
+    """Raised when an invalid sort field is provided for model sorting."""
+
+    def __init__(self, sort_by: str, valid_fields: list[str]):
+        self.sort_by = sort_by
+        self.valid_fields = valid_fields
+        super().__init__(
+            f"Invalid sort field '{sort_by}' for models. Valid fields are: {', '.join(valid_fields)}",
+        )
+
+
+def validate_model_sort_field(sort_by: str) -> None:
+    """Validate that the sort field is valid for model entities.
+
+    Args:
+        sort_by: The field name to validate
+
+    Raises:
+        InvalidSortFieldError: If the sort field is not valid for models
+    """
+    valid_fields = ["release_date", "quality_index", "cost"]
+    if sort_by not in valid_fields:
+        raise InvalidSortFieldError(sort_by, valid_fields)
+
+
 def sort_models(
     models: list[ConciseModelResponse | ConciseLatestModelResponse],
     sort_by: ModelSortField,
@@ -26,7 +51,13 @@ def sort_models(
 
     Returns:
         Sorted list of models (modifies in place and returns the list)
+
+    Raises:
+        InvalidSortFieldError: If the sort field is not valid for models
     """
+    # Validate sort field at runtime
+    validate_model_sort_field(sort_by)
+
     # Separate latest models from concrete models for sorting
     latest_models = [m for m in models if isinstance(m, ConciseLatestModelResponse)]
     concrete_models = [m for m in models if isinstance(m, ConciseModelResponse)]

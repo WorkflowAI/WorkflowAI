@@ -1,10 +1,11 @@
+# pyright: reportPrivateUsage=false
 from datetime import datetime
 from typing import Literal
 
 import pytest
 
 from api.routers.mcp._mcp_models import AgentResponse
-from api.routers.mcp._utils.agent_sorting import sort_agents
+from api.routers.mcp._utils.agent_sorting import InvalidSortFieldError, sort_agents, validate_agent_sort_field
 
 
 def create_test_agent(
@@ -260,3 +261,70 @@ class TestSortAgents:
         assert agents[0].run_count == 10
         assert agents[0].total_cost_usd == 100.0
         assert agents[0].schemas[0].last_active_at == "2024-01-01T00:00:00"
+
+
+class TestAgentSortFieldValidation:
+    """Test suite for agent sort field validation."""
+
+    def test_validate_agent_sort_field_valid_fields(self):
+        """Test that validation passes for all valid agent sort fields."""
+        valid_fields = ["last_active_at", "total_cost_usd", "run_count"]
+
+        for field in valid_fields:
+            # Should not raise any exception
+            validate_agent_sort_field(field)
+
+    def test_validate_agent_sort_field_invalid_field(self):
+        """Test that validation raises error for invalid sort fields."""
+        invalid_fields = [
+            "invalid_field",
+            "name",
+            "created_at",
+            "updated_at",
+            "quality_index",  # This is valid for models but not agents
+            "cost",  # This is valid for models but not agents
+            "release_date",  # This is valid for models but not agents
+        ]
+
+        for field in invalid_fields:
+            with pytest.raises(InvalidSortFieldError) as exc_info:
+                validate_agent_sort_field(field)
+
+            error = exc_info.value
+            assert error.sort_by == field
+            assert error.valid_fields == ["last_active_at", "total_cost_usd", "run_count"]
+            assert f"Invalid sort field '{field}' for agents" in str(error)
+            assert "Valid fields are: last_active_at, total_cost_usd, run_count" in str(error)
+
+    def test_sort_agents_with_invalid_field_raises_error(self):
+        """Test that sort_agents raises validation error for invalid sort fields."""
+        agents = [create_test_agent("agent1")]
+
+        with pytest.raises(InvalidSortFieldError) as exc_info:
+            sort_agents(agents, "invalid_field", "desc")  # type: ignore
+
+        error = exc_info.value
+        assert error.sort_by == "invalid_field"
+        assert "Invalid sort field 'invalid_field' for agents" in str(error)
+
+    def test_sort_agents_validation_happens_before_sorting(self):
+        """Test that validation happens before any sorting logic is executed."""
+        agents = [create_test_agent("agent1")]
+        original_order = [a.agent_id for a in agents]
+
+        # This should fail validation and not modify the list
+        with pytest.raises(InvalidSortFieldError):
+            sort_agents(agents, "invalid_field", "desc")  # type: ignore
+
+        # List should remain unchanged
+        assert [a.agent_id for a in agents] == original_order
+
+    def test_invalid_sort_field_error_attributes(self):
+        """Test that InvalidSortFieldError has the correct attributes."""
+        try:
+            validate_agent_sort_field("invalid_field")
+        except InvalidSortFieldError as e:
+            assert hasattr(e, "sort_by")
+            assert hasattr(e, "valid_fields")
+            assert e.sort_by == "invalid_field"
+            assert e.valid_fields == ["last_active_at", "total_cost_usd", "run_count"]

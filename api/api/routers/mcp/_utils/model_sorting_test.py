@@ -5,7 +5,7 @@ from typing import Literal
 import pytest
 
 from api.routers.mcp._mcp_models import ConciseLatestModelResponse, ConciseModelResponse
-from api.routers.mcp._utils.model_sorting import sort_models
+from api.routers.mcp._utils.model_sorting import InvalidSortFieldError, sort_models, validate_model_sort_field
 
 
 def create_test_model(
@@ -278,3 +278,70 @@ class TestSortModels:
         assert sorted_model.cost_per_input_token_usd == 0.001
         assert sorted_model.cost_per_output_token_usd == 0.002
         assert sorted_model.release_date == "2024-06-15"
+
+
+class TestModelSortFieldValidation:
+    """Test suite for model sort field validation."""
+
+    def test_validate_model_sort_field_valid_fields(self):
+        """Test that validation passes for all valid model sort fields."""
+        valid_fields = ["release_date", "quality_index", "cost"]
+
+        for field in valid_fields:
+            # Should not raise any exception
+            validate_model_sort_field(field)
+
+    def test_validate_model_sort_field_invalid_field(self):
+        """Test that validation raises error for invalid sort fields."""
+        invalid_fields = [
+            "invalid_field",
+            "name",
+            "created_at",
+            "updated_at",
+            "last_active_at",  # This is valid for agents but not models
+            "total_cost_usd",  # This is valid for agents but not models
+            "run_count",  # This is valid for agents but not models
+        ]
+
+        for field in invalid_fields:
+            with pytest.raises(InvalidSortFieldError) as exc_info:
+                validate_model_sort_field(field)
+
+            error = exc_info.value
+            assert error.sort_by == field
+            assert error.valid_fields == ["release_date", "quality_index", "cost"]
+            assert f"Invalid sort field '{field}' for models" in str(error)
+            assert "Valid fields are: release_date, quality_index, cost" in str(error)
+
+    def test_sort_models_with_invalid_field_raises_error(self):
+        """Test that sort_models raises validation error for invalid sort fields."""
+        models: list[ConciseModelResponse | ConciseLatestModelResponse] = [create_test_model("model1")]
+
+        with pytest.raises(InvalidSortFieldError) as exc_info:
+            sort_models(models, "invalid_field", "desc")  # type: ignore
+
+        error = exc_info.value
+        assert error.sort_by == "invalid_field"
+        assert "Invalid sort field 'invalid_field' for models" in str(error)
+
+    def test_sort_models_validation_happens_before_sorting(self):
+        """Test that validation happens before any sorting logic is executed."""
+        models: list[ConciseModelResponse | ConciseLatestModelResponse] = [create_test_model("model1")]
+        original_order = [m.id for m in models]
+
+        # This should fail validation and not modify the list
+        with pytest.raises(InvalidSortFieldError):
+            sort_models(models, "invalid_field", "desc")  # type: ignore
+
+        # List should remain unchanged
+        assert [m.id for m in models] == original_order
+
+    def test_invalid_sort_field_error_attributes(self):
+        """Test that InvalidSortFieldError has the correct attributes."""
+        try:
+            validate_model_sort_field("invalid_field")
+        except InvalidSortFieldError as e:
+            assert hasattr(e, "sort_by")
+            assert hasattr(e, "valid_fields")
+            assert e.sort_by == "invalid_field"
+            assert e.valid_fields == ["release_date", "quality_index", "cost"]
