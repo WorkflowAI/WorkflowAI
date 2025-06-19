@@ -1,0 +1,104 @@
+---
+title: Designing a New Agent
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Designing a New Agent
+
+This playbook guides AI engineers—including those who collaborate with other agents and humans—through the end-to-end process of creating a **production-ready, observable, and evolvable** agent in WorkflowAI.
+
+> **When to use it**: Any time a stakeholder asks, "Can we build an agent that…?" reach for this checklist.
+
+---
+
+## 1. Clarify the Mission
+
+1. **Capture the user job-to-be-done.** Write a one-sentence description of the outcome the agent must deliver.
+2. **List success criteria.** eg. *Time to answer < 2s*, *accuracy > 90 % on golden set*, *average user satisfaction ≥ 4 / 5*.
+3. **Define non-goals & constraints.** Boundaries (privacy, legal, scope) prevent scope creep later.
+
+<Callout type="info">Share the draft in the <kbd>#ai-design-reviews</kbd> channel and let both humans and existing agents critique it.</Callout>
+
+## 2. Audit Knowledge & Tools
+
+| What | Questions to ask |
+|------|------------------|
+| **Data** | Do we need private docs, SQL, web search? Anything that must stay on-prem? |
+| **External APIs** | Payments, calendars, CRM, etc. Which endpoints and rate limits? |
+| **In-house tools** | Existing WorkflowAI tools or custom Python functions we can re-use? |
+
+Outcome: a checklist of **Capabilities** the agent will need.
+
+## 3. Design the System Prompt
+
+1. **Personality & voice** – friendly, neutral, authoritative?
+2. **Core instructions** – *"Always cite sources", "Refuse medical advice"*.
+3. **Few-shot examples** – at least 3 canonical requests & expected answers.
+4. **Tool usage guidelines** – when and how to call each tool.
+
+Save this as a **Draft v0** playground configuration.
+
+## 4. Choose the Model & Versioning Strategy
+
+* Start in the Playground: compare GPT-4o, Claude 3, Gemini, etc.
+* Create **major version 1** (prompt) and **minor versions** for candidate models.
+* Record latency & cost in the **Observability > Versions** dashboard.
+
+<Callout type="warning">Optimise for quality first, then cost. Downgrading a model is easier than rebuilding user trust.</Callout>
+
+## 5. Add & Configure Tools
+
+1. Re-use built-in tools (web-search, browser, code-exec) when possible.
+2. For custom logic, create a **Python tool** or **HTTP tool** and document parameters.
+3. Update the prompt so the agent knows when to invoke each tool.
+
+## 6. Safety & Guardrails
+
+* **Content filters** – profanity, PII, disallowed topics.
+* **Rate limits** – max tokens per request / per minute.
+* **Memory strategy** – decide what the agent should remember between calls.
+* **Fallbacks** – secondary model or graceful failures.
+
+## 7. Evaluation Loop
+
+1. Create a **golden dataset** (10–100 examples) covering happy paths & edge cases.
+2. Write **evaluation tests** in the *Evaluations* product or via YAML SDK.
+3. Run regression after every prompt or model change.
+4. Track metrics (accuracy, faithfulness, cost) in **Observability > Evaluations**.
+
+<Callout type="success">Merge only when the latest version beats the baseline on **all** gated metrics.</Callout>
+
+## 8. Collaboration & Review
+
+* Submit a **Design PR** containing the prompt, tool list, evaluation results.
+* At least one human peer + one specialised agent (e.g., *Prompt-Critic*) must approve.
+* Address review comments and update documentation.
+
+## 9. Deploy & Monitor
+
+1. Promote the winning **version** to a **deployment** (staging → prod).
+2. Configure **alerts** for latency spikes, error rates, spend, safety violations.
+3. Add dashboards to the shared Grafana / Slack channel.
+
+## 10. Continuous Improvement
+
+* Schedule a **weekly evaluation job**; auto-open a GitHub issue when regressions appear.
+* Record user feedback via thumbs-up/-down events and feed into tuning.
+* Every sprint, review tool efficacy and upgrade models when cost drops.
+
+---
+
+### Checklist (copy-paste in your ticket)
+
+- [ ] Mission & success criteria documented
+- [ ] Prompt v1 saved in Playground
+- [ ] Tools audited & configured
+- [ ] Safety guardrails enabled
+- [ ] Golden dataset + evaluation suite created
+- [ ] Baseline beats acceptance thresholds
+- [ ] Design PR approved (human & agent)
+- [ ] Deployment created & alerts configured
+- [ ] Documentation updated (this playbook linked)
+
+<Callout type="success">Congratulations 🎉 Your agent is live. Treat it as a **product**: observe, learn, and iterate.</Callout>
