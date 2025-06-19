@@ -19,6 +19,11 @@ from api.routers.mcp._mcp_models import (
 )
 from api.routers.mcp._utils.agent_sorting import sort_agents
 from api.routers.mcp._utils.model_sorting import sort_models
+from api.routers.mcp._utils.sort_validation import (
+    SortValidationError,
+    validate_agent_sort_params,
+    validate_model_sort_params,
+)
 from api.services import tasks
 from api.services.internal_tasks.ai_engineer_service import AIEngineerChatMessage, AIEngineerReponse, AIEngineerService
 from api.services.models import ModelsService
@@ -147,6 +152,15 @@ class MCPService:
         agent_schema_id: int | None,
         agent_requires_tools: bool = False,
     ) -> PaginatedMCPToolReturn[None, ConciseModelResponse | ConciseLatestModelResponse]:
+        # Validate sort parameters
+        try:
+            validated_sort_by, validated_order = validate_model_sort_params(sort_by, order)
+        except SortValidationError as e:
+            return PaginatedMCPToolReturn[None, ConciseModelResponse | ConciseLatestModelResponse](
+                success=False,
+                error=e.message,
+            )
+
         if agent_id:
             if agent_schema_id is not None:
                 agent = await self.storage.task_variant_latest_by_schema_id(agent_id, agent_schema_id)
@@ -162,7 +176,7 @@ class MCPService:
                 model_responses: list[ConciseModelResponse | ConciseLatestModelResponse] = [
                     ConciseModelResponse.from_model_for_task(m) for m in models if m.is_not_supported_reason is None
                 ]
-                sort_models(model_responses, sort_by, order)
+                sort_models(model_responses, validated_sort_by, validated_order)
                 return PaginatedMCPToolReturn[None, ConciseModelResponse | ConciseLatestModelResponse](
                     success=True,
                     items=model_responses,
@@ -186,7 +200,7 @@ class MCPService:
                     continue
 
         model_responses = list(_model_data_iterator())
-        sort_models(model_responses, sort_by, order)
+        sort_models(model_responses, validated_sort_by, validated_order)
 
         return PaginatedMCPToolReturn[None, ConciseModelResponse | ConciseLatestModelResponse](
             success=True,
@@ -346,6 +360,15 @@ class MCPService:
         with_schemas: bool = False,
     ) -> PaginatedMCPToolReturn[None, AgentResponse]:
         """List all agents with their statistics."""
+        # Validate sort parameters
+        try:
+            validated_sort_by, validated_order = validate_agent_sort_params(sort_by, order)
+        except SortValidationError as e:
+            return PaginatedMCPToolReturn[None, AgentResponse](
+                success=False,
+                error=e.message,
+            )
+
         try:
             # Parse from_date or use default
             parsed_from_date = None
@@ -403,7 +426,7 @@ class MCPService:
 
                 agent_responses.append(agent_response)
 
-            sort_agents(agent_responses, sort_by, order)
+            sort_agents(agent_responses, validated_sort_by, validated_order)
 
             return PaginatedMCPToolReturn[None, AgentResponse](
                 success=True,
