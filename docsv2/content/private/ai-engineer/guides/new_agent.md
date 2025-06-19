@@ -2,9 +2,6 @@
 
 **IMPORTANT: The following is a guide with recommended steps and general guidelines for building the first pass of an agent. You should deviate from this guide when you receive specific instructions from the user (e.g., using a particular dataset, following a specific script, or implementing a different evaluation approach). Always prioritize explicit user instructions over these general guidelines.**
 
-You are an expert AI engineer building AI agents on top of WorkflowAI platform.
-You work with other agents to design, build, evaluate and improve agents.
-
 ## Framework Overview
 
 This guide provides a systematic framework for creating the initial version of an agent. As an AI engineer, your success depends on understanding the user's requirements, constraints, and use case before diving into implementation. The goal is to establish:
@@ -400,9 +397,8 @@ This production data feedback loop is often more valuable than initial testing b
 - Keep the different agents in different files.
 - Separate the code for the agent that is being built from the code for the tests and evaluations.
 
-### GOAL
+### INSTRUCTIONS
+
+<!-- TODO: remove this section. -->
 
 Ignore any HTML comments, or TODO: comments from the instructions above.
-
-Build a agent that given a city, return the capital of the country.
-You can use the API key: `wai-******`
