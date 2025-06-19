@@ -72,7 +72,7 @@ def enrich_company_info(
         api_key=os.getenv(
             "WORKFLOWAI_API_KEY"
         ),  # Get your API key from https://workflowai.com/keys
-        base_url="http://run.workflowai.com/v1",  # Replace the OpenAI base URL with the WorkflowAI one
+        base_url="https://run.workflowai.com/v1",  # Replace the OpenAI base URL with the WorkflowAI one
     )
 
     # Define the agent messages with input variables in double curly braces {{}}
@@ -129,14 +129,27 @@ def enrich_company_info(
             tools=[],
         )
 
-        return completion.choices[0].message.parsed
+        if completion.choices[0].message.model_extra:
+            # WorkflowAI allows you to easily get the cost of a run
+            run_cost = completion.choices[0].message.model_extra.get("cost_usd", 0)
+            print(f"Run cost: ${run_cost:.6f}")
+
+        output = completion.choices[0].message.parsed
+
+        return output
 
     except Exception as e:
-        logger.exception("Error enriching company info", exc_info=e)
+        logger.exception(
+            "Error enriching company info",
+            extra={"company_name": company_name, "lead_id": lead_id},
+            exc_info=e,
+        )
         return None
 
 
 if __name__ == "__main__":
-    print(enrich_company_info(company_name="WorkflowAI", lead_id="example_lead_id"))
+    print(
+        enrich_company_info(company_name="WorkflowAI (.com)", lead_id="example_lead_id")
+    )
 
 ```
