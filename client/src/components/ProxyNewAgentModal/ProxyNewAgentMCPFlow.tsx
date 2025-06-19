@@ -1,0 +1,76 @@
+import { PlusIcon } from 'lucide-react';
+import { useCallback, useState } from 'react';
+import { useCopyToClipboard } from 'usehooks-ts';
+import { Button } from '../ui/Button';
+import { displaySuccessToaster } from '../ui/Sonner';
+import { ProxyNewAgentClientCombobox } from './components/ProxyNewAgentClientCombobox';
+import { ProxyNewAgentSectionHeader } from './components/ProxyNewAgentSectionHeader';
+
+const allClients = ['Cursor', 'Windsurf', 'Claude Code', 'GH Copilot'];
+
+export function ProxyNewAgentMCPFlow() {
+  const [selectedClient, setSelectedClient] = useState<string | undefined>('Cursor');
+  const [, copy] = useCopyToClipboard();
+
+  const code = `{
+  "mcpServers": {
+    "workflowai-staging": {
+      "url": "https://api.workflowai.dev/mcp/sse/",
+      "headers": {
+        "Authorization": "Bearer <your API token here>"
+      }
+    },
+  }
+}}`;
+
+  const onCopy = useCallback(() => {
+    copy(code);
+    displaySuccessToaster('Copied to clipboard');
+  }, [code, copy]);
+
+  return (
+    <div className='flex gap-5 flex-col w-full h-full p-10 overflow-y-auto'>
+      <ProxyNewAgentSectionHeader
+        title='Set up the WorkflowAI MCP Server'
+        description='[this is placeholder copy that I will add more later, but it’s about all the things you can do iwth the MCP server and how it’s great and you should totally install it]'
+        number={1}
+      />
+      <div className='flex flex-col bg-gray-50 rounded-[2px] w-full border border-gray-200 shadow-sm'>
+        <div className='flex flex-col gap-2 bg-white p-4 shadow-sm'>
+          <div className='text-gray-700 text-[13px] font-medium'>Select Your MCP Client</div>
+          <ProxyNewAgentClientCombobox
+            clients={allClients}
+            selectedClient={selectedClient}
+            setSelectedClient={setSelectedClient}
+          />
+        </div>
+        <div className='flex flex-col w-full p-4'>
+          <div className='text-gray-700 text-[16px] font-medium'>Installation</div>
+          <div className='flex pt-2'>
+            <Button
+              variant='newDesign'
+              icon={<PlusIcon className='w-4 h-4' />}
+              className='bg-gray-700 text-white hover:text-white hover:bg-gray-800 font-medium'
+            >{`Add WorkflowAI to ${selectedClient}`}</Button>
+          </div>
+          <div className='text-gray-500 text-[13px] font-normal pt-5 pb-2'>
+            Or manually add the WorkflowAI MCP server to <span className='text-gray-700'>mcp.json</span>:
+          </div>
+          <div className='flex w-full bg-white rounded-[2px] border border-gray-200 relative'>
+            <div className='p-3 whitespace-pre-wrap font-mono text-[13px] text-gray-600'>{code}</div>
+            <Button variant='newDesignGray' size='sm' onClick={onCopy} className='absolute right-4 top-4'>
+              Copy Code
+            </Button>
+          </div>
+          <a
+            className='text-gray-800 text-[13px] font-semibold underline cursor-pointer pt-5 pb-1'
+            href='https://docs2.workflowai.com/'
+            target='_blank'
+          >
+            Read the Full MCP Documentation
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}

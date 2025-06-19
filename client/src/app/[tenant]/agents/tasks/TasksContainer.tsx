@@ -7,8 +7,7 @@ import { useCallback, useMemo } from 'react';
 import { useApiKeysModal } from '@/components/ApiKeysModal/ApiKeysModal';
 import { NotFoundForNotMatchingTenant } from '@/components/NotFound';
 import { PageContainer } from '@/components/v2/PageContainer';
-import { useQueryParamModal } from '@/lib/globalModal';
-import { NEW_TASK_MODAL_OPEN } from '@/lib/globalModal';
+import { NEW_PROXY_AGENT_MODAL_OPEN, useQueryParamModal } from '@/lib/globalModal';
 import { useIsAllowed } from '@/lib/hooks/useIsAllowed';
 import { useIsSameTenant } from '@/lib/hooks/useTaskParams';
 import { taskApiRoute, taskDeploymentsRoute, taskRunsRoute, taskSchemaRoute } from '@/lib/routeFormatter';
@@ -73,16 +72,13 @@ export function TasksContainer(props: TasksContainerProps) {
   );
 
   const { apiKeys } = useOrFetchApiKeys(tenant);
-  const { openModal: openNewTaskModal } = useQueryParamModal(NEW_TASK_MODAL_OPEN);
+  const { openModal: openNewTaskModal } = useQueryParamModal(NEW_PROXY_AGENT_MODAL_OPEN);
   const { openModal: openApiKeysModal } = useApiKeysModal();
 
   const onNewTask = useCallback(() => {
     if (!checkIfSignedIn()) return;
     amplitude.track('user.clicked.new_task');
-    openNewTaskModal({
-      mode: 'new',
-      redirectToPlaygrounds: 'true',
-    });
+    openNewTaskModal();
   }, [openNewTaskModal, checkIfSignedIn]);
 
   if (!isSameTenant) {
