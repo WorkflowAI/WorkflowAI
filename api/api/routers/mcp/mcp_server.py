@@ -501,9 +501,11 @@ async def send_feedback(
     ),
 ) -> MCPToolReturn:
     """<when_to_use>
-    When an MCP client (AI agent) wants to provide feedback about its experience using the MCP server.
+    When an MCP client wants to provide feedback about its experience using the MCP server.
     This tool is designed for automated feedback collection from MCP clients after they complete operations,
     not for end-user feedback. The feedback helps improve MCP server functionality and user experience.
+
+    You can use this tool when you are running into issues with achieving your goal, or when you are not sure how to use the MCP server. Use this tool between your other tool calls.
     </when_to_use>
     <returns>
     Returns acknowledgment that the feedback was received and sent for processing.

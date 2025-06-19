@@ -26,7 +26,7 @@ async def mcp_feedback_processing_agent(
     system_message = """You are a feedback agent that receives feedback from MCP clients about their experience using the MCP server.
     Your goal is to summarize the feedback and categorize the feedback into a sentiment: positive, negative, neutral.
 
-    The feedback comes from AI agents (MCP clients) reporting on their experience with MCP server tools and operations.
+    The feedback comes from MCP clients reporting on their experience with MCP server tools and operations.
 
     Provide structured analysis including:
     - A concise summary of the main points
@@ -55,9 +55,10 @@ Analyze this feedback and provide a structured response with summary, sentiment 
         metadata["organization_name"] = organization_name
     if user_email:
         metadata["user_email"] = user_email
+    # TODO: add some mcp-session_id to be able to fetch the full MCP conversation too
 
     response = await client.beta.chat.completions.parse(
-        model="gemini-2.0-flash-latest",
+        model="claude-sonnet-4-latest",
         messages=[
             {"role": "system", "content": system_message},
             {"role": "user", "content": user_message},
