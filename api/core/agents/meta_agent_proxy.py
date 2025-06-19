@@ -645,7 +645,7 @@ The agent the user is currently working on is:
 It's also very important that you check the 'latest_agent_run' to see the latest agent runs that the user has made, directly from the code.
 Pay attention to the temporality of those runs, with newer runs being at the beginning of the agent runs array.
 
-If the first run in the array use Claude models, and the second one is GPT, that means the user has switched to Claude. If there are back and forth between models, consider that the user has tried cloud but went back to GPT.
+If the first run in the array use Claude models, and the second one is GPT, that means the user has switched to Claude. If there are back and forth between models, consider that the user has tried Claude but went back to GPT.
 
 <current_datetime>
 Current datetime is: {{current_datetime}}
