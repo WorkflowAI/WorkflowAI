@@ -70,7 +70,7 @@ async def test_prompt_cached_tokens(test_client: IntegrationTestClient):
 
     mock_gemini_call(
         httpx_mock=test_client.httpx_mock,
-        model=Model.GEMINI_2_5_PRO_PREVIEW_0605,
+        model=Model.GEMINI_2_5_PRO,
         usage={
             "promptTokenCount": 1_000,
             "candidatesTokenCount": 2_000,
@@ -78,7 +78,7 @@ async def test_prompt_cached_tokens(test_client: IntegrationTestClient):
         },
     )
 
-    run = await test_client.run_task_v1(task, model=Model.GEMINI_2_5_PRO_PREVIEW_0605, provider=Provider.GOOGLE_GEMINI)
+    run = await test_client.run_task_v1(task, model=Model.GEMINI_2_5_PRO, provider=Provider.GOOGLE_GEMINI)
 
     assert run["cost_usd"] == approx(
         (250 * 1.25 / 1_000_000) + (750 * 0.25 * 1.25 / 1_000_000) + (2_000 * 10 / 1_000_000),

@@ -141,45 +141,35 @@ class OpenAIProxyFunctionCall(BaseModel):
         )
 
 
-class OpenAIProxyFunctionDefinition(BaseModel):
+class OpenAIProxyToolDefinition(BaseModel):
     description: str | None = None
-    name: str
-    parameters: dict[str, Any]
+    name: str = Field(
+        description="The name of the tool. A tool can also reference a hosted WorkflowAI tool. Hosted "
+        "WorkflowAI tools should always have a name that starts with `@` and have no description or parameters.",
+    )
+    parameters: dict[str, Any] | None = None
     strict: bool | None = None
 
-    def to_domain(self) -> Tool:
+    model_config = ConfigDict(extra="allow")
+
+    def to_domain(self) -> Tool | ToolKind:
+        if not self.parameters and not self.description and self.name.startswith("@"):
+            try:
+                return ToolKind.from_str(self.name)
+            except ValueError:
+                pass
         return Tool(
             name=self.name,
             description=self.description,
-            input_schema=self.parameters,
+            input_schema=self.parameters or {},
             output_schema={},
             strict=self.strict,
         )
 
-    model_config = ConfigDict(extra="allow")
-
-
-class OpenAIProxyToolFunction(BaseModel):
-    description: str | None = None
-    name: str
-    parameters: dict[str, Any]
-    strict: bool | None = None
-
-    model_config = ConfigDict(extra="allow")
-
 
 class OpenAIProxyTool(BaseModel):
     type: Literal["function"]
-    function: OpenAIProxyToolFunction
-
-    def to_domain(self) -> Tool:
-        return Tool(
-            name=self.function.name,
-            description=self.function.description,
-            input_schema=self.function.parameters,
-            output_schema={},
-            strict=self.function.strict,
-        )
+    function: OpenAIProxyToolDefinition
 
     model_config = ConfigDict(extra="allow")
 
@@ -413,13 +403,6 @@ class _OpenAIProxyExtraFields(BaseModel):
         validation_alias=_alias_generator("use_cache"),
     )
 
-    workflowai_tools: list[str] | None = Field(
-        default=None,
-        description=f"A list of WorkflowAI hosted tools. Possible values are `{'`, `'.join(ToolKind)}`."
-        "When not provided, we attempt to detect tools in the system message.",
-        validation_alias=_alias_generator("workflowai_tools"),
-    )
-
     use_fallback: Literal["auto", "never"] | list[str] | None = Field(
         default=None,
         description="A way to configure the fallback behavior",
@@ -440,7 +423,7 @@ class OpenAIProxyChatCompletionRequest(_OpenAIProxyExtraFields):
     model: str
     frequency_penalty: float | None = None
     function_call: str | OpenAIProxyToolChoiceFunction | None = None
-    functions: list[OpenAIProxyFunctionDefinition] | None = None
+    functions: list[OpenAIProxyToolDefinition] | None = None
 
     logit_bias: dict[str, float] | None = None
     logprobs: bool | None = None
@@ -485,37 +468,48 @@ class OpenAIProxyChatCompletionRequest(_OpenAIProxyExtraFields):
     def uses_deprecated_functions(self) -> bool:
         return self.functions is not None
 
+    @property
+    def _first_system_content(self) -> str | None:
+        """Returns the text content of the first system message if the first message is a system message
+        The first message can either come from the version or the input messages
+        """
+        if self.workflowai_internal and self.workflowai_internal.version_messages:
+            message = self.workflowai_internal.version_messages[0]
+            try:
+                return next(c.text for c in message.content if c.text)
+            except StopIteration:
+                return None
+        if self.messages and self.messages[0].role == "system":
+            return self.messages[0].first_string_content
+        return None
+
+    def _raw_tool_iterator(self) -> Iterator[OpenAIProxyToolDefinition]:
+        if self.tools:
+            for t in self.tools:
+                if t.type == "function":
+                    yield t.function
+        if self.functions:
+            yield from self.functions
+
     def domain_tools(self) -> list[Tool | ToolKind] | None:
         """Returns a tuple of the tools and a boolean indicating if the function call is deprecated"""
 
-        def _raw_tool_iterator() -> Iterator[OpenAIProxyTool | OpenAIProxyFunctionDefinition]:
-            if self.tools:
-                yield from self.tools
-            if self.functions:
-                yield from self.functions
-
         def _iterator() -> Iterator[Tool | ToolKind]:
             used_tool_names = set[str]()
-            for t in _raw_tool_iterator():
+            for t in self._raw_tool_iterator():
                 d = t.to_domain()
                 if d.name in used_tool_names:
                     raise BadRequestError(f"Tool {d.name} is defined multiple times", capture=True)
                 used_tool_names.add(d.name)
                 yield d
 
-            if self.workflowai_tools is not None:
-                # WorkflowAI tools provides a way to avoid detection of tools in the instructions
-                try:
-                    yield from (ToolKind.from_str(t) for t in self.workflowai_tools)
-                except ValueError as e:
-                    raise BadRequestError(f"{str(e)}. Valid WorkflowAI tools are `{'`, `'.join(ToolKind)}`")
-            else:
-                if (
-                    self.messages
-                    and self.messages[0].role == "system"
-                    and (first_content := self.messages[0].first_string_content)
-                ):
-                    yield from get_tools_in_instructions(first_content)
+            if first_content := self._first_system_content:
+                for tool in get_tools_in_instructions(first_content):
+                    # Ignoring potential duplicates
+                    if tool.name in used_tool_names:
+                        continue
+                    used_tool_names.add(tool.name)
+                    yield tool
 
         return list(_iterator()) or None
 

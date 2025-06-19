@@ -274,7 +274,7 @@ class HTTPXProviderBase(AbstractProvider[ProviderConfigVar, ProviderRequestVar])
     # with httpx_provider.py
 
     async def check_valid(self) -> bool:
-        options = ProviderOptions(model=self.default_model(), max_tokens=10, temperature=0)
+        options = ProviderOptions(model=self.default_model(), max_tokens=100, temperature=0)
 
         try:
             await self.complete(

@@ -13,7 +13,7 @@ from enum import StrEnum
 class Model(StrEnum):
     # Default model order
     GPT_41_LATEST = "gpt-4.1-latest"
-    GEMINI_2_0_FLASH_LATEST = "gemini-2.0-flash-latest"
+    GEMINI_2_5_FLASH = "gemini-2.5-flash"
     CLAUDE_4_SONNET_LATEST = "claude-sonnet-4-latest"
     IMAGEN_3_0_LATEST = "imagen-3.0-generate-latest"
 
@@ -77,7 +77,11 @@ class Model(StrEnum):
     # --------------------------------------------------------------------------
     # Gemini Models
     # --------------------------------------------------------------------------
-    # GEMINI_2_0_FLASH_LATEST = "gemini-2.0-flash-latest"
+
+    GEMINI_2_5_PRO = "gemini-2.5-pro"
+    # GEMINI_2_5_FLASH = "gemini-2.5-flash"
+    GEMINI_2_5_FLASH_LITE_PREVIEW_0617 = "gemini-2.5-flash-lite-preview-06-17"
+
     GEMINI_2_5_PRO_PREVIEW_0605 = "gemini-2.5-pro-preview-06-05"
     GEMINI_2_5_FLASH_PREVIEW_0520 = "gemini-2.5-flash-preview-05-20"
     GEMINI_2_5_FLASH_THINKING_PREVIEW_0520 = "gemini-2.5-flash-thinking-preview-05-20"
@@ -86,6 +90,7 @@ class Model(StrEnum):
     GEMINI_2_5_FLASH_THINKING_PREVIEW_0417 = "gemini-2.5-flash-thinking-preview-04-17"
     GEMINI_2_5_PRO_PREVIEW_0325 = "gemini-2.5-pro-preview-03-25"
     GEMINI_2_5_PRO_EXP_0325 = "gemini-2.5-pro-exp-03-25"
+    GEMINI_2_0_FLASH_LATEST = "gemini-2.0-flash-latest"
     GEMINI_2_0_FLASH_001 = "gemini-2.0-flash-001"
     GEMINI_2_0_FLASH_LITE_001 = "gemini-2.0-flash-lite-001"
     GEMINI_2_0_FLASH_LITE_PREVIEW_2502 = "gemini-2.0-flash-lite-preview-02-05"

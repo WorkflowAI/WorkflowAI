@@ -25,6 +25,7 @@ from api.services.task_deployments import TaskDeploymentsService
 from api.services.versions import VersionsService
 from core.domain.analytics_events.analytics_events import OrganizationProperties, UserProperties
 from core.domain.users import UserIdentifier
+from core.storage.backend_storage import BackendStorage
 
 _mcp = FastMCP("WorkflowAI 🚀", stateless_http=True)  # pyright: ignore [reportUnknownVariableType]
 
@@ -43,7 +44,7 @@ async def get_mcp_service() -> MCPService:
         system_event_router(),
         analytics_service(user_properties=None, organization_properties=None, task_properties=None),
     )
-    tenant = await security_service.find_tenant(None, auth_header.split(" ")[1])
+    tenant = await security_service.tenant_from_credentials(auth_header.split(" ")[1])
     if not tenant:
         raise HTTPException(status_code=401, detail="Invalid bearer token")
     org_properties = OrganizationProperties.build(tenant)
@@ -117,24 +118,12 @@ async def get_mcp_service() -> MCPService:
     )
 
 
-async def get_task_tuple_from_task_id(task_id: str) -> TaskTuple:
+async def get_task_tuple_from_task_id(storage: BackendStorage, agent_id: str) -> TaskTuple:
     """Helper function to create TaskTuple from task_id for MCP tools that need it"""
-    request = get_http_request()
-    auth_header = request.headers.get("Authorization")
-    if not auth_header or not auth_header.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Missing bearer token")
-
-    _system_storage = storage.system_storage(storage.shared_encryption())
-    security_service = SecurityService(
-        _system_storage.organizations,
-        system_event_router(),
-        analytics_service(user_properties=None, organization_properties=None, task_properties=None),
-    )
-    tenant = await security_service.find_tenant(None, auth_header.split(" ")[1])
-    if not tenant:
-        raise HTTPException(status_code=401, detail="Invalid bearer token")
-
-    return (task_id, tenant.uid)
+    task_info = await storage.tasks.get_task_info(agent_id)
+    if not task_info:
+        raise HTTPException(status_code=404, detail=f"Task {agent_id} not found")
+    return task_info.id_tuple
 
 
 @_mcp.tool()
@@ -265,12 +254,13 @@ async def get_agent_versions(
     Returns the details of one or more versions of a WorkflowAI agent.
     </returns>"""
     service = await get_mcp_service()
-    task_tuple = await get_task_tuple_from_task_id(task_id)
+    task_tuple = await get_task_tuple_from_task_id(service.storage, task_id)
 
     if version_id:
         return await service.get_agent_version(task_tuple, version_id)
 
     return await service.list_agent_versions(task_tuple)
+
 
 # @_mcp.tool() WIP
 async def search_runs_by_metadata(
@@ -387,7 +377,7 @@ async def search_runs_by_metadata(
     - Error details if the run failed
     </returns>"""
     service = await get_mcp_service()
-    task_tuple = await get_task_tuple_from_task_id(agent_id)
+    task_tuple = await get_task_tuple_from_task_id(service.storage, agent_id)
     return await service.search_runs_by_metadata(
         task_tuple=task_tuple,
         field_queries=field_queries,
@@ -488,7 +478,7 @@ async def deploy_agent_version(
       - important_notes: Key considerations for the migration
     </returns>"""
     service = await get_mcp_service()
-    task_tuple = await get_task_tuple_from_task_id(agent_id)
+    task_tuple = await get_task_tuple_from_task_id(service.storage, agent_id)
 
     # Get user identifier for deployment tracking
     # Since we already validated the token in get_mcp_service, we can create a basic user identifier
