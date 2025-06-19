@@ -3,6 +3,7 @@
   "icon": "ClipboardCheck",
   "pages": [
     "index",
+    "setup",
     "side-by-side",
     "user-feedback"
   ]
