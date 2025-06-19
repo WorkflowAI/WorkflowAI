@@ -1,4 +1,4 @@
-import { captureMessage } from '@sentry/nextjs';
+import { captureMessage, captureException } from '@sentry/nextjs';
 
 export type JsonSchemaType = 'string' | 'number' | 'integer' | 'boolean' | 'object' | 'array' | 'null';
 
@@ -111,39 +111,218 @@ class InvalidSchemaError extends Error {
   }
 }
 
-function getSubSchemaNoRef(current: JsonValueSchema, key: string): JsonValueSchema {
-  if (current.type === 'object' || 'properties' in current) {
-    const next = current?.properties?.[key];
-    if (next) {
-      return next;
+function safeGetSubSchema(current: JsonValueSchema, key: string): JsonValueSchema | null {
+  try {
+    return getSubSchemaNoRef(current, key);
+  } catch (error) {
+    if (error instanceof InvalidSchemaError) {
+      // Log the error but don't throw - return null instead
+      captureException(error, {
+        tags: { 
+          errorType: 'schema_key_error',
+          schemaKey: key 
+        },
+        extra: {
+          schema: current,
+          key,
+          schemaType: current.type
+        }
+      });
     }
+    return null;
+  }
+}
+
+function getSubSchemaNoRef(current: JsonValueSchema, key: string): JsonValueSchema {
+  // Validate input parameters
+  if (!current || typeof current !== 'object') {
+    throw new InvalidSchemaError(
+      `Invalid schema object: ${typeof current}`, 
+      key, 
+      current || {}
+    );
+  }
+
+  if (typeof key !== 'string' || key.length === 0) {
+    throw new InvalidSchemaError(
+      `Invalid schema key: ${typeof key}`, 
+      key, 
+      current
+    );
+  }
+
+  // Handle object schema
+  if (current.type === 'object' || 'properties' in current) {
+    // Check properties first
+    if (current.properties && typeof current.properties === 'object') {
+      const next = current.properties[key];
+      if (next) {
+        return next;
+      }
+    }
+    
+    // Check additionalProperties
     if (current.additionalProperties && typeof current.additionalProperties === 'object') {
       return current.additionalProperties;
     }
-    throw new InvalidSchemaError(`Invalid schema key ${key}`, key, current);
+    
+    // If neither properties nor additionalProperties exist, this is an error
+    throw new InvalidSchemaError(
+      `Schema key "${key}" not found in object schema`, 
+      key, 
+      current
+    );
   }
 
+  // Handle array schema
   if (current.type === 'array') {
     const next = current.items;
     const idx = parseInt(key, 10);
+    
     if (Number.isNaN(idx)) {
-      throw new InvalidSchemaError(`Invalid schema key for array index`, key, current);
+      throw new InvalidSchemaError(
+        `Invalid array index "${key}" - must be a valid integer`, 
+        key, 
+        current
+      );
     }
 
     if (Array.isArray(next)) {
-      return next[idx];
+      if (idx >= 0 && idx < next.length) {
+        return next[idx];
+      }
+      throw new InvalidSchemaError(
+        `Array index ${idx} out of bounds (length: ${next.length})`, 
+        key, 
+        current
+      );
     }
-    if (next) return next;
-    throw new InvalidSchemaError(`Invalid schema key for array`, key, current);
+    
+    if (next && typeof next === 'object') {
+      return next;
+    }
+    
+    throw new InvalidSchemaError(
+      `No items schema defined for array`, 
+      key, 
+      current
+    );
   }
-  // TODO: we should likely never hit this line and raise an error instead of returning current
-  captureMessage('getSubSchemaNoRef is returning the same schema', {
+
+  // Handle ref schema
+  if ('$ref' in current && current.$ref) {
+    throw new InvalidSchemaError(
+      `Cannot navigate into $ref schema without resolving reference: ${current.$ref}`, 
+      key, 
+      current
+    );
+  }
+
+  // Log warning for unexpected schema navigation
+  captureMessage('Unexpected schema navigation - returning same schema', {
+    level: 'warning',
+    tags: {
+      schemaNavigation: true,
+      schemaType: current.type || 'unknown'
+    },
     extra: {
       current,
       key,
+      currentType: current.type,
+      hasProperties: 'properties' in current,
+      hasItems: 'items' in current,
+      hasRef: '$ref' in current
     },
   });
+  
+  // Return the current schema as fallback instead of throwing
   return current;
+}
+
+export function sanitizeRef(ref: string): string {
+  if (typeof ref !== 'string') {
+    throw new InvalidSchemaError(
+      `Invalid ref type: ${typeof ref}`, 
+      ref, 
+      { $ref: ref }
+    );
+  }
+
+  if (!ref.startsWith('#/$defs/')) {
+    throw new InvalidSchemaError(
+      `Invalid ref format - must start with '#/$defs/'`, 
+      ref, 
+      { $ref: ref }
+    );
+  }
+  
+  const key = ref.substring('#/$defs/'.length);
+  
+  if (key.length === 0) {
+    throw new InvalidSchemaError(
+      `Empty ref key after '#/$defs/'`, 
+      ref, 
+      { $ref: ref }
+    );
+  }
+  
+  if (key.includes('/')) {
+    throw new InvalidSchemaError(
+      `Nested ref not supported: ${key}`, 
+      ref, 
+      { $ref: ref }
+    );
+  }
+  
+  return key;
+}
+
+// Enhanced schema validation
+export function validateSchema(schema: unknown): schema is JsonValueSchema {
+  return (
+    typeof schema === 'object' && 
+    schema !== null && 
+    !Array.isArray(schema)
+  );
+}
+
+// Safe schema navigation with fallback
+export function navigateSchema(
+  schema: JsonValueSchema, 
+  path: string[], 
+  fallback?: JsonValueSchema
+): JsonValueSchema {
+  let current = schema;
+  
+  for (const key of path) {
+    const next = safeGetSubSchema(current, key);
+    if (next === null) {
+      if (fallback) {
+        return fallback;
+      }
+      // Return a safe default schema
+      return { type: 'object', properties: {} };
+    }
+    current = next;
+  }
+  
+  return current;
+}
+
+export function ignoreNulls(schema: JsonValueSchema, addNullable: boolean = false): JsonValueSchema {
+  if ('anyOf' in schema && schema.anyOf) {
+    const { anyOf, ...rest } = schema;
+    return filterAnyOneAllOf(rest, 'anyOf', anyOf, addNullable);
+  }
+  if ('oneOf' in schema && schema.oneOf) {
+    const { oneOf, ...rest } = schema;
+    return filterAnyOneAllOf(rest, 'oneOf', oneOf, addNullable);
+  }
+  if ('allOf' in schema && schema.allOf) {
+    const { allOf, ...rest } = schema;
+    return filterAnyOneAllOf(rest, 'allOf', allOf, addNullable);
+  }
+  return schema;
 }
 
 function filterAnyOneAllOf(
@@ -166,33 +345,6 @@ function filterAnyOneAllOf(
       : filteredSchemaWithMetadata;
   }
   return { ...schema, [type]: filtered };
-}
-
-export function ignoreNulls(schema: JsonValueSchema, addNullable: boolean = false): JsonValueSchema {
-  if ('anyOf' in schema && schema.anyOf) {
-    const { anyOf, ...rest } = schema;
-    return filterAnyOneAllOf(rest, 'anyOf', anyOf, addNullable);
-  }
-  if ('oneOf' in schema && schema.oneOf) {
-    const { oneOf, ...rest } = schema;
-    return filterAnyOneAllOf(rest, 'oneOf', oneOf, addNullable);
-  }
-  if ('allOf' in schema && schema.allOf) {
-    const { allOf, ...rest } = schema;
-    return filterAnyOneAllOf(rest, 'allOf', allOf, addNullable);
-  }
-  return schema;
-}
-
-export function sanitizeRef(ref: string) {
-  if (!ref.startsWith('#/$defs/')) {
-    throw new InvalidSchemaError(`Invalid ref`, ref, { $ref: ref });
-  }
-  const key = ref.substring('#/$defs/'.length);
-  if (key.includes('/')) {
-    throw new InvalidSchemaError(`Invalid nested ref`, ref, { $ref: ref });
-  }
-  return key;
 }
 
 export function extractSchemaRefName(schema: JsonValueSchema | undefined, key: string) {
