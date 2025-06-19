@@ -1,11 +1,58 @@
-
 This is an example of a fully-featured WorkflowAI agent that MUST serve as a blueprint when creating a new agent. This code example is written in Python, but the same concept applies for other SDKs, for example OpenAI TypeScript SDK and direct HTTP calls.
 
 The code below demonstrates:
+
 - How to use input variables in the agent's messages ({{example_variable}}), which should be always used for any new agent
+
+Pierre: for chat-based agents, input variables are not always needed.
+
+---
+
 - How to use structured output with Pydantic models, which should be always used for any new agent, except when the output is a simple string
+
+Pierre: I think the documentation should more clearly split between:
+
+- chat-based agents
+- structured outputs (classification, extraction, ...)
+- another popular use-cases is a chatbot that extracts information along the way too. usually implemented by using a chat-agent + function calling, but could be implemented by chat + structured output.
+
+Seems to me that the AI engineer needs to follow a checklist/plan for building a new agent:
+
+- define the goal of the agent
+- select what is the type of the agent (chat-based, structured output, chat + structured output)
+- select tools that are needed to achieve the goal
+- define the agent output schema (if any)
+- select a temperature
+- select a list of models to compare
+- ...
+
+basically, following the process a great AI engineer would follow to build a new agent.
+
+---
+
 - How to use the WorkflowAI hosted tools (@perplexity-sonar-pro, @google-search, @browser-text), that must be used when the agent needs real time data or web search capabilities
-- How to name the agent by adding a 'agent_id' metadata, which is used to identify the agent in the WorkflowAI platform. 'agent_id'  MUST ALWAYS be added to the agent's metadata
+
+Pierre: should we have a reference YAML files with all our hosted tools? Or maybe extract from the tools docstring and function signature directly (probably the best way)?
+
+```yaml
+tools:
+  - name: @perplexity-sonar-pro
+    when_to_use: "When the agent needs to search the web for information"
+    input:
+        query: str
+  - name: @google-search
+    when_to_use: "When the agent needs to search the web for information"
+    input:
+        query: str
+  - name: @browser-text
+    when_to_use: "When the agent needs to open a URL"
+    input:
+        url: str
+```
+
+---
+
+- How to name the agent by adding a 'agent_id' metadata, which is used to identify the agent in the WorkflowAI platform. 'agent_id' MUST ALWAYS be added to the agent's metadata
 - How to add metadata to the agent's runs (lead_id), which is used to easily search the agent's runs for this specific lead later
 - Where to set custom tools that will be manually implemented by the user and run in the user's runtime.
 
@@ -32,7 +79,7 @@ class CompanyInfo(BaseModel):
         description="Year the company was founded", examples=[2010]
     )
     websites: list[str] = Field(
-        description="List of company websites including main website and relevant subdomains. Only include TLDs",
+        description="List of company websites including main website and relevant subdomains. Include full URLs with protocol",
         examples=[
             [
                 "https://company.com",
@@ -42,7 +89,7 @@ class CompanyInfo(BaseModel):
         ],
     )
     employees_count: int = Field(
-        description="Number of employees in the company", examples=[1000]
+        description="Number of employees in the company"
     )
     summary: str = Field(
         description="Comprehensive summary of the company including business model, key products/services, and market position",
@@ -107,6 +154,7 @@ def enrich_company_info(
     try:
         completion = client.beta.chat.completions.parse(  # Non-structured output is also supported with 'client.chat.completions.parse'
             model="gemini-2.5-pro",  # Pick a model from https://workflowai.com/models, more than 100 models are available
+            # TODO: assumes a human is picking the model, but now we need to assume an agent is picking the model, so curl https://run.workflowai.com/v1/models or "list_available_models" in the MCP server
             messages=messages,
             response_format=CompanyInfo,  # Activate the structured output by passing the Pydantic model here
             extra_body={
@@ -117,7 +165,8 @@ def enrich_company_info(
             },
             metadata={
                 # IMPORTANT: add the 'agent_id' as metadata in order to have all the agent's runs logged at:
-                #  https://workflowai.com/workflowai/agents/company-info-enrichment/1/runs
+                #  https://workflowai.com/agents/company-info-enrichment/1/runs
+                # https://linear.app/workflowai/issue/WOR-4992/direct-to-latest-schema-when-url-doesnt-contain-schema#comment-7c808b74
                 "agent_id": "company-info-enrichment",
                 # Add the 'lead_id' in order to be able to easily search the agent's runs for this specific lead later
                 "lead_id": lead_id,
@@ -132,6 +181,8 @@ def enrich_company_info(
             # WorkflowAI allows you to easily get the cost of a run
             run_cost = completion.choices[0].message.model_extra.get("cost_usd", 0)
             print(f"Run cost: ${run_cost:.6f}")
+
+            # TODO: show how to access the latency as well.
 
         output = completion.choices[0].message.parsed
 
