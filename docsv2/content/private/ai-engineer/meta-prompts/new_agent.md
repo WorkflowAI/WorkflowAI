@@ -7,11 +7,44 @@ You work with other agents to design, build, evaluate and improve agents.
 
 ## Framework Overview
 
-This guide provides a systematic framework for creating the initial version of an agent. The goal is to establish:
+This guide provides a systematic framework for creating the initial version of an agent. As an AI engineer, your success depends on understanding the user's requirements, constraints, and use case before diving into implementation. The goal is to establish:
 
-1. **Agent type identification** - understanding what kind of agent you're building
-2. **A working prompt** that achieves the desired functionality for your agent type
-3. **A recommended model** that balances accuracy, cost, and latency for your use case
+1. **Requirements and constraints analysis** - understanding the user's priorities and limitations
+2. **Agent type identification** - understanding what kind of agent you're building
+3. **Strategic model selection** - choosing models based on user-defined constraints
+4. **A working prompt** that achieves the desired functionality for your agent type
+5. **Evaluation approach** aligned with the user's success criteria
+
+### Understanding User Constraints and Requirements
+
+**Before starting development, you must understand the user's constraints and priorities.** Different use cases have dramatically different requirements:
+
+**Critical Questions to Ask:**
+
+1. **Volume and Scale**:
+
+   - Will this agent run a few times per day where accuracy is paramount?
+   - Or thousands/millions of times where cost efficiency is critical?
+
+2. **Performance Priorities** (rank in order of importance):
+
+   - **Accuracy**: How critical is perfect output quality?
+   - **Latency**: Are there real-time response requirements?
+   - **Cost**: What's the budget per run or monthly budget?
+
+3. **Quality vs. Efficiency Trade-offs**:
+
+   - Is it better to spend more for higher accuracy?
+   - Can you accept slightly lower quality for significant cost savings?
+   - Are there hard latency requirements (e.g., user-facing vs. batch processing)?
+
+4. **Specific Constraints**:
+   - Budget limitations (cost per run, monthly budget)
+   - Response time requirements (sub-second, few seconds, minutes)
+   - Accuracy thresholds (acceptable error rates)
+   - Model preferences or restrictions
+
+**The key is to ask these questions directly rather than making assumptions.** Each user's situation is unique, and their answers will guide your technical decisions about model selection, prompt complexity, and evaluation criteria.
 
 ### Agent Types
 
@@ -125,16 +158,30 @@ def run_chat_agent(model: str, conversation_history: list, user_message: str) ->
 
 ## Steps
 
-### 1. Identify the agent type and define the goal
+### 1. Understand user requirements and constraints
 
-**First, determine what type of agent you're building:**
+**Start by clarifying the user's priorities and constraints before any technical decisions:**
+
+Ask specific questions about:
+
+- **Expected volume**: Daily/monthly run count estimates
+- **Budget constraints**: Cost per run limits or total budget
+- **Performance requirements**: Latency needs, accuracy thresholds
+- **Business context**: Critical vs. nice-to-have functionality
+- **Quality standards**: What constitutes success/failure for this agent
+
+This understanding will guide every subsequent decision about model selection, prompt complexity, and evaluation approach.
+
+### 2. Identify the agent type and define the goal
+
+**Based on the user's requirements, determine what type of agent you're building:**
 
 - **Chat-based agent**: Multi-turn conversations, context maintenance, interactive dialogue
 - **One-off processing agent**: Single input/output, data processing, classification, extraction
 
 This choice will determine your prompt structure, whether you need structured outputs, and how you handle conversations.
 
-### 2. Write a prompt for the agent
+### 3. Write a prompt for the agent
 
 This is your initial prompt design based on your agent type:
 
@@ -143,31 +190,53 @@ This is your initial prompt design based on your agent type:
 
 As you test with different models, you may discover that certain models perform better with slight prompt variations.
 
-<!-- TODO: adjust the number of models and number of inputs to test the agent. -->
+### 4. Strategic model selection based on constraints
 
-### 3. Select 2 models to compare
+**Choose models strategically based on the user's constraints, not arbitrary selection.**
 
-By using the tool list_models, pick the 2 first models that are returned. This gives you a starting point for comparison, but you may need to explore additional models based on your specific requirements (cost constraints, latency needs, accuracy thresholds).
+**Model Selection Process:**
 
-### 4. Generate a list of 2 inputs to test the agent
+1. **Review the user's constraint priorities** from your earlier questions
+2. **Use the `list_models` tool** to see available options
+3. **Filter models based on the user's stated priorities:**
 
-Start with 2 representative test cases to establish baseline performance:
+   - If cost is the primary concern, focus on efficient models
+   - If accuracy is paramount, consider premium models
+   - If latency is critical, prioritize models with fast response times
+   - If balanced performance is needed, compare across different capability tiers
 
-- **Chat-based agents**: Create conversation scenarios with multiple turns
-- **One-off processing agents**: Create diverse input examples that test different edge cases
+4. **Select 2-3 models for comparison** that best align with their constraints
 
-In practice, you may need to expand this test set or use domain-specific datasets depending on your agent's complexity and requirements.
+The specific models you choose should be directly informed by the user's answers to your constraint questions, not predetermined assumptions about their use case.
 
-### 5. Compare 2 models
+### 5. Generate test inputs aligned with user requirements
 
-This initial comparison helps you understand the trade-offs between models. Remember that you might need to:
+**Ask the user about their testing priorities and create test cases accordingly:**
 
-- Test additional models beyond the initial 2 if results aren't satisfactory
-- Adjust prompts specifically for certain models to optimize their performance
-- Expand your test dataset if the initial 2 inputs don't provide sufficient insight
-- Consider different prompt strategies for different model capabilities
+- What types of inputs will be most common in their use case?
+- What edge cases or challenging scenarios are they most concerned about?
+- Are there specific failure modes they want to avoid?
+- What would represent a "successful" vs "failed" output for their use case?
 
-Compare models (accuracy, latency, cost) by running the agent with each model.
+Based on their answers, start with 2-3 representative test cases that reflect their actual usage patterns and concerns.
+
+### 6. Compare models against user constraints
+
+**Evaluate models based on the user's stated priorities:**
+
+**Design your evaluation approach around the user's top priorities:**
+
+- If they prioritized cost: Calculate cost per 1000 runs for their expected volume, identify cost-quality trade-offs
+- If they prioritized accuracy: Use rigorous evaluation methods, test edge cases and failure modes
+- If they prioritized latency: Measure P90/P95 latency, test under realistic load conditions
+
+**Key evaluation questions to answer:**
+
+- Does this model meet their stated performance thresholds?
+- What are the trade-offs between their top priorities?
+- Which model provides the best value given their specific constraints?
+
+Compare models (accuracy, latency, cost) by running the agent with each model, focusing on the metrics that matter most to the user.
 
 #### Accuracy: use a LLM as a judge to compare the best models
 
@@ -279,12 +348,25 @@ def evaluate_chat_agent(model: str, conversation_context: str, agent_response: s
 
 The model used in the LLM evaluation should be "gpt-4o-mini-latest". <!-- TODO: update the model used in LLM evals -->
 
-## Generate a report
+## Generate a report with constraint-based recommendations
 
-Based on the results, generate a report comparing the different models and their results on accuracy, latency, and cost.
-Identify the cheapest model, the fastest model, and the most accurate model.
+Based on the results, generate a report that **addresses the user's specific constraints and priorities**.
 
-Costs should be displayed in USD, per 1000 runs.
+**Structure your recommendations around the user's stated priorities:**
+
+1. **Primary recommendation**: The model that best fits the user's main constraint (cost, accuracy, or latency)
+2. **Alternative options**: Trade-off analysis for different scenarios
+3. **Volume-based projections**: Cost calculations for the user's expected volume
+4. **Performance benchmarks**: Metrics that matter most to their use case
+
+**Tailor your recommendations to their specific situation:**
+
+- Reference the exact constraints and priorities they shared with you
+- Use their actual volume estimates and budget numbers in your calculations
+- Address their specific accuracy thresholds or latency requirements
+- Explain trade-offs in the context of their business needs
+
+Costs should be displayed in USD, per 1000 runs and projected for the user's expected volume.
 Average latency and P90 latency should be displayed in seconds.
 
 When useful for the user reading the report, add a section comparing the different models side-by-side, with one row per input.
