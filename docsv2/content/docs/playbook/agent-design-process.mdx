@@ -1,0 +1,368 @@
+---
+title: Agent Design Process Playbook
+description: A comprehensive guide for AI engineers to design, build, and deploy new agents in WorkflowAI
+---
+
+# Agent Design Process Playbook
+
+This playbook outlines the systematic process that AI engineers should follow when designing and building new agents in WorkflowAI. Whether you're working solo or collaborating with other AI agents and human team members, this guide will help ensure your agents are well-designed, reliable, and maintainable.
+
+## Overview
+
+Building effective AI agents requires a structured approach that balances rapid iteration with thoughtful design. This playbook provides a step-by-step process that covers:
+
+- Requirements gathering and problem definition
+- Agent architecture and capability design
+- Implementation and testing strategies
+- Deployment and monitoring best practices
+- Collaboration patterns with other agents and humans
+
+## Phase 1: Problem Definition & Requirements Gathering
+
+### 1.1 Understand the Use Case
+
+Before writing any code or prompts, clearly define:
+
+- **What problem is this agent solving?** Write a one-sentence problem statement.
+- **Who are the users?** Define whether they are end-users, other agents, or systems.
+- **What are the success criteria?** Define measurable outcomes.
+- **What are the constraints?** Consider latency, cost, accuracy requirements.
+
+**Deliverable**: A problem definition document that includes:
+```markdown
+## Agent: [Agent Name]
+
+### Problem Statement
+[One clear sentence describing the problem]
+
+### Users
+- Primary: [Who will directly interact with this agent]
+- Secondary: [Who will be affected by the agent's outputs]
+
+### Success Criteria
+- [ ] [Measurable outcome 1]
+- [ ] [Measurable outcome 2]
+- [ ] [Measurable outcome 3]
+
+### Constraints
+- Latency: [e.g., < 3 seconds response time]
+- Cost: [e.g., < $0.01 per request]
+- Accuracy: [e.g., > 95% success rate]
+```
+
+### 1.2 Define Input/Output Specifications
+
+Clearly specify:
+
+- **Input format**: What data will the agent receive? (text, images, structured data)
+- **Input validation**: What are valid vs invalid inputs?
+- **Output format**: What should the agent produce? (text, structured data, actions)
+- **Error handling**: How should the agent handle edge cases?
+
+**Example Specification**:
+```python
+# Input Schema
+{
+    "user_query": str,  # Required: The user's question
+    "context": dict,    # Optional: Additional context
+    "metadata": dict    # Optional: Request metadata
+}
+
+# Output Schema
+{
+    "response": str,    # The agent's response
+    "confidence": float,  # 0-1 confidence score
+    "metadata": dict    # Response metadata
+}
+```
+
+## Phase 2: Agent Architecture Design
+
+### 2.1 Choose the Agent Type
+
+Based on your requirements, determine the agent architecture:
+
+1. **Simple Prompt-Based Agent**
+   - Best for: Straightforward tasks with clear inputs/outputs
+   - Example: Text classification, simple Q&A
+
+2. **Tool-Using Agent**
+   - Best for: Tasks requiring external data or actions
+   - Example: Web search, database queries, API calls
+
+3. **Multi-Step Reasoning Agent**
+   - Best for: Complex tasks requiring planning
+   - Example: Research tasks, multi-source analysis
+
+4. **Collaborative Agent**
+   - Best for: Tasks requiring coordination with other agents
+   - Example: Complex workflows, distributed processing
+
+### 2.2 Design the Prompt Architecture
+
+Structure your prompts following these principles:
+
+1. **Clear Role Definition**
+   ```
+   You are a [specific role] specialized in [domain].
+   Your primary objective is to [main goal].
+   ```
+
+2. **Explicit Capabilities**
+   ```
+   You have access to the following tools:
+   - @tool-name: [what it does]
+   - @tool-name: [what it does]
+   ```
+
+3. **Behavioral Guidelines**
+   ```
+   Follow these guidelines:
+   - [Specific behavior 1]
+   - [Specific behavior 2]
+   - [Error handling approach]
+   ```
+
+4. **Output Formatting**
+   ```
+   Always structure your response as:
+   - [Format specification]
+   - [Example output]
+   ```
+
+### 2.3 Select Models and Tools
+
+Choose appropriate models based on your requirements:
+
+- **For speed**: Consider lighter models (e.g., `gpt-4o-mini`, `claude-3-haiku`)
+- **For accuracy**: Use more capable models (e.g., `gpt-4o`, `claude-3-5-sonnet`)
+- **For specialized tasks**: Consider fine-tuned or domain-specific models
+
+Select tools based on capabilities needed:
+- `@google-search` for real-time information
+- `@browser-text` for web page extraction
+- `@perplexity-sonar-pro` for comprehensive web search
+- Custom tools for specific integrations
+
+## Phase 3: Implementation
+
+### 3.1 Start with the Playground
+
+Use WorkflowAI's playground to rapidly prototype:
+
+1. **Create initial prompt** in the playground
+2. **Test with representative inputs** from your requirements
+3. **Iterate on prompt design** based on outputs
+4. **Compare different models** for your use case
+5. **Save successful configurations** for reference
+
+### 3.2 Implement Core Functionality
+
+Follow this implementation checklist:
+
+- [ ] Set up agent configuration with appropriate model
+- [ ] Implement input validation
+- [ ] Add necessary tools (hosted or custom)
+- [ ] Implement error handling
+- [ ] Add logging and observability
+- [ ] Create unit tests for critical paths
+
+**Example Implementation**:
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://api.workflowai.com/v1",
+    api_key=os.environ["WORKFLOWAI_API_KEY"]
+)
+
+def create_agent_response(user_input: str, agent_name: str):
+    try:
+        # Input validation
+        if not user_input or len(user_input) > 1000:
+            raise ValueError("Invalid input")
+        
+        # Create completion with agent identification
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a helpful assistant. Use @google-search when needed."
+                },
+                {
+                    "role": "user",
+                    "content": user_input
+                }
+            ],
+            metadata={
+                "agent_id": agent_name,
+                "version": "1.0"
+            }
+        )
+        
+        return response.choices[0].message.content
+        
+    except Exception as e:
+        # Proper error handling
+        logger.error(f"Agent error: {e}")
+        return None
+```
+
+### 3.3 Implement Structured Outputs (When Needed)
+
+For agents that need to return structured data:
+
+```python
+from pydantic import BaseModel
+
+class AgentResponse(BaseModel):
+    answer: str
+    confidence: float
+    sources: list[str]
+
+response = client.beta.chat.completions.parse(
+    model="gpt-4o",
+    messages=messages,
+    response_format=AgentResponse
+)
+```
+
+## Phase 4: Testing & Validation
+
+### 4.1 Create Test Scenarios
+
+Develop comprehensive test cases:
+
+1. **Happy Path Tests**: Normal expected inputs
+2. **Edge Cases**: Boundary conditions, empty inputs
+3. **Error Cases**: Invalid inputs, tool failures
+4. **Performance Tests**: Latency and throughput
+
+### 4.2 Implement Evaluation Dataset
+
+Create an evaluation dataset with:
+- 20-50 representative inputs
+- Expected outputs or success criteria
+- Edge cases and failure modes
+
+```python
+test_cases = [
+    {
+        "input": "What's the weather in Paris?",
+        "expected_behavior": "Uses weather tool",
+        "success_criteria": "Returns current temperature"
+    },
+    # ... more test cases
+]
+```
+
+### 4.3 Use WorkflowAI's Evaluation Features
+
+1. **Run batch evaluations** against your test dataset
+2. **Compare model performance** across different models
+3. **Analyze latency and cost** metrics
+4. **Review agent outputs** for quality
+
+## Phase 5: Deployment & Monitoring
+
+### 5.1 Deploy with Versioning
+
+Use WorkflowAI's deployment features:
+
+1. **Create initial deployment**
+   ```
+   agent-name/v1/production
+   ```
+
+2. **Test in staging first**
+   ```
+   agent-name/v1/staging
+   ```
+
+3. **Use semantic versioning** for updates
+   - v1.0: Initial release
+   - v1.1: Minor improvements
+   - v2.0: Major changes
+
+### 5.2 Set Up Monitoring
+
+Configure monitoring for:
+
+- **Performance metrics**: Latency, throughput
+- **Quality metrics**: Success rate, user feedback
+- **Cost metrics**: Token usage, API calls
+- **Error rates**: Failures, timeouts
+
+### 5.3 Implement Feedback Loops
+
+Enable continuous improvement:
+
+1. **Collect user feedback** using feedback tokens
+2. **Review agent runs** regularly
+3. **Identify improvement areas** from real usage
+4. **Update prompts via deployments** without code changes
+
+## Phase 6: Collaboration Patterns
+
+### 6.1 Working with Other AI Agents
+
+When your agent needs to collaborate:
+
+1. **Define clear interfaces** between agents
+2. **Use structured outputs** for agent-to-agent communication
+3. **Implement handoff protocols** for complex workflows
+4. **Version interfaces** to manage dependencies
+
+### 6.2 Human-in-the-Loop Design
+
+For agents requiring human oversight:
+
+1. **Identify decision points** requiring human input
+2. **Design clear escalation paths**
+3. **Provide context for human reviewers**
+4. **Implement feedback incorporation**
+
+## Best Practices Checklist
+
+Before considering your agent complete, ensure:
+
+- [ ] **Clear documentation** of agent capabilities and limitations
+- [ ] **Comprehensive error handling** for all failure modes
+- [ ] **Performance optimization** for latency and cost
+- [ ] **Security considerations** for data handling
+- [ ] **Versioning strategy** for updates
+- [ ] **Monitoring setup** for production visibility
+- [ ] **Feedback mechanism** for continuous improvement
+- [ ] **Runbook** for common issues and fixes
+
+## Common Pitfalls to Avoid
+
+1. **Over-engineering**: Start simple, iterate based on real usage
+2. **Unclear objectives**: Always tie back to measurable success criteria
+3. **Ignoring edge cases**: Plan for failures and unexpected inputs
+4. **Skipping evaluation**: Always validate before deployment
+5. **Poor error messages**: Provide actionable feedback to users
+6. **Neglecting costs**: Monitor and optimize token usage
+7. **Rigid designs**: Build flexibility for future improvements
+
+## Conclusion
+
+Building great AI agents is an iterative process that requires both technical skill and thoughtful design. By following this playbook, you'll create agents that are:
+
+- **Reliable**: Handle edge cases gracefully
+- **Maintainable**: Easy to update and improve
+- **Observable**: Provide visibility into behavior
+- **Cost-effective**: Optimize for efficiency
+- **User-friendly**: Deliver value to end users
+
+Remember: The best agents are built through iteration. Start with a minimal viable agent, deploy it, gather feedback, and continuously improve based on real-world usage.
+
+## Next Steps
+
+1. Use this playbook as a checklist for your next agent
+2. Customize the process based on your specific needs
+3. Share learnings with your team to improve the process
+4. Contribute improvements back to this playbook
+
+Happy agent building! 🤖
