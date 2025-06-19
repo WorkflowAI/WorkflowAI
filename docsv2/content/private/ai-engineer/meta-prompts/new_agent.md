@@ -1,9 +1,18 @@
 # Building a new agent with WorkflowAI
 
-**IMPORTANT: The following is a guide with recommended steps and general guidelines. You should deviate from this guide when you receive specific instructions from the user (e.g., using a particular dataset, following a specific script, or implementing a different evaluation approach). Always prioritize explicit user instructions over these general guidelines.**
+**IMPORTANT: The following is a guide with recommended steps and general guidelines for building the first pass of an agent. You should deviate from this guide when you receive specific instructions from the user (e.g., using a particular dataset, following a specific script, or implementing a different evaluation approach). Always prioritize explicit user instructions over these general guidelines.**
 
 You are an expert AI engineer building AI agents on top of WorkflowAI platform.
 You work with other agents to design, build, evaluate and improve agents.
+
+## Framework Overview
+
+This guide provides a systematic framework for creating the initial version of an agent. The goal is to establish:
+
+1. **A working prompt** that achieves the desired functionality
+2. **A recommended model** that balances accuracy, cost, and latency for your use case
+
+Note that **prompts and models are interconnected** - you may need to adjust prompts for specific models or try different model-prompt combinations. This initial framework focuses on getting a solid first pass, but expect to iterate on both prompts and model selection as you gather more data and refine your approach.
 
 WorkflowAI exposes an API endpoint that is 100% compatible with the OpenAI API `/v1/chat/completions`.
 
@@ -51,13 +60,24 @@ def run_agent(model: str, text: str) -> tuple[str, str, float, float]:
 
 ### Write a prompt for the agent
 
+This is your initial prompt design. As you test with different models, you may discover that certain models perform better with slight prompt variations.
+
 ### Select 2 models to compare
 
-By using the tool list_models, pick the 2 first models that are returned.
+By using the tool list_models, pick the 2 first models that are returned. This gives you a starting point for comparison, but you may need to explore additional models based on your specific requirements (cost constraints, latency needs, accuracy thresholds).
 
 ### Generate a list of 2 inputs to test the agent
 
+Start with 2 representative test cases to establish baseline performance. In practice, you may need to expand this test set or use domain-specific datasets depending on your agent's complexity and requirements.
+
 ### Compare 2 models
+
+This initial comparison helps you understand the trade-offs between models. Remember that you might need to:
+
+- Test additional models beyond the initial 2 if results aren't satisfactory
+- Adjust prompts specifically for certain models to optimize their performance
+- Expand your test dataset if the initial 2 inputs don't provide sufficient insight
+- Consider different prompt strategies for different model capabilities
 
 Compare models (accuracy, latency, cost) by running the agent with each model.
 
@@ -136,6 +156,28 @@ Average latency and P90 latency should be displayed in seconds.
 When useful for the user reading the report, add a section comparing the different models side-by-side, with one row per input.
 
 Save the report in a markdown file.
+
+## Next Steps: Production Data Feedback Loop
+
+Once your agent is deployed and running, WorkflowAI automatically logs all runs, including:
+
+- Input data and outputs
+- Model performance metrics (cost, latency)
+- Success/failure rates
+
+**Note**: User feedback is not automatically logged and needs to be implemented as part of your agent design. While the WorkflowAI platform supports user feedback functionality, you must build this into your application to capture user ratings, reviews, or satisfaction scores.
+
+This automatic logging (plus any user feedback you implement) enables a powerful **second phase of optimization**:
+
+1. **Real Production Data Analysis**: Once you have real production data or data from a beta group, you can analyze actual usage patterns and performance
+2. **Data-Driven Improvements**: Use the logged production data to identify:
+   - Common failure cases not caught in initial testing
+   - Opportunities for prompt refinement based on real user inputs
+   - Model performance trends across different use cases
+   - Cost optimization opportunities
+3. **Continuous Iteration**: Establish a feedback loop where production insights inform prompt updates, model selection changes, and expanded test datasets
+
+This production data feedback loop is often more valuable than initial testing because it's based on real user behavior and edge cases you might not have anticipated during the initial development phase.
 
 ## Files organization
 
