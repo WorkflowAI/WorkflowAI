@@ -71,6 +71,7 @@ Relevant guides:
 
 ## TODO:
 
+- [ ] Add `metadata` in the `new_agent` guide.
 - [ ] write all guides for the AI Engineer agent.
 - [ ] add a guide about "deployments".
 - [ ] UX: how to connect the web app and the AI Engineer agent?

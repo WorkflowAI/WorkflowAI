@@ -83,16 +83,20 @@ client = openai.OpenAI(
     base_url="https://run-preview.workflowai.com/v1" # the base_url must be set to the WorkflowAI API endpoint
 )
 
+class Translation(BaseModel):
+    translation: str
+
 def run_processing_agent(model: str, text: str) -> tuple[str, str, float, float]:
     """
     Run the one-off processing agent (e.g., translation, classification).
     Returns the response, cost (USD), and duration (seconds).
     """
-    response = client.chat.completions.create(
+    response = client.beta.chat.completions.parse( # use `client.beta.chat.completions.parse` when response_format is provided
         model=model,
         messages=[
             {"role": "system", "content": "Translate the following text to French: {{text}}"}, # the text is passed as a variable as Jinja2 template
         ],
+        response_format=Translation,
         metadata={
             "agent_id": "your_agent_id", # recommended to identify the agent in the logs, for example "translate_to_french"
         },
@@ -105,7 +109,7 @@ def run_processing_agent(model: str, text: str) -> tuple[str, str, float, float]
 
     return (
         response.id, # identify the run in the logs
-        response.choices[0].message.content,
+        response.choices[0].message.parsed.translation,
         response.choices[0].cost_usd, # calculated by WorkflowAI
         response.choices[0].duration_seconds # calculated by WorkflowAI
     )
