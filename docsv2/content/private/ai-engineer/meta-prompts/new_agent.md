@@ -9,14 +9,41 @@ You work with other agents to design, build, evaluate and improve agents.
 
 This guide provides a systematic framework for creating the initial version of an agent. The goal is to establish:
 
-1. **A working prompt** that achieves the desired functionality
-2. **A recommended model** that balances accuracy, cost, and latency for your use case
+1. **Agent type identification** - understanding what kind of agent you're building
+2. **A working prompt** that achieves the desired functionality for your agent type
+3. **A recommended model** that balances accuracy, cost, and latency for your use case
+
+### Agent Types
+
+There are two main types of AI agents, each requiring different approaches:
+
+**1. Chat-based Agents**
+
+- Interactive, back-and-forth conversations with users
+- Multi-turn dialogue capability
+- Context maintenance across conversation
+- Examples: Customer support bots, advisory agents, tutoring systems
+- May use structured outputs when extracting information from conversations (user intent, entities, structured data)
+
+**2. One-off Processing Agents**
+
+- Single input/output operations
+- Information extraction, classification, transformation tasks
+- No conversation state needed
+- Examples: Document classifiers, data extractors, content moderators, translators
+- Often use structured outputs for precise data extraction
+
+**The agent type fundamentally affects your prompt design, evaluation approach, and whether you need structured outputs.**
 
 Note that **prompts and models are interconnected** - you may need to adjust prompts for specific models or try different model-prompt combinations. This initial framework focuses on getting a solid first pass, but expect to iterate on both prompts and model selection as you gather more data and refine your approach.
 
 WorkflowAI exposes an API endpoint that is 100% compatible with the OpenAI API `/v1/chat/completions`.
 
 So, in order to build a new agent, you can use the OpenAI SDK, for example:
+
+<!-- TODO: give code samples for other languages than Python. -->
+
+### Example: One-off Processing Agent
 
 ```python
 import openai
@@ -26,9 +53,9 @@ client = openai.OpenAI(
     base_url="https://run-preview.workflowai.com/v1" # the base_url must be set to the WorkflowAI API endpoint
 )
 
-def run_agent(model: str, text: str) -> tuple[str, str, float, float]:
+def run_processing_agent(model: str, text: str) -> tuple[str, str, float, float]:
     """
-    Run the agent with the given model and messages.
+    Run the one-off processing agent (e.g., translation, classification).
     Returns the response, cost (USD), and duration (seconds).
     """
     response = client.chat.completions.create(
@@ -54,23 +81,84 @@ def run_agent(model: str, text: str) -> tuple[str, str, float, float]:
     )
 ```
 
+### Example: Chat-based Agent
+
+```python
+def run_chat_agent(model: str, conversation_history: list, user_message: str) -> tuple[str, str, float, float]:
+    """
+    Run the chat-based agent with conversation history.
+    Returns the response, cost (USD), and duration (seconds).
+    """
+    # Build messages with conversation history
+    messages = [
+        {"role": "system", "content": "You are a helpful customer support agent. Be friendly and professional."}
+    ]
+
+    # Add conversation history
+    messages.extend(conversation_history)
+
+    # Add current user message
+    messages.append({"role": "user", "content": user_message})
+
+    response = client.chat.completions.create(
+        model=model,
+        messages=messages,
+        metadata={
+            "agent_id": "customer_support_chat", # identify the chat agent
+            "conversation_id": "conv_123", # track the conversation
+        },
+        extra_body={
+            "input": {
+                "user_message": user_message,
+                "conversation_length": len(conversation_history)
+            }
+        }
+    )
+
+    return (
+        response.id,
+        response.choices[0].message.content,
+        response.choices[0].cost_usd,
+        response.choices[0].duration_seconds
+    )
+```
+
 ## Steps
 
-### Define the goal of the agent
+### 1. Identify the agent type and define the goal
 
-### Write a prompt for the agent
+**First, determine what type of agent you're building:**
 
-This is your initial prompt design. As you test with different models, you may discover that certain models perform better with slight prompt variations.
+- **Chat-based agent**: Multi-turn conversations, context maintenance, interactive dialogue
+- **One-off processing agent**: Single input/output, data processing, classification, extraction
 
-### Select 2 models to compare
+This choice will determine your prompt structure, whether you need structured outputs, and how you handle conversations.
+
+### 2. Write a prompt for the agent
+
+This is your initial prompt design based on your agent type:
+
+- **Chat-based agents**: Focus on conversational flow, context handling, and maintaining helpful dialogue
+- **One-off processing agents**: Focus on clear input/output expectations and specific task completion
+
+As you test with different models, you may discover that certain models perform better with slight prompt variations.
+
+<!-- TODO: adjust the number of models and number of inputs to test the agent. -->
+
+### 3. Select 2 models to compare
 
 By using the tool list_models, pick the 2 first models that are returned. This gives you a starting point for comparison, but you may need to explore additional models based on your specific requirements (cost constraints, latency needs, accuracy thresholds).
 
-### Generate a list of 2 inputs to test the agent
+### 4. Generate a list of 2 inputs to test the agent
 
-Start with 2 representative test cases to establish baseline performance. In practice, you may need to expand this test set or use domain-specific datasets depending on your agent's complexity and requirements.
+Start with 2 representative test cases to establish baseline performance:
 
-### Compare 2 models
+- **Chat-based agents**: Create conversation scenarios with multiple turns
+- **One-off processing agents**: Create diverse input examples that test different edge cases
+
+In practice, you may need to expand this test set or use domain-specific datasets depending on your agent's complexity and requirements.
+
+### 5. Compare 2 models
 
 This initial comparison helps you understand the trade-offs between models. Remember that you might need to:
 
@@ -85,9 +173,12 @@ Compare models (accuracy, latency, cost) by running the agent with each model.
 
 <!-- Read: https://cookbook.openai.com/examples/enhance_your_prompts_with_meta_prompting?utm_source=chatgpt.com -->
 
-Depending on the agent that is being built, define some evaluation criteria and write a prompt for a LLM to judge the best models. Use structured outputs to get the scores.
+Depending on the agent type and requirements, define evaluation criteria and write a prompt for an LLM to judge the best models.
 
-For example:
+**For One-off Processing Agents**: Use structured outputs to get precise scores and classifications.
+**For Chat-based Agents**: Focus on conversational quality, helpfulness, and context maintenance - structured outputs are useful when extracting information from the chat (e.g., user intent, entities, structured data).
+
+### Example: Structured Evaluation for One-off Processing Agent
 
 ```python
 evaluation_prompt = """
@@ -141,6 +232,49 @@ def evaluate_model(model: str, original_article: str, summary: str, evaluated_ru
     )
 
     return response.choices[0].message.parsed
+```
+
+### Example: Chat-based Agent Evaluation
+
+```python
+chat_evaluation_prompt = """
+You are evaluating a customer support chat interaction. Below is the conversation history and the agent's latest response:
+
+**Conversation Context**: {{conversation_context}}
+**Agent Response**: {{agent_response}}
+
+Please evaluate the agent's response on a scale of 1-5 for each criterion:
+
+1. **Helpfulness**: Does the response address the user's question or concern effectively?
+2. **Professionalism**: Is the tone appropriate and professional?
+3. **Context Awareness**: Does the response show understanding of the conversation history?
+4. **Clarity**: Is the response clear and easy to understand?
+
+Provide a brief justification for each score.
+"""
+
+def evaluate_chat_agent(model: str, conversation_context: str, agent_response: str, evaluated_run_id: str) -> str:
+    """
+    Evaluate the chat agent's performance - using simple text response for conversational evaluation.
+    """
+    response = client.chat.completions.create(
+        model=model,
+        messages=[
+            {"role": "system", "content": chat_evaluation_prompt},
+        ],
+        metadata={
+            "agent_id": "your_agent_id:chat_judge",
+            "evaluated_run_id": evaluated_run_id,
+        },
+        extra_body={
+            "input": {
+                "conversation_context": conversation_context,
+                "agent_response": agent_response
+            }
+        }
+    )
+
+    return response.choices[0].message.content
 ```
 
 The model used in the LLM evaluation should be "gpt-4o-mini-latest". <!-- TODO: update the model used in LLM evals -->
