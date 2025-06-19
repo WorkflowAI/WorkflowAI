@@ -3,6 +3,7 @@ import {
   AdvancedSettings,
   getCacheValue,
 } from '@/app/[tenant]/agents/[taskId]/[taskSchemaId]/proxy-playground/hooks/useProxyPlaygroundSearchParams';
+import { getToolsFromMessages } from '@/app/[tenant]/agents/[taskId]/[taskSchemaId]/proxy-playground/utils';
 import { Method, SSEClient } from '@/lib/api/client';
 import { API_URL } from '@/lib/constants';
 import { TaskID } from '@/types/aliases';
@@ -36,26 +37,6 @@ function getContent(response: OpenAIProxyChatCompletionResponse): Record<string,
     console.error(error);
     return { content: text };
   }
-}
-
-function getWorkflowAITools(toolCalls?: (ToolKind | Tool_Output)[]): string[] | undefined {
-  if (!toolCalls) {
-    return undefined;
-  }
-
-  const workflowaiTools: string[] = [];
-
-  for (const tool of toolCalls) {
-    if (typeof tool === 'string') {
-      workflowaiTools.push(tool);
-    }
-  }
-
-  if (workflowaiTools.length === 0) {
-    return undefined;
-  }
-
-  return workflowaiTools;
 }
 
 function getOpenAITools(tools?: (ToolKind | Tool_Output)[]): OpenAIProxyTool[] | undefined {
@@ -120,7 +101,7 @@ export const useProxyChatCompletition = create<ProxyChatCompletitionState>(() =>
       stream_options,
       stop: advancedSettings?.stop !== undefined ? advancedSettings.stop : undefined,
       use_cache: getCacheValue(advancedSettings?.cache),
-      workflowai_tools: getWorkflowAITools(tools),
+      workflowai_tools: getToolsFromMessages(versionMessages),
       tools: getOpenAITools(tools),
       workflowai_internal: {
         variant_id: variantId,

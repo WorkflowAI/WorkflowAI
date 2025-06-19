@@ -135,7 +135,12 @@ export function ProxyParameters(props: ProxyParametersProps) {
       <div className='flex flex-col w-full border-t border-gray-200 border-dashed'>
         <div className='flex flex-col gap-1 px-4 pt-2 pb-3 border-b border-gray-200 border-dashed'>
           <div className='flex w-full items-center font-medium text-[13px] text-gray-900'>Tools</div>
-          <ProxyTools toolCalls={toolCalls} setToolCalls={setToolCalls} />
+          <ProxyTools
+            toolCalls={toolCalls}
+            setToolCalls={setToolCalls}
+            messages={messages}
+            onToolsChange={improveMessagesControls.updateToolsInVersionMessages}
+          />
         </div>
         <div className='flex flex-row w-full items-center'>
           <div className='flex flex-col gap-1 px-4 pt-3 pb-3'>

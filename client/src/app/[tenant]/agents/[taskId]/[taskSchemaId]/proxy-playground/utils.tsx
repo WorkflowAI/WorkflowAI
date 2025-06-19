@@ -1,6 +1,7 @@
 import { GeneralizedTaskInput, TaskSchemaResponseWithSchema } from '@/types';
 import { JsonSchema } from '@/types/json_schema';
-import { CacheUsage, ProxyMessage, TaskGroupProperties_Input, VersionV1 } from '@/types/workflowAI';
+import { CacheUsage, ProxyMessage, TaskGroupProperties_Input, ToolKind, VersionV1 } from '@/types/workflowAI';
+import { allTools } from '../playground/components/Toolbox/utils';
 import { AdvancedSettings } from './hooks/useProxyPlaygroundSearchParams';
 
 export function checkInputSchemaForInputVaribles(inputSchema: JsonSchema | undefined) {
@@ -362,3 +363,45 @@ export const advencedSettingsVersionPropertiesKeys = [
   'frequency_penalty',
   'tool_choice',
 ];
+
+export function getToolsFromMessages(messages: ProxyMessage[] | undefined): ToolKind[] | undefined {
+  if (!messages) return undefined;
+  const result = allTools.filter((tool) =>
+    messages.some((message) =>
+      message.content.some((content) => content.text?.toLowerCase().includes(tool.toLowerCase()))
+    )
+  );
+  return result.length > 0 ? result : undefined;
+}
+
+export function generatePromptForToolsUpdate(oldTools: ToolKind[], newTools: ToolKind[]): string | undefined {
+  const toolsRemoved = oldTools.filter((tool) => !newTools.includes(tool));
+  const toolsAdded = newTools.filter((tool) => !oldTools.includes(tool));
+  const toolsNotChanged = oldTools.filter((tool) => newTools.includes(tool));
+
+  const promptParts: string[] = [];
+
+  if (toolsRemoved.length > 0) {
+    promptParts.push(`Remove the tools from the messages: ${toolsRemoved.join(', ')}`);
+  }
+
+  if (toolsAdded.length > 0) {
+    promptParts.push(`Add the tools to the messages: ${toolsAdded.join(', ')}`);
+  }
+
+  if (promptParts.length === 0) {
+    return undefined;
+  }
+
+  if (toolsNotChanged.length > 0) {
+    promptParts.push(
+      `Keep the tools in the messages (make sure you are not removing them by accident): ${toolsNotChanged.join(', ')}`
+    );
+  }
+
+  promptParts.push(
+    'DO NOT use markdown formatting (**, *, #, etc.), unless markdown is already present in the massages'
+  );
+
+  return `${promptParts.join('. ')}.`;
+}

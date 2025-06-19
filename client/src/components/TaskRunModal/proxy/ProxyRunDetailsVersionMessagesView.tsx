@@ -78,7 +78,7 @@ export function ProxyRunDetailsVersionMessagesView(props: Props) {
           <div className='flex flex-col w-full px-4 py-2 gap-1'>
             <div className='text-[13px] text-gray-500'>Available Tools</div>
             {version?.properties.enabled_tools ? (
-              <ProxyTools toolCalls={version?.properties.enabled_tools} isReadonly />
+              <ProxyTools toolCalls={version?.properties.enabled_tools} isReadonly messages={messages} />
             ) : (
               <div className='text-[13px] text-gray-400'>none</div>
             )}
