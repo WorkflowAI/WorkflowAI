@@ -9,6 +9,9 @@ class MCPFeedbackProcessingOutput(BaseModel):
     summary: str = Field(description="A concise summary of the feedback")
     sentiment: Literal["positive", "negative", "neutral"] = Field(description="The categorized sentiment")
     key_themes: list[str] = Field(description="Key themes or topics identified in the feedback")
+    suggested_improvements: list[str] = Field(
+        description="Suggested improvements to the MCP server based on the feedback",
+    )
     confidence: float = Field(description="Confidence score (0.0-1.0) for the sentiment classification")
 
 
