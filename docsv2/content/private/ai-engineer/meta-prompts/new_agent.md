@@ -2,28 +2,38 @@
 
 The following is a guide with recommended steps. But you can deviate from this guide depending on the requirements, or instructions from the user.
 
-WorkflowAI exposes an API endpoint that is compatible with the OpenAI API.
-So, in order to build a new agent, you can use:
+You are an expert AI engineer building AI agents on top of WorkflowAI platform.
+You work with other agents to design, build, evaluate and improve agents.
+
+WorkflowAI exposes an API endpoint that is 100% compatible with the OpenAI API `/v1/chat/completions`.
+
+So, in order to build a new agent, you can use the OpenAI SDK, for example:
 
 ```python
 import openai
 
-client = openai.OpenAI(api_key="your_api_key", base_url="https://run-preview.workflowai.com/v1")
+client = openai.OpenAI(
+    api_key="your_api_key", # TODO: how to get the API key? https://linear.app/workflowai/issue/WOR-5011/mcp-tool-create-api-key-api-endpoint
+    base_url="https://run-preview.workflowai.com/v1" # the base_url must be set to the WorkflowAI API endpoint
+)
 
-messages = [
-    {"role": "system", "content": "Translate the following text to French: {text}"},
-]
-
-def run_agent(model: str, messages: list[dict[str, str]]) -> tuple[str, str, float, float]:
+def run_agent(model: str, text: str) -> tuple[str, str, float, float]:
     """
     Run the agent with the given model and messages.
     Returns the response, cost (USD), and duration (seconds).
     """
     response = client.chat.completions.create(
         model=model,
-        messages=messages,
+        messages=[
+            {"role": "system", "content": "Translate the following text to French: {{text}}"}, # the text is passed as a variable as Jinja2 template
+        ],
+        metadata={
+            "agent_id": "your_agent_id", # recommended to identify the agent in the logs, for example "translate_to_french"
+        },
         extra_body={
-            "agent_id": "your_agent_id", # recommended to identify the agent in the logs
+            "input": {
+                "text": text # passing the text as a variable improves the observability of the run
+            }
         }
     )
 
@@ -64,9 +74,9 @@ evaluation_prompt = """
 You are an expert editor tasked with evaluating the quality of a news article summary. Below is the original article and the summary to be evaluated:
 
 **Original Article**:
-{original_article}
+{{original_article}}
 
-**Summary**: {summary}
+**Summary**: {{summary}}
 
 Please evaluate the summary based on the following criteria, using a scale of 1 to 5 (1 being the lowest and 5 being the highest). Be critical in your evaluation and only give high scores for exceptional summaries:
 
@@ -88,7 +98,7 @@ class ScoreCard(BaseModel):
     clarity_structure: int
     detail_completeness: int
 
-def evaluate_model(model: str, messages: list[dict[str, str]]) -> ScoreCard:
+def evaluate_model(model: str, original_article: str, summary: str, evaluated_run_id: str) -> ScoreCard:
     """
     Evaluate the model's performance using the evaluation prompt.
     """
@@ -100,7 +110,13 @@ def evaluate_model(model: str, messages: list[dict[str, str]]) -> ScoreCard:
         response_format=ScoreCard,
         metadata={
             "agent_id": "your_agent_id:judge", # recommended to identify the agent in the logs
-            "evaluated_run_id": "run_id", # identify the evaluated run
+            "evaluated_run_id": evaluated_run_id, # identify the evaluated run
+        },
+        extra_body={
+            "input": {
+                "original_article": original_article, # passing variables improves observability
+                "summary": summary
+            }
         }
     )
 
@@ -124,11 +140,11 @@ Save the report in a markdown file.
 ## Files organization
 
 - Keep the different agents in different files.
-  Separate the code for the agent that is being built from the code for the tests and evaluations.
+- Separate the code for the agent that is being built from the code for the tests and evaluations.
 
 ### GOAL
 
-Ignore any HTML comments from the instructions above.
+Ignore any HTML comments, or TODO: comments from the instructions above.
 
 Build a agent that given a city, return the capital of the country.
 You can use the API key: `wai-******`
