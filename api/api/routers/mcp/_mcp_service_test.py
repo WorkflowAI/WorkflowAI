@@ -225,6 +225,7 @@ class TestMCPServiceProcessFeedback:
             summary="Feedback processed successfully",
             sentiment="positive",
             key_themes=["performance", "tools"],
+            suggested_improvements=["Improve the performance of the MCP server"],
             confidence=0.9,
         )
 
@@ -332,6 +333,7 @@ class TestMCPServiceProcessFeedback:
             summary="Minimal feedback processed",
             sentiment="neutral",
             key_themes=[],
+            suggested_improvements=[],
             confidence=0.5,
         )
 
