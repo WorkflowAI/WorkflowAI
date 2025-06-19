@@ -1,10 +1,17 @@
-import datetime
-from typing import Annotated, Any, Literal
+import json
+import logging
+import time
+from typing import Annotated, Any, Callable, Literal
 
+from fastapi.responses import StreamingResponse
 from fastmcp import FastMCP
 from fastmcp.server.dependencies import get_http_request
 from pydantic import Field
 from starlette.exceptions import HTTPException
+from starlette.middleware import Middleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from starlette.responses import Response
 
 from api.dependencies.task_info import TaskTuple
 from api.routers.mcp._mcp_models import (
@@ -42,6 +49,150 @@ from core.domain.analytics_events.analytics_events import OrganizationProperties
 from core.domain.users import UserIdentifier
 from core.storage.backend_storage import BackendStorage
 from core.utils.schema_formatter import format_schema_as_yaml_description
+
+logger = logging.getLogger(__name__)
+
+
+class MCPLoggingMiddleware(BaseHTTPMiddleware):
+    """Middleware to log MCP tool calls and results"""
+
+    async def dispatch(self, request: Request, call_next: Callable[[Request], Any]) -> Response:
+        start_time = time.time()
+        request_data = None
+
+        # Try to read request body for logging
+        body = await request.body()
+        user_agent = request.headers.get("user-agent", "unknown")
+
+        try:
+            if body:
+                request_data = json.loads(body)
+                # Check if this is an MCP tool call
+                if request_data.get("method") == "tools/call":
+                    params = request_data.get("params", {})
+                    tool_name = params.get("name", "unknown")
+                    tool_arguments = params.get("arguments", {})
+
+                    # Log tool call details
+                    logger.info(
+                        "MCP tool call started",
+                        extra={
+                            "mcp_event": "tool_call_start",
+                            "tool_name": tool_name,
+                            "tool_arguments": tool_arguments,
+                            "request_id": request_data.get("id"),
+                            "jsonrpc": request_data.get("jsonrpc"),
+                            "user_agent": user_agent,
+                        },
+                    )
+        except json.JSONDecodeError:
+            logger.warning("Failed to parse MCP request body", extra={"body": body.decode(), "user_agent": user_agent})
+
+        # Create a new receive callable that returns the body we already read
+        async def receive():
+            return {"type": "http.request", "body": body}
+
+        # Reconstruct request with the body we read
+        request = Request(request.scope, receive=receive)
+
+        # Process the request
+        response: StreamingResponse | Response = await call_next(request)
+
+        # Read response body once for logging and processing
+        response_body: bytes | None = None
+        try:
+            if isinstance(response, StreamingResponse):
+                # For streaming responses, we need to consume the stream
+                body_parts: list[bytes] = []
+                async for chunk in response.body_iterator:
+                    if isinstance(chunk, bytes):
+                        body_parts.append(chunk)
+                    else:
+                        # Convert to bytes if it's not already
+                        body_parts.append(str(chunk).encode("utf-8"))
+                response_body = b"".join(body_parts)
+                # Recreate the streaming response with the consumed body
+                print(f"Response body: {response_body}")
+            else:
+                # For regular responses, access the body attribute
+                if hasattr(response, "body") and response.body:
+                    if isinstance(response.body, bytes):
+                        response_body = response.body
+                        print(f"Response body: {response_body}")
+                    else:
+                        # Convert to bytes if it's not already
+                        response_body = str(response.body).encode("utf-8")
+                        print(f"Response body: {response_body}")
+
+            # Print the response body if available
+            if response_body:
+                try:
+                    # Try to decode as UTF-8 for readable output
+                    response_text = response_body.decode("utf-8")
+                    print(f"Response body: {response_text}")
+                except UnicodeDecodeError:
+                    # If it's not UTF-8, print the raw bytes representation
+                    print(f"Response body (bytes): {response_body}")
+            else:
+                print(f"NO response body: {response_body}")
+
+        except Exception as e:
+            print(f"Error reading response body: {e}")
+            response_body = None
+
+        # Log response for MCP calls
+        duration = time.time() - start_time
+
+        try:
+            # For MCP tool calls, try to extract the result
+            tool_result = None
+            error_info = None
+            if response_body and request_data and request_data.get("method") == "tools/call":
+                try:
+                    # Ensure response_body is a string for json.loads
+                    response_text = response_body.decode("utf-8")
+                    response_data = json.loads(response_text)
+                    tool_result = response_data.get("result")
+                    error_info = response_data.get("error")
+                except (json.JSONDecodeError, UnicodeDecodeError):
+                    pass
+
+            # Log completion with tool-specific info
+            log_extra = {
+                "mcp_event": "tool_call_complete",
+                "duration_seconds": duration,
+                "status_code": response.status_code,
+                "user_agent": user_agent,
+            }
+
+            if request_data and request_data.get("method") == "tools/call":
+                params = request_data.get("params", {})
+                log_extra.update(
+                    {
+                        "tool_name": params.get("name", "unknown"),
+                        "request_id": request_data.get("id"),
+                        "has_result": tool_result is not None,
+                        "has_error": error_info is not None,
+                    },
+                )
+
+                # Include error details if present (but limit size)
+                if error_info:
+                    log_extra["error_code"] = error_info.get("code")
+                    log_extra["error_message"] = str(error_info.get("message", ""))[:200]
+
+            print(f"MCP tool call completed: {log_extra}")
+
+            logger.info("MCP tool call completed", extra=log_extra)
+
+        except Exception as e:
+            logger.warning(
+                "Error processing MCP response for logging",
+                extra={"error": str(e), "user_agent": user_agent},
+            )
+
+        return response
+
 
 _mcp = FastMCP("WorkflowAI 🚀", stateless_http=True)  # pyright: ignore [reportUnknownVariableType]
 
@@ -844,4 +995,8 @@ async def search_documentation(
 
 
 def mcp_http_app():
-    return _mcp.http_app(path="/")
+    # Configure middleware for logging
+    custom_middleware = [
+        Middleware(MCPLoggingMiddleware),
+    ]
+    return _mcp.http_app(path="/", middleware=custom_middleware)
