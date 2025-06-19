@@ -2817,6 +2817,8 @@ export type VersionStat = {
 };
 
 export type AgentStat = {
+  agent_id: string;
+  /** @deprecated use agent_id */
   agent_uid: number;
   run_count: number;
   total_cost_usd: number;
