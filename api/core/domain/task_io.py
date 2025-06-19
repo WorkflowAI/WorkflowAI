@@ -1,13 +1,14 @@
 from copy import deepcopy
 from typing import Any
 
-from jsonschema import SchemaError, validate
+from jsonschema import SchemaError
 from jsonschema import ValidationError as SchemaValidationError
 from jsonschema.validators import validator_for  # pyright: ignore[reportUnknownVariableType]
 from pydantic import BaseModel, Field
 
 from core.domain.consts import FILE_DEFS
 from core.domain.errors import JSONSchemaValidationError
+from core.utils.detailed_schema_validation import validate_with_detailed_errors
 from core.utils.hash import compute_obj_hash
 from core.utils.schema_sanitation import streamline_schema
 from core.utils.schemas import (
@@ -72,11 +73,8 @@ class SerializableTaskIO(BaseModel):
         if navigators:
             JsonSchema(schema).navigate(obj, navigators=navigators)
 
-        try:
-            validate(obj, schema)
-        except SchemaValidationError as e:
-            kp = ".".join([str(p) for p in e.path])
-            raise JSONSchemaValidationError(f"at [{kp}], {e.message}")
+        # Use detailed validation for better error messages
+        validate_with_detailed_errors(obj, schema)
 
     def sanitize(self, obj: Any) -> Any:
         """Duplicate and enforce an object to match the schema"""
