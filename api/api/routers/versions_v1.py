@@ -215,29 +215,132 @@ async def improve_version_messages(
     request: ImproveVersionMessagesRequest,
     task_id: TaskTupleDep,
 ):
-    version = await versions_service.get_version(task_id, version_id, models_service)
+    from core.agents.improve_version_messages_agent import ImproveVersionMessagesError
+    from core.domain.errors import DefaultError
 
-    if not request.overriden_messages and not version.group.properties.messages:
-        _logger.warning("Can not improve version message of a version without messages")
-        raise BadRequestError("Can not improve version message of a version without messages")
+    try:
+        version = await versions_service.get_version(task_id, version_id, models_service)
 
-    run: AgentRun | None = None
-    if request.run_id:
-        run = await runs_service.run_by_id(
-            task_id,
-            request.run_id,
-            include={"version_id", "task_input", "task_output", "llm_completions"},
+        if not request.overriden_messages and not version.group.properties.messages:
+            _logger.warning("Can not improve version message of a version without messages")
+            raise BadRequestError("Can not improve version message of a version without messages")
+
+        run: AgentRun | None = None
+        if request.run_id:
+            run = await runs_service.run_by_id(
+                task_id,
+                request.run_id,
+                include={"version_id", "task_input", "task_output", "llm_completions"},
+            )
+
+        # Validate input before processing
+        messages_to_improve = request.overriden_messages or version.group.properties.messages or []
+        if not messages_to_improve:
+            _logger.warning("No messages available for improvement")
+            raise BadRequestError("No messages available for improvement")
+
+        async def _stream():
+            try:
+                message_count = 0
+                async for chunk in internal_tasks.improve_prompt.improve_version_messages(
+                    version_messages=messages_to_improve,
+                    run=run,
+                    improvement_instructions=request.improvement_instructions,
+                ):
+                    message_count += 1
+                    yield chunk
+
+                # Log successful completion
+                _logger.info(
+                    "Successfully improved version messages",
+                    extra={
+                        "version_id": version_id,
+                        "task_id": task_id[1],
+                        "message_count": message_count,
+                        "had_run": run is not None,
+                        "had_instructions": request.improvement_instructions is not None,
+                    },
+                )
+
+            except ImproveVersionMessagesError as e:
+                _logger.error(
+                    "ImproveVersionMessagesError in stream",
+                    extra={
+                        "error": str(e),
+                        "context": getattr(e, "context", {}),
+                        "version_id": version_id,
+                        "task_id": task_id[1],
+                    },
+                )
+                # Yield error response in the stream format expected by client
+                error_response = ImproveVersionMessagesResponse(
+                    improved_messages=messages_to_improve,  # Return original messages as fallback
+                    feedback_token=None,
+                    changelog=[f"Error: {str(e)}"],
+                )
+                yield error_response
+
+            except Exception as e:
+                _logger.exception(
+                    "Unexpected error in improve_version_messages stream",
+                    extra={
+                        "error": str(e),
+                        "version_id": version_id,
+                        "task_id": task_id[1],
+                        "error_type": type(e).__name__,
+                    },
+                )
+                # Yield error response in the stream format expected by client
+                error_response = ImproveVersionMessagesResponse(
+                    improved_messages=messages_to_improve,  # Return original messages as fallback
+                    feedback_token=None,
+                    changelog=[f"System error occurred: {str(e)}"],
+                )
+                yield error_response
+
+        return safe_streaming_response(_stream)
+
+    except BadRequestError:
+        # Re-raise BadRequestError as-is
+        raise
+    except ImproveVersionMessagesError as e:
+        _logger.error(
+            "ImproveVersionMessagesError in endpoint",
+            extra={
+                "error": str(e),
+                "context": getattr(e, "context", {}),
+                "version_id": version_id,
+                "task_id": task_id[1],
+            },
         )
-
-    async def _stream():
-        async for chunk in internal_tasks.improve_prompt.improve_version_messages(
-            version_messages=request.overriden_messages or version.group.properties.messages or [],
-            run=run,
-            improvement_instructions=request.improvement_instructions,
-        ):
-            yield chunk
-
-    return safe_streaming_response(_stream)
+        raise DefaultError(
+            msg=f"Failed to improve version messages: {str(e)}",
+            code="improve_messages_error",
+            status_code=500,
+            capture=True,
+            details=getattr(e, "context", {}),
+        )
+    except Exception as e:
+        _logger.exception(
+            "Unexpected error in improve_version_messages endpoint",
+            extra={
+                "error": str(e),
+                "version_id": version_id,
+                "task_id": task_id[1],
+                "error_type": type(e).__name__,
+            },
+        )
+        raise DefaultError(
+            msg="An unexpected error occurred while improving version messages",
+            code="internal_error",
+            status_code=500,
+            capture=True,
+            details={
+                "error_type": type(e).__name__,
+                "error_message": str(e),
+                "version_id": version_id,
+            },
+        )
 
 
 class MajorVersionProperties(BaseModel):
