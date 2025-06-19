@@ -1,3 +1,4 @@
+import logging
 from collections.abc import Iterator
 from datetime import datetime, timedelta
 from typing import Any
@@ -16,6 +17,9 @@ from api.services.runs.runs_service import RunsService
 from api.services.runs_search import RunsSearchService
 from api.services.task_deployments import TaskDeploymentsService
 from api.services.versions import VersionsService
+from core.agents.mcp_feedback_processing_agent import (
+    mcp_feedback_processing_agent,
+)
 from core.domain.agent_run import AgentRunBase
 from core.domain.consts import WORKFLOWAI_APP_URL
 from core.domain.models.model_data import FinalModelData, LatestModel
@@ -27,7 +31,10 @@ from core.domain.users import UserIdentifier
 from core.domain.version_environment import VersionEnvironment
 from core.storage import ObjectNotFoundException
 from core.storage.backend_storage import BackendStorage
+from core.utils.background import add_background_task
 from core.utils.schemas import FieldType
+
+logger = logging.getLogger(__name__)
 
 
 class RunSearchResult(BaseModel):
@@ -834,32 +841,13 @@ class MCPService:
     async def send_feedback(self, feedback: str, context: str | None = None) -> MCPToolReturn:
         """Send MCP client feedback to processing agent and return acknowledgment"""
         try:
-            import asyncio
-
-            from core.agents.mcp_feedback_processing_agent import (
-                MCPFeedbackProcessingInput,
-            )
-
-            # Create input for the agent
-            agent_input = MCPFeedbackProcessingInput(
-                feedback=feedback,
-                context=context,
-            )
-
-            # Extract organization and user info from storage/tenant context
-            # The storage already has tenant information from the authentication flow
-            organization_name = getattr(self.storage, "tenant", None)
-            user_email = None  # Could be extracted from user context if available
-
             # Fire-and-forget: start the agent processing but don't wait for results
-            asyncio.create_task(self._process_feedback_async(agent_input, organization_name, user_email))
+            add_background_task(self._process_feedback(feedback, context, self.tenant_slug, self.user_email))
 
             return MCPToolReturn(
                 success=True,
                 data={
                     "message": "MCP client feedback received and sent for processing",
-                    "feedback_length": len(feedback),
-                    "has_context": context is not None,
                 },
             )
         except Exception as e:
@@ -868,39 +856,45 @@ class MCPService:
                 error=f"Failed to send MCP client feedback for processing: {str(e)}",
             )
 
-    async def _process_feedback_async(
+    async def _process_feedback(
         self,
-        agent_input: Any,  # MCPFeedbackProcessingInput type
+        feedback: str,
+        context: str | None,
         organization_name: str | None,
         user_email: str | None,
     ):
         """Background task to process MCP client feedback with the agent"""
         try:
-            import logging
-
-            from core.agents.mcp_feedback_processing_agent import mcp_feedback_processing_agent
-
-            logger = logging.getLogger(__name__)
-
-            # Process feedback with the agent, including metadata for tracking
-            async for response in mcp_feedback_processing_agent(
-                agent_input,
+            # Process feedback with an agent, including metadata for tracking
+            response = await mcp_feedback_processing_agent(
+                feedback,
+                context=context,
                 organization_name=organization_name,
                 user_email=user_email,
-            ):
-                # Log the analysis or store it somewhere if needed
-                # For now, just log that processing completed
+            )
+            # Log the analysis or store it somewhere if needed
+            # For now, just log that processing completed
+            if response:
                 logger.info(
                     "MCP client feedback processed",
                     extra={
                         "organization_name": organization_name,
-                        "sentiment": response.analysis.sentiment,
+                        "sentiment": response.sentiment,
+                        "summary": response.summary,
+                        "key_themes": response.key_themes,
+                        "confidence": response.confidence,
+                    },
+                )
+            else:
+                logger.error(
+                    "MCP client feedback processing agent returned no response",
+                    extra={
+                        "organization_name": organization_name,
+                        "user_email": user_email,
+                        "feedback": feedback,
+                        "context": context,
                     },
                 )
 
         except Exception as e:
-            # Log error but don't fail the MCP tool response
-            import logging
-
-            logger = logging.getLogger(__name__)
-            logger.error("Error processing MCP client feedback", extra={"error": str(e)})
+            logger.exception("Error processing MCP client feedback", exc_info=e)

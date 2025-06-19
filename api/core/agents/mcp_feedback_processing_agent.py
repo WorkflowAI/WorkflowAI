@@ -1,16 +1,8 @@
 import os
-from typing import AsyncIterator, Literal
+from typing import Literal
 
 from openai import AsyncOpenAI
 from pydantic import BaseModel, Field
-
-
-class MCPFeedbackProcessingInput(BaseModel):
-    feedback: str = Field(description="The raw feedback from the MCP client")
-    context: str | None = Field(
-        default=None,
-        description="Optional context about what the feedback relates to",
-    )
 
 
 class MCPFeedbackProcessingOutput(BaseModel):
@@ -20,15 +12,12 @@ class MCPFeedbackProcessingOutput(BaseModel):
     confidence: float = Field(description="Confidence score (0.0-1.0) for the sentiment classification")
 
 
-class MCPFeedbackProcessingResponse(BaseModel):
-    analysis: MCPFeedbackProcessingOutput
-
-
 async def mcp_feedback_processing_agent(
-    input: MCPFeedbackProcessingInput,
+    feedback: str,
+    context: str | None = None,
     organization_name: str | None = None,
     user_email: str | None = None,
-) -> AsyncIterator[MCPFeedbackProcessingResponse]:
+) -> MCPFeedbackProcessingOutput | None:
     """Process MCP client feedback and provide structured analysis"""
 
     system_message = """You are a feedback agent that receives feedback from MCP clients about their experience using the MCP server.
@@ -64,7 +53,7 @@ Analyze this feedback and provide a structured response with summary, sentiment 
     if user_email:
         metadata["user_email"] = user_email
 
-    response = await client.chat.completions.create(
+    response = await client.beta.chat.completions.parse(
         model="gemini-2.0-flash-latest",
         messages=[
             {"role": "system", "content": system_message},
@@ -72,38 +61,13 @@ Analyze this feedback and provide a structured response with summary, sentiment 
         ],
         extra_body={
             "input": {
-                "feedback": input.feedback,
-                "context": input.context or "",
+                "feedback": feedback,
+                "context": context or "",
             },
         },
+        response_format=MCPFeedbackProcessingOutput,
         metadata=metadata,
         temperature=0.0,
     )
 
-    # Parse the response content manually since structured output may not be supported
-    content = response.choices[0].message.content
-    if content is None:
-        content = (
-            '{"summary": "Unable to process feedback", "sentiment": "neutral", "key_themes": [], "confidence": 0.0}'
-        )
-
-    import json
-
-    try:
-        response_data = json.loads(content)
-        analysis = MCPFeedbackProcessingOutput(
-            summary=response_data.get("summary", "Feedback processed"),
-            sentiment=response_data.get("sentiment", "neutral"),
-            key_themes=response_data.get("key_themes", []),
-            confidence=response_data.get("confidence", 0.0),
-        )
-    except (json.JSONDecodeError, KeyError, TypeError):
-        # Fallback if JSON parsing fails
-        analysis = MCPFeedbackProcessingOutput(
-            summary=content[:200] if len(content) > 200 else content,
-            sentiment="neutral",
-            key_themes=["feedback_processing"],
-            confidence=0.5,
-        )
-
-    yield MCPFeedbackProcessingResponse(analysis=analysis)
+    return response.choices[0].message.parsed
