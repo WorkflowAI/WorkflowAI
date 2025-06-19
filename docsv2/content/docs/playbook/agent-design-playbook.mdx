@@ -1,0 +1,381 @@
+---
+title: Agent Design Playbook
+description: A comprehensive guide to designing and building new agents in WorkflowAI
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+
+# Agent Design Playbook
+
+This playbook outlines the essential steps and processes that great AI engineers should follow when designing and building new agents in WorkflowAI. Whether you're working solo or as part of a team with other AI agents and humans, this guide will help you create robust, effective, and well-tested agents.
+
+## Phase 1: Discovery & Requirements Gathering
+
+### 1.1 Define the Agent's Purpose
+
+Before writing any code, clearly articulate what your agent should accomplish:
+
+- **Primary Objective**: What is the main task or problem your agent will solve?
+- **Target Users**: Who will interact with this agent and what are their needs?
+- **Success Criteria**: How will you measure if the agent is performing well?
+- **Constraints**: What are the technical, business, or ethical limitations?
+
+<Callout type="info">
+Document your agent's purpose in a clear, one-sentence description. This will guide all subsequent design decisions.
+</Callout>
+
+### 1.2 Research Existing Solutions
+
+- Review the [agents directory](/docs/agents) to understand existing agent patterns
+- Check if similar functionality already exists in WorkflowAI
+- Analyze comparable solutions in the market
+- Identify gaps that your agent will fill
+
+### 1.3 Stakeholder Alignment
+
+- Present your agent concept to stakeholders and team members
+- Gather feedback on the proposed functionality
+- Align on success metrics and timeline
+- Identify potential integration points with existing systems
+
+## Phase 2: Technical Architecture & Design
+
+### 2.1 Choose the Right Model
+
+Select the appropriate model based on your agent's requirements:
+
+- **Complexity**: Simple tasks may work with smaller models, complex reasoning requires larger ones
+- **Latency**: Real-time applications need faster models
+- **Cost**: Balance performance with budget constraints
+- **Capabilities**: Ensure the model supports required features (function calling, structured outputs, etc.)
+
+### 2.2 Design the Prompt Strategy
+
+Create effective prompts that guide your agent's behavior:
+
+```python
+# Example system prompt structure
+system_prompt = """
+You are an expert [DOMAIN] assistant that helps users with [SPECIFIC_TASK].
+
+Your responsibilities:
+1. [Primary responsibility]
+2. [Secondary responsibility]
+3. [Error handling approach]
+
+Guidelines:
+- Be precise and factual
+- Ask clarifying questions when needed
+- Use available tools appropriately
+- Provide structured responses when possible
+
+When uncertain, acknowledge limitations and suggest alternatives.
+"""
+```
+
+### 2.3 Identify Required Tools
+
+Determine what tools your agent needs:
+
+- **Hosted Tools**: Leverage WorkflowAI's built-in tools like `@google-search` or `@browser-text`
+- **Custom Tools**: Design custom functions for specific domain needs
+- **External APIs**: Plan integrations with third-party services
+- **Data Sources**: Identify databases, files, or knowledge bases needed
+
+<Tabs items={["Hosted Tools", "Custom Tools"]}>
+  <Tab>
+  ```python
+  # Using hosted tools
+  messages = [
+      {
+          "role": "system",
+          "content": """Use @google-search to find recent information about {{topic}}.
+          Use @browser-text to extract details from specific URLs when needed."""
+      }
+  ]
+  ```
+  </Tab>
+  <Tab>
+  ```python
+  # Custom tool example
+  tools = [{
+      "type": "function",
+      "function": {
+          "name": "query_database",
+          "description": "Query the customer database for specific information",
+          "parameters": {
+              "type": "object",
+              "properties": {
+                  "query": {"type": "string", "description": "SQL query to execute"},
+                  "limit": {"type": "integer", "description": "Maximum number of results"}
+              },
+              "required": ["query"]
+          }
+      }
+  }]
+  ```
+  </Tab>
+</Tabs>
+
+### 2.4 Plan the Conversation Flow
+
+Design how your agent will interact with users:
+
+- **Input Handling**: How will the agent process different types of user inputs?
+- **State Management**: Does the agent need to remember previous interactions?
+- **Error Recovery**: How will the agent handle failures or misunderstandings?
+- **Escalation**: When and how should the agent escalate to humans?
+
+## Phase 3: Implementation & Development
+
+### 3.1 Set Up the Development Environment
+
+- Create a new branch for your agent development
+- Set up local testing environment with WorkflowAI
+- Configure necessary API keys and credentials
+- Establish logging and monitoring
+
+### 3.2 Implement Core Functionality
+
+Start with the minimal viable agent:
+
+```python
+# Basic agent structure
+import openai
+from workflowai import WorkflowAI
+
+client = WorkflowAI()
+
+def create_agent_completion(user_input, context=None):
+    messages = [
+        {
+            "role": "system",
+            "content": your_system_prompt
+        },
+        {
+            "role": "user", 
+            "content": user_input
+        }
+    ]
+    
+    completion = client.chat.completions.create(
+        model="gpt-4o",
+        messages=messages,
+        tools=your_tools,  # if applicable
+        temperature=0.1,
+        max_tokens=1000
+    )
+    
+    return completion.choices[0].message
+```
+
+### 3.3 Implement Tool Integration
+
+- Add custom tool functions with proper error handling
+- Test tool integrations individually
+- Ensure tools return structured, useful responses
+- Implement fallback mechanisms for tool failures
+
+### 3.4 Add Conversation Memory (if needed)
+
+```python
+# Example conversation memory
+class ConversationMemory:
+    def __init__(self):
+        self.history = []
+    
+    def add_message(self, role, content):
+        self.history.append({"role": role, "content": content})
+        
+    def get_context(self, max_messages=10):
+        return self.history[-max_messages:]
+```
+
+## Phase 4: Testing & Validation
+
+### 4.1 Unit Testing
+
+Create comprehensive unit tests:
+
+- Test core agent functions
+- Mock external dependencies
+- Test error handling scenarios
+- Validate tool integrations
+
+```python
+# Example unit test structure
+def test_agent_basic_response():
+    response = create_agent_completion("Hello, how can you help me?")
+    assert response.content is not None
+    assert len(response.content) > 0
+
+def test_agent_with_tools():
+    response = create_agent_completion("Search for recent news about AI")
+    assert response.tool_calls is not None
+```
+
+### 4.2 Integration Testing
+
+- Test the complete agent flow end-to-end
+- Validate tool interactions with real APIs
+- Test conversation continuity
+- Verify error handling with real failure scenarios
+
+### 4.3 Manual Testing in Playground
+
+Use WorkflowAI's playground to:
+
+- Test various user inputs and edge cases
+- Validate agent responses for accuracy and helpfulness
+- Fine-tune prompts based on real interactions
+- Test tool usage in realistic scenarios
+
+<Callout type="tip">
+Create a test script with 10-15 diverse inputs that cover your agent's main use cases. Run this script regularly during development.
+</Callout>
+
+## Phase 5: Evaluation & Optimization
+
+### 5.1 Create Evaluation Dataset
+
+Build a robust evaluation dataset:
+
+- Collect 20-30 representative user inputs
+- Include edge cases and challenging scenarios
+- Cover all major functionality areas
+- Document expected outcomes for each input
+
+### 5.2 Human Review Process
+
+- Review agent responses manually for accuracy
+- Use WorkflowAI's review system to mark correct/incorrect responses
+- Involve domain experts for specialized knowledge validation
+- Create clear evaluation criteria
+
+### 5.3 Benchmark Performance
+
+- Use WorkflowAI's benchmarking tools to compare versions
+- Track key metrics: accuracy, latency, cost
+- Compare against baseline or previous versions
+- Set performance thresholds for deployment
+
+### 5.4 Iterate Based on Results
+
+- Analyze failure cases and patterns
+- Refine prompts based on evaluation feedback
+- Adjust tool usage strategies
+- Optimize for cost and performance
+
+## Phase 6: Documentation & Knowledge Sharing
+
+### 6.1 Technical Documentation
+
+Create comprehensive documentation:
+
+- Agent architecture and design decisions
+- Tool specifications and usage guidelines
+- Configuration parameters and their effects
+- Known limitations and edge cases
+
+### 6.2 User Documentation
+
+- Clear usage instructions for end users
+- Example conversations and use cases
+- Troubleshooting guide
+- Best practices for interacting with the agent
+
+### 6.3 Team Knowledge Transfer
+
+- Present your agent design to the team
+- Document lessons learned and best practices
+- Share evaluation results and insights
+- Create runbooks for maintenance and updates
+
+## Phase 7: Deployment & Monitoring
+
+### 7.1 Pre-deployment Checklist
+
+- [ ] All tests passing
+- [ ] Evaluation benchmarks meet requirements
+- [ ] Documentation complete and reviewed
+- [ ] Security review completed
+- [ ] Performance optimization validated
+- [ ] Rollback plan prepared
+
+### 7.2 Deployment Strategy
+
+- Plan deployment approach (blue-green, canary, etc.)
+- Set up monitoring and alerting
+- Configure logging for debugging
+- Establish success metrics tracking
+
+### 7.3 Post-deployment Monitoring
+
+- Monitor agent performance in production
+- Track user satisfaction and success rates
+- Watch for new failure patterns
+- Collect user feedback for future improvements
+
+## Phase 8: Maintenance & Evolution
+
+### 8.1 Continuous Improvement
+
+- Regularly review agent performance metrics
+- Update prompts based on new use cases
+- Add new tools as requirements evolve
+- Refine based on user feedback
+
+### 8.2 Model Updates
+
+- Test new model releases with your agent
+- Use benchmarking to validate model upgrades
+- Plan migration strategies for model changes
+- Document performance differences
+
+### 8.3 Knowledge Management
+
+- Maintain evaluation datasets
+- Update documentation as the agent evolves
+- Share insights with the broader team
+- Contribute to best practices and patterns
+
+## Best Practices & Tips
+
+### Collaboration with AI Agents and Humans
+
+- **Clear Communication**: Always document your decisions and reasoning
+- **Incremental Development**: Share progress regularly with the team
+- **Peer Review**: Have other engineers review your agent design
+- **Cross-functional Input**: Involve domain experts in evaluation
+
+### Common Pitfalls to Avoid
+
+- **Over-engineering**: Start simple and add complexity as needed
+- **Insufficient Testing**: Don't skip evaluation phases
+- **Ignoring Edge Cases**: Test failure scenarios thoroughly
+- **Poor Tool Integration**: Ensure tools add real value
+
+### Success Metrics
+
+Track these key indicators for your agent:
+
+- **Accuracy**: Percentage of correct responses
+- **User Satisfaction**: Feedback scores and usage metrics
+- **Cost Efficiency**: Token usage and computational costs
+- **Latency**: Response time and user experience
+- **Reliability**: Uptime and error rates
+
+<Callout type="success">
+Remember: Great agents are not built in isolation. Collaborate with your team, iterate based on feedback, and always prioritize user needs over technical complexity.
+</Callout>
+
+## Conclusion
+
+Building effective AI agents requires a systematic approach that balances technical excellence with user needs. By following this playbook, you'll create agents that are not only functional but also maintainable, scalable, and valuable to your users.
+
+The key to success is iteration—start with a simple, working agent and continuously improve based on real-world usage and feedback. Remember that the best agents are those that solve real problems for real users, not just showcase technical capabilities.
+
+---
+
+*This playbook is a living document. As you gain experience building agents, contribute back to improve this guide for future builders.*
