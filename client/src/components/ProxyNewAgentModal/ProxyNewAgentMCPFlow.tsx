@@ -6,7 +6,7 @@ import { displaySuccessToaster } from '../ui/Sonner';
 import { ProxyNewAgentClientCombobox } from './components/ProxyNewAgentClientCombobox';
 import { ProxyNewAgentSectionHeader } from './components/ProxyNewAgentSectionHeader';
 
-const allClients = ['Cursor', 'Windsurf', 'Claude Code', 'GH Copilot'];
+const allClients = ['Cursor', 'Windsurf', 'Claude Code', 'Github Copilot'];
 
 export function ProxyNewAgentMCPFlow() {
   const [selectedClient, setSelectedClient] = useState<string | undefined>('Cursor');
@@ -14,8 +14,8 @@ export function ProxyNewAgentMCPFlow() {
 
   const code = `{
   "mcpServers": {
-    "workflowai-staging": {
-      "url": "https://api.workflowai.dev/mcp/sse/",
+    "workflowai": {
+      "url": "https://api.workflowai.dev/mcp/",
       "headers": {
         "Authorization": "Bearer <your API token here>"
       }
