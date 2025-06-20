@@ -863,7 +863,7 @@ class AIEngineerService:
                 messages.append(
                     {
                         "role": "tool",
-                        "tool_call_id": f"search_doc_{len(messages) - 1}",
+                        "tool_call_id": tool_call_id,
                         "content": f"Error searching documentation: {str(e)}",
                     },
                 )
