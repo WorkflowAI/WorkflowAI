@@ -8,12 +8,17 @@ from starlette.exceptions import HTTPException
 from api.dependencies.task_info import TaskTuple
 from api.routers.mcp._mcp_models import (
     AgentResponse,
+    AgentSortField,
+    AIEngineerReponseWithUsefulLinks,
     ConciseLatestModelResponse,
     ConciseModelResponse,
     LegacyMCPToolReturn,
     MajorVersion,
     MCPToolReturn,
+    ModelSortField,
     PaginatedMCPToolReturn,
+    RunSearchResult,
+    SortOrder,
 )
 from api.routers.mcp._mcp_service import MCPService
 from api.services import file_storage, storage
@@ -142,7 +147,19 @@ async def get_task_tuple_from_task_id(task_id: str) -> TaskTuple:
     if not tenant:
         raise HTTPException(status_code=401, detail="Invalid bearer token")
 
-    return (task_id, tenant.uid)
+    # Get tenant storage to access tasks
+    tenant_storage = storage.storage_for_tenant(
+        tenant.tenant,
+        tenant.uid,
+        system_event_router(),
+        storage.shared_encryption(),
+    )
+    try:
+        task_info = await tenant_storage.tasks.get_task_info(task_id)
+    except Exception:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    return task_info.id_tuple
 
 
 @_mcp.tool()
@@ -165,6 +182,18 @@ async def list_available_models(
             description="Whether the agent requires tools to be used, if not provided, the agent is assumed to not require tools",
         ),
     ] = False,
+    sort_by: Annotated[
+        ModelSortField,
+        Field(
+            description="The field name to sort by, e.g., 'release_date', 'quality_index' (default), 'cost'",
+        ),
+    ] = "quality_index",
+    order: Annotated[
+        SortOrder,
+        Field(
+            description="The direction to sort: 'asc' for ascending, 'desc' for descending (default)",
+        ),
+    ] = "desc",
     page: Annotated[
         int,
         Field(description="The page number to return. Defaults to 1."),
@@ -182,6 +211,8 @@ async def list_available_models(
         agent_id=agent_id,
         agent_schema_id=agent_schema_id,
         agent_requires_tools=agent_requires_tools,
+        sort_by=sort_by,
+        order=order,
     )
 
 
@@ -205,6 +236,18 @@ async def list_agents(
             description="ISO date string to filter usage (runs and costs) stats from (e.g., '2024-01-01T00:00:00Z'). Defaults to 7 days ago if not provided.",
         ),
     ] = "",
+    sort_by: Annotated[
+        AgentSortField,
+        Field(
+            description="The field name to sort by, e.g., 'last_active_at' (default), 'total_cost_usd', 'run_count'",
+        ),
+    ] = "last_active_at",
+    order: Annotated[
+        SortOrder,
+        Field(
+            description="The direction to sort: 'asc' for ascending, 'desc' for descending (default)",
+        ),
+    ] = "desc",
     page: Annotated[
         int,
         Field(description="The page number to return. Defaults to 1."),
@@ -222,6 +265,8 @@ async def list_agents(
         stats_from_date=stats_from_date,
         with_schemas=with_schemas,
         page=page,
+        sort_by=sort_by,
+        order=order,
     )
 
 
@@ -316,8 +361,8 @@ async def get_agent_versions(
     return await service.list_agent_versions(task_tuple, page=page)
 
 
-# @_mcp.tool() WIP
-async def search_runs_by_metadata(
+@_mcp.tool()
+async def search_runs(
     agent_id: Annotated[
         str,
         Field(
@@ -327,7 +372,7 @@ async def search_runs_by_metadata(
     field_queries: Annotated[
         list[dict[str, Any]],
         Field(
-            description="List of metadata field queries. Each query should have: field_name (string starting with 'metadata.'), operator (string like 'is', 'contains', etc.), values (list of values), and optionally type (string like 'string', 'number', etc.)",
+            description="List of field queries to search runs. Each query should have: field_name (string), operator (string), values (list of values), and optionally type (string like 'string', 'number', 'date', etc.)",
         ),
     ],
     limit: Annotated[
@@ -338,47 +383,103 @@ async def search_runs_by_metadata(
         int,
         Field(description="Number of results to skip"),
     ] = 0,
-) -> LegacyMCPToolReturn:
+    page: Annotated[
+        int,
+        Field(description="The page number to return. Defaults to 1."),
+    ] = 1,
+) -> PaginatedMCPToolReturn[None, RunSearchResult]:
     """<when_to_use>
-    When the user wants to search agent runs based on metadata values, such as filtering runs by custom metadata fields they've added to their WorkflowAI agent calls.
+    When the user wants to search agent runs based on various criteria including metadata values, run properties (status, time, cost, latency), model parameters, input/output content, and reviews.
     </when_to_use>
 
-    <how_to_query_metadata>
-    To search by metadata, you need to construct field queries with the following structure:
+    <searchable_fields>
+    You can search across multiple types of fields:
 
-    1. field_name: Must start with "metadata." followed by the metadata field name
-       - Example: "metadata.user_id", "metadata.session_id", "metadata.environment"
+    **Run Properties:**
+    - "status": Run status (operators: is, is not | values: "success", "failure")
+    - "time": Run creation time (operators: is before, is after | date values)
+    - "price": Run cost in USD (operators: is, is not, greater than, less than, etc. | numeric values)
+    - "latency": Run duration (operators: is, is not, greater than, less than, etc. | numeric values)
 
-    2. operator: One of these search operators:
-       - "is" - exact match
-       - "is not" - not equal to
-       - "contains" - string contains (for text fields)
-       - "does not contain" - string does not contain
-       - "greater than" - numeric comparison
-       - "less than" - numeric comparison
-       - "is empty" - field has no value
-       - "is not empty" - field has a value
+    **Model & Version:**
+    - "model": Model used (operators: is, is not, contains, does not contain | string values)
+    - "schema": Schema ID (operators: is, is not | numeric values)
+    - "version": Version ID (operators: is, is not | string values)
+    - "temperature": Temperature setting (operators: is, is not, greater than, less than, etc. | numeric values)
+    - "source": Source of the run (operators: is, is not | string values)
 
-    3. values: List of values to search for (usually just one value)
+    **Reviews:**
+    - "review": User review status (operators: is | values: "positive", "negative", "unsure", "any")
 
-    4. type: Optional field type ("string", "number", "boolean", "date")
-    </how_to_query_metadata>
+    **Content Fields (nested search):**
+    - "input.{key_path}": Search within input data (e.g., "input.message", "input.user.name")
+    - "output.{key_path}": Search within output data (e.g., "output.result", "output.items[0].status")
+    - "metadata.{key_path}": Search within metadata (e.g., "metadata.user_id", "metadata.environment")
+
+    For nested fields, use dot notation for objects and brackets for arrays (e.g., "items[0].name")
+    </searchable_fields>
+
+    <operators_by_type>
+    Different field types support different operators:
+
+    **String fields:**
+    - "is" - exact match
+    - "is not" - not equal to
+    - "contains" - string contains
+    - "does not contain" - string does not contain
+    - "is empty" - field has no value
+    - "is not empty" - field has a value
+
+    **Number fields:**
+    - "is" - exact match
+    - "is not" - not equal to
+    - "greater than" - value > X
+    - "greater than or equal to" - value >= X
+    - "less than" - value < X
+    - "less than or equal to" - value <= X
+    - "is empty" - field has no value
+    - "is not empty" - field has a value
+
+    **Date fields:**
+    - "is before" - date < X
+    - "is after" - date > X
+
+    **Boolean fields:**
+    - "is" - exact match (true/false)
+    - "is not" - not equal to
+    </operators_by_type>
+
+    <field_query_structure>
+    Each field query should have this structure:
+    {
+        "field_name": "field_name",  // Required: the field to search
+        "operator": "operator",       // Required: the search operator
+        "values": [value1, value2],   // Required: list of values (usually one)
+        "type": "string"             // Optional: field type hint
+    }
+    </field_query_structure>
 
     <examples>
-    Example 1 - Search for runs with specific user_id:
+    Example 1 - Search for failed runs with high cost:
     {
         "agent_id": "email-classifier",
         "field_queries": [
             {
-                "field_name": "metadata.user_id",
+                "field_name": "status",
                 "operator": "is",
-                "values": ["user123"],
+                "values": ["failure"]
                 "type": "string"
+            },
+            {
+                "field_name": "price",
+                "operator": "greater than",
+                "values": [0.10],
+                "type": "number"
             }
         ]
     }
 
-    Example 2 - Search for runs in production environment with high priority:
+    Example 2 - Search for runs with specific metadata and positive reviews:
     {
         "agent_id": "data-processor",
         "field_queries": [
@@ -389,55 +490,93 @@ async def search_runs_by_metadata(
                 "type": "string"
             },
             {
-                "field_name": "metadata.priority",
-                "operator": "greater than",
-                "values": [5],
+                "field_name": "review",
+                "operator": "is",
+                "values": ["positive"]
+                "type": "string"
+            }
+        ]
+    }
+
+    Example 3 - Search for runs with specific input content and recent time:
+    {
+        "agent_id": "content-moderator",
+        "field_queries": [
+            {
+                "field_name": "input.text",
+                "operator": "contains",
+                "values": ["urgent"],
+                "type": "string"
+            },
+            {
+                "field_name": "time",
+                "operator": "is after",
+                "values": ["2024-01-01T00:00:00Z"],
+                "type": "date"
+            }
+        ]
+    }
+
+    Example 4 - Search for runs using specific models with low latency:
+    {
+        "agent_id": "task-analyzer",
+        "field_queries": [
+            {
+                "field_name": "model",
+                "operator": "contains",
+                "values": ["gpt-4"]
+                "type": "string"
+            },
+            {
+                "field_name": "latency",
+                "operator": "less than",
+                "values": [5.0],
                 "type": "number"
             }
         ]
     }
 
-    Example 3 - Search for runs that contain specific text in a notes field:
+    Example 5 - Search within nested output structure:
     {
-        "agent_id": "content-moderator",
+        "agent_id": "data-extractor",
         "field_queries": [
             {
-                "field_name": "metadata.notes",
-                "operator": "contains",
-                "values": ["urgent"]
-            }
-        ]
-    }
-
-    Example 4 - Search for runs where a field is empty:
-    {
-        "agent_id": "task-analyzer",
-        "field_queries": [
+                "field_name": "output.entities[0].type",
+                "operator": "is",
+                "values": ["person"],
+                "type": "string"
+            },
             {
-                "field_name": "metadata.reviewer",
-                "operator": "is empty",
-                "values": []
+                "field_name": "output.confidence",
+                "operator": "greater than",
+                "values": [0.95],
+                "type": "number"
             }
         ]
     }
     </examples>
 
     <returns>
-    Returns a paginated list of agent runs that match the metadata search criteria, including run details like:
-    - Full task input and output data (task_input, task_output)
-    - Input/output previews (task_input_preview, task_output_preview)
-    - Run status, duration, cost, and timestamps
-    - User and AI reviews
-    - Error details if the run failed
+    Returns a paginated list of agent runs that match the search criteria, including run details.
     </returns>"""
-    service = await get_mcp_service()
-    task_tuple = await get_task_tuple_from_task_id(agent_id)
-    return await service.search_runs_by_metadata(
-        task_tuple=task_tuple,
-        field_queries=field_queries,
-        limit=limit,
-        offset=offset,
-    )
+
+    try:
+        service = await get_mcp_service()
+
+        task_tuple = await get_task_tuple_from_task_id(agent_id)
+
+        return await service.search_runs(
+            task_tuple=task_tuple,
+            field_queries=field_queries,
+            limit=limit,
+            offset=offset,
+            page=page,
+        )
+    except Exception as e:
+        return PaginatedMCPToolReturn(
+            success=False,
+            error=f"Failed to search runs: {e}",
+        )
 
 
 @_mcp.tool()
