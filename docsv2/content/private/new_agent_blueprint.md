@@ -52,7 +52,7 @@ tools:
 
 ---
 
-- How to name the agent by adding a 'agent_id' metadata, which is used to identify the agent in the WorkflowAI platform. 'agent_id' MUST ALWAYS be added to the agent's metadata
+- How to name the agent by optionally adding an 'agent_id' metadata key, which is highly recommended to easily identify the agent in the WorkflowAI platform.
 - How to add metadata to the agent's runs (lead_id), which is used to easily search the agent's runs for this specific lead later
 - Where to set custom tools that will be manually implemented by the user and run in the user's runtime.
 

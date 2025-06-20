@@ -72,6 +72,7 @@ WorkflowAI exposes an API endpoint that is 100% compatible with the OpenAI API `
 So, in order to build a new agent, you can use the OpenAI SDK, for example:
 
 <!-- TODO: give code samples for other languages than Python. -->
+<!-- TODO: update URL to run.workflowai.com -->
 
 ### Example: One-off Processing Agent
 
@@ -79,7 +80,7 @@ So, in order to build a new agent, you can use the OpenAI SDK, for example:
 import openai
 
 client = openai.OpenAI(
-    api_key="your_api_key", # TODO: how to get the API key? https://linear.app/workflowai/issue/WOR-5011/mcp-tool-create-api-key-api-endpoint
+    api_key="your_api_key", # you can use the `create_api_key` MCP tool to create an API key
     base_url="https://run-preview.workflowai.com/v1" # the base_url must be set to the WorkflowAI API endpoint
 )
 
@@ -99,6 +100,7 @@ def run_processing_agent(model: str, text: str) -> tuple[str, str, float, float]
         response_format=Translation,
         metadata={
             "agent_id": "your_agent_id", # recommended to identify the agent in the logs, for example "translate_to_french"
+            "customer_id": "cust_42",  # optional metadata – later you can filter runs by this key in the WorkflowAI dashboard
         },
         extra_body={
             "input": {
@@ -139,7 +141,6 @@ def run_chat_agent(model: str, conversation_history: list, user_message: str) ->
         messages=messages,
         metadata={
             "agent_id": "customer_support_chat", # identify the chat agent
-            "conversation_id": "conv_123", # track the conversation
         },
         extra_body={
             "input": {
@@ -401,8 +402,11 @@ This production data feedback loop is often more valuable than initial testing b
 - Keep the different agents in different files.
 - Separate the code for the agent that is being built from the code for the tests and evaluations.
 
-### INSTRUCTIONS
+### Why metadata matters
 
-<!-- TODO: remove this section. -->
+Metadata you pass via the `metadata=` argument is stored with every run and searchable. Adding meaningful keys lets you:
 
-Ignore any HTML comments, or TODO: comments from the instructions above.
+1. **Group runs by agent** – adding an `agent_id` groups related runs together in the UI (strongly recommended for clarity, but not technically required).
+2. **Slice & search logs** – custom keys such as `customer_id`, `order_id`, or `lead_id` make it trivial to find exactly the runs you care about when debugging.
+
+Keep the set of keys small and consistent; treat them as tags that help you (and your future self) navigate production data.
