@@ -350,3 +350,89 @@ class RunsService:
             trigger,
             user_source,
         )
+
+    async def get_tenant_agents_summary(
+        self,
+        tenant_uid: int,
+        days: int = 30,
+    ) -> list[dict[str, Any]]:
+        """
+        Get a summary of all agents in the tenant with their run statistics.
+
+        Args:
+            tenant_uid: The tenant UID
+            days: Number of days to look back for run statistics
+
+        Returns:
+            List of dictionaries containing agent information and run statistics
+        """
+        from datetime import datetime, timedelta
+
+        since_date = datetime.now() - timedelta(days=days)
+
+        # Get run counts by agent from the storage layer
+        agent_run_counts = [
+            {"agent_uid": arc.agent_uid, "run_count": arc.run_count, "total_cost_usd": arc.total_cost_usd}
+            async for arc in self._storage.task_runs.run_count_by_agent_uid(
+                from_date=since_date,
+                is_active=True,
+            )
+            if arc.agent_uid  # Filter out agents with no runs
+        ]
+
+        # Get agent names and metadata from the tasks collection
+        agent_uids = [arc["agent_uid"] for arc in agent_run_counts]
+        if not agent_uids:
+            return []
+
+        # Fetch agent metadata from the backend storage
+        # Note: This requires access to the tasks collection through the storage backend
+        agent_metadata = {}
+
+        try:
+            # Get agent information from storage
+            # Using the backend storage's task collection access
+            tasks_storage = self._storage.tasks
+            async for task in tasks_storage.find_by_uids(agent_uids):
+                agent_metadata[task.uid] = {
+                    "agent_id": task.task_id,
+                    "name": getattr(task, "name", task.task_id),
+                    "created_at": getattr(task, "created_at", None),
+                }
+        except Exception as e:
+            _logger.warning("Failed to fetch agent metadata", extra={"error": str(e)})
+            # Fallback: use UID as identifier
+            for uid in agent_uids:
+                agent_metadata[uid] = {
+                    "agent_id": f"agent_{uid}",
+                    "name": f"Agent {uid}",
+                    "created_at": None,
+                }
+
+        # Combine run statistics with agent metadata
+        result = []
+        for arc in agent_run_counts:
+            agent_uid = arc["agent_uid"]
+            metadata = agent_metadata.get(
+                agent_uid,
+                {
+                    "agent_id": f"agent_{agent_uid}",
+                    "name": f"Agent {agent_uid}",
+                    "created_at": None,
+                },
+            )
+
+            result.append(
+                {
+                    "agent_id": metadata["agent_id"],
+                    "name": metadata["name"],
+                    "created_at": metadata["created_at"],
+                    "run_count": arc["run_count"],
+                    "total_cost_usd": arc["total_cost_usd"],
+                    "period_days": days,
+                }
+            )
+
+        # Sort by run count descending
+        result.sort(key=lambda x: x["run_count"], reverse=True)
+        return result
