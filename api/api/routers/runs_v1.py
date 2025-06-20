@@ -97,6 +97,11 @@ class _BaseRunV1(BaseModel):
         description="A signed token that can be used to post feedback from a client side application",
     )
 
+    metadata: dict[str, Any] | None = Field(
+        default=None,
+        description="A user set metadata key / value. Keys are not searchable.",
+    )
+
 
 class RunItemV1(_BaseRunV1):
     task_input_preview: str = Field(description="A preview of the input data")
@@ -205,6 +210,7 @@ class RunV1(_BaseRunV1):
             ),
             feedback_token=feedback_token,
             conversation_id=run.conversation_id,
+            metadata=run.metadata,
         )
 
 
@@ -231,7 +237,7 @@ async def get_run(
     runs_service: RunsServiceDep,
     feedback_token_generator: RunFeedbackGeneratorDep,
 ) -> RunV1:
-    run = await runs_service.run_by_id(task_tuple, run_id)
+    run = await runs_service.run_by_id(task_tuple, run_id, exclude={"llm_completions"})
     return RunV1.from_domain_task_run(run, feedback_token_generator(run.id))
 
 
