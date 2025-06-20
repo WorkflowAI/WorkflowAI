@@ -7,7 +7,7 @@ import { WorkflowAIIcon } from '@/components/Logos/WorkflowAIIcon';
 import { Button } from '@/components/ui/Button';
 import { ScrollArea } from '@/components/ui/ScrollArea';
 import { ExtendedBordersContainer } from '@/components/v2/ExtendedBordersContainer';
-import { NEW_TASK_MODAL_OPEN } from '@/lib/globalModal';
+import { NEW_PROXY_AGENT_MODAL_OPEN } from '@/lib/globalModal';
 import { useDemoMode } from '@/lib/hooks/useDemoMode';
 import { useIsMobile } from '@/lib/hooks/useIsMobile';
 import { useRecentTasksHistory } from '@/lib/hooks/useRecentTasksHistory';
@@ -69,7 +69,7 @@ export function Sidebar() {
   const routeBuilderWrapper = useCallback(
     (routeBuilder: SectionItem['routeBuilder']) => {
       if (!routeBuilder) {
-        return tasksRoute(loggedInTenant, { [NEW_TASK_MODAL_OPEN]: true });
+        return tasksRoute(loggedInTenant, { [NEW_PROXY_AGENT_MODAL_OPEN]: true });
       }
 
       if (!!taskId) {
@@ -81,7 +81,7 @@ export function Sidebar() {
       }
 
       if (!tasks || tasks.length === 0) {
-        return tasksRoute(loggedInTenant, { [NEW_TASK_MODAL_OPEN]: true });
+        return tasksRoute(loggedInTenant, { [NEW_PROXY_AGENT_MODAL_OPEN]: true });
       }
 
       const defaultTask = tasks[0];
