@@ -2,4 +2,62 @@
 title: Setup
 ---
 
-## ...
+# MCP Server Installation
+
+## Pre-requisite: Get Your API key
+
+You can browse [this page](https://workflowai.com/keys) to get your WorkflowAI API key
+
+## Setup WorkflowAI MCP service for [Cursor](https://www.cursor.com/)
+
+1. Open Cursor
+2. Go to `Settings...`
+3. Navigate to `Cursor settings`
+4. Select `Tools & integrations`
+5. Press `New MCP Server`
+
+Add the following configuration to your MCP servers config:
+
+```json
+{
+  "mcpServers": {
+    "workflowai": {
+      "url": "https://run.workflowai.com/mcp/sse/",
+      "headers": {
+        "Authorization": "Bearer <YOUR_API_KEY_HERE>"
+      }
+    }
+  }
+}
+```
+
+Replace `<YOUR_API_KEY_HERE>` with your actual WorkflowAI API token.
+
+Cursor UI should now look like this (note the green indicator and the number of tools enabled displayed):
+![Cursor is now properly set up](/images/ai-engineer/cursor-setup-ok.png)
+
+Once configured, you'll be able to use WorkflowAI's capabilities directly within Cursor through the MCP integration. Check the list of tools in the WorkflowAI part of `Tools & integrations` for more details about the available tools.
+
+## Alternative Setup: Using [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview)
+
+If you prefer to use Claude Code, you can set up the MCP server with a single command:
+
+```bash
+claude mcp add workflowai https://api.workflowai.com/mcp/sse/ -H "Authorization: Bearer <YOUR_API_KEY_HERE>" --transport http
+```
+
+Replace `<YOUR_API_KEY_HERE>` with your actual WorkflowAI API token.
+
+To check that your MCP client is correctly initialized, you can do:
+
+```bash
+claude mcp list
+```
+
+And check that `workflowai` is present.
+
+<!-- TODO: Add a direct link to install the MCP using Cursor deeplinks (see https://docs.cursor.com/deeplinks#markdown) -->
+
+<Callout type="info">
+**TODO:** Add a direct link to install the MCP using Cursor deeplinks (see [Cursor deeplinks documentation](https://docs.cursor.com/deeplinks#markdown))
+</Callout>
