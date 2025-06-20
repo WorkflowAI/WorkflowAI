@@ -2,4 +2,126 @@
 title: Setup
 ---
 
-## ...
+
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+
+
+Access WorkflowAI's AI engineer by installing the WorkflowAI MCP (Model Context Protocol) server in your preferred editor or IDE.
+
+## Prerequisites
+
+- **WorkflowAI API key** (get one [here](https://workflowai.com/organization/settings/api-keys))
+- Your preferred AI-powered editor or IDE. Set up instructions for each editor are provided below.
+
+## Setup Instructions
+
+<Tabs items={['Cursor', 'Claude Code', 'Windsurf', 'GitHub Copilot']}>
+
+<Tab value="Cursor">
+
+TODO add a direct link to install the MCP once built by Guillaume?
+
+1. Open Cursor
+2. Go to `Settings...`
+3. Navigate to `Cursor Settings`
+4. Select `MCP Tools`
+5. Select `New MCP Server`
+
+Add the following configuration to your MCP servers config:
+
+   ```json
+   {
+     "mcpServers": {
+       "workflowai": {
+         "url": "https://api.workflowai.com/mcp/",
+         "headers": {
+           "Authorization": "Bearer <your_api_key_here>"
+         }
+       }
+     }
+   }
+   ```
+Replace `<your_api_key_here>` with your actual WorkflowAI API token.
+
+Cursor UI should now look like this (note the green indicator and the number of tools enabled displayed):
+
+![Successful Cursor MCP Server Setup](/images/ai-engineer/cursor-setup-ok.png)
+
+</Tab>
+
+<Tab value="Claude Code">
+
+### Claude Code Setup
+
+#### 1. Install Dependencies
+
+```bash
+poetry install
+```
+
+#### 2. Add WorkflowAI MCP Server
+
+Configure Claude Code to use WorkflowAI's MCP server:
+
+```bash
+claude mcp add workflowai https://api.workflowai.com/mcp/ --transport http -H "Authorization: Bearer YOUR_API_KEY_HERE"
+```
+
+Replace `YOUR_API_KEY_HERE` with your WorkflowAI API key.
+
+#### 3. Verify Configuration
+
+Test your MCP server connection:
+
+```bash
+# Start Claude
+claude
+
+# Check server status
+/mcp
+```
+
+You should see the WorkflowAI server listed as "connected".
+
+
+</Tab>
+
+<Tab value="Windsurf">
+
+### TODO
+
+   ```json
+   {
+     "mcpServers": {
+       "workflowai": {
+         "url": "https://api.workflowai.com/mcp/",
+         "headers": {
+           "Authorization": "Bearer <your_api_key_here>"
+         }
+       }
+     }
+   }
+   ```
+
+</Tab>
+
+<Tab value="GitHub Copilot">
+
+### TODO
+
+   ```json
+   {
+     "mcpServers": {
+       "workflowai": {
+         "url": "https://api.workflowai.com/mcp/",
+         "headers": {
+           "Authorization": "Bearer <your_api_key_here>"
+         }
+       }
+     }
+   }
+   ```
+
+</Tab>
+
+</Tabs>
