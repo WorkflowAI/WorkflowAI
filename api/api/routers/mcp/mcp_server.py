@@ -513,6 +513,34 @@ async def send_feedback(
     </returns>"""
     service = await get_mcp_service()
     return await service.send_feedback(feedback, context)
+  
+  
+@_mcp.tool()
+async def create_api_key() -> MCPToolReturn:
+    """<when_to_use>
+    When the user wants to get their API key for WorkflowAI. This is a temporary tool that returns the API key that was used to authenticate the current request.
+    </when_to_use>
+    <returns>
+    Returns the API key that was used to authenticate the current MCP request.
+    </returns>"""
+    request = get_http_request()
+
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        return MCPToolReturn(
+            success=False,
+            error="No Authorization header found or invalid format",
+        )
+
+    # Extract the API key from "Bearer <key>"
+    api_key = auth_header.split(" ")[1]
+
+    return MCPToolReturn(
+        success=True,
+        data={"api_key": api_key},
+        messages=["API key retrieved successfully"],
+    )
+
 
 
 def mcp_http_app():

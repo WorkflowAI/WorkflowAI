@@ -58,6 +58,7 @@ _WAI_TOOLS = [
     "get_agent_versions",
     "ask_ai_engineer",
     "deploy_agent_version",
+    "create_api_key",
 ]
 
 
