@@ -2,6 +2,8 @@ from collections.abc import Iterator
 from datetime import datetime, timedelta
 from typing import Any
 
+from typing_extensions import deprecated
+
 from api.routers.mcp._mcp_models import (
     AgentResponse,
     AgentSortField,
@@ -20,7 +22,12 @@ from api.routers.mcp._mcp_models import (
 from api.routers.mcp._utils.agent_sorting import sort_agents
 from api.routers.mcp._utils.model_sorting import sort_models
 from api.services import tasks
-from api.services.internal_tasks.ai_engineer_service import AIEngineerChatMessage, AIEngineerReponse, AIEngineerService
+from api.services.internal_tasks.ai_engineer_service import (
+    AIEngineerChatMessage,
+    AIEngineerReponse,
+    AIEngineerService,
+    AIGuidesEngineerAgentResponse,
+)
 from api.services.models import ModelsService
 from api.services.runs.runs_service import RunsService
 from api.services.runs_search import RunsSearchService
@@ -487,7 +494,8 @@ class MCPService:
 
         return agent_info, None
 
-    async def ask_ai_engineer(
+    @deprecated("Use ask_ai_engineer instead for the new 'guide' first approach")
+    async def _legacy_ask_ai_engineer(
         self,
         agent_schema_id: int | None,
         agent_id: str | None,
@@ -536,6 +544,38 @@ class MCPService:
         return MCPToolReturn(
             success=True,
             data=return_value,
+        )
+
+    async def ask_ai_engineer(
+        self,
+        agent_schema_id: int | None,
+        agent_id: str | None,
+        message: str,
+        user_programming_language: str,
+        user_code_extract: str,
+    ) -> MCPToolReturn[AIGuidesEngineerAgentResponse]:
+        """Ask the AI Guides Engineer a question."""
+
+        if user_programming_language:
+            message += f"User programming language: {user_programming_language}\n\n"
+
+        if user_code_extract:
+            message += f"User code extract: {user_code_extract}\n\n"
+
+        chunk: AIGuidesEngineerAgentResponse | None = None
+        async for chunk in self.ai_engineer_service.stream_ai_guides_engineer_agent_response(message):
+            # The reason why we use streaming is to be able to stream results to MCP clients in the future.
+            pass
+
+        # Return the final accumulated response
+        if chunk and chunk.assistant_answer:
+            return MCPToolReturn(
+                success=True,
+                data=chunk,
+            )
+        return MCPToolReturn(
+            success=False,
+            error="No response from AI Engineer",
         )
 
     async def deploy_agent_version(
