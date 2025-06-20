@@ -63,6 +63,13 @@ Relevant guides:
 
 - [ ] The AI agent should be able to access the "context" of the agent (deployments, user feedbacks), and use it to answer the user's question. See the [CurrentAgentContext](https://github.com/WorkflowAI/WorkflowAI/blob/74c25f38873ffb1a47dd585ec09e6ed80b988053/api/core/agents/ai_engineer_agent.py#L126) class. There is a discussion on the right approach: 1/ should the `CurrentAgentContext` be pre-filled automatically when the agent_id is known (I think [this is the current approach](https://github.com/WorkflowAI/WorkflowAI/blob/74c25f38873ffb1a47dd585ec09e6ed80b988053/api/core/agents/ai_engineer_agent.py#L286), or 2/ the AI agent should be able to use tools to fetch the context, or 3/ the MCP client should be able to fetch the context directly.
 
+## Notes
+
+June 20:
+
+- Keep the `ask_ai_engineer` tool, we don't know yet if in the future there is a big difference between a `ask_ai_engineer` and a `search_documentation` tool or even letting Cursor browse the public.
+- Make the guides public in the docs.
+
 ## Guides
 
 - [ ] Building a new agent (See docsv2/content/private/ai-engineer/guides/new_agent.md)
@@ -71,6 +78,7 @@ Relevant guides:
 
 ## TODO:
 
+- [ ] Expose "guides" publicly, in the `guides` section of the docs.
 - [ ] Add `metadata` in the `new_agent` guide.
 - [ ] write all guides for the AI Engineer agent.
 - [ ] add a guide about "deployments".
@@ -78,6 +86,9 @@ Relevant guides:
 - [ ] (maybe) write a guide about "when a new model comes out, how to test it?"
 - [ ] prototype how to support multiple programming languages.
 - [ ] remove TODOs from the guides.
+
+_Later:_
+
 - [ ] add `reply_to_conversation_id` to give memory to the AI Engineer agent.
 - [ ] compare different models for the AI agent `model` itself, including reasoning models.
 
