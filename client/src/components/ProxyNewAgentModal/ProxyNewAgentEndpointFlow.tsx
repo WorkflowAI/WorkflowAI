@@ -13,7 +13,7 @@ export function ProxyNewAgentEndpointFlow() {
       />
       <ProxyNewAgentPromptComponent
         title='Import Existing AI Agent'
-        description='[Placeholder copy] Our AI Engineer helps you create new agents effortlessly'
+        description='Access all the benefits of WorkflowAI’s MCP without rebuilding your existing agents.'
         imageURL='https://workflowai.blob.core.windows.net/workflowai-public/ImportExistingAgentIllustration.png'
         prompt='Migrate this agent to WorkflowAI'
       />

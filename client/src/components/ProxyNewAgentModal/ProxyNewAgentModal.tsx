@@ -49,9 +49,6 @@ export function ProxyNewAgentModal() {
               Add Agent
             </div>
             <div className='flex items-center gap-2'>
-              <Button variant='newDesign' openInNewTab={true} toRoute='https://docs2.workflowai.com/'>
-                Manually Set Up
-              </Button>
               <Button onClick={goToDashboard} variant='newDesignIndigo'>
                 Go to Dashboard
               </Button>

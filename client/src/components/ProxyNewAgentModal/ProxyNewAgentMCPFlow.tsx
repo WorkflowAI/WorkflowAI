@@ -19,9 +19,9 @@ export function ProxyNewAgentMCPFlow() {
       "headers": {
         "Authorization": "Bearer <your API token here>"
       }
-    },
+    }
   }
-}}`;
+}`;
 
   const onCopy = useCallback(() => {
     copy(code);
@@ -32,7 +32,7 @@ export function ProxyNewAgentMCPFlow() {
     <div className='flex gap-5 flex-col w-full h-full p-10 overflow-y-auto'>
       <ProxyNewAgentSectionHeader
         title='Set up the WorkflowAI MCP Server'
-        description='[this is placeholder copy that I will add more later, but it’s about all the things you can do iwth the MCP server and how it’s great and you should totally install it]'
+        description='Set up the WorkflowAI MCP server to access our AI Engineer and build better agents, track agent activity, boost reliability, and more!'
         number={1}
       />
       <div className='flex flex-col bg-gray-50 rounded-[2px] w-full border border-gray-200 shadow-sm'>

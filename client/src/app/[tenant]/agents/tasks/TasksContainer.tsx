@@ -2,10 +2,12 @@
 
 import * as amplitude from '@amplitude/analytics-browser';
 import { AppsList20Regular } from '@fluentui/react-icons';
+import { PlusIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useMemo } from 'react';
 import { useApiKeysModal } from '@/components/ApiKeysModal/ApiKeysModal';
 import { NotFoundForNotMatchingTenant } from '@/components/NotFound';
+import { Button } from '@/components/ui/Button';
 import { PageContainer } from '@/components/v2/PageContainer';
 import { NEW_PROXY_AGENT_MODAL_OPEN, useQueryParamModal } from '@/lib/globalModal';
 import { useIsAllowed } from '@/lib/hooks/useIsAllowed';
@@ -99,12 +101,17 @@ export function TasksContainer(props: TasksContainerProps) {
       showBottomBorder={true}
       showSchema={false}
       rightBarChildren={
-        <ManageApiKeysButton
-          apiKeys={apiKeys}
-          openApiKeysModal={openApiKeysModal}
-          disabled={false}
-          buttonVariant='newDesign'
-        />
+        <div className='flex flex-row gap-2'>
+          <ManageApiKeysButton
+            apiKeys={apiKeys}
+            openApiKeysModal={openApiKeysModal}
+            disabled={false}
+            buttonVariant='newDesign'
+          />
+          <Button variant='newDesign' icon={<PlusIcon className='w-4 h-4' />} onClick={onNewTask}>
+            Add WorkflowAI to Cursor (MCP)
+          </Button>
+        </div>
       }
     >
       <div className='flex w-full h-full p-4'>

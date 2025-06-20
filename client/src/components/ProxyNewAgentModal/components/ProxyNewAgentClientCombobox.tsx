@@ -1,4 +1,5 @@
 import { Checkmark16Filled, ChevronUpDownFilled } from '@fluentui/react-icons';
+import Image from 'next/image';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useMemo } from 'react';
 import { CommandGroup, CustomCommandInput } from '@/components/ui/Command';
@@ -7,6 +8,24 @@ import { Command } from '@/components/ui/Command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/Popover';
 import { ScrollArea } from '@/components/ui/ScrollArea';
 import { cn } from '@/lib/utils';
+
+function iconURLForClient(client: string | undefined) {
+  if (!client) {
+    return undefined;
+  }
+  switch (client) {
+    case 'Cursor':
+      return 'https://workflowai.blob.core.windows.net/workflowai-public/CursorMCPIcon.png';
+    case 'Windsurf':
+      return 'https://workflowai.blob.core.windows.net/workflowai-public/WindsurfMCPIcon.png';
+    case 'Claude Code':
+      return 'https://workflowai.blob.core.windows.net/workflowai-public/ClaudeMCPIcon.png';
+    case 'Github Copilot':
+      return 'https://workflowai.blob.core.windows.net/workflowai-public/GithubMCPIcon.png';
+    default:
+      return undefined;
+  }
+}
 
 function searchValueForClient(client: string | undefined) {
   if (!client) {
@@ -34,9 +53,12 @@ function ClientComboboxEntry(props: ClientComboboxEntryProps) {
     );
   }
 
+  const iconURL = iconURLForClient(client);
+
   if (trigger) {
     return (
       <div className='flex flex-row gap-2 items-center cursor-pointer py-1'>
+        {iconURL && <Image src={iconURL} alt={client} width={16} height={16} />}
         <div className={cn('text-gray-800 text-[14px] font-medium', className)}>{client}</div>
       </div>
     );
@@ -48,6 +70,7 @@ function ClientComboboxEntry(props: ClientComboboxEntryProps) {
         <Checkmark16Filled
           className={cn('h-4 w-4 shrink-0 text-indigo-600', isSelected ? 'opacity-100' : 'opacity-0')}
         />
+        {iconURL && <Image src={iconURL} alt={client} width={16} height={16} />}
         <div className={cn('text-gray-800 text-[14px] font-medium', className)}>{client}</div>
       </div>
     </div>
@@ -72,7 +95,7 @@ export function ProxyNewAgentClientCombobox(props: ProxyNewAgentClientComboboxPr
     }
     return clients.filter((client) => {
       const text = client;
-      return text ? text.includes(search.toLowerCase()) : false;
+      return text ? text.toLowerCase().includes(search.toLowerCase()) : false;
     });
   }, [clients, search]);
 
