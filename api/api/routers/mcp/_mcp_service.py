@@ -16,7 +16,12 @@ from api.routers.mcp._mcp_models import (
     UsefulLinks,
 )
 from api.services import tasks
-from api.services.internal_tasks.ai_engineer_service import AIEngineerChatMessage, AIEngineerReponse, AIEngineerService
+from api.services.internal_tasks.ai_engineer_service import (
+    AIEngineerChatMessage,
+    AIEngineerReponse,
+    AIEngineerService,
+    AIGuidesEngineerAgentResponse,
+)
 from api.services.models import ModelsService
 from api.services.runs.runs_service import RunsService
 from api.services.runs_search import RunsSearchService
@@ -554,6 +559,37 @@ class MCPService:
         return MCPToolReturn(
             success=True,
             data=return_value,
+        )
+
+    async def ask_ai_guides_engineer(
+        self,
+        agent_schema_id: int | None,
+        agent_id: str | None,
+        message: str,
+        user_programming_language: str,
+        user_code_extract: str,
+    ) -> MCPToolReturn[AIGuidesEngineerAgentResponse]:
+        """Ask the AI Guides Engineer a question."""
+
+        if user_programming_language:
+            message += f"User programming language: {user_programming_language}\n\n"
+
+        if user_code_extract:
+            message += f"User code extract: {user_code_extract}\n\n"
+
+        chunk: AIGuidesEngineerAgentResponse | None = None
+        async for chunk in self.ai_engineer_service.stream_ai_guides_engineer_agent_response(message):
+            pass
+
+        # Return the final accumulated response
+        if chunk and (chunk.assistant_answer or chunk.relevant_docs):
+            return MCPToolReturn(
+                success=True,
+                data=chunk,
+            )
+        return MCPToolReturn(
+            success=False,
+            error="No response from AI Engineer",
         )
 
     async def deploy_agent_version(
