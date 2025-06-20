@@ -1,9 +1,10 @@
 import json
+import logging
 from collections.abc import Iterator
 from datetime import datetime, timezone
 from typing import Any, Literal, Optional, Protocol, cast
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, ValidationError, model_validator
 
 from core.domain.consts import (
     METADATA_KEY_DEPLOYMENT_ENVIRONMENT,
@@ -12,7 +13,7 @@ from core.domain.consts import (
 from core.domain.error_response import ErrorResponse
 from core.domain.fields.internal_reasoning_steps import InternalReasoningStep
 from core.domain.llm_completion import LLMCompletion
-from core.domain.message import MessageContent
+from core.domain.message import Message, MessageContent, Messages
 from core.domain.review import Review
 from core.domain.task_group import TaskGroup
 from core.domain.tool_call import ToolCall, ToolCallRequestWithID
@@ -187,6 +188,23 @@ class AgentRun(AgentRunBase):
         if self.tool_calls:
             for tool_call in self.tool_calls:
                 yield MessageContent(tool_call_result=tool_call)
+
+    @property
+    def messages(self) -> list[Message]:
+        # TODO: This should be a stored property, not computed
+        # see https://linear.app/workflowai/issue/WOR-4914/expose-the-full-list-of-computed-messages-and-store-as-is
+        try:
+            # Extract the added messages from the task input
+            # This will only extract additional messages for now
+            added_messages = Messages.model_validate(self.task_input)
+            messages = added_messages.messages
+        except ValidationError:
+            logging.getLogger(__name__).exception("error validating messages for task run", extra={"run_id": self.id})
+            messages = []
+
+        # Add the assistant message
+        messages.append(Message(role="assistant", content=list(self.message_content_iterator())))
+        return messages
 
 
 class TaskRunIO(Protocol):

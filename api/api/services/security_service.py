@@ -1,10 +1,16 @@
 import logging
+import os
+from base64 import b64decode
 from collections.abc import Awaitable, Callable
 from datetime import datetime, timezone
 
+from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePublicKey
 from fastapi import HTTPException
+from pydantic import Field
 
 from api.services.analytics._analytics_service import AnalyticsService
+from api.services.api_keys import APIKeyService
+from api.services.keys import JWK, Claims, KeyRing
 from core.domain.analytics_events.analytics_events import (
     OrganizationCreatedProperties,
     OrganizationProperties,
@@ -24,7 +30,20 @@ from core.utils.models.dumps import safe_dump_pydantic_model
 _logger = logging.getLogger(__name__)
 
 
+def _default_key_ring() -> KeyRing:
+    keys: dict[str, EllipticCurvePublicKey] = {}
+    if "WORKFLOWAI_JWK" in os.environ:
+        # Initialize with a single key
+        try:
+            keys["1"] = JWK.model_validate_json(b64decode(os.environ["WORKFLOWAI_JWK"])).public_key()
+        except ValueError:
+            _logger.exception("Invalid JWK in WORKFLOWAI_JWK")
+    return KeyRing(os.getenv("WORKFLOWAI_JWKS_URL", ""), keys=keys)
+
+
 class SecurityService:
+    key_ring = _default_key_ring()
+
     # Can't use the analytics service here since it depends on data provided by this service
     def __init__(
         self,
@@ -219,14 +238,7 @@ class SecurityService:
             on_duplicate=lambda: self._org_storage.find_anonymous_tenant(unknown_user_id),
         )
 
-    async def find_tenant(self, user: User | None, credentials: str | None) -> TenantData | None:
-        # TODO: we should check if the tenantdata.slug matches the user slug here
-        # And update in the background if needed
-        if not user:
-            if not credentials:
-                return None
-            return await self._find_tenant_for_api_key(credentials)
-
+    async def _find_tenant_for_user(self, user: User) -> TenantData | None:
         if user.org_id:
             return await self._find_tenant_for_org_id(
                 user.org_id,
@@ -267,3 +279,44 @@ class SecurityService:
             extra={"user": safe_dump_pydantic_model(user)},
         )
         raise HTTPException(401, "Organization not found")
+
+    async def find_tenant(self, user: User | None, credentials: str | None) -> TenantData | None:
+        # TODO: we should check if the tenantdata.slug matches the user slug here
+        # And update in the background if needed
+        if not user:
+            if not credentials:
+                return None
+            return await self._find_tenant_for_api_key(credentials)
+
+        return await self._find_tenant_for_user(user)
+
+    async def tenant_from_credentials(self, credentials: str) -> TenantData | None:
+        if APIKeyService.is_api_key(credentials):
+            return await self._find_tenant_for_api_key(credentials)
+
+        claims = await self.key_ring.verify(credentials, returns=UserClaims)
+        user = claims.to_domain()
+        return await self._find_tenant_for_user(user)
+
+
+class UserClaims(Claims):
+    tenant: str | None = None
+    sub: str | None = None
+    org_id: str | None = Field(default=None, alias="orgId")
+    org_slug: str | None = Field(default=None, alias="orgSlug")
+    user_id: str | None = Field(default=None, alias="userId")
+    # The id for an unknown user
+    unknown_user_id: str | None = Field(default=None, alias="unknownUserId")
+
+    def to_domain(self):
+        final_sub = self.sub or self.unknown_user_id
+        if not final_sub:
+            raise InvalidToken("Token must contain a sub or unknown_user_id")
+        return User(
+            tenant=self.tenant,
+            sub=final_sub,
+            org_id=self.org_id,
+            slug=self.org_slug,
+            user_id=self.user_id,
+            unknown_user_id=self.unknown_user_id,
+        )

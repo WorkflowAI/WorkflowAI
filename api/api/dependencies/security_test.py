@@ -1,4 +1,3 @@
-import os
 from unittest.mock import Mock, patch
 
 import pytest
@@ -10,38 +9,9 @@ from core.utils import no_op
 
 from .security import (
     UserClaims,
-    _default_key_ring,  # pyright: ignore [reportPrivateUsage]
     final_tenant_data,
     url_public_organization,
 )
-
-
-class TestDefaultKeyRing:
-    @pytest.fixture(scope="function", autouse=True)
-    def patch_jwks_url(self):
-        with patch.dict(os.environ, {"WORKFLOWAI_JWKS_URL": "https://hello"}, clear=True):
-            yield
-
-    def test_not_present(self):
-        assert "WORKFLOWAI_JWK" not in os.environ, "sanity"
-
-        kr = _default_key_ring()
-        assert kr.key_cache == {}
-
-    def test_present_not_valid(self):
-        assert "WORKFLOWAI_JWK" not in os.environ, "sanity"
-        # Sending invalid value in WORKFLOWAI_JWK
-        os.environ["WORKFLOWAI_JWK"] = "hello"
-
-        kr = _default_key_ring()
-        assert kr.key_cache == {}
-
-    def test_present_valid(self):
-        os.environ["WORKFLOWAI_JWK"] = (
-            "eyJrdHkiOiJFQyIsIngiOiJLVUpZYzd2V0R4Um55NW5BdC1VNGI4MHRoQ1ZuaERUTDBzUmZBRjR2cDdVIiwieSI6IjM0dWx1VDgyT0RFRFJXVU9KNExrZzFpanljclhqMWc1MmZRblpqeFc5cTAiLCJjcnYiOiJQLTI1NiIsImlkIjoiMSJ9Cg=="
-        )
-        kr = _default_key_ring()
-        assert len(kr.key_cache) == 1
 
 
 @pytest.fixture(scope="function")

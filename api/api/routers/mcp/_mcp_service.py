@@ -1,7 +1,6 @@
 from collections.abc import Iterator
 from datetime import datetime, timedelta
 from typing import Any
-from venv import logger
 
 from typing_extensions import deprecated
 
@@ -13,10 +12,10 @@ from api.routers.mcp._mcp_models import (
     ConciseModelResponse,
     LegacyMCPToolReturn,
     MajorVersion,
+    MCPRun,
     MCPToolReturn,
     ModelSortField,
     PaginatedMCPToolReturn,
-    RunSearchResult,
     SortOrder,
     UsefulLinks,
 )
@@ -34,12 +33,13 @@ from api.services.runs.runs_service import RunsService
 from api.services.runs_search import RunsSearchService
 from api.services.task_deployments import TaskDeploymentsService
 from api.services.versions import VersionsService
-from core.domain.agent_run import AgentRunBase
+from core.domain.agent_run import AgentRun
 from core.domain.consts import WORKFLOWAI_APP_URL
 from core.domain.models.model_data import FinalModelData, LatestModel
 from core.domain.models.model_datas_mapping import MODEL_DATAS
 from core.domain.models.models import Model
 from core.domain.search_query import FieldQuery, SearchOperator
+from core.domain.task_group import TaskGroup, TaskGroupQuery
 from core.domain.task_info import TaskInfo
 from core.domain.users import UserIdentifier
 from core.domain.version_environment import VersionEnvironment
@@ -288,7 +288,7 @@ class MCPService:
         agent_id: str | None,
         run_id: str | None,
         run_url: str | None,
-    ) -> LegacyMCPToolReturn:
+    ) -> MCPToolReturn[MCPRun]:
         """Fetch details of a specific agent run."""
 
         if run_url:
@@ -296,19 +296,19 @@ class MCPService:
                 agent_id, run_id = self._extract_agent_id_and_run_id(run_url)
                 # find the task tuple from the agent id
             except ValueError:
-                return LegacyMCPToolReturn(
+                return MCPToolReturn(
                     success=False,
                     error="Invalid run URL, must be in the format 'https://workflowai.com/workflowai/agents/agent-id/runs/run-id', or you must pass 'agent_id' and 'run_id'",
                 )
 
         if not agent_id:
-            return LegacyMCPToolReturn(
+            return MCPToolReturn(
                 success=False,
                 error="Agent ID is required",
             )
 
         if not run_id:
-            return LegacyMCPToolReturn(
+            return MCPToolReturn(
                 success=False,
                 error="Run ID is required",
             )
@@ -316,52 +316,32 @@ class MCPService:
         task_info = await self.storage.tasks.get_task_info(agent_id)
         task_tuple = task_info.id_tuple
         if not task_tuple:
-            return LegacyMCPToolReturn(
+            return MCPToolReturn(
                 success=False,
                 error=f"Agent {agent_id} not found",
             )
-
         try:
             run = await self.runs_service.run_by_id(task_tuple, run_id)
-
-            # Convert the run to a serializable format
-            run_data = {
-                "id": run.id,
-                "agent_id": run.task_id,
-                "agent_schema_id": run.task_schema_id,
-                "status": run.status,
-                "agent_input": run.task_input,
-                "agent_output": run.task_output,
-                "duration_seconds": run.duration_seconds,
-                "cost_usd": run.cost_usd,
-                "created_at": run.created_at.isoformat() if run.created_at else None,
-                "user_review": run.user_review,
-                "ai_review": run.ai_review,
-                "error": {
-                    "code": run.error.code,
-                    "message": run.error.message,
-                    "details": run.error.details,
-                }
-                if run.error
-                else None,
-                "conversation_id": run.conversation_id,
-            }
-
-            return LegacyMCPToolReturn(
-                success=True,
-                data=run_data,
-            )
-
         except ObjectNotFoundException:
-            return LegacyMCPToolReturn(
+            return MCPToolReturn(
                 success=False,
                 error=f"Run {run_id} not found",
             )
-        except Exception as e:
-            return LegacyMCPToolReturn(
-                success=False,
-                error=f"Failed to fetch run details: {str(e)}",
-            )
+
+        # Retrieve variant to get output schema
+        version = await self.storage.task_groups.get_task_group_by_id(task_tuple[0], run.group.id)
+        # Version Properties should always have a variant id
+        if variant_id := version.properties.task_variant_id:
+            variant = await self.storage.task_version_resource_by_id(task_tuple[0], variant_id)
+        else:
+            variant = None
+
+        mcp_run = MCPRun.from_domain(run, version, variant.output_schema.json_schema if variant else None)
+
+        return MCPToolReturn(
+            success=True,
+            data=mcp_run,
+        )
 
     async def list_agents(
         self,
@@ -453,6 +433,7 @@ class MCPService:
         MajorVersion,
     ]:  # We return a paginated response for typing simplicity to align with list_agent_versions
         try:
+            # TODO: use a Pydantic model for the version
             version_data = await self.versions_service.get_version(task_tuple, version_id, self.models_service)
 
             # Convert to the same format as the existing endpoint
@@ -688,15 +669,41 @@ class MCPService:
                 error=f"Failed to deploy version: {str(e)}",
             )
 
+    async def _map_runs(self, task_tuple: tuple[str, int], runs: list[AgentRun]) -> list[MCPRun]:
+        version_ids = {run.group.id for run in runs}
+
+        variant_ids: set[str] = set()
+        versions: dict[str, TaskGroup] = {}
+        async for v in self.storage.task_groups.list_task_groups(
+            TaskGroupQuery(
+                task_id=task_tuple[0],
+                ids=version_ids,
+            ),
+        ):
+            versions[v.id] = v
+            if v.properties.task_variant_id:
+                variant_ids.add(v.properties.task_variant_id)
+
+        schema_by_id: dict[int, dict[str, Any]] = {
+            v.task_schema_id: v.output_schema.json_schema
+            async for v in self.storage.task_variants.variants_iterator(task_tuple[0], variant_ids)
+        }
+
+        return [
+            MCPRun.from_domain(run, versions.get(run.group.id), schema_by_id.get(run.task_schema_id)) for run in runs
+        ]
+
     async def search_runs(  # noqa: C901
         self,
         task_tuple: tuple[str, int],
+        # TODO: this should be a plain string
+        # See https://linear.app/workflowai/issue/WOR-4976/write-doc-about-how-to-search-runs
         field_queries: list[dict[str, Any]],
         limit: int,
         offset: int,
         page: int,
         include_full_data: bool = True,
-    ) -> PaginatedMCPToolReturn[None, RunSearchResult]:
+    ) -> PaginatedMCPToolReturn[None, MCPRun]:
         """Search agent runs by metadata fields."""
         try:
             # Convert the field queries to the proper format
@@ -705,13 +712,13 @@ class MCPService:
                 try:
                     # Validate required fields
                     if "field_name" not in query_dict:
-                        return PaginatedMCPToolReturn[None, RunSearchResult](
+                        return PaginatedMCPToolReturn[None, MCPRun](
                             success=False,
                             error="Missing required field 'field_name' in field query",
                         )
 
                     if "operator" not in query_dict:
-                        return PaginatedMCPToolReturn[None, RunSearchResult](
+                        return PaginatedMCPToolReturn[None, MCPRun](
                             success=False,
                             error="Missing required field 'operator' in field query",
                         )
@@ -723,7 +730,7 @@ class MCPService:
                     try:
                         operator = SearchOperator(query_dict["operator"])
                     except ValueError:
-                        return PaginatedMCPToolReturn[None, RunSearchResult](
+                        return PaginatedMCPToolReturn[None, MCPRun](
                             success=False,
                             error=f"Invalid operator: {query_dict['operator']}. Valid operators are: {', '.join([op.value for op in SearchOperator])}",
                         )
@@ -741,36 +748,12 @@ class MCPService:
                     )
                     parsed_field_queries.append(field_query)
                 except Exception as e:
-                    return PaginatedMCPToolReturn[None, RunSearchResult](
+                    return PaginatedMCPToolReturn[None, MCPRun](
                         success=False,
                         error=f"Error parsing field query: {str(e)}",
                     )
             # Use the runs search service to perform the search
             search_service = RunsSearchService(self.storage)
-
-            # Search for runs using the parsed field queries
-            def run_mapper(run: AgentRunBase) -> RunSearchResult:
-                return RunSearchResult(
-                    id=run.id,
-                    agent_id=run.task_id,
-                    agent_schema_id=run.task_schema_id,
-                    agent_version_id=run.group.id,
-                    status=run.status,
-                    agent_input=None,
-                    agent_output=None,
-                    duration_seconds=run.duration_seconds,
-                    cost_usd=run.cost_usd,
-                    created_at=run.created_at.isoformat() if run.created_at else None,
-                    user_review=run.user_review,
-                    ai_review=run.ai_review,
-                    error={
-                        "code": getattr(run.error, "code", ""),
-                        "message": getattr(run.error, "message", ""),
-                        "details": getattr(run.error, "details", None),
-                    }
-                    if run.error
-                    else None,
-                )
 
             try:
                 page_result = await search_service.search_task_runs(
@@ -778,38 +761,26 @@ class MCPService:
                     field_queries=parsed_field_queries,
                     limit=limit,
                     offset=offset,
-                    map=run_mapper,
+                    map=lambda x: x,
+                    # tool_calls and llm_completions are not needed here
+                    # tool_calls contains the entirety of tool calls executed during the request
+                    # llm_completions contains each individual round trip with the LLM
+                    # TODO: ultimately we should only need the "messages" field
+                    exclude_fields={"llm_completions", "tool_calls"},
                 )
             except Exception as e:
-                return PaginatedMCPToolReturn[None, RunSearchResult](
+                return PaginatedMCPToolReturn[None, MCPRun](
                     success=False,
                     error=f"Failed to search runs: {str(e)}",
                 )
 
-            # If requested, fetch full run details for each result
-            # TODO: not optimal, we should fetch the full runs in the search service
-            items = page_result.items
-            if include_full_data:
-                for run in items:
-                    try:
-                        # Fetch the full AgentRun with task_input and task_output
-                        full_run = await self.runs_service.run_by_id(task_tuple, run.id)
-                        run.agent_input = str(full_run.task_input)  # TODO: better handle types
-                        run.agent_output = str(full_run.task_output)
-                    except Exception as e:
-                        logger.error(
-                            "Failed to fetch full run",
-                            extra={"run_id": run.id, "error": str(e)},
-                        )
-                        continue
-
-            return PaginatedMCPToolReturn[None, RunSearchResult](
+            return PaginatedMCPToolReturn[None, MCPRun](
                 success=True,
-                items=items,
+                items=await self._map_runs(task_tuple, page_result.items),
             ).paginate(max_tokens=MAX_TOOL_RETURN_TOKENS, page=page)
 
         except Exception as e:
-            return PaginatedMCPToolReturn[None, RunSearchResult](
+            return PaginatedMCPToolReturn[None, MCPRun](
                 success=False,
                 error=f"Failed to search runs by metadata: {str(e)}",
             )

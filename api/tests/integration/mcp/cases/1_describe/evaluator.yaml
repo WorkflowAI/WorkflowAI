@@ -1,0 +1,8 @@
+required_tools:
+  - name: ask_ai_engineer
+    input:
+      agent_id: NEW_AGENT
+assertions:
+  final_response:
+    - mentions multi model support
+    - mentions reliability

@@ -789,8 +789,8 @@ class TestDomainTools:
                 "model": "gpt-4o",
                 "tools": [
                     {"type": "function", "function": {"name": "test_tool", "parameters": {}}},
+                    {"type": "function", "function": {"name": "@search-google"}},
                 ],
-                "workflowai_tools": ["@search-google"],
             },
         )
         tools = request.domain_tools()
@@ -815,6 +815,44 @@ class TestDomainTools:
         assert tools is not None
         assert len(tools) == 1
         assert tools[0] == ToolKind.WEB_SEARCH_GOOGLE
+
+    def test_workflowai_tools_in_version_system_message(self):
+        """Test that workflowai_tools are detected in tools"""
+        request = OpenAIProxyChatCompletionRequest.model_validate(
+            {
+                "messages": [
+                    {"role": "user", "content": "Hello, world!"},
+                ],
+                "model": "gpt-4o",
+                "workflowai_internal": {
+                    "variant_id": "123",
+                    "version_messages": [
+                        {"role": "system", "content": [{"text": "Use @search-google to find information"}]},
+                    ],
+                },
+            },
+        )
+        tools = request.domain_tools()
+        assert tools is not None
+        assert len(tools) == 1
+        assert tools[0] == ToolKind.WEB_SEARCH_GOOGLE
+
+    def test_duplicate_tools_in_system_message(self):
+        """Test that duplicate tools are ignored in system message"""
+        request = OpenAIProxyChatCompletionRequest.model_validate(
+            {
+                "model": "gpt-4o",
+                "messages": [
+                    {"role": "system", "content": "Use @search-google to find information"},
+                ],
+                "tools": [
+                    {"type": "function", "function": {"name": "@search-google"}},
+                ],
+            },
+        )
+        tools = request.domain_tools()
+        assert tools is not None
+        assert len(tools) == 1
 
 
 class TestMapModelString:

@@ -1,5 +1,4 @@
 # pyright: reportPrivateUsage=false
-from collections.abc import Awaitable, Callable
 from types import SimpleNamespace
 from typing import Any
 
@@ -16,8 +15,8 @@ class _DummyRequest:
         self.headers = headers
 
 
-async def _dummy_find_tenant(_: Any, __: Any, ___: Any) -> None:
-    """Stub for SecurityService.find_tenant that always returns *None* (invalid token)."""
+async def _dummy_tenant_from_credentials(_: Any, __: Any) -> None:
+    """Stub for SecurityService.tenant_from_credentials that always returns *None* (invalid token)."""
     return
 
 
@@ -26,20 +25,10 @@ class _DummySystemStorage:  # noqa: D101 – internal testing stub
         self.organizations = SimpleNamespace()
 
 
-async def _call_get_task_tuple() -> Any:
-    """Helper to keep the call in one place for the invalid-token test."""
-    await mcp_server.get_task_tuple_from_task_id("dummy-agent")
-
-
 # Missing bearer token ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    "callable_under_test",
-    [mcp_server.get_mcp_service, _call_get_task_tuple],
-)
 async def test_missing_bearer_token_raises(
-    callable_under_test: Callable[[], Awaitable[Any]],
     monkeypatch: pytest.MonkeyPatch,
 ):
     """Ensure a 401 is returned when no *Authorization* header is present."""
@@ -52,7 +41,7 @@ async def test_missing_bearer_token_raises(
     )
 
     with pytest.raises(HTTPException) as exc_info:
-        await callable_under_test()
+        await mcp_server.get_mcp_service()
 
     assert exc_info.value.status_code == 401
     assert exc_info.value.detail == "Missing bearer token"
@@ -61,12 +50,7 @@ async def test_missing_bearer_token_raises(
 # Invalid bearer token ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    "callable_under_test",
-    [mcp_server.get_mcp_service, _call_get_task_tuple],
-)
 async def test_invalid_bearer_token_raises(
-    callable_under_test: Callable[[], Awaitable[Any]],
     monkeypatch: pytest.MonkeyPatch,
 ):
     """Ensure a 401 is returned when the bearer token is invalid (tenant not found)."""
@@ -80,7 +64,12 @@ async def test_invalid_bearer_token_raises(
     )
 
     # Patch *SecurityService.find_tenant* to simulate an unknown token.
-    monkeypatch.setattr(mcp_server.SecurityService, "find_tenant", _dummy_find_tenant, raising=True)
+    monkeypatch.setattr(
+        mcp_server.SecurityService,
+        "tenant_from_credentials",
+        _dummy_tenant_from_credentials,
+        raising=True,
+    )
 
     # Patch storage helpers used before *find_tenant* is called so they don't hit real infra.
     monkeypatch.setattr(
@@ -97,7 +86,7 @@ async def test_invalid_bearer_token_raises(
     )
 
     with pytest.raises(HTTPException) as exc_info:
-        await callable_under_test()
+        await mcp_server.get_mcp_service()
 
     assert exc_info.value.status_code == 401
     assert exc_info.value.detail == "Invalid bearer token"

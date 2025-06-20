@@ -125,9 +125,11 @@ class ClickhouseClient(TaskRunStorage):
         limit: int,
         offset: int,
         timeout_ms: int = 60_000,
+        include: set[SerializableTaskRunField] | None = None,
+        exclude: set[SerializableTaskRunField] | None = None,
         unique_by_conversation: bool = True,
     ):
-        columns = ClickhouseRun.select_in_search()
+        columns = ClickhouseRun.select_in_search(include=include, exclude=exclude)
         where = await self._search_where(task_uid, search_fields)
 
         async with asyncio.timeout(timeout_ms):

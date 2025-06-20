@@ -12,6 +12,7 @@
     "start": "yarn workspace workflowai start"
   },
   "devDependencies": {
+    "@anthropic-ai/claude-code": "^1.0.24",
     "@trivago/prettier-plugin-sort-imports": "^4.3.0",
     "@types/jest": "^29.5.12",
     "@types/lodash": "^4",

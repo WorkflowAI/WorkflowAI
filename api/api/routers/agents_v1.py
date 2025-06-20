@@ -188,5 +188,9 @@ async def extract_template(request: ExtractTemplateRequest) -> ExtractTemplateRe
         else:
             raise BadRequestError("Either template or messages must be provided")
     except InvalidTemplateError as e:
-        raise BadRequestError(f"Invalid template: {e.message}", details=e.serialize_details())
+        # Help users by reminding them that our templates follow Jinja2 syntax
+        raise BadRequestError(
+            f"Invalid template: {e.message}. Templates must use Jinja2 formatting.",
+            details=e.serialize_details(),
+        )
     return ExtractTemplateResponse(json_schema=json_schema, last_templated_index=last_templated_index)

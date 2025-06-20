@@ -21,10 +21,10 @@ ONE_MILLION_TH = 0.000_001
 
 
 GOOGLE_PROVIDER_DATA: ProviderDataByModel = {
-    Model.GEMINI_2_5_FLASH_THINKING_PREVIEW_0520: ModelProviderData(
+    Model.GEMINI_2_5_FLASH: ModelProviderData(
         text_price=TextPricePerToken(
-            prompt_cost_per_token=0.15 * ONE_MILLION_TH,
-            completion_cost_per_token=3.50 * ONE_MILLION_TH,
+            prompt_cost_per_token=0.30 * ONE_MILLION_TH,
+            completion_cost_per_token=2.50 * ONE_MILLION_TH,
             source="https://ai.google.dev/gemini-api/docs/pricing#gemini-2.5-flash",
             prompt_cached_tokens_discount=0.75,
         ),
@@ -34,8 +34,8 @@ GOOGLE_PROVIDER_DATA: ProviderDataByModel = {
     ),
     Model.GEMINI_2_5_FLASH_PREVIEW_0520: ModelProviderData(
         text_price=TextPricePerToken(
-            prompt_cost_per_token=0.15 * ONE_MILLION_TH,
-            completion_cost_per_token=0.60 * ONE_MILLION_TH,
+            prompt_cost_per_token=0.30 * ONE_MILLION_TH,
+            completion_cost_per_token=2.50 * ONE_MILLION_TH,
             source="https://ai.google.dev/gemini-api/docs/pricing#gemini-2.5-flash",
             prompt_cached_tokens_discount=0.75,
         ),
@@ -43,7 +43,7 @@ GOOGLE_PROVIDER_DATA: ProviderDataByModel = {
             audio_input_cost_per_token=1.0 * ONE_MILLION_TH,
         ),
     ),
-    Model.GEMINI_2_5_PRO_PREVIEW_0605: ModelProviderData(
+    Model.GEMINI_2_5_PRO: ModelProviderData(
         text_price=TextPricePerToken(
             prompt_cost_per_token=1.25 * ONE_MILLION_TH,
             completion_cost_per_token=10 * ONE_MILLION_TH,
@@ -56,6 +56,16 @@ GOOGLE_PROVIDER_DATA: ProviderDataByModel = {
                     completion_cost_per_token_over_threshold=15 * ONE_MILLION_TH,
                 ),
             ],
+        ),
+    ),
+    Model.GEMINI_2_5_FLASH_LITE_PREVIEW_0617: ModelProviderData(
+        text_price=TextPricePerToken(
+            prompt_cost_per_token=0.1 * ONE_MILLION_TH,
+            completion_cost_per_token=0.40 * ONE_MILLION_TH,
+            source="https://ai.google.dev/gemini-api/docs/pricing#gemini-2.5-flash-lite",
+        ),
+        audio_price=AudioPricePerToken(
+            audio_input_cost_per_token=0.5 * ONE_MILLION_TH,
         ),
     ),
     Model.GEMINI_2_0_FLASH_001: ModelProviderData(
@@ -383,14 +393,6 @@ OPENAI_PROVIDER_DATA: ProviderDataByModel = {
             prompt_cost_per_token=0.1 * ONE_MILLION_TH,
             prompt_cached_tokens_discount=0.75,
             completion_cost_per_token=0.4 * ONE_MILLION_TH,
-            source="https://openai.com/api/pricing/",
-        ),
-    ),
-    Model.GPT_45_PREVIEW_2025_02_27: ModelProviderData(
-        text_price=TextPricePerToken(
-            prompt_cost_per_token=75 * ONE_MILLION_TH,
-            prompt_cached_tokens_discount=0.5,
-            completion_cost_per_token=150 * ONE_MILLION_TH,
             source="https://openai.com/api/pricing/",
         ),
     ),
@@ -1021,6 +1023,53 @@ AZURE_PROVIDER_DATA: ProviderDataByModel = {
 }
 
 GOOGLE_GEMINI_API_PROVIDER_DATA: ProviderDataByModel = {
+    Model.GEMINI_2_5_FLASH: ModelProviderData(
+        text_price=TextPricePerToken(
+            prompt_cost_per_token=0.30 * ONE_MILLION_TH,
+            completion_cost_per_token=2.50 * ONE_MILLION_TH,
+            source="https://ai.google.dev/gemini-api/docs/pricing#gemini-2.5-flash",
+            prompt_cached_tokens_discount=0.75,
+        ),
+        audio_price=AudioPricePerToken(
+            audio_input_cost_per_token=1.0 * ONE_MILLION_TH,
+        ),
+    ),
+    Model.GEMINI_2_5_FLASH_PREVIEW_0520: ModelProviderData(
+        text_price=TextPricePerToken(
+            prompt_cost_per_token=0.30 * ONE_MILLION_TH,
+            completion_cost_per_token=2.50 * ONE_MILLION_TH,
+            source="https://ai.google.dev/gemini-api/docs/pricing#gemini-2.5-flash",
+            prompt_cached_tokens_discount=0.75,
+        ),
+        audio_price=AudioPricePerToken(
+            audio_input_cost_per_token=1.0 * ONE_MILLION_TH,
+        ),
+    ),
+    Model.GEMINI_2_5_PRO: ModelProviderData(
+        text_price=TextPricePerToken(
+            prompt_cost_per_token=1.25 * ONE_MILLION_TH,
+            completion_cost_per_token=10 * ONE_MILLION_TH,
+            prompt_cached_tokens_discount=0.75,
+            source="https://cloud.google.com/vertex-ai/generative-ai/pricing",
+            thresholded_prices=[
+                ThresholdedTextPricePerToken(
+                    threshold=200_000,
+                    prompt_cost_per_token_over_threshold=2.5 * ONE_MILLION_TH,
+                    completion_cost_per_token_over_threshold=15 * ONE_MILLION_TH,
+                ),
+            ],
+        ),
+    ),
+    Model.GEMINI_2_5_FLASH_LITE_PREVIEW_0617: ModelProviderData(
+        text_price=TextPricePerToken(
+            prompt_cost_per_token=0.1 * ONE_MILLION_TH,
+            completion_cost_per_token=0.40 * ONE_MILLION_TH,
+            source="https://ai.google.dev/gemini-api/docs/pricing#gemini-2.5-flash-lite",
+        ),
+        audio_price=AudioPricePerToken(
+            audio_input_cost_per_token=0.5 * ONE_MILLION_TH,
+        ),
+    ),
     Model.GEMINI_2_0_FLASH_LITE_001: ModelProviderData(
         text_price=TextPricePerToken(
             prompt_cost_per_token=0.075 * ONE_MILLION_TH,
@@ -1050,43 +1099,6 @@ GOOGLE_GEMINI_API_PROVIDER_DATA: ProviderDataByModel = {
         ),
         audio_price=AudioPricePerToken(
             audio_input_cost_per_token=0.70 * ONE_MILLION_TH,
-        ),
-    ),
-    Model.GEMINI_2_5_PRO_PREVIEW_0605: ModelProviderData(
-        text_price=TextPricePerToken(
-            prompt_cost_per_token=1.25 * ONE_MILLION_TH,
-            completion_cost_per_token=10 * ONE_MILLION_TH,
-            prompt_cached_tokens_discount=0.75,
-            source="https://cloud.google.com/vertex-ai/generative-ai/pricing",
-            thresholded_prices=[
-                ThresholdedTextPricePerToken(
-                    threshold=200_000,
-                    prompt_cost_per_token_over_threshold=2.5 * ONE_MILLION_TH,
-                    completion_cost_per_token_over_threshold=15 * ONE_MILLION_TH,
-                ),
-            ],
-        ),
-    ),
-    Model.GEMINI_2_5_FLASH_PREVIEW_0520: ModelProviderData(
-        text_price=TextPricePerToken(
-            prompt_cost_per_token=0.15 * ONE_MILLION_TH,
-            completion_cost_per_token=0.60 * ONE_MILLION_TH,
-            source="https://ai.google.dev/gemini-api/docs/pricing#gemini-2.5-flash",
-            prompt_cached_tokens_discount=0.75,
-        ),
-        audio_price=AudioPricePerToken(
-            audio_input_cost_per_token=1.0 * ONE_MILLION_TH,
-        ),
-    ),
-    Model.GEMINI_2_5_FLASH_THINKING_PREVIEW_0520: ModelProviderData(
-        text_price=TextPricePerToken(
-            prompt_cost_per_token=0.15 * ONE_MILLION_TH,
-            completion_cost_per_token=3.50 * ONE_MILLION_TH,
-            source="https://ai.google.dev/gemini-api/docs/pricing#gemini-2.5-flash",
-            prompt_cached_tokens_discount=0.75,
-        ),
-        audio_price=AudioPricePerToken(
-            audio_input_cost_per_token=1.0 * ONE_MILLION_TH,
         ),
     ),
     Model.GEMINI_1_5_FLASH_8B: ModelProviderData(

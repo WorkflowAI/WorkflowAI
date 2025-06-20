@@ -1,0 +1,10 @@
+assertions:
+  code:
+    - the migrated code must run on WorkflowAI (you can for example check that there is a version_id in the response)
+    - the code must include run.workflowai.com endpoint
+    - the code must include the user's WorkflowAI API key
+    - the same model must be used (no changes)
+    - >
+      the agent id must be passed in the metadata ex: { 'metadata': { 'agent_id': 'text_summarizer' } }
+    - >
+      the agent configuration must remain identical, except metadata: { 'metadata': { 'agent_id': 'meeting-summarizer' } }

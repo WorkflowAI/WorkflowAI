@@ -8,6 +8,8 @@ from api.schemas.user_identifier import UserIdentifier
 from api.schemas.version_properties import ShortVersionProperties
 from api.services.internal_tasks.ai_engineer_service import AIEngineerReponse
 from api.services.models import ModelForTask
+from core.domain.agent_run import AgentRun
+from core.domain.error_response import ErrorResponse
 from core.domain.message import Message
 from core.domain.models.model_data import FinalModelData
 from core.domain.models.model_data_supports import ModelDataSupports
@@ -120,7 +122,6 @@ class PaginationInfo(BaseModel):
     has_next_page: bool = Field(description="Whether there is a next page")
     next_page: int | None = Field(default=None, description="The next page number")
     max_tokens_limit: int | None = Field(default=None, description="Maximum tokens limit used for pagination")
-
 
 
 # TODO: delete this class when all tools are migrated to the new MCPToolReturn or PaginatedMCPToolReturn
@@ -493,19 +494,95 @@ class StandardModelResponse(BaseModel):
     data: list[ModelItem]
 
 
-class RunSearchResult(BaseModel):
-    """Model for run search results"""
+class Error(BaseModel):
+    code: str
+    message: str
+    details: dict[str, Any] | None
+
+    @classmethod
+    def from_domain(cls, error: ErrorResponse.Error):
+        return cls(
+            code=error.code,
+            message=error.message,
+            details=error.details,
+        )
+
+
+class AgentVersion(BaseModel):
+    id: str
+    model: str
+    temperature: float | None
+    messages: list[Message] | None
+    instructions: str | None
+    top_p: float | None
+    max_tokens: int | None
+    frequency_penalty: float | None
+    presence_penalty: float | None
+
+    @classmethod
+    def from_domain(cls, version: TaskGroup):
+        return cls(
+            id=version.displayed_id,  # TODO: make sure the MCP is capable of retrieving a version by its Semver
+            model=version.properties.model or "",  # there is always a model
+            temperature=version.properties.temperature,
+            messages=version.properties.messages,
+            instructions=version.properties.instructions,
+            top_p=version.properties.top_p,
+            max_tokens=version.properties.max_tokens,
+            frequency_penalty=version.properties.frequency_penalty,
+            presence_penalty=version.properties.presence_penalty,
+        )
+
+
+class MCPRun(BaseModel):
+    """A run as returned by the MCP Server"""
 
     id: str
+    conversation_id: str
     agent_id: str
     agent_schema_id: int
-    agent_version_id: str
-    status: str
-    agent_input: str | None
-    agent_output: str | None
+    agent_version: AgentVersion
+    status: Literal[
+        "success",
+        "error",
+    ]  # not sure about the exact list of statuses, but you get the idea (we should use Pydantic every-where!)
+    agent_input: dict[str, Any] | None
+    # TODO: until https://linear.app/workflowai/issue/WOR-4914/expose-the-full-list-of-computed-messages-and-store-as-is
+    # the list of messages will not include messages from the version
+    messages: list[Message] = Field(description="The exchanged messages, including the returned assistant message")
     duration_seconds: float | None
     cost_usd: float | None
-    created_at: str | None
-    user_review: str | None
-    ai_review: str | None
-    error: dict[str, Any] | None
+    created_at: datetime
+    metadata: dict[str, Any] | None  # very important
+    response_json_schema: dict[str, Any] | None = Field(
+        description="Only present when using structured outputs. The JSON schema that the model was asked to respect",
+    )
+    error: Error | None = Field(description="An error returned by the model")
+
+    @classmethod
+    def from_domain(
+        cls,
+        run: AgentRun,
+        version: TaskGroup | None,
+        output_schema: dict[str, Any] | None,
+    ):
+        return cls(
+            id=run.id,
+            conversation_id=run.conversation_id or "",  # there is always a conversation id, or is for typing reasons
+            agent_id=run.task_id,
+            agent_schema_id=run.task_schema_id,
+            # The version attached to the run is likely to be incomplete
+            # See https://linear.app/workflowai/issue/WOR-4485/stop-storing-non-saved-versions-and-attach-them-to-runs-instead
+            agent_version=AgentVersion.from_domain(version) if version else AgentVersion.from_domain(run.group),
+            status="success" if run.status == "success" else "error",
+            agent_input={k: v for k, v in run.task_input.items() if k != "workflowai.messages"}
+            if run.task_input
+            else None,
+            messages=run.messages,
+            duration_seconds=run.duration_seconds,
+            cost_usd=run.cost_usd,
+            created_at=run.created_at,
+            metadata=run.metadata,
+            response_json_schema=output_schema,
+            error=Error.from_domain(run.error) if run.error else None,
+        )

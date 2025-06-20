@@ -2,7 +2,7 @@ from collections.abc import Sequence
 from datetime import date, datetime
 from typing import Any, AsyncIterator, NamedTuple, NotRequired, Protocol, TypedDict
 
-from core.domain.agent_run import AgentRun, AgentRunBase
+from core.domain.agent_run import AgentRun
 from core.domain.search_query import SearchQuery
 from core.domain.task_run_aggregate_per_day import TaskRunAggregatePerDay
 from core.domain.task_run_query import SerializableTaskRunField, SerializableTaskRunQuery
@@ -66,7 +66,13 @@ class TaskRunStorage(TaskRunSystemStorage):
         limit: int,
         offset: int,
         timeout_ms: int = 60_000,
-    ) -> AsyncIterator[AgentRunBase]: ...
+        include: set[SerializableTaskRunField] | None = None,
+        exclude: set[SerializableTaskRunField] | None = None,
+    ) -> AsyncIterator[AgentRun]:
+        """Search task runs based on the provided query.
+        When no include or exclude fields are provided, the AgentRun contains the same fields as the AgentRunBase
+        """
+        ...
 
     async def count_filtered_task_runs(
         self,
