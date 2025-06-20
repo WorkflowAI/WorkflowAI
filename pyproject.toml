@@ -1,7 +1,7 @@
 [project]
 name = "workflowai-api"
 version = "0.0.1"
-requires-python = ">=3.12,<3.13"
+requires-python = ">=3.12,<3.14"
 
 [tool.pyright]
 include = ["api", "scripts"]
@@ -91,7 +91,7 @@ known-third-party = ["workflowai"]
 package-mode = false
 
 [tool.poetry.dependencies]
-python = ">=3.12,<3.13"
+python = ">=3.12,<3.14"
 httpx = "^0.28.1"
 motor = { extras = ["srv"], version = "^3.7.0" }
 pymongo = { extras = ["srv"], version = "^4.11.3" }
