@@ -15,17 +15,25 @@ Access WorkflowAI's AI engineer by installing the WorkflowAI MCP (Model Context 
 
 ## Setup Instructions
 
-<Tabs items={['Cursor', 'Windsurf', 'Claude Code', 'GitHub Copilot']}>
+<Tabs items={['Cursor', 'Claude Code', 'Windsurf', 'GitHub Copilot']}>
 
 <Tab value="Cursor">
 
-### TODO
+TODO add a direct link to install the MCP once built by Guillaume?
+
+1. Open Cursor
+2. Go to `Settings...`
+3. Navigate to `Cursor Settings`
+4. Select `MCP Tools`
+5. Select `New MCP Server`
+
+Add the following configuration to your MCP servers config:
 
    ```json
    {
-     "mcp-bridge.servers": {
-       "workflowai-staging": {
-         "url": "https://api.workflowai.dev/mcp/sse/",
+     "mcpServers": {
+       "workflowai": {
+         "url": "https://api.workflowai.com/mcp/",
          "headers": {
            "Authorization": "Bearer <your_api_key_here>"
          }
@@ -33,25 +41,11 @@ Access WorkflowAI's AI engineer by installing the WorkflowAI MCP (Model Context 
      }
    }
    ```
+Replace `<your_api_key_here>` with your actual WorkflowAI API token.
 
-</Tab>
+Cursor UI should now look like this (note the green indicator and the number of tools enabled displayed):
 
-<Tab value="Windsurf">
-
-### TODO
-
-   ```json
-   {
-     "mcp-bridge.servers": {
-       "workflowai-staging": {
-         "url": "https://api.workflowai.dev/mcp/sse/",
-         "headers": {
-           "Authorization": "Bearer <your_api_key_here>"
-         }
-       }
-     }
-   }
-   ```
+![Successful Cursor MCP Server Setup](/images/ai-engineer/cursor-setup-ok.png)
 
 </Tab>
 
@@ -70,8 +64,7 @@ poetry install
 Configure Claude Code to use WorkflowAI's MCP server:
 
 ```bash
-# preview
-claude mcp add workflowai https://run-preview.workflowai.com/mcp/ --transport http -H "Authorization: Bearer YOUR_API_KEY_HERE"
+claude mcp add workflowai https://run.workflowai.com/mcp/ --transport http -H "Authorization: Bearer YOUR_API_KEY_HERE"
 ```
 
 Replace `YOUR_API_KEY_HERE` with your WorkflowAI API key.
@@ -93,15 +86,34 @@ You should see the WorkflowAI server listed as "connected".
 
 </Tab>
 
+<Tab value="Windsurf">
+
+### TODO
+
+   ```json
+   {
+     "mcpServers": {
+       "workflowai": {
+         "url": "https://api.workflowai.com/mcp/",
+         "headers": {
+           "Authorization": "Bearer <your_api_key_here>"
+         }
+       }
+     }
+   }
+   ```
+
+</Tab>
+
 <Tab value="GitHub Copilot">
 
 ### TODO
 
    ```json
    {
-     "mcp-bridge.servers": {
-       "workflowai-staging": {
-         "url": "https://api.workflowai.dev/mcp/sse/",
+     "mcpServers": {
+       "workflowai": {
+         "url": "https://api.workflowai.com/mcp/",
          "headers": {
            "Authorization": "Bearer <your_api_key_here>"
          }
