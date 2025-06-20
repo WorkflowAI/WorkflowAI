@@ -494,12 +494,6 @@ async def old_ask_ai_engineer(
 
 @_mcp.tool()
 async def ask_ai_engineer(
-    agent_id: Annotated[
-        str,
-        Field(
-            description="The id of the user's agent, MUST be passed when the user is asking a question in the context of a specific agent. Example: 'agent_id': 'email-filtering-agent' in metadata, or 'email-filtering-agent' in 'model=email-filtering-agent/gpt-4o-latest'. Pass 'NEW_AGENT' when the user wants to create a new agent.",
-        ),
-    ],
     message: Annotated[
         str,
         Field(description="Your message to the AI engineer about what help you need"),
@@ -520,6 +514,12 @@ async def ask_ai_engineer(
         int | None,
         Field(
             description="The schema ID of the user's agent version, if known from model=<agent_id>/#<agent_schema_id>/<deployment_environment> or model=#<agent_schema_id>/<deployment_environment> when the workflowAI agent is already deployed",
+        ),
+    ] = None,
+    agent_id: Annotated[
+        str | None,
+        Field(
+            description="The id of the user's agent, MUST be passed when the user is asking a question in the context of a specific agent. Example: 'agent_id': 'email-filtering-agent' in metadata, or 'email-filtering-agent' in 'model=email-filtering-agent/gpt-4o-latest'. Can be ommited when the user is asking a general question about WorkflowAI or creating a new agent.",
         ),
     ] = None,
 ) -> MCPToolReturn[AIGuidesEngineerAgentResponse] | LegacyMCPToolReturn:
