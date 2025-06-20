@@ -38,14 +38,6 @@ If increasing `max_tokens` doesn't solve the issue, you may be hitting the model
 
 If you're truly hitting context limits:
 
-1. **Switch to a larger context model** (use MCP tools to identify the best option)
+1. **Switch to a larger context model** (use MCP tools or /v1/models to identify the best option)
 2. **Batch processing for large datasets** - process data in smaller chunks
 3. **Optimize output format** - reduce verbosity in structured outputs
-
-### Diagnostic process:
-
-1. ✅ **Check `max_tokens` parameter** - increase if too low
-2. ✅ **Use MCP tools to review model options** - find models with higher context windows
-3. ✅ **Consider model switch** - based on context window requirements
-4. ✅ **Implement batching** - for large datasets
-5. ✅ **Optimize output** - reduce unnecessary verbosity
