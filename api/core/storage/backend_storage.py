@@ -146,12 +146,16 @@ class BackendStorage(AbstractStorage):
 
     # TODO: paginate
     @abstractmethod
-    async def fetch_tasks(self, limit: int | None = None) -> AsyncIterator[SerializableTask]:
+    async def fetch_tasks(
+        self,
+        limit: int | None = None,
+        with_schemas: bool = False,
+    ) -> AsyncIterator[SerializableTask]:
         return
         yield
 
     @abstractmethod
-    async def get_task(self, task_id: str) -> SerializableTask:
+    async def get_task(self, task_id: str, with_schemas: bool = False) -> SerializableTask:
         return
         yield
 

@@ -43,7 +43,6 @@ _MESSAGE_INCLUDE_FOR_HASH = {
 class StoredMessage(Message):
     # A hash that depends on the previous messages
     agg_hash: str | None = None
-    run_id: str | None = None
 
     # Any other field will be ignored
     model_config = ConfigDict(extra="ignore")
