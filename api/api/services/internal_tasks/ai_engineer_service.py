@@ -748,9 +748,10 @@ class AIEngineerService:
             "{{building_new_agent_guide}}": "content/docs/agents/private/new_agent.md",
         }
 
+        documentation_service = DocumentationService()
         for guide_name, guide_path in GUIDE_INJECTION_MAPPING.items():
             if guide_name in assistant_answer:
-                doc_section = DocumentationService().get_documentation_by_path([guide_path])
+                doc_section = documentation_service.get_documentation_by_path([guide_path])
                 if not doc_section:
                     self._logger.warning(
                         "No documentation found for guide",
@@ -767,6 +768,7 @@ class AIEngineerService:
 
         return assistant_answer
 
+    # TODO[Yann]: remove streaming, split into multiple functions
     async def stream_ai_guides_engineer_agent_response(
         self,
         message: str,

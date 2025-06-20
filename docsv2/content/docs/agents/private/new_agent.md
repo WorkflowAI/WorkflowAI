@@ -1,3 +1,7 @@
+---
+title: Building a new agent with WorkflowAI
+---
+
 # Building a new agent with WorkflowAI
 
 **IMPORTANT: The following is a guide with recommended steps and general guidelines for building the first pass of an agent. You should deviate from this guide when you receive specific instructions from the user (e.g., using a particular dataset, following a specific script, or implementing a different evaluation approach). Always prioritize explicit user instructions over these general guidelines.**
