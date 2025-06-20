@@ -110,7 +110,7 @@ async def ai_guides_engineer_agent(
     )
 
     response = await client.chat.completions.create(
-        model="ai-guides-engineer-agent/claude-sonnet-4-20250514",
+        model="claude-sonnet-4-20250514",
         messages=[
             {
                 "role": "system",
@@ -121,6 +121,7 @@ async def ai_guides_engineer_agent(
         stream=True,
         temperature=0.0,
         tools=TOOL_DEFINITIONS,
+        metadata={"agent_id": "ai-guides-engineer-agent"},
     )
 
     async for chunk in response:
