@@ -1,0 +1,24 @@
+{
+  "install": "yarn install && poetry install",
+  "container": {
+    "image": "cursor.Dockerfile"
+  },
+  "terminals": [
+    {
+      "name": "Lint the client application",
+      "command": "yarn lint"
+    },
+    {
+      "name": "Run ruff",
+      "command": "poetry run ruff check ."
+    },
+    {
+      "name": "Run pyright",
+      "command": "poetry run pyright"
+    },
+    {
+      "name": "Run pytest",
+      "command": "poetry run pytest"
+    }
+  ]
+}

@@ -58,8 +58,7 @@ RUN curl -fsSL https://deb.nodesource.com/setup_21.x | bash - \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Yarn (using npm to get the latest version, then configure for v4.1.0)
-RUN npm install -g yarn \
-    && yarn set version 4.1.0
+RUN corepack enable yarn
 
 # Install Rust toolchain
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y \
@@ -78,9 +77,3 @@ WORKDIR /workspace
 
 # Configure Poetry to create virtual environments in project
 RUN poetry config virtualenvs.in-project true
-
-# Pre-create poetry cache directory
-RUN mkdir -p $POETRY_CACHE_DIR
-
-# Default command
-CMD ["/bin/bash"]
