@@ -2,7 +2,7 @@
 
 import * as amplitude from '@amplitude/analytics-browser';
 import { useCallback } from 'react';
-import { NEW_TASK_MODAL_OPEN } from '@/lib/globalModal';
+import { NEW_PROXY_AGENT_MODAL_OPEN } from '@/lib/globalModal';
 import { useQueryParamModal } from '@/lib/globalModal';
 import { useIsMobile } from '@/lib/hooks/useIsMobile';
 import { signUpRoute } from '@/lib/routeFormatter';
@@ -26,7 +26,7 @@ import { VideosComponent } from './sections/Components/Video/VideosComponent';
 import * as LandingStaticData from './sections/StaticData/LandingStaticData';
 
 export function LandingPage() {
-  const { openModal: openNewTaskModal } = useQueryParamModal(NEW_TASK_MODAL_OPEN);
+  const { openModal: openNewTaskModal } = useQueryParamModal(NEW_PROXY_AGENT_MODAL_OPEN);
 
   const routeForSignUp = signUpRoute();
 
@@ -58,10 +58,7 @@ export function LandingPage() {
     }
 
     amplitude.track('user.clicked.new_task');
-    openNewTaskModal({
-      mode: 'new',
-      redirectToPlaygrounds: 'true',
-    });
+    openNewTaskModal();
   }, [openNewTaskModal, isMobile]);
 
   const { modelsToAdvertise, dismiss } = useModelToAdvertise();
