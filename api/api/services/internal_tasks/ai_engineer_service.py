@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import json
 import logging
 from typing import Any, AsyncIterator, NamedTuple, TypeAlias, cast
 
@@ -749,7 +750,16 @@ class AIEngineerService:
 
         for guide_name, guide_path in GUIDE_INJECTION_MAPPING.items():
             if guide_name in assistant_answer:
-                doc_section = DocumentationService().get_documentation_by_path([guide_path])[0]
+                doc_section = DocumentationService().get_documentation_by_path([guide_path])
+                if not doc_section:
+                    self._logger.warning(
+                        "No documentation found for guide",
+                        extra={"guide_path": guide_path},
+                    )
+                    continue
+
+                doc_section = doc_section[0]
+
                 assistant_answer = assistant_answer.replace(
                     guide_name,
                     f"**{doc_section.title}**\n{doc_section.content}",
@@ -799,17 +809,18 @@ class AIEngineerService:
                 break
 
             # Add the assistant message with the tool call to the conversation
+            tool_call_id = f"search_doc_{compute_obj_hash(obj={'search_documentation_query': search_query})[:8]}"
             messages.append(
                 {
                     "role": "assistant",
                     "content": accumulated_content,
                     "tool_calls": [
                         {
-                            "id": f"search_doc_{len(messages)}",
+                            "id": tool_call_id,
                             "type": "function",
                             "function": {
                                 "name": "search_documentation",
-                                "arguments": f'{{"search_documentation_query": "{search_query}"}}',
+                                "arguments": json.dumps({"search_documentation_query": search_query}),
                             },
                         },
                     ],
@@ -837,7 +848,7 @@ class AIEngineerService:
                 messages.append(
                     {
                         "role": "tool",
-                        "tool_call_id": f"search_doc_{len(messages) - 1}",
+                        "tool_call_id": tool_call_id,
                         "content": doc_content or "No relevant documentation found.",
                     },
                 )

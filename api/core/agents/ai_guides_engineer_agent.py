@@ -1,10 +1,13 @@
 import json
+import logging
 import os
 from typing import Any, AsyncIterator, NamedTuple
 
 from openai import AsyncOpenAI
 from openai.types.chat import ChatCompletionMessageParam, ChatCompletionToolParam
 from pydantic import BaseModel
+
+logger = logging.getLogger(__name__)
 
 
 class AIGuidesEngineerAgentOutput(BaseModel):
@@ -26,7 +29,15 @@ def parse_tool_call(tool_call: Any) -> ParsedToolCall:
         return ParsedToolCall()
 
     function_name = tool_call.function.name
-    arguments = json.loads(tool_call.function.arguments)
+    try:
+        arguments = json.loads(tool_call.function.arguments)
+    except json.JSONDecodeError as e:
+        logger.error(
+            "Error parsing tool call",
+            extra={"tool_call": str(tool_call)},
+            exc_info=e,
+        )
+        return ParsedToolCall()
 
     if function_name == "search_documentation":
         return ParsedToolCall(
