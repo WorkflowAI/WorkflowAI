@@ -87,14 +87,7 @@ export function PlaygroundContentWrapper(props: Props) {
   }
 
   if (isProxy) {
-    return (
-      <ProxyPlayground
-        tenant={tenant}
-        taskId={taskId}
-        schemaId={`${schema.schema_id}` as TaskSchemaID}
-        schema={schema}
-      />
-    );
+    return <ProxyPlayground tenant={tenant} taskId={taskId} schemaId={`${schema.schema_id}` as TaskSchemaID} />;
   }
 
   return (

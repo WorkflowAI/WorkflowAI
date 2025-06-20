@@ -46,7 +46,7 @@ export function ProxySaveBadgeButton(props: ProxySaveBadgeButtonProps) {
             <ProxyVersionDetails
               version={version}
               handleUpdateNotes={handleUpdateNotes}
-              className='w-[360px]'
+              className='w-[430px]'
               setVersionIdForCode={setVersionIdForCode}
             />
           }

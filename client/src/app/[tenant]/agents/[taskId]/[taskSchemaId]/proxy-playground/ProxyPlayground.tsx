@@ -13,13 +13,14 @@ import { useDemoMode } from '@/lib/hooks/useDemoMode';
 import { useIsMobile } from '@/lib/hooks/useIsMobile';
 import {
   useOrFetchOrganizationSettings,
+  useOrFetchSchema,
   useOrFetchTask,
   useOrFetchVersions,
   useScheduledMetaAgentMessages,
 } from '@/store';
 import { useOrExtractTemplete } from '@/store/extract_templete';
 import { ToolCallName, usePlaygroundChatStore } from '@/store/playgroundChatStore';
-import { GeneralizedTaskInput, TaskSchemaResponseWithSchema } from '@/types';
+import { GeneralizedTaskInput } from '@/types';
 import { ModelOptional, TaskID, TaskSchemaID, TenantID } from '@/types/aliases';
 import {
   MajorVersion,
@@ -52,11 +53,10 @@ export type Props = {
   taskId: TaskID;
   tenant: TenantID | undefined;
   schemaId: TaskSchemaID;
-  schema: TaskSchemaResponseWithSchema;
 };
 
 export function ProxyPlayground(props: Props) {
-  const { tenant, taskId, schemaId: urlSchemaId, schema } = props;
+  const { tenant, taskId, schemaId: urlSchemaId } = props;
 
   const { task, isInitialized: isTaskInitialized } = useOrFetchTask(tenant, taskId);
 
@@ -78,8 +78,6 @@ export function ProxyPlayground(props: Props) {
     resetTaskRunIds,
     setRunIdForModal,
     runIdForModal,
-    temperature,
-    setTemperature,
     outputModels,
     setOutputModels,
     allModels,
@@ -88,7 +86,11 @@ export function ProxyPlayground(props: Props) {
     changeURLSchemaId,
     scrollToBottom,
     setScrollToBottom,
+    advancedSettings,
+    maxTokens,
   } = useProxyPlaygroundStates(tenant, taskId, urlSchemaId);
+
+  const { taskSchema: schema } = useOrFetchSchema(tenant, taskId, urlSchemaId);
 
   useEffect(() => {
     if (scrollToBottom) {
@@ -152,7 +154,7 @@ export function ProxyPlayground(props: Props) {
   const { matchedVersion: matchedMajorVersion } = useProxyMatchVersion({
     majorVersions,
     userSelectedMajor,
-    temperature,
+    advancedSettings,
     proxyMessages,
   });
 
@@ -165,6 +167,7 @@ export function ProxyPlayground(props: Props) {
       tenant,
       taskId,
       schemaId,
+      variantId: schema?.latest_variant_id ?? undefined,
       taskRunId1,
       taskRunId2,
       taskRunId3,
@@ -172,13 +175,13 @@ export function ProxyPlayground(props: Props) {
       proxyMessages,
       proxyToolCalls,
       outputModels,
-      temperature,
       changeURLSchemaId,
       areThereChangesInInputSchema,
       extractedInputSchema,
       outputSchema,
       setSchemaId,
       setScheduledPlaygroundStateMessage,
+      advancedSettings,
     });
 
   const onPerformRuns = useCallback(
@@ -231,14 +234,14 @@ export function ProxyPlayground(props: Props) {
   const useParametersFromMajorVersion = useCallback(
     (version: MajorVersion) => {
       resetTaskRunIds();
-      setTemperature(version.properties.temperature);
+      advancedSettings.setTemperature(String(version.properties.temperature));
 
       const messages = (version.properties.messages as ProxyMessage[]) ?? undefined;
       setProxyMessages(messages);
 
       setUserSelectedMajor(version.major);
     },
-    [setTemperature, setUserSelectedMajor, resetTaskRunIds, setProxyMessages]
+    [advancedSettings, setUserSelectedMajor, resetTaskRunIds, setProxyMessages]
   );
 
   const { isInDemoMode, onDifferentTenant } = useDemoMode();
@@ -256,12 +259,12 @@ export function ProxyPlayground(props: Props) {
       version_messages: proxyMessages,
       agent_input: input as Record<string, unknown>,
       agent_instructions: '',
-      agent_temperature: temperature,
+      agent_temperature: advancedSettings.temperature ? Number(advancedSettings.temperature) : undefined,
       agent_run_ids: filteredRunIds,
       selected_models: models,
     };
     return result;
-  }, [input, temperature, filteredRunIds, outputModels, version, proxyMessages]);
+  }, [input, advancedSettings, filteredRunIds, outputModels, version, proxyMessages]);
 
   const markToolCallAsDone = usePlaygroundChatStore((state) => state.markToolCallAsDone);
 
@@ -407,7 +410,7 @@ export function ProxyPlayground(props: Props) {
                 schemaId={schemaId}
                 proxyMessages={proxyMessages}
                 proxyToolCalls={proxyToolCalls}
-                temperature={temperature}
+                advancedSettings={advancedSettings}
                 setVersionIdForCode={setVersionIdForCode}
               />
               {!isMobile && (
@@ -440,8 +443,7 @@ export function ProxyPlayground(props: Props) {
                 error={extractedInputSchemaError}
                 input={input}
                 setInput={onSetInputAndResetRuns}
-                temperature={temperature ?? 0}
-                setTemperature={setTemperature}
+                advancedSettings={advancedSettings}
                 toolCalls={proxyToolCalls}
                 setToolCalls={setProxyToolCalls}
                 maxHeight={isMobile ? undefined : containerHeight - 50}
@@ -456,6 +458,7 @@ export function ProxyPlayground(props: Props) {
                 onSaveAllVersions={onSaveAllVersions}
                 versionsForRuns={versionsForRuns}
                 improveMessagesControls={improveMessagesControls}
+                maxTokens={maxTokens}
               />
               <div ref={playgroundOutputRef} className='flex w-full'>
                 <ProxyOutput

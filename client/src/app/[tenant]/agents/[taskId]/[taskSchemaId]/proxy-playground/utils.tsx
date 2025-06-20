@@ -1,6 +1,7 @@
 import { GeneralizedTaskInput, TaskSchemaResponseWithSchema } from '@/types';
 import { JsonSchema } from '@/types/json_schema';
-import { ProxyMessage, VersionV1 } from '@/types/workflowAI';
+import { CacheUsage, ProxyMessage, TaskGroupProperties_Input, VersionV1 } from '@/types/workflowAI';
+import { AdvancedSettings } from './hooks/useProxyPlaygroundSearchParams';
 
 export function checkInputSchemaForInputVaribles(inputSchema: JsonSchema | undefined) {
   if (!inputSchema) {
@@ -208,3 +209,156 @@ export function removeInputEntriesNotMatchingSchemaAndKeepMessages(
 
   return { ...cleanedInput, 'workflowai.messages': inputMessages };
 }
+
+export function addAdvencedSettingsToProperties(
+  properties: TaskGroupProperties_Input,
+  advancedSettings: AdvancedSettings | undefined
+): TaskGroupProperties_Input {
+  if (!advancedSettings) {
+    return properties;
+  }
+
+  const {
+    temperature,
+    cache,
+    top_p: topP,
+    max_tokens: maxTokens,
+    stream,
+    stream_options_include_usage,
+    stop,
+    presence_penalty,
+    frequency_penalty,
+    tool_choice,
+  } = advancedSettings;
+
+  const result = { ...properties };
+
+  if (temperature !== undefined) {
+    result.temperature = Number(temperature);
+  }
+
+  if (cache !== undefined) {
+    result.use_cache = cache;
+  }
+
+  if (topP !== undefined) {
+    result.top_p = Number(topP);
+  }
+
+  if (maxTokens !== undefined) {
+    result.max_tokens = Number(maxTokens);
+  }
+
+  if (stream !== undefined) {
+    result.stream = stream === 'true';
+  }
+
+  if (stream_options_include_usage !== undefined) {
+    result.stream_options_include_usage = stream_options_include_usage === 'true';
+  }
+
+  if (stop !== undefined) {
+    result.stop = stop;
+  }
+
+  if (presence_penalty !== undefined) {
+    result.presence_penalty = Number(presence_penalty);
+  }
+
+  if (frequency_penalty !== undefined) {
+    result.frequency_penalty = Number(frequency_penalty);
+  }
+
+  if (tool_choice !== undefined) {
+    result.tool_choice = tool_choice;
+  }
+
+  return result;
+}
+
+export function getUseCache(cache: string | undefined): CacheUsage {
+  if (cache === undefined) {
+    return 'auto' as CacheUsage;
+  }
+
+  switch (cache) {
+    case 'auto':
+      return 'auto' as CacheUsage;
+    case 'always':
+      return 'always' as CacheUsage;
+    case 'never':
+      return 'never' as CacheUsage;
+    case 'when_available':
+      return 'when_available' as CacheUsage;
+    case 'only':
+      return 'only' as CacheUsage;
+    default:
+      return 'auto' as CacheUsage;
+  }
+}
+
+export function defaultValueForAdvencedSetting(name: string): string | undefined {
+  switch (name) {
+    case 'cache':
+      return 'auto';
+    case 'temperature':
+      return '1';
+    case 'top_p':
+      return '1.0';
+    case 'max_tokens':
+      return undefined;
+    case 'stream':
+      return 'false';
+    case 'stream_options_include_usage':
+      return 'false';
+    case 'stop':
+      return undefined;
+    case 'presence_penalty':
+      return '0';
+    case 'frequency_penalty':
+      return '0';
+    case 'tool_choice':
+      return undefined;
+    default:
+      return undefined;
+  }
+}
+
+export function advencedSettingNameFromKey(key: string): string {
+  switch (key) {
+    case 'cache':
+      return 'Use cache';
+    case 'temperature':
+      return 'Temperature';
+    case 'top_p':
+      return 'Top P';
+    case 'max_tokens':
+      return 'Max tokens';
+    case 'stream':
+      return 'Stream';
+    case 'stream_options_include_usage':
+      return 'Stream Options';
+    case 'stop':
+      return 'Stop';
+    case 'presence_penalty':
+      return 'Presence Penalty';
+    case 'frequency_penalty':
+      return 'Frequency Penalty';
+    case 'tool_choice':
+      return 'Tool Choice';
+    default:
+      return key;
+  }
+}
+
+export const advencedSettingsVersionPropertiesKeys = [
+  'cache',
+  'top_p',
+  'max_tokens',
+  'stream',
+  'stream_options_include_usage',
+  'stop',
+  'presence_penalty',
+  'frequency_penalty',
+  'tool_choice',
+];

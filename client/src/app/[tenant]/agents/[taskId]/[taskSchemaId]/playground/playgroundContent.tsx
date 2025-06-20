@@ -329,7 +329,7 @@ export function PlaygroundContent(props: PlaygroundContentBodyProps) {
     skipCheckingProxyMessages: true,
   });
 
-  const fetchModels = useAIModels((state) => state.fetchModels);
+  const fetchModels = useAIModels((state) => state.fetchSchemaModels);
 
   const [errorForModels, { set: setModelError, remove: removeModelError }] = useMap<string, Error>(
     new Map<string, Error>()
