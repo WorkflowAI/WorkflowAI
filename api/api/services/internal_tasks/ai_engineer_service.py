@@ -3,6 +3,7 @@ import datetime
 import logging
 from typing import Any, AsyncIterator, NamedTuple, TypeAlias, cast
 
+from openai.types.chat import ChatCompletionMessageParam
 from pydantic import BaseModel, Field, model_validator
 from typing_extensions import Literal
 
@@ -30,6 +31,9 @@ from core.agents.ai_engineer_agent import (
 from core.agents.ai_engineer_agent import (
     AIEngineerAgentChatMessage as AIEngineerAgentChatMessageDomain,
 )
+from core.agents.ai_guides_engineer_agent import (
+    ai_guides_engineer_agent,
+)
 from core.agents.extract_company_info_from_domain_task import (
     ExtractCompanyInfoFromDomainTaskOutput,
     safe_generate_company_description_from_email,
@@ -50,6 +54,11 @@ from core.storage.backend_storage import BackendStorage
 from core.tools import ToolKind
 from core.utils.hash import compute_obj_hash
 from core.utils.tool_utils.tool_utils import get_tools_description_openai_format_str
+
+
+class AIGuidesEngineerAgentResponse(BaseModel):
+    assistant_answer: str | None = None
+    relevant_docs: list[DocumentationSection] | None = None
 
 
 class AIEngineerAgentContext(NamedTuple):
@@ -731,3 +740,116 @@ class AIEngineerService:
                     else [],
                 ),
             )
+
+    async def _fetch_guides(self, assistant_answer: str) -> list[DocumentationSection]:
+        """Fetch the guides from the documentation service."""
+
+        GUIDE_INJECTION_MAPPING = {
+            "{{building_new_agent_guide}}": "content/docs/agents/private/new_agent.md",
+        }
+
+        guides: list[DocumentationSection] = []
+
+        for guide_name, guide_path in GUIDE_INJECTION_MAPPING.items():
+            if guide_name in assistant_answer:
+                guides.extend(DocumentationService().get_documentation_by_path([guide_path]))
+
+        return guides
+
+    async def stream_ai_guides_engineer_agent_response(
+        self,
+        message: str,
+    ) -> AsyncIterator[AIGuidesEngineerAgentResponse]:
+        """
+        Stream responses from the AI guides engineer agent, handling tool calls for documentation search.
+
+        This function is simpler than stream_ai_engineer_agent_response since the AI guides engineer
+        agent only handles documentation search tool calls.
+        """
+        # Keep track of the full conversation including tool responses
+        messages: list[ChatCompletionMessageParam] = [
+            {
+                "role": "user",
+                "content": message,
+            },
+        ]
+
+        while True:
+            # Stream from the AI guides engineer agent
+            accumulated_content = ""
+            search_query = None
+
+            async for chunk in ai_guides_engineer_agent(messages):
+                if chunk.assistant_answer:
+                    accumulated_content += chunk.assistant_answer
+                    # Don't yield intermediate content during tool call processing
+
+                if chunk.search_documentation_query:
+                    search_query = chunk.search_documentation_query
+
+            # If no tool call was made, we're done - yield the final content
+            if not search_query:
+                # Yield the final assistant answer
+                if accumulated_content:
+                    relevant_docs = await self._fetch_guides(accumulated_content)
+                    yield AIGuidesEngineerAgentResponse(
+                        assistant_answer=accumulated_content,
+                        relevant_docs=relevant_docs,
+                    )
+                break
+
+            # Add the assistant message with the tool call to the conversation
+            messages.append(
+                {
+                    "role": "assistant",
+                    "content": accumulated_content,
+                    "tool_calls": [
+                        {
+                            "id": f"search_doc_{len(messages)}",
+                            "type": "function",
+                            "function": {
+                                "name": "search_documentation",
+                                "arguments": f'{{"search_documentation_query": "{search_query}"}}',
+                            },
+                        },
+                    ],
+                },
+            )
+
+            try:
+                # Get relevant documentation sections
+                documentation_service = DocumentationService()
+
+                # Convert the search query to a ChatMessage for the documentation service
+                chat_messages_for_doc_search = [
+                    ChatMessage(role="USER", content=search_query),
+                ]
+
+                relevant_docs = await documentation_service.get_relevant_doc_sections(
+                    chat_messages=chat_messages_for_doc_search,
+                    agent_instructions="Search for relevant documentation sections",
+                )
+
+                # Format the documentation content
+                doc_content = "\n\n".join([f"**{doc.title}**\n{doc.content}" for doc in relevant_docs])
+
+                # Add the tool response to the conversation
+                messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": f"search_doc_{len(messages) - 1}",
+                        "content": doc_content or "No relevant documentation found.",
+                    },
+                )
+
+            except Exception as e:
+                self._logger.exception("Error searching documentation", exc_info=e)
+                # Add error response to conversation
+                messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": f"search_doc_{len(messages) - 1}",
+                        "content": f"Error searching documentation: {str(e)}",
+                    },
+                )
+                break

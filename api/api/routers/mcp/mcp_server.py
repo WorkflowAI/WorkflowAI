@@ -26,7 +26,7 @@ from api.services.analytics import analytics_service
 from api.services.event_handler import system_event_router, tenant_event_router
 from api.services.feedback_svc import FeedbackService
 from api.services.groups import GroupService
-from api.services.internal_tasks.ai_engineer_service import AIEngineerService
+from api.services.internal_tasks.ai_engineer_service import AIEngineerService, AIGuidesEngineerAgentResponse
 from api.services.internal_tasks.internal_tasks_service import InternalTasksService
 from api.services.models import ModelsService
 from api.services.providers_service import shared_provider_factory
@@ -560,8 +560,8 @@ async def search_runs(
         )
 
 
-@_mcp.tool()
-async def ask_ai_engineer(
+@_mcp.tool(enabled=False)
+async def old_ask_ai_engineer(
     agent_id: Annotated[
         str,
         Field(
@@ -603,6 +603,57 @@ async def ask_ai_engineer(
     """
     service = await get_mcp_service()
     return await service.ask_ai_engineer(
+        agent_schema_id=agent_schema_id,
+        agent_id=agent_id,
+        message=message,
+        user_programming_language=user_programming_language,
+        user_code_extract=user_code_extract,
+    )
+
+
+@_mcp.tool()
+async def ask_ai_engineer(
+    agent_id: Annotated[
+        str,
+        Field(
+            description="The id of the user's agent, MUST be passed when the user is asking a question in the context of a specific agent. Example: 'agent_id': 'email-filtering-agent' in metadata, or 'email-filtering-agent' in 'model=email-filtering-agent/gpt-4o-latest'. Pass 'NEW_AGENT' when the user wants to create a new agent.",
+        ),
+    ],
+    message: Annotated[
+        str,
+        Field(description="Your message to the AI engineer about what help you need"),
+    ],
+    user_programming_language: Annotated[
+        str,
+        Field(
+            description="The programming language and integration (if known) used by the user, e.g, Typescript, Python with OpenAI SDK, etc.",
+        ),
+    ],
+    user_code_extract: Annotated[
+        str,
+        Field(
+            description="The code you are working on to improve the user's agent, if any. Please DO NOT include API keys or other sensitive information.",
+        ),
+    ],
+    agent_schema_id: Annotated[
+        int | None,
+        Field(
+            description="The schema ID of the user's agent version, if known from model=<agent_id>/#<agent_schema_id>/<deployment_environment> or model=#<agent_schema_id>/<deployment_environment> when the workflowAI agent is already deployed",
+        ),
+    ] = None,
+) -> MCPToolReturn[AIGuidesEngineerAgentResponse] | LegacyMCPToolReturn:
+    """
+    <when_to_use>
+    Most user request about WorkflowAI must be processed by starting a conversation with the AI engineer agent to get insight about the WorkflowAI platform and the user's agents.
+    </when_to_use>
+
+    <returns>
+    Returns a response from WorkflowAI's AI engineer (meta agent) to help improve your agent.
+    </returns>
+    Get a response from WorkflowAI's AI engineer (meta agent) to help improve your agent.
+    """
+    service = await get_mcp_service()
+    return await service.ask_ai_guides_engineer(
         agent_schema_id=agent_schema_id,
         agent_id=agent_id,
         message=message,
