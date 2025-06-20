@@ -97,11 +97,6 @@ class _BaseRunV1(BaseModel):
         description="A signed token that can be used to post feedback from a client side application",
     )
 
-    metadata: dict[str, Any] | None = Field(
-        default=None,
-        description="A user set metadata key / value. Keys are not searchable.",
-    )
-
 
 class RunItemV1(_BaseRunV1):
     task_input_preview: str = Field(description="A preview of the input data")
@@ -185,6 +180,11 @@ class RunV1(_BaseRunV1):
     )
 
     conversation_id: str | None
+
+    metadata: dict[str, Any] | None = Field(
+        description="Combination of user defined metadata passed to the completion request, and system metadata "
+        "added by WorkflowAI",
+    )
 
     @classmethod
     def from_domain_task_run(cls, run: AgentRun, feedback_token: str):
