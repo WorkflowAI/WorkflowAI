@@ -165,8 +165,9 @@ class TestMCPServiceSendFeedback:
         with patch("api.routers.mcp._mcp_service.add_background_task") as mock_add_task:
             feedback = "MCP server performed well"
             context = "Used list_agents successfully"
+            user_agent = "test-user-agent"
 
-            result = await mcp_service.send_feedback(feedback, context)
+            result = await mcp_service.send_feedback(feedback, user_agent, context)
 
             assert result.success is True
             assert result.data is not None
@@ -182,8 +183,9 @@ class TestMCPServiceSendFeedback:
         """Test feedback submission without context"""
         with patch("api.routers.mcp._mcp_service.add_background_task") as mock_add_task:
             feedback = "Simple feedback"
+            user_agent = "test-user-agent"
 
-            result = await mcp_service.send_feedback(feedback, None)
+            result = await mcp_service.send_feedback(feedback, user_agent, None)
 
             assert result.success is True
             assert result.data is not None
@@ -194,8 +196,9 @@ class TestMCPServiceSendFeedback:
         """Test exception handling in send_feedback"""
         with patch("api.routers.mcp._mcp_service.add_background_task", side_effect=Exception("Background task failed")):
             feedback = "Test feedback"
+            user_agent = "test-user-agent"
 
-            result = await mcp_service.send_feedback(feedback, None)
+            result = await mcp_service.send_feedback(feedback, user_agent, None)
 
             assert result.success is False
             assert result.error is not None
@@ -240,14 +243,16 @@ class TestMCPServiceProcessFeedback:
                 await mcp_service._process_feedback(  # pyright: ignore[reportPrivateUsage]
                     feedback,
                     context,
+                    "test-user-agent",
                     "test-org",
                     "test@example.com",
                 )
 
                 # Verify agent was called with correct parameters
                 mock_agent.assert_called_once_with(
-                    feedback,
+                    feedback=feedback,
                     context=context,
+                    user_agent="test-user-agent",
                     organization_name="test-org",
                     user_email="test@example.com",
                 )
@@ -261,6 +266,7 @@ class TestMCPServiceProcessFeedback:
                         "summary": "Feedback processed successfully",
                         "key_themes": ["performance", "tools"],
                         "confidence": 0.9,
+                        "user_agent": "test-user-agent",
                     },
                 )
 
@@ -275,14 +281,16 @@ class TestMCPServiceProcessFeedback:
                 await mcp_service._process_feedback(  # pyright: ignore[reportPrivateUsage]
                     feedback,
                     context,
+                    "test-user-agent",
                     "test-org",
                     "test@example.com",
                 )
 
                 # Verify agent was called
                 mock_agent.assert_called_once_with(
-                    feedback,
+                    feedback=feedback,
                     context=context,
+                    user_agent="test-user-agent",
                     organization_name="test-org",
                     user_email="test@example.com",
                 )
@@ -295,6 +303,7 @@ class TestMCPServiceProcessFeedback:
                         "user_email": "test@example.com",
                         "feedback": feedback,
                         "context": context,
+                        "user_agent": "test-user-agent",
                     },
                 )
 
@@ -312,6 +321,7 @@ class TestMCPServiceProcessFeedback:
                 await mcp_service._process_feedback(  # pyright: ignore[reportPrivateUsage]
                     feedback,
                     context,
+                    "test-user-agent",
                     "test-org",
                     "test@example.com",
                 )
@@ -347,14 +357,16 @@ class TestMCPServiceProcessFeedback:
                 await mcp_service._process_feedback(  # pyright: ignore[reportPrivateUsage]
                     feedback,
                     None,
+                    "test-user-agent",
                     None,
                     None,
                 )
 
                 # Verify agent was called with None values
                 mock_agent.assert_called_once_with(
-                    feedback,
+                    feedback=feedback,
                     context=None,
+                    user_agent="test-user-agent",
                     organization_name=None,
                     user_email=None,
                 )

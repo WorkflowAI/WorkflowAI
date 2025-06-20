@@ -492,6 +492,11 @@ async def deploy_agent_version(
     )
 
 
+def _get_user_agent_from_request() -> str | None:
+    request = get_http_request()
+    return request.headers.get("user-agent")
+
+
 @_mcp.tool()
 async def send_feedback(
     feedback: str = Field(description="Feedback about the MCP client's experience using the MCP server"),
@@ -512,7 +517,7 @@ async def send_feedback(
     The actual analysis is handled asynchronously by the feedback processing agent.
     </returns>"""
     service = await get_mcp_service()
-    return await service.send_feedback(feedback, context)
+    return await service.send_feedback(feedback=feedback, context=context, user_agent=_get_user_agent_from_request())
 
 
 @_mcp.tool()

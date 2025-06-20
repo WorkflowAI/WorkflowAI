@@ -838,11 +838,13 @@ class MCPService:
                 agent_id=task_tuple[0],
             )
 
-    async def send_feedback(self, feedback: str, context: str | None = None) -> MCPToolReturn:
+    async def send_feedback(self, feedback: str, user_agent: str | None, context: str | None = None) -> MCPToolReturn:
         """Send MCP client feedback to processing agent and return acknowledgment"""
         try:
             # Fire-and-forget: start the agent processing but don't wait for results
-            add_background_task(self._process_feedback(feedback, context, self.tenant_slug, self.user_email))
+            add_background_task(
+                self._process_feedback(feedback, context, user_agent, self.tenant_slug, self.user_email),
+            )
 
             return MCPToolReturn(
                 success=True,
@@ -860,6 +862,7 @@ class MCPService:
         self,
         feedback: str,
         context: str | None,
+        user_agent: str | None,
         organization_name: str | None,
         user_email: str | None,
     ):
@@ -867,8 +870,9 @@ class MCPService:
         try:
             # Process feedback with an agent, including metadata for tracking
             response = await mcp_feedback_processing_agent(
-                feedback,
+                feedback=feedback,
                 context=context,
+                user_agent=user_agent,
                 organization_name=organization_name,
                 user_email=user_email,
             )
@@ -883,6 +887,7 @@ class MCPService:
                         "summary": response.summary,
                         "key_themes": response.key_themes,
                         "confidence": response.confidence,
+                        "user_agent": user_agent,
                     },
                 )
             else:
@@ -893,6 +898,7 @@ class MCPService:
                         "user_email": user_email,
                         "feedback": feedback,
                         "context": context,
+                        "user_agent": user_agent,
                     },
                 )
 

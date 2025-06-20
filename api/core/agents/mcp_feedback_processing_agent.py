@@ -18,6 +18,7 @@ class MCPFeedbackProcessingOutput(BaseModel):
 async def mcp_feedback_processing_agent(
     feedback: str,
     context: str | None = None,
+    user_agent: str | None = None,
     organization_name: str | None = None,
     user_email: str | None = None,
 ) -> MCPFeedbackProcessingOutput | None:
@@ -55,6 +56,8 @@ Analyze this feedback and provide a structured response with summary, sentiment 
         metadata["organization_name"] = organization_name
     if user_email:
         metadata["user_email"] = user_email
+    if user_agent:
+        metadata["user_agent"] = user_agent
     # TODO: add some mcp-session_id to be able to fetch the full MCP conversation too
 
     response = await client.beta.chat.completions.parse(
@@ -67,6 +70,7 @@ Analyze this feedback and provide a structured response with summary, sentiment 
             "input": {
                 "feedback": feedback,
                 "context": context or "",
+                "user_agent": user_agent or "unknown",
             },
         },
         response_format=MCPFeedbackProcessingOutput,
