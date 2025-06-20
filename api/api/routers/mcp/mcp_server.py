@@ -9,7 +9,6 @@ from api.dependencies.task_info import TaskTuple
 from api.routers.mcp._mcp_models import (
     AgentResponse,
     AgentSortField,
-    AIEngineerReponseWithUsefulLinks,
     ConciseLatestModelResponse,
     ConciseModelResponse,
     LegacyMCPToolReturn,

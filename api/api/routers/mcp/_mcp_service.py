@@ -1,9 +1,9 @@
 from collections.abc import Iterator
 from datetime import datetime, timedelta
 from typing import Any
-from pydantic import BaseModel
-from typing_extensions import deprecated
 from venv import logger
+
+from typing_extensions import deprecated
 
 from api.routers.mcp._mcp_models import (
     AgentResponse,
