@@ -155,3 +155,49 @@ class TaskRunStorage(TaskRunSystemStorage):
         is_active: bool = True,
         limit: int = 100,
     ) -> AsyncIterator[AgentRun]: ...
+
+    def search_tenant_runs(
+        self,
+        tenant_uid: int,
+        search_fields: list[SearchQuery] | None,
+        task_uids: set[int] | None,
+        limit: int,
+        offset: int,
+        timeout_ms: int = 60_000,
+    ) -> AsyncIterator[AgentRunBase]:
+        """
+        Search runs across multiple agents within a tenant.
+
+        Args:
+            tenant_uid: The tenant UID to search within
+            search_fields: Optional search field filters
+            task_uids: Optional set of task UIDs to filter by (agent filtering)
+            limit: Maximum number of results
+            offset: Number of results to skip
+            timeout_ms: Query timeout in milliseconds
+
+        Returns:
+            Async iterator of AgentRunBase objects
+        """
+        ...
+
+    async def count_tenant_filtered_runs(
+        self,
+        tenant_uid: int,
+        search_fields: list[SearchQuery] | None,
+        task_uids: set[int] | None,
+        timeout_ms: int = 60_000,
+    ) -> int | None:
+        """
+        Count runs across multiple agents within a tenant matching the given filters.
+
+        Args:
+            tenant_uid: The tenant UID to search within
+            search_fields: Optional search field filters
+            task_uids: Optional set of task UIDs to filter by (agent filtering)
+            timeout_ms: Query timeout in milliseconds
+
+        Returns:
+            Count of matching runs, or None if count cannot be determined
+        """
+        ...
