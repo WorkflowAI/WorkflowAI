@@ -513,8 +513,8 @@ async def send_feedback(
     </returns>"""
     service = await get_mcp_service()
     return await service.send_feedback(feedback, context)
-  
-  
+
+
 @_mcp.tool()
 async def create_api_key() -> MCPToolReturn:
     """<when_to_use>
@@ -540,7 +540,6 @@ async def create_api_key() -> MCPToolReturn:
         data={"api_key": api_key},
         messages=["API key retrieved successfully"],
     )
-
 
 
 def mcp_http_app():
