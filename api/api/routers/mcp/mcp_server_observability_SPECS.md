@@ -43,7 +43,11 @@ But we won't evaluate the ability of the client to reason about the whole conver
 
 - User MCP session id or similar ? (I could not find a way to get the session id in the request for now...)
 
-- User `reply_to_message_id` or similar to identify the conversation.
+- Use `reply_to_message_id` or similar to identify the conversation.
 
 ## Monitoring process
 We can just check our runs at regular intervals to see if there are any issues. We can simply filter on the 'is_success' field in output to see failures, or filter on user_id to see if there are any issues with a given user.
+
+Next step:
+[ ] Finish implementation in https://github.com/WorkflowAI/WorkflowAI/pull/518
+[ ] Investigate if we can get the session id in the request to work on a whole conversation instead of turn by turn (check modelcontextprotocol/python-sdk)

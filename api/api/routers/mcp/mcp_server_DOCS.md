@@ -145,6 +145,7 @@ Notes from Yann: I wonder if I should not simply manage my subtasque in this REA
 
 ### Proposition for next use cases:
 - [ ] Very large PDF payload that break agent, the MCP should be able to investigate https://workflowaihq.slack.com/archives/C075WQE2Y6M/p1749826343497299
+- [ ] check our runs at regular intervals to see if there are any issues. We can simply filter on the 'is_success' field in output to see failures, or filter on user_id to see if there are any issues with a given user.
 - [ ] Add a new input variables (including with deployed agent)
 - [ ] Add a new output variable (including with deployed agent)
 - [ ] Migrate agent to stuctured output
