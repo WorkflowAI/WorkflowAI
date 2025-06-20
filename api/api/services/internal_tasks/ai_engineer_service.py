@@ -58,7 +58,6 @@ from core.utils.tool_utils.tool_utils import get_tools_description_openai_format
 
 class AIGuidesEngineerAgentResponse(BaseModel):
     assistant_answer: str | None = None
-    relevant_docs: list[DocumentationSection] | None = None
 
 
 class AIEngineerAgentContext(NamedTuple):
@@ -741,20 +740,22 @@ class AIEngineerService:
                 ),
             )
 
-    async def _fetch_guides(self, assistant_answer: str) -> list[DocumentationSection]:
+    async def _inject_guides(self, assistant_answer: str) -> str:
         """Fetch the guides from the documentation service."""
 
         GUIDE_INJECTION_MAPPING = {
             "{{building_new_agent_guide}}": "content/docs/agents/private/new_agent.md",
         }
 
-        guides: list[DocumentationSection] = []
-
         for guide_name, guide_path in GUIDE_INJECTION_MAPPING.items():
             if guide_name in assistant_answer:
-                guides.extend(DocumentationService().get_documentation_by_path([guide_path]))
+                doc_section = DocumentationService().get_documentation_by_path([guide_path])[0]
+                assistant_answer = assistant_answer.replace(
+                    guide_name,
+                    f"**{doc_section.title}**\n{doc_section.content}",
+                )
 
-        return guides
+        return assistant_answer
 
     async def stream_ai_guides_engineer_agent_response(
         self,
@@ -791,10 +792,9 @@ class AIEngineerService:
             if not search_query:
                 # Yield the final assistant answer
                 if accumulated_content:
-                    relevant_docs = await self._fetch_guides(accumulated_content)
+                    accumulated_content = await self._inject_guides(accumulated_content)
                     yield AIGuidesEngineerAgentResponse(
                         assistant_answer=accumulated_content,
-                        relevant_docs=relevant_docs,
                     )
                 break
 
