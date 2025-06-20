@@ -792,7 +792,11 @@ class AIEngineerService:
             if not search_query:
                 # Yield the final assistant answer
                 if accumulated_content:
-                    accumulated_content = await self._inject_guides(accumulated_content)
+                    try:
+                        accumulated_content = await self._inject_guides(accumulated_content)
+                    except Exception as e:
+                        self._logger.exception("Error injecting guides", exc_info=e)
+
                     yield AIGuidesEngineerAgentResponse(
                         assistant_answer=accumulated_content,
                     )

@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from pydantic import BaseModel
+from typing_extensions import deprecated
 
 from api.routers.mcp._mcp_models import (
     AgentResponse,
@@ -510,7 +511,8 @@ class MCPService:
 
         return agent_info, None
 
-    async def ask_ai_engineer(
+    @deprecated("Use ask_ai_engineer instead for the new 'guide' first approach")
+    async def _legacy_ask_ai_engineer(
         self,
         agent_schema_id: int | None,
         agent_id: str | None,
@@ -561,7 +563,7 @@ class MCPService:
             data=return_value,
         )
 
-    async def ask_ai_guides_engineer(
+    async def ask_ai_engineer(
         self,
         agent_schema_id: int | None,
         agent_id: str | None,
