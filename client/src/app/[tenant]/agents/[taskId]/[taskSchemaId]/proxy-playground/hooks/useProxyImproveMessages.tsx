@@ -2,7 +2,8 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import { ImproveVersionMessagesResponse, useImproveVersionMessages } from '@/store/improve_version_messages';
 import { ToolCallName, usePlaygroundChatStore } from '@/store/playgroundChatStore';
 import { TaskID, TenantID } from '@/types/aliases';
-import { ProxyMessage } from '@/types/workflowAI';
+import { ProxyMessage, ToolKind } from '@/types/workflowAI';
+import { generatePromptForToolsUpdate, getToolsFromMessages } from '../utils';
 
 type Props = {
   taskId: TaskID;
@@ -14,6 +15,7 @@ type Props = {
 
 export type ProxyImproveMessagesControls = {
   improveVersionMessages: (improvementInstructions: string) => Promise<void>;
+  updateToolsInVersionMessages: (tools: ToolKind[]) => Promise<void>;
   acceptChanges: () => void;
   undoChanges: () => void;
   cancelImprovement: () => void;
@@ -111,6 +113,58 @@ export function useProxyImproveMessages(props: Props): ProxyImproveMessagesContr
     ]
   );
 
+  const updateToolsInVersionMessages = useCallback(
+    async (tools: ToolKind[]) => {
+      if (!versionId) {
+        return;
+      }
+
+      abortControllerRef.current?.abort();
+      const abortController = new AbortController();
+      abortControllerRef.current = abortController;
+
+      const oldTools = getToolsFromMessages(proxyMessages);
+      const prompt = generatePromptForToolsUpdate(oldTools ?? [], tools);
+
+      if (!prompt) {
+        return;
+      }
+
+      const previouseProxyMessages = proxyMessages;
+      setIsImproving(true);
+
+      const onMessage = (message: ImproveVersionMessagesResponse) => {
+        setProxyMessages(message.improved_messages);
+      };
+
+      try {
+        const message = await improve(
+          tenant,
+          taskId,
+          versionId,
+          prompt,
+          proxyMessages,
+          onMessage,
+          abortController.signal
+        );
+
+        setProxyMessages(message.improved_messages);
+        setIsImproving(false);
+        return;
+      } catch (error) {
+        console.error(error);
+
+        setChangelog(undefined);
+        setProxyMessages(previouseProxyMessages);
+        setOldProxyMessages(undefined);
+        setIsImproving(false);
+        setShowDiffs(false);
+        return;
+      }
+    },
+    [improve, tenant, taskId, versionId, proxyMessages, setProxyMessages]
+  );
+
   const acceptChanges = useCallback(() => {
     setOldProxyMessages(undefined);
     setChangelog(undefined);
@@ -131,6 +185,7 @@ export function useProxyImproveMessages(props: Props): ProxyImproveMessagesContr
 
   return {
     improveVersionMessages,
+    updateToolsInVersionMessages,
     acceptChanges,
     undoChanges,
     cancelImprovement,
