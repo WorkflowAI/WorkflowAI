@@ -565,7 +565,7 @@ class MCPService:
             pass
 
         # Return the final accumulated response
-        if chunk and (chunk.assistant_answer or chunk.relevant_docs):
+        if chunk and chunk.assistant_answer:
             return MCPToolReturn(
                 success=True,
                 data=chunk,
