@@ -579,6 +579,7 @@ class MCPService:
 
         chunk: AIGuidesEngineerAgentResponse | None = None
         async for chunk in self.ai_engineer_service.stream_ai_guides_engineer_agent_response(message):
+            # The reason why we use streaming is to be able to stream results to MCP clients in the future.
             pass
 
         # Return the final accumulated response
