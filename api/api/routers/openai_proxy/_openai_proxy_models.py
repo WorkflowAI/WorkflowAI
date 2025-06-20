@@ -376,6 +376,7 @@ class _OpenAIProxyExtraFields(BaseModel):
         description="A specific provider to use for the request. When provided, multi provider fallback is disabled."
         "The attribute is ignored if the provider is not supported.",
         validation_alias=_alias_generator("provider"),
+        exclude=True,  # not meant to be exposed publicly
     )
 
     agent_id: str | None = Field(
