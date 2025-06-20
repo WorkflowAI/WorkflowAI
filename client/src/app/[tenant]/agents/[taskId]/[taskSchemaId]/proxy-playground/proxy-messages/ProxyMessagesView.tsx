@@ -100,11 +100,20 @@ export function ProxyMessagesView(props: Props) {
       }
 
       const lastIndex = !!cleanedMessages && cleanedMessages.length > 0 ? cleanedMessages.length - 1 : 0;
-      const previouseIndex = Math.max(0, index ?? lastIndex);
+      const previouseIndex = Math.max(0, index !== undefined ? index - 1 : lastIndex);
       const previouseMessage = cleanedMessages?.[previouseIndex];
 
       const allMessages = cleanedMessages ?? [];
-      const newMessage = createEmptyMessage(defaultType, previouseMessage);
+
+      let newMessageType = defaultType;
+      if (defaultType === 'system' && index !== undefined && index >= 1) {
+        const previouseMessageType = cleanedMessages?.[index - 1]?.role;
+        if (previouseMessageType === 'user') {
+          newMessageType = 'user';
+        }
+      }
+
+      const newMessage = createEmptyMessage(newMessageType, previouseMessage);
 
       if (index === undefined || index >= allMessages.length) {
         setMessages([...allMessages, newMessage]);
@@ -160,7 +169,12 @@ export function ProxyMessagesView(props: Props) {
       ))}
       {showAddMessageButton && (
         <div className='flex flex-row gap-2 py-2'>
-          <Button variant='newDesign' size='sm' icon={<Add16Regular />} onClick={() => addMessage()}>
+          <Button
+            variant='newDesign'
+            size='sm'
+            icon={<Add16Regular />}
+            onClick={() => addMessage(cleanedMessages?.length ?? 0)}
+          >
             Add Message
           </Button>
         </div>
