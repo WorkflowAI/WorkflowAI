@@ -6,6 +6,45 @@ import { replaceTaskSchemaId } from '@/lib/routeFormatter';
 import { TaskID, TaskSchemaID, TenantID } from '@/types/aliases';
 import { saveSearchParamsToHistory } from './useProxyHistory';
 
+export function getCacheValue(cache: string | undefined): 'auto' | 'always' | 'never' | undefined {
+  if (cache === undefined) {
+    return undefined;
+  }
+  switch (cache) {
+    case 'auto':
+      return 'auto';
+    case 'always':
+      return 'always';
+    case 'never':
+      return 'never';
+    default:
+      return undefined;
+  }
+}
+
+export type AdvancedSettings = {
+  temperature: string | undefined;
+  setTemperature: (temperature: string | undefined) => void;
+  cache: string | undefined;
+  setCache: (cache: string | undefined) => void;
+  top_p: string | undefined;
+  setTopP: (topP: string | undefined) => void;
+  max_tokens: string | undefined;
+  setMaxTokens: (maxTokens: string | undefined) => void;
+  stream: string | undefined;
+  setStream: (stream: string | undefined) => void;
+  stream_options_include_usage: string | undefined;
+  setStreamOptionsIncludeUsage: (streamOptionsIncludeUsage: string | undefined) => void;
+  stop: string | undefined;
+  setStop: (stop: string | undefined) => void;
+  presence_penalty: string | undefined;
+  setPresencePenalty: (presencePenalty: string | undefined) => void;
+  frequency_penalty: string | undefined;
+  setFrequencyPenalty: (frequencyPenalty: string | undefined) => void;
+  tool_choice: string | undefined;
+  setToolChoice: (toolChoice: string | undefined) => void;
+};
+
 export function useProxyPlaygroundSearchParams(
   tenant: TenantID | undefined,
   taskId: TaskID,
@@ -21,11 +60,20 @@ export function useProxyPlaygroundSearchParams(
     showDiffMode: showDiffModeFromParams,
     hiddenModelColumns: hiddenModelColumnsFromParams,
     historyId: historyIdFromParams,
-    temperature: temperatureFromParams,
     model1: model1FromParams,
     model2: model2FromParams,
     model3: model3FromParams,
     scrollToBottom: scrollToBottomFromParams,
+    temperature: temperatureFromParams,
+    cache: cacheFromParams,
+    top_p: topPFromParams,
+    max_tokens: maxTokensFromParams,
+    stream: streamFromParams,
+    stream_options_include_usage: streamOptionsIncludeUsageFromParams,
+    stop: stopFromParams,
+    presence_penalty: presencePenaltyFromParams,
+    frequency_penalty: frequencyPenaltyFromParams,
+    tool_choice: toolChoiceFromParams,
   } = useParsedSearchParams(
     'versionId',
     'taskRunId',
@@ -40,7 +88,16 @@ export function useProxyPlaygroundSearchParams(
     'model1',
     'model2',
     'model3',
-    'scrollToBottom'
+    'scrollToBottom',
+    'cache',
+    'top_p',
+    'max_tokens',
+    'stream',
+    'stream_options_include_usage',
+    'stop',
+    'presence_penalty',
+    'frequency_penalty',
+    'tool_choice'
   );
 
   const redirectWithParams = useRedirectWithParams();
@@ -53,14 +110,23 @@ export function useProxyPlaygroundSearchParams(
   const [showDiffMode, setShowDiffMode] = useState(showDiffModeFromParams);
   const [hiddenModelColumns, setHiddenModelColumns] = useState(hiddenModelColumnsFromParams);
   const [historyId, setHistoryId] = useState(historyIdFromParams);
-  const [temperature, setTemperature] = useState<number | undefined>(
-    temperatureFromParams ? Number(temperatureFromParams) : undefined
-  );
+  const [temperature, setTemperature] = useState<string | undefined>(temperatureFromParams);
   const [model1, setModel1] = useState<string | undefined>(model1FromParams);
   const [model2, setModel2] = useState<string | undefined>(model2FromParams);
   const [model3, setModel3] = useState<string | undefined>(model3FromParams);
 
   const [scrollToBottom, setScrollToBottom] = useState(scrollToBottomFromParams);
+  const [cache, setCache] = useState<string | undefined>(cacheFromParams);
+  const [top_p, setTopP] = useState<string | undefined>(topPFromParams);
+  const [max_tokens, setMaxTokens] = useState<string | undefined>(maxTokensFromParams);
+  const [stream, setStream] = useState<string | undefined>(streamFromParams);
+  const [stream_options_include_usage, setStreamOptionsIncludeUsage] = useState<string | undefined>(
+    streamOptionsIncludeUsageFromParams
+  );
+  const [stop, setStop] = useState<string | undefined>(stopFromParams);
+  const [presence_penalty, setPresencePenalty] = useState<string | undefined>(presencePenaltyFromParams);
+  const [frequency_penalty, setFrequencyPenalty] = useState<string | undefined>(frequencyPenaltyFromParams);
+  const [tool_choice, setToolChoice] = useState<string | undefined>(toolChoiceFromParams);
 
   const [schemaId, setSchemaId] = useState(urlSchemaId);
 
@@ -74,10 +140,19 @@ export function useProxyPlaygroundSearchParams(
       showDiffMode: showDiffMode,
       hiddenModelColumns: hiddenModelColumns,
       historyId: historyId,
-      temperature: temperature ? temperature.toString() : undefined,
+      temperature: temperature,
       model1: model1,
       model2: model2,
       model3: model3,
+      cache: cache,
+      top_p,
+      max_tokens,
+      stream: stream,
+      stream_options_include_usage,
+      stop: stop,
+      presence_penalty,
+      frequency_penalty,
+      tool_choice,
     };
 
     return result;
@@ -94,6 +169,15 @@ export function useProxyPlaygroundSearchParams(
     model1,
     model2,
     model3,
+    cache,
+    top_p,
+    max_tokens,
+    stream,
+    stream_options_include_usage,
+    stop,
+    presence_penalty,
+    frequency_penalty,
+    tool_choice,
   ]);
 
   const paramsRef = useRef(params);
@@ -133,10 +217,35 @@ export function useProxyPlaygroundSearchParams(
       }
       const newUrl = replaceTaskSchemaId(pathname, taskSchemaId);
       const newParamsString = stringifyQueryParams(params);
-      router.replace(`${newUrl}${newParamsString}`, { scroll: false });
+      const newUrlWithParams = `${newUrl}${newParamsString}`;
+
+      router.replace(newUrlWithParams, { scroll: false });
     },
     [pathname, router]
   );
+
+  const advancedSettings: AdvancedSettings = {
+    temperature,
+    setTemperature,
+    cache,
+    setCache,
+    top_p,
+    setTopP,
+    max_tokens,
+    setMaxTokens,
+    stream,
+    setStream,
+    stream_options_include_usage,
+    setStreamOptionsIncludeUsage,
+    stop,
+    setStop,
+    presence_penalty,
+    setPresencePenalty,
+    frequency_penalty,
+    setFrequencyPenalty,
+    tool_choice,
+    setToolChoice,
+  };
 
   return {
     versionId,
@@ -164,9 +273,6 @@ export function useProxyPlaygroundSearchParams(
     historyId,
     setHistoryId,
 
-    temperature,
-    setTemperature,
-
     model1,
     model2,
     model3,
@@ -180,5 +286,7 @@ export function useProxyPlaygroundSearchParams(
 
     scrollToBottom,
     setScrollToBottom,
+
+    advancedSettings,
   };
 }
