@@ -105,6 +105,30 @@ class AgentResponse(BaseModel):
     total_cost_usd: float
 
 
+class AgentResponseDetailed(BaseModel):
+    """Detailed agent response with full schema information - used when fetching a single agent"""
+
+    agent_id: str
+    is_public: bool
+
+    class DetailedAgentSchema(BaseModel):
+        agent_schema_id: int
+        created_at: str | None = None
+        input_json_schema: dict[str, Any] | None = None
+        output_json_schema: dict[str, Any] | None = None
+        is_hidden: bool | None = None
+        last_active_at: str | None
+
+    schemas: list[DetailedAgentSchema]
+
+    run_count: int
+    total_cost_usd: float
+
+    # Additional detailed information that's useful when fetching a single agent
+    name: str | None = None
+    description: str | None = None
+
+
 class AgentResponseList(BaseModel):
     agents: list[AgentResponse]
 

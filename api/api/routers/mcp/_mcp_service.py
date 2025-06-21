@@ -4,6 +4,7 @@ from typing import Any
 
 from api.routers.mcp._mcp_models import (
     AgentResponse,
+    AgentResponseDetailed,
     AgentSortField,
     AIEngineerReponseWithUsefulLinks,
     ConciseLatestModelResponse,
@@ -341,7 +342,6 @@ class MCPService:
         page: int,
         sort_by: AgentSortField,
         order: SortOrder,
-        agent_id: str | None = None,
         stats_from_date: str = "",
         with_schemas: bool = False,
     ) -> PaginatedMCPToolReturn[None, AgentResponse]:
@@ -363,12 +363,10 @@ class MCPService:
             async for stat in self.storage.task_runs.run_count_by_agent_uid(parsed_from_date):
                 stats_by_uid[stat.agent_uid] = stat
 
-            if agent_id:
-                agents = [await tasks.get_task_by_id(self.storage, agent_id, with_schemas=with_schemas)]
-            else:
-                agents = await tasks.list_tasks(self.storage, with_schemas=with_schemas)
+            # Get all agents with concise information
+            agents = await tasks.list_tasks(self.storage, with_schemas=with_schemas)
 
-            # Enrich agents with stats
+            # Build concise response for multiple agents
             agent_responses: list[AgentResponse] = []
             for agent in agents:
                 # Get stats for this agent
@@ -380,7 +378,7 @@ class MCPService:
                     run_count: int = 0
                     total_cost_usd: float = 0.0
 
-                # Build schemas from versions
+                # Build concise schemas without detailed input/output information
                 schemas = [
                     AgentResponse.AgentSchema(
                         agent_schema_id=v.schema_id,
@@ -413,6 +411,80 @@ class MCPService:
                 success=False,
                 error=f"Failed to list agents with stats: {str(e)}",
                 data=None,
+            )
+
+    async def get_agent(
+        self,
+        agent_id: str,
+        stats_from_date: str = "",
+    ) -> MCPToolReturn[AgentResponseDetailed]:
+        """Get detailed information for a specific agent."""
+        try:
+            # Parse from_date or use default
+            parsed_from_date = None
+            if stats_from_date:
+                try:
+                    parsed_from_date = datetime.fromisoformat(stats_from_date.replace("Z", "+00:00"))
+                except ValueError:
+                    pass
+
+            if not parsed_from_date:
+                parsed_from_date = datetime.now() - timedelta(days=7)
+
+            # Get agent stats
+            stats_by_uid: dict[int, TaskRunStorage.AgentRunCount] = {}
+            async for stat in self.storage.task_runs.run_count_by_agent_uid(parsed_from_date):
+                stats_by_uid[stat.agent_uid] = stat
+
+            # Get single agent with detailed information
+            agent = await tasks.get_task_by_id(self.storage, agent_id, with_schemas=True)
+
+            # Get stats for this agent
+            if agent.uid and agent.uid in stats_by_uid:
+                agent_stats: TaskRunStorage.AgentRunCount = stats_by_uid[agent.uid]
+                run_count: int = agent_stats.run_count
+                total_cost_usd: float = agent_stats.total_cost_usd
+            else:
+                run_count: int = 0
+                total_cost_usd: float = 0.0
+
+            # Build detailed schemas with full input/output information
+            detailed_schemas = [
+                AgentResponseDetailed.DetailedAgentSchema(
+                    agent_schema_id=v.schema_id,
+                    created_at=v.created_at.isoformat() if v.created_at else None,
+                    input_json_schema=v.input_schema,
+                    output_json_schema=v.output_schema,
+                    is_hidden=v.is_hidden or False,
+                    last_active_at=v.last_active_at.isoformat() if v.last_active_at else None,
+                )
+                for v in agent.versions
+            ]
+
+            detailed_response = AgentResponseDetailed(
+                agent_id=agent.id,
+                is_public=agent.is_public or False,
+                schemas=detailed_schemas,
+                run_count=run_count,
+                total_cost_usd=total_cost_usd,
+                name=agent.name,
+                description=agent.description,
+            )
+
+            return MCPToolReturn[AgentResponseDetailed](
+                success=True,
+                data=detailed_response,
+            )
+
+        except ObjectNotFoundException:
+            return MCPToolReturn[AgentResponseDetailed](
+                success=False,
+                error=f"Agent {agent_id} not found",
+            )
+        except Exception as e:
+            return MCPToolReturn[AgentResponseDetailed](
+                success=False,
+                error=f"Failed to get agent details: {str(e)}",
             )
 
     async def get_agent_version(
