@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sentry_sdk.integrations.logging import ignore_logger
 
 from api.errors import configure_scope_for_error
-from api.routers import models_router
+from api.routers import models_router, tools_v1
 from api.routers.openai_proxy import openai_proxy_router
 from api.services.analytics import close_analytics, start_analytics
 from api.services.storage import storage_for_tenant
@@ -170,6 +170,7 @@ app.include_router(probes.router)
 app.include_router(run.router)
 app.include_router(openai_proxy_router.router)
 app.include_router(models_router.router)
+app.include_router(tools_v1.router)
 
 
 if not _ONLY_RUN_ROUTES:

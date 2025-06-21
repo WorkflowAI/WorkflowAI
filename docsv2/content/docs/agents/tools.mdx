@@ -109,6 +109,21 @@ messages = [
 ]
 ```
 
+### All tools
+
+TODO: make a table with all the tools using the `/v1/tools/hosted` endpoint
+
+### List hosted tools programmatically
+
+You can list all the hosted tools programmatically:
+- by calling the `list_hosted_tools` tool from the MCP server
+- by calling the `/v1/tools/hosted` endpoint (no authentication required)
+
+```bash
+curl -X GET "https://api.workflowai.com/v1/tools/hosted" \
+-H "accept: application/json" \
+```
+
 <Callout type="info">
 We're working on adding more tools, if you need any specfic tool, please open a discussion on [GitHub](https://github.com/workflowai/workflowai/discussions/categories/ideas) or [Discord](https://discord.com/invite/auuf8DREZh)
 </Callout>
