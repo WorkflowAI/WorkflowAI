@@ -695,9 +695,13 @@ async def create_api_key() -> LegacyMCPToolReturn:
 
 @_mcp.tool()
 async def list_hosted_tools() -> LegacyMCPToolReturn:
-    """<when_to_use>
+    """
+    Read the documentation about hosted tools using the `search_documentation` tool.
+
+    <when_to_use>
     When there is a need to see all available hosted tools in WorkflowAI, including web search, browser tools, and other built-in capabilities.
     </when_to_use>
+
     <returns>
     Returns a list of all hosted tools available in WorkflowAI, including their names, descriptions.
     </returns>"""
