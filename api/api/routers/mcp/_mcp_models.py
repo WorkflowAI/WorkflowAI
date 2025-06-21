@@ -96,8 +96,6 @@ class AgentResponse(BaseModel):
     class AgentSchema(BaseModel):
         agent_schema_id: int
         created_at: str | None = None
-        input_json_schema: dict[str, Any] | None = None
-        output_json_schema: dict[str, Any] | None = None
         is_hidden: bool | None = None
         last_active_at: str | None
 

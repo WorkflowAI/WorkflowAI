@@ -385,8 +385,6 @@ class MCPService:
                     AgentResponse.AgentSchema(
                         agent_schema_id=v.schema_id,
                         created_at=v.created_at.isoformat() if v.created_at else None,
-                        input_json_schema=v.input_schema,
-                        output_json_schema=v.output_schema,
                         is_hidden=v.is_hidden or False,
                         last_active_at=v.last_active_at.isoformat() if v.last_active_at else None,
                     )

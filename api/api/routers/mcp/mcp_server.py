@@ -204,7 +204,7 @@ async def list_agents(
     with_schemas: Annotated[
         bool,
         Field(
-            description="If true, the response will include the input and output schemas of the different schema ids of the agent. Useful to find on which schema id you are working on.",
+            description="If true, the response will include basic schema information (schema_id, created_at, is_hidden, last_active_at) for the different schema ids of the agent. Note: Full input/output schemas are not included to keep responses concise - use get_agent_versions for detailed schema information.",
         ),
     ] = False,
     stats_from_date: Annotated[
