@@ -21,8 +21,6 @@ def create_test_agent(
         AgentResponse.AgentSchema(
             agent_schema_id=i + 1,
             created_at=datetime(2024, 1, 1).isoformat(),
-            input_json_schema={},
-            output_json_schema={},
             is_hidden=False,
             last_active_at=last_active_at,
         )

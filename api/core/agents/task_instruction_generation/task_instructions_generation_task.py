@@ -64,5 +64,4 @@ VERSION = workflowai.VersionProperties(
 @workflowai.agent(version=VERSION)
 async def agent_instructions_redaction(
     input: AgentInstructionsGenerationTaskInput,
-) -> AgentInstructionsGenerationTaskOutput:
-    ...
+) -> AgentInstructionsGenerationTaskOutput: ...
