@@ -80,7 +80,7 @@ So, in order to build a new agent, you can use the OpenAI SDK, for example:
 import openai
 
 client = openai.OpenAI(
-    api_key="your_api_key", # you can use the `create_api_key` MCP tool to create an API key
+    api_key="your_api_key", # you can use the `create_api_key` MCP tool to create an API key, or check if the API key is already available in the environment variables
     base_url="https://run-preview.workflowai.com/v1" # the base_url must be set to the WorkflowAI API endpoint
 )
 
@@ -116,6 +116,8 @@ def run_processing_agent(model: str, text: str) -> tuple[str, str, float, float]
         response.choices[0].duration_seconds # calculated by WorkflowAI
     )
 ```
+
+<!-- TODO: add how to link a run to the web app: https://linear.app/workflowai/issue/WOR-5021/add-run-url-to-api-responses-and-mcp-tools-for-run-objects -->
 
 ### Example: Chat-based Agent
 
