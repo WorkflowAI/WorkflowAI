@@ -342,29 +342,19 @@ class MCPService:
         page: int,
         sort_by: AgentSortField,
         order: SortOrder,
-        stats_from_date: str = "",
-        with_schemas: bool = False,
     ) -> PaginatedMCPToolReturn[None, AgentResponse]:
         """List all agents with their statistics."""
         try:
-            # Parse from_date or use default
-            parsed_from_date = None
-            if stats_from_date:
-                try:
-                    parsed_from_date = datetime.fromisoformat(stats_from_date.replace("Z", "+00:00"))
-                except ValueError:
-                    pass
-
-            if not parsed_from_date:
-                parsed_from_date = datetime.now() - timedelta(days=7)
+            # Use default date (7 days ago)
+            parsed_from_date = datetime.now() - timedelta(days=7)
 
             # Get agent stats
             stats_by_uid: dict[int, TaskRunStorage.AgentRunCount] = {}
             async for stat in self.storage.task_runs.run_count_by_agent_uid(parsed_from_date):
                 stats_by_uid[stat.agent_uid] = stat
 
-            # Get all agents with concise information
-            agents = await tasks.list_tasks(self.storage, with_schemas=with_schemas)
+            # Get all agents with basic schema information (always included for consistency)
+            agents = await tasks.list_tasks(self.storage, with_schemas=True)
 
             # Build concise response for multiple agents
             agent_responses: list[AgentResponse] = []

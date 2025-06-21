@@ -196,18 +196,6 @@ async def list_available_models(
 
 @_mcp.tool()
 async def list_agents(
-    with_schemas: Annotated[
-        bool,
-        Field(
-            description="If true, the response will include basic schema information (schema_id, created_at, is_hidden, last_active_at) for the different schema ids of the agent. Note: Full input/output schemas are not included to keep responses concise - use get_agent for detailed schema information.",
-        ),
-    ] = False,
-    stats_from_date: Annotated[
-        str,
-        Field(
-            description="ISO date string to filter usage (runs and costs) stats from (e.g., '2024-01-01T00:00:00Z'). Defaults to 7 days ago if not provided.",
-        ),
-    ] = "",
     sort_by: Annotated[
         AgentSortField,
         Field(
@@ -226,15 +214,17 @@ async def list_agents(
     ] = 1,
 ) -> PaginatedMCPToolReturn[None, AgentResponse]:
     """<when_to_use>
-    When the user wants to see all agents they have created, along with their statistics (run counts and costs on the last 7 days).
+    When the user wants to see all agents they have created, along with their basic statistics (run counts and costs).
     </when_to_use>
     <returns>
-    Returns a list of all agents for the user along with their statistics (run counts and costs).
+    Returns a concise list of all agents with basic information:
+    - Agent ID and public status
+    - Basic schema information (schema_id, created_at, is_hidden, last_active_at)
+    - Run statistics (run count and total cost from last 7 days)
+    - No detailed schemas included for performance - use get_agent for full details
     </returns>"""
     service = await get_mcp_service()
     return await service.list_agents(
-        stats_from_date=stats_from_date,
-        with_schemas=with_schemas,
         page=page,
         sort_by=sort_by,
         order=order,
