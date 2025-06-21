@@ -693,5 +693,33 @@ async def create_api_key() -> LegacyMCPToolReturn:
     )
 
 
+@_mcp.tool()
+async def list_hosted_tools() -> LegacyMCPToolReturn:
+    """<when_to_use>
+    When there is a need to see all available hosted tools in WorkflowAI, including web search, browser tools, and other built-in capabilities.
+    </when_to_use>
+    <returns>
+    Returns a list of all hosted tools available in WorkflowAI, including their names, descriptions.
+    </returns>"""
+    from api.services.hosted_tools_service import HostedToolsService
+
+    try:
+        service = HostedToolsService()
+        tools = await service.list_hosted_tools()
+
+        return LegacyMCPToolReturn(
+            success=True,
+            data={
+                "tools": [tool.model_dump() for tool in tools],
+            },
+            messages=[f"Found {len(tools)} hosted tools available"],
+        )
+    except Exception as e:
+        return LegacyMCPToolReturn(
+            success=False,
+            error=f"Failed to list hosted tools: {e}",
+        )
+
+
 def mcp_http_app():
     return _mcp.http_app(path="/")
