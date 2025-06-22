@@ -76,7 +76,7 @@ June 22:
 
 ## Guides
 
-- [ ] Building a new agent (See docsv2/content/private/ai-engineer/guides/new_agent.md)
+- [ ] Building a new agent (See docsv2/content/docs/use-cases/new_agent.mdx)
 - [ ] Migrating an existing agent (not started yet)
 - [ ] Improving and debugging an existing agent (not started yet)
 
