@@ -96,21 +96,32 @@ class ConciseModelResponse(BaseModel):
 
 
 class AgentResponse(BaseModel):
-    agent_id: str
-    is_public: bool
+    agent_id: str = Field(description="Unique identifier for the agent")
+    is_public: bool = Field(description="Whether this agent is publicly accessible")
 
     class AgentSchema(BaseModel):
-        agent_schema_id: int
-        created_at: str | None = None
-        input_json_schema: dict[str, Any] | None = None
-        output_json_schema: dict[str, Any] | None = None
-        is_hidden: bool | None = None
-        last_active_at: str | None
+        agent_schema_id: int = Field(description="Unique schema ID for this agent version")
+        created_at: str | None = Field(default=None, description="ISO timestamp when this schema was created")
+        input_json_schema: dict[str, Any] | None = Field(
+            default=None,
+            description="JSON schema defining the expected input structure for this agent",
+        )
+        output_json_schema: dict[str, Any] | None = Field(
+            default=None,
+            description="JSON schema defining the output structure this agent produces",
+        )
+        is_hidden: bool | None = Field(
+            default=None,
+            description="Whether this schema version is hidden from normal listings",
+        )
+        last_active_at: str | None = Field(description="ISO timestamp of the last time this schema was used in a run")
 
-    schemas: list[AgentSchema]
+    schemas: list[AgentSchema] = Field(description="List of schema versions available for this agent")
 
-    run_count: int
-    total_cost_usd: float
+    run_count: int = Field(description="Total number of runs executed for this agent in the specified time period")
+    total_cost_usd: float = Field(
+        description="Total cost in USD for all runs of this agent in the specified time period",
+    )
 
 
 class AgentResponseList(BaseModel):
@@ -541,29 +552,63 @@ class AgentVersion(BaseModel):
 
 
 class MCPRun(BaseModel):
-    """A run as returned by the MCP Server"""
+    """
+    CONCEPT: Enhanced with comprehensive field descriptions as single source of truth.
+    These descriptions could be automatically extracted to generate tool documentation,
+    eliminating the need for manual 40+ line docstrings in tool functions.
+    """
 
-    id: str
-    conversation_id: str
-    agent_id: str
-    agent_schema_id: int
-    agent_version: AgentVersion
-    status: Literal[
-        "success",
-        "error",
-    ]  # not sure about the exact list of statuses, but you get the idea (we should use Pydantic every-where!)
-    agent_input: dict[str, Any] | None
-    # TODO: until https://linear.app/workflowai/issue/WOR-4914/expose-the-full-list-of-computed-messages-and-store-as-is
-    # the list of messages will not include messages from the version
-    messages: list[Message] = Field(description="The exchanged messages, including the returned assistant message")
-    duration_seconds: float | None
-    cost_usd: float | None
-    created_at: datetime
-    metadata: dict[str, Any] | None  # very important
-    response_json_schema: dict[str, Any] | None = Field(
-        description="Only present when using structured outputs. The JSON schema that the model was asked to respect",
+    # Core Run Information
+    id: str = Field(
+        description="Unique identifier for this specific run - use this to reference the run in other operations",
     )
-    error: Error | None = Field(description="An error returned by the model")
+    conversation_id: str = Field(
+        description="Links this run to a broader conversation context - multiple runs can share the same conversation_id",
+    )
+    agent_id: str = Field(
+        description="The ID of the agent that was executed for this run",
+    )
+    agent_schema_id: int = Field(
+        description="The schema/version ID of the agent used for this run - corresponds to a specific configuration",
+    )
+    agent_version: AgentVersion = Field(
+        description="Complete configuration details of the agent version used, including model, temperature, and instructions",
+    )
+    status: Literal["success", "error"] = Field(
+        description="Current status of the run execution - 'success' for completed runs, 'error' for failed runs",
+    )
+
+    # Input/Output Data
+    agent_input: dict[str, Any] | None = Field(
+        description="Complete input data that was provided to the agent for this run - excludes internal message handling",
+    )
+    messages: list[Message] = Field(
+        description="The complete conversation flow including user inputs and AI responses - this is the actual conversation that occurred",
+    )
+
+    # Performance Metrics
+    duration_seconds: float | None = Field(
+        description="Total execution time in seconds from start to completion - useful for performance analysis",
+    )
+    cost_usd: float | None = Field(
+        description="Total cost of this run in USD based on model usage, tokens processed, and provider pricing",
+    )
+    created_at: datetime = Field(
+        description="ISO timestamp of when the run was created/started - useful for filtering and sorting",
+    )
+
+    # Metadata and Configuration
+    metadata: dict[str, Any] | None = Field(
+        description="Custom metadata attached to this run - often contains user_id, environment, or application-specific data",
+    )
+    response_json_schema: dict[str, Any] | None = Field(
+        description="JSON schema that the model was asked to respect for structured outputs - only present when using structured generation",
+    )
+
+    # Error Information
+    error: Error | None = Field(
+        description="Detailed error information if the run failed - includes error code, message, and debugging details",
+    )
 
     @classmethod
     def from_domain(
