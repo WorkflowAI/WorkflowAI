@@ -2,8 +2,8 @@ import { GeneralizedTaskInput, isNullish } from '@/types';
 import { Model } from '@/types/aliases';
 import { RunTaskOptions } from './usePlaygroundPersistedState';
 
-export function formatTaskRunIdParam(index: number) {
-  return `taskRunId${index + 1}`;
+export function formatRunIdParam(index: number) {
+  return `runId${index + 1}`;
 }
 
 export type PlaygroundModels = [Model | null | undefined, Model | null | undefined, Model | null | undefined];

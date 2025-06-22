@@ -16,7 +16,7 @@ interface TaskRunReviewsState {
   respondToReview(
     tenant: TenantID | undefined,
     taskId: TaskID,
-    taskRunId: string,
+    runId: string,
     reviewId: string,
     comment: string
   ): Promise<void>;
@@ -24,11 +24,11 @@ interface TaskRunReviewsState {
   createReview(
     tenant: TenantID | undefined,
     taskId: TaskID,
-    taskRunId: string,
+    runId: string,
     outcome: 'positive' | 'negative'
   ): Promise<void>;
 
-  fetchTaskRunReviews(tenant: TenantID | undefined, taskId: TaskID, taskRunId: string): Promise<void>;
+  fetchTaskRunReviews(tenant: TenantID | undefined, taskId: TaskID, runId: string): Promise<void>;
 }
 
 export const useTaskRunReviews = create<TaskRunReviewsState>((set, get) => ({
@@ -37,9 +37,9 @@ export const useTaskRunReviews = create<TaskRunReviewsState>((set, get) => ({
   isLoadingById: new Map<string, boolean>(),
   pollingIntervalsById: new Map<string, NodeJS.Timeout>(),
 
-  respondToReview: async (tenant, taskId, taskRunId, reviewId, comment) => {
-    await client.post(taskSubPath(tenant, taskId, `/runs/${taskRunId}/reviews/${reviewId}/respond`), {
-      comment,
+  respondToReview: async (tenant, taskId, runId, reviewId, comment) => {
+    await client.post(taskSubPath(tenant, taskId, `/runs/${runId}/reviews/${reviewId}/respond`), {
+      body: JSON.stringify({ comment }),
     });
   },
 
@@ -59,35 +59,31 @@ export const useTaskRunReviews = create<TaskRunReviewsState>((set, get) => ({
     );
   },
 
-  fetchTaskRunReviews: async (tenant: TenantID | undefined, taskId: TaskID, taskRunId: string) => {
-    if (get().isLoadingById.get(taskRunId)) {
+  fetchTaskRunReviews: async (tenant: TenantID | undefined, taskId: TaskID, runId: string) => {
+    if (get().isLoadingById.get(runId)) {
       return;
     }
 
     set(
       produce((state: TaskRunReviewsState) => {
-        state.isLoadingById.set(taskRunId, true);
+        state.isLoadingById.set(runId, true);
       })
     );
 
-    try {
-      const response = await client.get<Page_Review_>(taskSubPath(tenant, taskId, `/runs/${taskRunId}/reviews`));
+    const response = await client.get<Page_Review_>(taskSubPath(tenant, taskId, `/runs/${runId}/reviews`));
 
-      const reviews = response.items;
-
-      set(
-        produce((state: TaskRunReviewsState) => {
-          state.reviewsById.set(taskRunId, reviews);
-        })
-      );
-    } catch (error) {
-      console.error('Failed to fetch AI agent run reviews', error);
-    }
+    const reviews = response.items;
 
     set(
       produce((state: TaskRunReviewsState) => {
-        state.isLoadingById.set(taskRunId, false);
-        state.isInitializedById.set(taskRunId, true);
+        state.reviewsById.set(runId, reviews);
+      })
+    );
+
+    set(
+      produce((state: TaskRunReviewsState) => {
+        state.isLoadingById.set(runId, false);
+        state.isInitializedById.set(runId, true);
       })
     );
   },

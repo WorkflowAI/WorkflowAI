@@ -88,7 +88,7 @@ function ModelOutput(props: ModelOutputProps) {
   } = props;
 
   const taskRun = taskRunner.data;
-  const taskRunId = taskRun?.id;
+  const runId = taskRun?.id;
   const hasInputChanged = useMemo(() => {
     if (isProxy) {
       return false;
@@ -99,10 +99,10 @@ function ModelOutput(props: ModelOutputProps) {
   const redirectWithParams = useRedirectWithParams();
   const onOpenTaskRun = useCallback(() => {
     redirectWithParams({
-      params: { taskRunId },
+      params: { runId },
       scroll: false,
     });
-  }, [taskRunId, redirectWithParams]);
+  }, [runId, redirectWithParams]);
 
   const currentModel = models[index];
   const currentAIModel = useMemo(
@@ -116,10 +116,10 @@ function ModelOutput(props: ModelOutputProps) {
 
   const onImprovePrompt = useCallback(
     async (evaluation: string) => {
-      if (!taskRunId) return;
-      await improveInstructions(evaluation, taskRunId);
+      if (!runId) return;
+      await improveInstructions(evaluation, runId);
     },
-    [taskRunId, improveInstructions]
+    [runId, improveInstructions]
   );
 
   const handleModelChange = useCallback(

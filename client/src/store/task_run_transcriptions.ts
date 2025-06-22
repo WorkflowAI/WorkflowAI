@@ -13,7 +13,7 @@ interface TaskRunTranscriptionsState {
   isInitializedById: Map<string, boolean>;
   isLoadingById: Map<string, boolean>;
 
-  fetchTaskRunTranscriptions(tenant: TenantID | undefined, taskId: TaskID, taskRunId: string): Promise<void>;
+  fetchTaskRunTranscriptions(tenant: TenantID | undefined, taskId: TaskID, runId: string): Promise<void>;
 }
 
 export const useTaskRunTranscriptions = create<TaskRunTranscriptionsState>((set, get) => ({
@@ -21,28 +21,28 @@ export const useTaskRunTranscriptions = create<TaskRunTranscriptionsState>((set,
   isInitializedById: new Map<string, boolean>(),
   isLoadingById: new Map<string, boolean>(),
 
-  fetchTaskRunTranscriptions: async (tenant: TenantID | undefined, taskId: TaskID, taskRunId: string) => {
-    if (get().isLoadingById.get(taskRunId)) {
+  fetchTaskRunTranscriptions: async (tenant: TenantID | undefined, taskId: TaskID, runId: string) => {
+    if (get().isLoadingById.get(runId)) {
       return;
     }
     set(
       produce((state: TaskRunTranscriptionsState) => {
-        state.isLoadingById.set(taskRunId, true);
+        state.isLoadingById.set(runId, true);
       })
     );
     try {
       const response = await client.get<RunTranscriptionResponse>(
-        taskSubPath(tenant, taskId, `/runs/${taskRunId}/transcriptions`)
+        taskSubPath(tenant, taskId, `/runs/${runId}/transcriptions`)
       );
 
       const transcriptions = response.transcriptions_by_keypath;
 
       // When we poll the task run, we need to check if the task run has changed
       // Otherwise, it can trigger some useEffects that are not necessary
-      if (!isEqual(get().transcriptionsById.get(taskRunId), transcriptions)) {
+      if (!isEqual(get().transcriptionsById.get(runId), transcriptions)) {
         set(
           produce((state: TaskRunTranscriptionsState) => {
-            state.transcriptionsById.set(taskRunId, transcriptions);
+            state.transcriptionsById.set(runId, transcriptions);
           })
         );
       }
@@ -51,8 +51,8 @@ export const useTaskRunTranscriptions = create<TaskRunTranscriptionsState>((set,
     }
     set(
       produce((state: TaskRunTranscriptionsState) => {
-        state.isLoadingById.set(taskRunId, false);
-        state.isInitializedById.set(taskRunId, true);
+        state.isLoadingById.set(runId, false);
+        state.isInitializedById.set(runId, true);
       })
     );
   },

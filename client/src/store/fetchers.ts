@@ -233,30 +233,20 @@ export const useOrFetchLatestTaskRun = (tenant: TenantID | undefined, taskId: Ta
   };
 };
 
-export const useOrFetchTaskRun = (tenant: TenantID | undefined, taskId: TaskID, taskRunId: string | undefined) => {
-  const taskRun = useTaskRuns((state) => getOrUndef(state.taskRunsById, taskRunId));
-  const isLoading = useTaskRuns((state) => getOrUndef(state.isLoadingById, taskRunId));
-  const isInitialized = useTaskRuns((state) => getOrUndef(state.isInitializedById, taskRunId) === true);
-  const fetchTaskRun = useTaskRuns((state) => state.fetchTaskRun);
+export const useOrFetchTaskRun = (tenant: TenantID | undefined, taskId: TaskID, runId: string | undefined) => {
+  const taskRun = useTaskRuns((state) => getOrUndef(state.taskRunsById, runId));
+  const isLoading = useTaskRuns((state) => getOrUndef(state.isLoadingById, runId));
+  const isInitialized = useTaskRuns((state) => getOrUndef(state.isInitializedById, runId) === true);
 
-  const refresh = useCallback(() => {
-    if (taskRunId) {
-      fetchTaskRun(tenant, taskId, taskRunId);
-    }
-  }, [fetchTaskRun, tenant, taskId, taskRunId]);
+  const { fetchTaskRun } = useTaskRuns();
 
   useEffect(() => {
-    if (!isInitialized) {
-      refresh();
+    if (runId) {
+      fetchTaskRun(tenant, taskId, runId);
     }
-  }, [isInitialized, fetchTaskRun, refresh]);
+  }, [fetchTaskRun, tenant, taskId, runId]);
 
-  return {
-    taskRun,
-    isLoading,
-    isInitialized,
-    refresh,
-  };
+  return { taskRun, isLoading, isInitialized };
 };
 
 export const useOrFetchRunV1 = (tenant: TenantID | undefined, taskId: TaskID, runId: string | undefined) => {
@@ -291,77 +281,48 @@ export const useOrFetchRunV1 = (tenant: TenantID | undefined, taskId: TaskID, ru
 export const useOrFetchTaskRunTranscriptions = (
   tenant: TenantID | undefined,
   taskId: TaskID,
-  taskRunId: string | undefined
+  runId: string | undefined
 ) => {
-  const transcriptions = useTaskRunTranscriptions((state) => getOrUndef(state.transcriptionsById, taskRunId));
-  const isLoading = useTaskRunTranscriptions((state) => getOrUndef(state.isLoadingById, taskRunId));
-  const isInitialized = useTaskRunTranscriptions((state) => getOrUndef(state.isInitializedById, taskRunId) === true);
-  const fetchTaskRunTranscriptions = useTaskRunTranscriptions((state) => state.fetchTaskRunTranscriptions);
+  const transcriptions = useTaskRunTranscriptions((state) => getOrUndef(state.transcriptionsById, runId));
+  const isLoading = useTaskRunTranscriptions((state) => getOrUndef(state.isLoadingById, runId));
+  const isInitialized = useTaskRunTranscriptions((state) => getOrUndef(state.isInitializedById, runId) === true);
+
+  const { fetchTaskRunTranscriptions } = useTaskRunTranscriptions();
 
   useEffect(() => {
-    if (taskRunId) {
-      fetchTaskRunTranscriptions(tenant, taskId, taskRunId);
+    if (runId) {
+      fetchTaskRunTranscriptions(tenant, taskId, runId);
     }
-  }, [isInitialized, taskRunId, fetchTaskRunTranscriptions, tenant, taskId]);
+  }, [isInitialized, runId, fetchTaskRunTranscriptions, tenant, taskId]);
 
-  return {
-    transcriptions,
-    isLoading,
-    isInitialized,
-  };
+  return { transcriptions, isLoading, isInitialized };
 };
 
 export const useOrFetchTaskRunReviews = (
   tenant: TenantID | undefined,
   taskId: TaskID,
-  taskRunId: string | undefined,
-  pollingInterval: number = 2000
+  runId: string | undefined,
+  shouldRefetch: boolean = false
 ) => {
-  const reviews = useTaskRunReviews((state) => getOrUndef(state.reviewsById, taskRunId));
-  const isLoading = useTaskRunReviews((state) => getOrUndef(state.isLoadingById, taskRunId));
-  const isInitialized = useTaskRunReviews((state) => getOrUndef(state.isInitializedById, taskRunId) === true);
-  const fetchTaskRunReviews = useTaskRunReviews((state) => state.fetchTaskRunReviews);
+  const reviews = useTaskRunReviews((state) => getOrUndef(state.reviewsById, runId));
+  const isLoading = useTaskRunReviews((state) => getOrUndef(state.isLoadingById, runId));
+  const isInitialized = useTaskRunReviews((state) => getOrUndef(state.isInitializedById, runId) === true);
+
+  const { fetchTaskRunReviews } = useTaskRunReviews();
 
   useEffect(() => {
-    if (taskRunId && !isInitialized) {
-      fetchTaskRunReviews(tenant, taskId, taskRunId);
+    if (runId && !isInitialized) {
+      fetchTaskRunReviews(tenant, taskId, runId);
     }
-  }, [isInitialized, taskRunId, fetchTaskRunReviews, tenant, taskId]);
-
-  const shouldRefetch = useMemo(() => {
-    if (!reviews || reviews.length === 0) {
-      return true;
-    }
-
-    const isThereUserReview = reviews.some((review) => review.created_by.reviewer_type === 'user');
-
-    if (isThereUserReview) {
-      return false;
-    }
-
-    return true;
-  }, [reviews]);
-
-  const pollingIntervalRef = useRef(pollingInterval);
-  pollingIntervalRef.current = pollingInterval;
+  }, [isInitialized, runId, fetchTaskRunReviews, tenant, taskId]);
 
   useEffect(() => {
-    if (shouldRefetch) {
-      const intervalId = setInterval(() => {
-        if (taskRunId) {
-          fetchTaskRunReviews(tenant, taskId, taskRunId);
-        }
-      }, pollingIntervalRef.current);
-
-      return () => clearInterval(intervalId);
+    if (shouldRefetch && runId) {
+      fetchTaskRunReviews(tenant, taskId, runId);
     }
-  }, [shouldRefetch, fetchTaskRunReviews, tenant, taskId, taskRunId]);
+  }, [shouldRefetch, fetchTaskRunReviews, tenant, taskId, runId]);
 
-  return {
-    reviews,
-    isLoading,
-    isInitialized,
-  };
+  return { reviews, isLoading, isInitialized };
 };
 
 export const useOrFetchSchema = (
@@ -977,28 +938,24 @@ export const useOrFetchEvaluation = (tenant: TenantID | undefined, taskId: TaskI
 
 export const useOrFetchRunCompletions = (
   tenant: TenantID | undefined,
-  taskId: TaskID | undefined,
-  taskRunId: string | undefined
+  taskId: TaskID,
+  runId: string | undefined
 ) => {
-  const completions = useRunCompletions((state) => (taskRunId ? state.runCompletionsById.get(taskRunId) : undefined));
+  const completions = useRunCompletions((state) => (runId ? state.runCompletionsById.get(runId) : undefined));
 
-  const isLoading = useRunCompletions((state) => (taskRunId ? state.isLoadingById.get(taskRunId) : false));
-  const isInitialized = useRunCompletions((state) => (taskRunId ? state.isInitializedById.get(taskRunId) : false));
+  const isLoading = useRunCompletions((state) => (runId ? state.isLoadingById.get(runId) : false));
+  const isInitialized = useRunCompletions((state) => (runId ? state.isInitializedById.get(runId) : false));
 
-  const fetchRunCompletions = useRunCompletions((state) => state.fetchRunCompletion);
+  const { fetchRunCompletion: fetchRunCompletions } = useRunCompletions();
 
   useEffect(() => {
-    if (!taskId || !taskRunId) {
+    if (!taskId || !runId) {
       return;
     }
-    fetchRunCompletions(tenant, taskId, taskRunId);
-  }, [fetchRunCompletions, tenant, taskId, taskRunId]);
+    fetchRunCompletions(tenant, taskId, runId);
+  }, [fetchRunCompletions, tenant, taskId, runId]);
 
-  return {
-    completions,
-    isLoading,
-    isInitialized,
-  };
+  return { completions, isLoading, isInitialized };
 };
 
 export const useOrFetchFeatureSections = () => {

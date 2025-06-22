@@ -1,7 +1,7 @@
 'use client';
 
 import { redirect, useSearchParams } from 'next/navigation';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { checkSchemaForProxy } from '@/app/[tenant]/agents/[taskId]/[taskSchemaId]/proxy-playground/utils';
 import { Dialog, DialogContent } from '@/components/ui/Dialog';
 import { Loader } from '@/components/ui/Loader';
@@ -21,20 +21,23 @@ type TaskRunModalProps = {
   onClose: () => void;
   open: boolean;
   showPlaygroundButton?: boolean;
-  taskRunId: string;
+  runId: string;
   taskRunIds?: string[];
 };
 
 export default function TaskRunModal(props: TaskRunModalProps) {
-  const { onClose, open, showPlaygroundButton, taskId, taskRunId, taskSchemaIdFromParams, taskRunIds, tenant } = props;
-  const { run: taskRun, isInitialized } = useOrFetchRunV1(tenant, taskId, taskRunId);
+  const { onClose, open, showPlaygroundButton, taskId, runId, taskSchemaIdFromParams, taskRunIds, tenant } = props;
+  const { run: taskRun, isInitialized } = useOrFetchRunV1(tenant, taskId, runId);
   const { version } = useOrFetchVersion(tenant, taskId, taskRun?.version.id);
+  const [isPrevNextBtnCooldown, setIsPrevNextBtnCooldown] = useState<boolean>(false);
+  const [showMetadataModal, setShowMetadataModal] = useState(false);
+  const { redirectWithParams } = useRedirectWithParams();
 
   const taskSchemaId = (taskRun?.task_schema_id ?? taskSchemaIdFromParams) as TaskSchemaID;
 
   const { taskSchema: schema } = useOrFetchSchema(tenant, taskId, taskSchemaId);
 
-  const taskRunIndex = useMemo(() => taskRunIds?.findIndex((id) => id === taskRunId) || 0, [taskRunId, taskRunIds]);
+  const taskRunIndex = useMemo(() => taskRunIds?.findIndex((id) => id === runId) || 0, [runId, taskRunIds]);
   const runsLength = taskRunIds?.length ?? 0;
 
   const { run: prevTaskRun } = useOrFetchRunV1(tenant, taskId, taskRunIds?.[taskRunIndex - 1]);
@@ -54,7 +57,7 @@ export default function TaskRunModal(props: TaskRunModalProps) {
   useOrFetchVersion(tenant, taskId, prevTaskRun?.version.id);
   useOrFetchVersion(tenant, taskId, nextTaskRun?.version.id);
 
-  const { transcriptions } = useOrFetchTaskRunTranscriptions(tenant, taskId, taskRunId);
+  const { transcriptions } = useOrFetchTaskRunTranscriptions(tenant, taskId, runId);
 
   const { handleFavoriteToggle } = useFavoriteToggle({
     tenant,
@@ -68,40 +71,44 @@ export default function TaskRunModal(props: TaskRunModalProps) {
     handleFavoriteToggle(version);
   }, [handleFavoriteToggle, version]);
 
-  const redirectWithParams = useRedirectWithParams();
-
   const onPrev = useCallback(() => {
+    if (isPrevNextBtnCooldown) {
+      return;
+    }
     if (taskRunIndex <= 0 || !taskRunIds) {
       return;
     }
-    const newTaskRunId = taskRunIds[taskRunIndex - 1];
-    if (newTaskRunId) {
+    const newRunId = taskRunIds[taskRunIndex - 1];
+    if (newRunId) {
       redirectWithParams({
-        params: { taskRunId: newTaskRunId },
+        params: { runId: newRunId },
       });
     }
-  }, [taskRunIndex, redirectWithParams, taskRunIds]);
+  }, [taskRunIndex, redirectWithParams, taskRunIds, isPrevNextBtnCooldown]);
 
   const onNext = useCallback(() => {
+    if (isPrevNextBtnCooldown) {
+      return;
+    }
     if (taskRunIndex >= runsLength - 1 || !taskRunIds) {
       return;
     }
-    const newTaskRunId = taskRunIds[taskRunIndex + 1];
-    if (newTaskRunId) {
+    const newRunId = taskRunIds[taskRunIndex + 1];
+    if (newRunId) {
       redirectWithParams({
-        params: { taskRunId: newTaskRunId },
+        params: { runId: newRunId },
       });
     }
-  }, [taskRunIndex, redirectWithParams, taskRunIds, runsLength]);
+  }, [taskRunIndex, redirectWithParams, taskRunIds, runsLength, isPrevNextBtnCooldown]);
 
   const playgroundInputRoute = useMemo(() => {
     if (!showPlaygroundButton) {
       return undefined;
     }
     return taskSchemaRoute(tenant, taskId, taskSchemaId, {
-      inputTaskRunId: taskRunId,
+      inputRunId: runId,
     });
-  }, [showPlaygroundButton, tenant, taskId, taskSchemaId, taskRunId]);
+  }, [showPlaygroundButton, tenant, taskId, taskSchemaId, runId]);
 
   const playgroundFullRoute = useMemo(() => {
     if (!showPlaygroundButton) {
@@ -110,9 +117,9 @@ export default function TaskRunModal(props: TaskRunModalProps) {
 
     return taskSchemaRoute(tenant, taskId, taskSchemaId, {
       versionId: version?.id,
-      taskRunId1: taskRunId,
+      runId1: runId,
     });
-  }, [showPlaygroundButton, tenant, taskId, taskSchemaId, taskRunId, version]);
+  }, [showPlaygroundButton, tenant, taskId, taskSchemaId, runId, version]);
 
   const isProxy = useMemo(() => {
     if (!schema) {
@@ -172,24 +179,22 @@ export default function TaskRunModal(props: TaskRunModalProps) {
 export function useRunIDParam() {
   const params = useSearchParams();
   const redirectWithParams = useRedirectWithParams();
-  const taskRunId = params.get(TASK_RUN_ID_PARAM);
+  const runId = params.get(TASK_RUN_ID_PARAM);
 
-  const setTaskRunId = useCallback(
-    (taskRunId: string | undefined) => {
+  const setRunId = useCallback(
+    (runId: string | undefined) => {
       redirectWithParams({
-        params: { taskRunId: taskRunId },
-        scroll: false,
+        params: { runId: runId },
       });
     },
     [redirectWithParams]
   );
 
-  const clearTaskRunId = useCallback(() => {
+  const clearRunId = useCallback(() => {
     redirectWithParams({
-      params: { taskRunId: undefined },
-      scroll: false,
+      params: { runId: undefined },
     });
   }, [redirectWithParams]);
 
-  return { taskRunId, setTaskRunId, clearTaskRunId };
+  return { runId, setRunId, clearRunId };
 }

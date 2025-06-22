@@ -29,15 +29,15 @@ export function useCopyCurrentUrl() {
   }, [copy]);
 }
 
-export function useCopyRunURL(tenant: TenantID | undefined, taskId: string | undefined, taskRunId: string | undefined) {
+export function useCopyRunURL(tenant: TenantID | undefined, taskId: string | undefined, runId: string | undefined) {
   const copy = useCopy();
   return useCallback(() => {
-    if (!taskId || !taskRunId) {
+    if (!taskId || !runId) {
       return;
     }
 
-    copy(staticRunURL(tenant, taskId, taskRunId), {
+    copy(staticRunURL(tenant, taskId, runId), {
       successMessage: 'Run URL copied to clipboard',
     });
-  }, [copy, tenant, taskId, taskRunId]);
+  }, [copy, tenant, taskId, runId]);
 }

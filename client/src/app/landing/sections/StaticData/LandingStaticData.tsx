@@ -87,7 +87,7 @@ export const headerEntry18: HeaderEntry = {
   ),
   descriptionMaxWidth: 'max-w-[780px]',
   buttonText: 'Explore top models on the playground',
-  url: 'https://workflowai.com/docs/agents/flight-info-extractor/3?versionId=89ed288ccfc7a3ef813119713d50683d&showDiffMode=true&show2ColumnLayout=false&taskRunId2=019620b6-0076-73b5-cb3a-d12cbbce7957&taskRunId3=019620b6-0072-7046-298f-c912681cedf6&taskRunId1=019620b6-3115-7045-ce28-5b33263c527b',
+  url: 'https://workflowai.com/docs/agents/flight-info-extractor/3?versionId=89ed288ccfc7a3ef813119713d50683d&showDiffMode=true&show2ColumnLayout=false&runId2=019620b6-0076-73b5-cb3a-d12cbbce7957&runId3=019620b6-0072-7046-298f-c912681cedf6&runId1=019620b6-3115-7045-ce28-5b33263c527b',
 };
 
 export const imageEntry18: ImageEntry = {
@@ -107,7 +107,7 @@ export const headerEntry17: HeaderEntry = {
     'Compare the top models in one unified playground. Evaluate quality, cost, and speed — and pick what’s best for your product.',
   descriptionMaxWidth: 'max-w-[580px]',
   buttonText: 'Explore all 80 models on the playground',
-  url: 'https://workflowai.com/docs/agents/flight-info-extractor/3?versionId=89ed288ccfc7a3ef813119713d50683d&showDiffMode=true&show2ColumnLayout=false&taskRunId2=019620b6-0076-73b5-cb3a-d12cbbce7957&taskRunId3=019620b6-0072-7046-298f-c912681cedf6&taskRunId1=019620b6-3115-7045-ce28-5b33263c527b',
+  url: 'https://workflowai.com/docs/agents/flight-info-extractor/3?versionId=89ed288ccfc7a3ef813119713d50683d&showDiffMode=true&show2ColumnLayout=false&runId2=019620b6-0076-73b5-cb3a-d12cbbce7957&runId3=019620b6-0072-7046-298f-c912681cedf6&runId1=019620b6-3115-7045-ce28-5b33263c527b',
 };
 
 export const imageEntry17: ImageEntry = {
@@ -219,7 +219,7 @@ export const featuresEntries12: FeatureEntry[] = [
     imageHeight: 310,
     imageWidth: 524,
     buttonText: 'Explore all 80 models on the playground',
-    url: 'https://workflowai.com/docs/agents/flight-info-extractor/3?versionId=89ed288ccfc7a3ef813119713d50683d&showDiffMode=true&show2ColumnLayout=false&taskRunId2=019620b6-0076-73b5-cb3a-d12cbbce7957&taskRunId3=019620b6-0072-7046-298f-c912681cedf6&taskRunId1=019620b6-3115-7045-ce28-5b33263c527b',
+    url: 'https://workflowai.com/docs/agents/flight-info-extractor/3?versionId=89ed288ccfc7a3ef813119713d50683d&showDiffMode=true&show2ColumnLayout=false&runId2=019620b6-0076-73b5-cb3a-d12cbbce7957&runId3=019620b6-0072-7046-298f-c912681cedf6&runId1=019620b6-3115-7045-ce28-5b33263c527b',
   },
   {
     title: 'Tired of black-box AI? Now you can see inside.',

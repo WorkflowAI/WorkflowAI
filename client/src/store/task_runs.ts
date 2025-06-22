@@ -41,7 +41,7 @@ export interface TaskRunsState {
     offset: number;
     fieldQueries: Array<FieldQuery> | undefined;
   }): Promise<void>;
-  fetchTaskRun(tenant: TenantID | undefined, taskId: TaskID, taskRunId: string): Promise<TaskRun | undefined>;
+  fetchTaskRun(tenant: TenantID | undefined, taskId: TaskID, runId: string): Promise<TaskRun | undefined>;
   fetchRunV1(tenant: TenantID | undefined, taskId: TaskID, runId: string): Promise<RunV1 | undefined>;
   fetchLatestRun(tenant: TenantID | undefined, taskId: TaskID, taskSchemaId?: TaskSchemaID): Promise<void>;
 }
@@ -151,30 +151,31 @@ export const useTaskRuns = create<TaskRunsState>((set, get) => ({
     );
   },
 
-  fetchTaskRun: async (tenant: TenantID, taskId: TaskID, taskRunId: string) => {
-    if (get().isLoadingById.get(taskRunId)) {
+  fetchTaskRun: async (tenant: TenantID, taskId: TaskID, runId: string) => {
+    if (get().isLoadingById.get(runId)) {
       return;
     }
+
     set(
       produce((state: TaskRunsState) => {
-        state.isLoadingById.set(taskRunId, true);
+        state.isLoadingById.set(runId, true);
       })
     );
-    const taskRun = await client.get<TaskRun>(taskSubPath(tenant, taskId, `/runs/${taskRunId}`)).catch(() => undefined);
 
-    // When we poll the task run, we need to check if the task run has changed
-    // Otherwise, it can trigger some useEffects that are not necessary
-    if (taskRun !== undefined && !isEqual(get().taskRunsById.get(taskRunId), taskRun)) {
+    const taskRun = await client.get<TaskRun>(taskSubPath(tenant, taskId, `/runs/${runId}`)).catch(() => undefined);
+
+    if (taskRun !== undefined && !isEqual(get().taskRunsById.get(runId), taskRun)) {
       set(
         produce((state: TaskRunsState) => {
-          state.taskRunsById.set(taskRunId, taskRun);
+          state.taskRunsById.set(runId, taskRun);
         })
       );
     }
+
     set(
       produce((state: TaskRunsState) => {
-        state.isLoadingById.set(taskRunId, false);
-        state.isInitializedById.set(taskRunId, true);
+        state.isLoadingById.set(runId, false);
+        state.isInitializedById.set(runId, true);
       })
     );
     return taskRun;

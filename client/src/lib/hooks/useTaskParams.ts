@@ -5,11 +5,11 @@ import { TaskID, TaskSchemaID, TenantID } from '@/types/aliases';
 import { TaskSchemaParams, tasksRoute } from '../routeFormatter';
 
 export function useTaskParams() {
-  const { tenant, taskId, taskSchemaId, taskRunId, exampleId, mode } = useParams<{
+  const { tenant, taskId, taskSchemaId, runId, exampleId, mode } = useParams<{
     tenant?: TenantID;
     taskId?: TaskID;
     taskSchemaId?: TaskSchemaID;
-    taskRunId?: string;
+    runId?: string;
     exampleId?: string;
     mode?: string;
   }>();
@@ -20,7 +20,7 @@ export function useTaskParams() {
     tenant: decodedTenant,
     taskId,
     taskSchemaId,
-    taskRunId,
+    runId,
     exampleId,
     mode,
   };

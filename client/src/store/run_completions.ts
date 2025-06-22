@@ -12,7 +12,7 @@ interface RunCompletionsState {
   isInitializedById: Map<string, boolean>;
   isLoadingById: Map<string, boolean>;
 
-  fetchRunCompletion(tenant: TenantID | undefined, taskId: TaskID, taskRunId: string): Promise<void>;
+  fetchRunCompletion(tenant: TenantID | undefined, taskId: TaskID, runId: string): Promise<void>;
 }
 
 export const useRunCompletions = create<RunCompletionsState>((set, get) => ({
@@ -20,37 +20,31 @@ export const useRunCompletions = create<RunCompletionsState>((set, get) => ({
   isInitializedById: new Map<string, boolean>(),
   isLoadingById: new Map<string, boolean>(),
 
-  fetchRunCompletion: async (tenant: TenantID | undefined, taskId: TaskID, taskRunId: string) => {
-    if (get().isLoadingById.get(taskRunId)) {
+  fetchRunCompletion: async (tenant: TenantID | undefined, taskId: TaskID, runId: string) => {
+    if (get().isLoadingById.get(runId)) {
       return;
     }
 
     set(
       produce((state: RunCompletionsState) => {
-        state.isLoadingById.set(taskRunId, true);
+        state.isLoadingById.set(runId, true);
       })
     );
 
-    try {
-      const response = await client.get<LLMCompletionsResponse>(
-        taskSubPath(tenant, taskId, `/runs/${taskRunId}/completions`, true)
-      );
-
-      const completions = response.completions;
-
-      set(
-        produce((state: RunCompletionsState) => {
-          state.runCompletionsById.set(taskRunId, completions);
-        })
-      );
-    } catch (error) {
-      console.error('Failed to fetch AI agent run reviews', error);
-    }
+    const completions = await client.get<LLMCompletionTypedMessages[]>(
+      taskSubPath(tenant, taskId, `/runs/${runId}/completions`, true)
+    );
 
     set(
       produce((state: RunCompletionsState) => {
-        state.isLoadingById.set(taskRunId, false);
-        state.isInitializedById.set(taskRunId, true);
+        state.runCompletionsById.set(runId, completions);
+      })
+    );
+
+    set(
+      produce((state: RunCompletionsState) => {
+        state.isLoadingById.set(runId, false);
+        state.isInitializedById.set(runId, true);
       })
     );
   },

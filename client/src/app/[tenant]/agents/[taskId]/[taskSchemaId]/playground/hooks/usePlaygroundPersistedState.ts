@@ -5,7 +5,7 @@ import { buildScopeKey } from '@/store/utils';
 import { GeneralizedTaskInput } from '@/types';
 import { ModelOptional, TaskID, TaskSchemaID, TenantID } from '@/types/aliases';
 import { ProxyMessage, VersionV1 } from '@/types/workflowAI';
-import { PlaygroundModels, formatTaskRunIdParam } from './utils';
+import { PlaygroundModels, formatRunIdParam } from './utils';
 
 export type GeneratePlaygroundInputParams = {
   externalVersion?: VersionV1 | undefined;
@@ -34,9 +34,9 @@ type PlaygroundPersistedState = Record<
     models: PlaygroundModels;
     showDiffMode: boolean;
     hiddenModelColumns: number[] | undefined;
-    taskRunId1: string | undefined;
-    taskRunId2: string | undefined;
-    taskRunId3: string | undefined;
+    runId1: string | undefined;
+    runId2: string | undefined;
+    runId3: string | undefined;
     versionId: string | undefined;
     proxyMessages: ProxyMessage[] | undefined;
   }
@@ -80,9 +80,9 @@ export function usePlaygroundPersistedState(props: Props) {
   const persistedTaskModels = persistedState[taskScopeKey]?.models ?? [null, null, null];
   const persistedShowDiffMode = persistedState[taskScopeKey]?.showDiffMode ?? false;
   const persistedHiddenModelColumns: number[] | undefined = persistedState[taskScopeKey]?.hiddenModelColumns;
-  const persistedTaskRunId1 = persistedState[schemaScopeKey]?.taskRunId1;
-  const persistedTaskRunId2 = persistedState[schemaScopeKey]?.taskRunId2;
-  const persistedTaskRunId3 = persistedState[schemaScopeKey]?.taskRunId3;
+  const persistedRunId1 = persistedState[schemaScopeKey]?.runId1;
+  const persistedRunId2 = persistedState[schemaScopeKey]?.runId2;
+  const persistedRunId3 = persistedState[schemaScopeKey]?.runId3;
   const persistedVersionId = persistedState[schemaScopeKey]?.versionId;
   const persistedProxyMessages = persistedState[schemaScopeKey]?.proxyMessages;
 
@@ -215,13 +215,13 @@ export function usePlaygroundPersistedState(props: Props) {
     [schemaScopeKey, setSessionPersistedState]
   );
 
-  const handleSetTaskRunId = useCallback(
-    (index: number, taskRunId: string | undefined) => {
+  const handleSetRunId = useCallback(
+    (index: number, runId: string | undefined) => {
       setPersistedState((prev) => ({
         ...prev,
         [schemaScopeKey]: {
           ...prev[schemaScopeKey],
-          [formatTaskRunIdParam(index)]: taskRunId,
+          [formatRunIdParam(index)]: runId,
         },
       }));
     },
@@ -239,8 +239,8 @@ export function usePlaygroundPersistedState(props: Props) {
   );
 
   const persistedTaskRunIds = useMemo(
-    () => [persistedTaskRunId1, persistedTaskRunId2, persistedTaskRunId3],
-    [persistedTaskRunId1, persistedTaskRunId2, persistedTaskRunId3]
+    () => [persistedRunId1, persistedRunId2, persistedRunId3],
+    [persistedRunId1, persistedRunId2, persistedRunId3]
   );
 
   const hiddenModelColumns = useMemo(() => {
@@ -263,7 +263,7 @@ export function usePlaygroundPersistedState(props: Props) {
     setGeneratedInput: handleGenerateInputChange,
     setPreGeneratedInput: handlePreGeneratedInputChange,
     persistedTaskRunIds,
-    setTaskRunId: handleSetTaskRunId,
+    setRunId: handleSetRunId,
     persistedVersionId,
     setPersistedVersionId: handleSetPersistedVersionId,
     proxyMessages,

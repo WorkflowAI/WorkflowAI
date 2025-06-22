@@ -25,7 +25,7 @@ export function TaskRunDetails(props: TaskRunDetailsProps) {
       <div className='flex flex-col flex-1 overflow-auto p-4 gap-6'>
         <AIEvaluationReview runId={taskRun.id} tenant={tenant} taskId={taskRun.task_id as TaskID} showFullBorder />
 
-        <FeedbackBoxContainer taskRunId={taskRun.id} tenant={tenant} taskId={taskRun.task_id as TaskID} />
+        <FeedbackBoxContainer runId={taskRun.id} tenant={tenant} taskId={taskRun.task_id as TaskID} />
 
         {!!version && (
           <div className='border border-gray-200 rounded-[2px]'>

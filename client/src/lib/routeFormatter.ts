@@ -30,7 +30,11 @@ export type TaskSchemaParams = TaskParams & {
 };
 
 export type TaskRunParams = TaskSchemaParams & {
-  taskRunId: string;
+  runId: string;
+};
+
+export type TaskRunPageSearchParams = {
+  runId: string;
 };
 
 export function landingRoute(params?: Params) {
@@ -115,8 +119,8 @@ export const taskDeploymentsRoute = (tenant: TenantID, taskId: TaskID, taskSchem
 export const taskSampleRoute = (tenant: TenantID, taskId: TaskID, taskSchemaId: TaskSchemaID, taskSampleId: string) =>
   `${taskSchemaRoute(tenant, taskId, taskSchemaId)}/examples/${taskSampleId}`;
 
-export function taskRunRoute(tenant: TenantID, taskId: TaskID, taskSchemaId: TaskSchemaID, taskRunId: string) {
-  return `/${decodeURIComponent(tenant)}/agents/${taskId}/${taskSchemaId}/runs?taskRunId=${taskRunId}`;
+export function taskRunRoute(tenant: TenantID, taskId: TaskID, taskSchemaId: TaskSchemaID, runId: string) {
+  return `/${decodeURIComponent(tenant)}/agents/${taskId}/${taskSchemaId}/runs?runId=${runId}`;
 }
 
 export function replaceTenant(url: string, urlTenant: string, tenant: string) {
@@ -157,6 +161,6 @@ export function replaceTaskId(url: string, taskId: TaskID, taskSchemaId?: TaskSc
 /**
  * A WebSite URL that will always be supported and that redirects to the actual run.
  */
-export function staticRunURL(tenant: TenantID | undefined, taskId: string, taskRunId: string) {
-  return `${window.location.origin}/${tenant ?? '_'}/agents/${taskId}/runs/${taskRunId}`;
+export function staticRunURL(tenant: TenantID | undefined, taskId: string, runId: string) {
+  return `${window.location.origin}/${tenant ?? '_'}/agents/${taskId}/runs/${runId}`;
 }

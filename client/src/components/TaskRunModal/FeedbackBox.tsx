@@ -55,13 +55,13 @@ export function FeedbackBox(props: FeedbackBoxProps) {
 type FeedbackBoxContainerProps = {
   tenant: TenantID | undefined;
   taskId: TaskID;
-  taskRunId: string;
+  runId: string;
 };
 
 export function FeedbackBoxContainer(props: FeedbackBoxContainerProps) {
-  const { tenant, taskId, taskRunId } = props;
+  const { tenant, taskId, runId } = props;
 
-  const { feedbackList, isLoading } = useOrFetchFeedback(tenant, taskId, taskRunId);
+  const { feedbackList, isLoading } = useOrFetchFeedback(tenant, taskId, runId);
 
   return <FeedbackBox feedbackList={feedbackList} isLoading={isLoading} />;
 }

@@ -51,7 +51,7 @@ export function LandingPage() {
   const onNewTask = useCallback(() => {
     if (isMobile) {
       window.open(
-        'https://workflowai.com/docs/agents/flight-info-extractor/3?versionId=89ed288ccfc7a3ef813119713d50683d&showDiffMode=true&show2ColumnLayout=false&taskRunId2=019620b6-0076-73b5-cb3a-d12cbbce7957&taskRunId3=019620b6-0072-7046-298f-c912681cedf6&taskRunId1=019620b6-3115-7045-ce28-5b33263c527b',
+        'https://workflowai.com/docs/agents/flight-info-extractor/3?versionId=89ed288ccfc7a3ef813119713d50683d&showDiffMode=true&show2ColumnLayout=false&runId2=019620b6-0076-73b5-cb3a-d12cbbce7957&runId3=019620b6-0072-7046-298f-c912681cedf6&runId1=019620b6-3115-7045-ce28-5b33263c527b',
         '_blank'
       );
       return;

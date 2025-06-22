@@ -71,7 +71,7 @@ import { usePlaygroundInputHistory } from './hooks/usePlaygroundInputHistory';
 import { usePlaygroundParametersHistory } from './hooks/usePlaygroundParametersHistory';
 import { RunTaskOptions } from './hooks/usePlaygroundPersistedState';
 import { usePlaygroundPersistedState } from './hooks/usePlaygroundPersistedState';
-import { useSequentialTaskRunIdUpdates } from './hooks/useSequentialTaskRunIdUpdates';
+import { useSequentialRunIdUpdates } from './hooks/useSequentialRunIdUpdates';
 import { useTaskRunners } from './hooks/useTaskRunners';
 import { usePlaygroundVariants } from './hooks/useVariants';
 import { useVersionsForTaskRunners } from './hooks/useVersionsForRuns';
@@ -165,25 +165,25 @@ export function PlaygroundContent(props: PlaygroundContentBodyProps) {
 
   const redirectWithParams = useRedirectWithParams();
   const {
-    taskRunId,
-    taskRunId1,
-    taskRunId2,
-    taskRunId3,
+    runId,
+    runId1,
+    runId2,
+    runId3,
     versionId,
     showDiffMode: showDiffModeParam,
     hiddenModelColumns: hiddenModelColumnsParam,
-    inputTaskRunId,
+    inputRunId,
     preselectedVariantId,
     runAgents,
   } = useParsedSearchParams(
     TASK_RUN_ID_PARAM,
-    'taskRunId1',
-    'taskRunId2',
-    'taskRunId3',
+    'runId1',
+    'runId2',
+    'runId3',
     'versionId',
     'showDiffMode',
     'hiddenModelColumns',
-    'inputTaskRunId',
+    'inputRunId',
     'preselectedVariantId',
     'runAgents'
   );
@@ -205,7 +205,7 @@ export function PlaygroundContent(props: PlaygroundContentBodyProps) {
     setGeneratedInput: setPersistedGeneratedInput,
     setPreGeneratedInput,
     persistedTaskRunIds,
-    setTaskRunId: setPersistedTaskRunId,
+    setRunId: setPersistedRunId,
     persistedVersionId,
     setPersistedVersionId,
   } = usePlaygroundPersistedState({
@@ -273,7 +273,7 @@ export function PlaygroundContent(props: PlaygroundContentBodyProps) {
     run: inputTaskRun,
     isInitialized: inputTaskRunInitialized,
     isLoading: inputTaskRunLoading,
-  } = useOrFetchRunV1(tenant, taskId, inputTaskRunId);
+  } = useOrFetchRunV1(tenant, taskId, inputRunId);
 
   const [taskIndexesLoading, setTaskIndexLoading] = useState<boolean[]>([false, false, false]);
 
@@ -335,11 +335,11 @@ export function PlaygroundContent(props: PlaygroundContentBodyProps) {
     new Map<string, Error>()
   );
 
-  const { onTaskRunIdUpdate, onResetTaskRunIds } = useSequentialTaskRunIdUpdates({
-    taskRunId1,
-    taskRunId2,
-    taskRunId3,
-    setPersistedTaskRunId,
+  const { onRunIdUpdate, onResetRunIds } = useSequentialRunIdUpdates({
+    runId1,
+    runId2,
+    runId3,
+    setPersistedRunId,
   });
 
   const createVersion = useVersions((state) => state.createVersion);
@@ -403,7 +403,7 @@ export function PlaygroundContent(props: PlaygroundContentBodyProps) {
           }
           handleTaskIndexLoadingChange(index, loading ?? false);
           handleStreamedChunk(index, undefined);
-          onTaskRunIdUpdate(index, undefined);
+          onRunIdUpdate(index, undefined);
         };
 
         const model = runOptions.externalModel || schemaModels[index];
@@ -505,7 +505,7 @@ export function PlaygroundContent(props: PlaygroundContentBodyProps) {
           await fetchTaskRunUntilCreated(tenant, taskId, run_id);
           // Running the task may have changed the models prices, so we need to refetch them
           await fetchModels(tenant, taskId, taskSchemaId);
-          onTaskRunIdUpdate(index, run_id);
+          onRunIdUpdate(index, run_id);
           resolve();
         } catch (error) {
           cleanTaskRun(model);
@@ -525,7 +525,7 @@ export function PlaygroundContent(props: PlaygroundContentBodyProps) {
             'runId' in error.extra &&
             typeof error.extra.runId === 'string'
           ) {
-            onTaskRunIdUpdate(index, error.extra.runId);
+            onRunIdUpdate(index, error.extra.runId);
           }
 
           captureIfNeeded(error);
@@ -545,7 +545,7 @@ export function PlaygroundContent(props: PlaygroundContentBodyProps) {
       removeModelError,
       handleTaskIndexLoadingChange,
       handleStreamedChunk,
-      onTaskRunIdUpdate,
+      onRunIdUpdate,
       setPersistedVersionId,
       runTask,
       tenant,
@@ -578,9 +578,9 @@ export function PlaygroundContent(props: PlaygroundContentBodyProps) {
   useEffect(() => {
     if (!!inputTaskRun && inputTaskRunInitialized && !inputTaskRunLoading) {
       setGeneratedInput(inputTaskRun?.task_input);
-      onResetTaskRunIds();
+      onResetRunIds();
       redirectWithParams({
-        params: { inputTaskRunId: undefined },
+        params: { inputRunId: undefined },
         scroll: false,
       });
     }
@@ -590,7 +590,7 @@ export function PlaygroundContent(props: PlaygroundContentBodyProps) {
     inputTaskRunLoading,
     setGeneratedInput,
     redirectWithParams,
-    onResetTaskRunIds,
+    onResetRunIds,
   ]);
 
   const onEdit = useCallback(
@@ -598,9 +598,9 @@ export function PlaygroundContent(props: PlaygroundContentBodyProps) {
       const newGeneratedInput = cloneDeep(generatedInput) || {};
       set(newGeneratedInput, keyPath, newVal);
       setGeneratedInput(newGeneratedInput);
-      onResetTaskRunIds();
+      onResetRunIds();
     },
-    [setGeneratedInput, generatedInput, onResetTaskRunIds]
+    [setGeneratedInput, generatedInput, onResetRunIds]
   );
 
   const { getScheduledPlaygroundStateMessageToSendAfterRuns } = usePlaygroundChatStore();
@@ -609,7 +609,7 @@ export function PlaygroundContent(props: PlaygroundContentBodyProps) {
     async (options?: RunTaskOptions, individualOptions?: Record<number, RunTaskOptions>) => {
       saveToHistoryForParameters(options?.externalInstructions);
       saveToHistoryForInput();
-      onResetTaskRunIds();
+      onResetRunIds();
 
       await Promise.all([
         handleRunTask(0, individualOptions?.[0] ?? options),
@@ -624,7 +624,7 @@ export function PlaygroundContent(props: PlaygroundContentBodyProps) {
     },
     [
       handleRunTask,
-      onResetTaskRunIds,
+      onResetRunIds,
       saveToHistoryForInput,
       saveToHistoryForParameters,
       getScheduledPlaygroundStateMessageToSendAfterRuns,

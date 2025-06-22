@@ -10,9 +10,9 @@ export function useFetchTaskRunUntilCreated(max_retries: number = 10, delay_ms: 
   const fetchRunV1 = useTaskRuns((state) => state.fetchRunV1);
 
   return useCallback(
-    async (tenant: TenantID | undefined, taskId: TaskID, taskRunId: string) => {
+    async (tenant: TenantID | undefined, taskId: TaskID, runId: string) => {
       for (let i = 0; i < max_retries; i++) {
-        const runV1 = await fetchRunV1(tenant, taskId, taskRunId);
+        const runV1 = await fetchRunV1(tenant, taskId, runId);
         if (runV1 !== undefined) {
           return runV1;
         }

@@ -18,7 +18,7 @@ type UseInputGeneratorProps = {
   handleRunTasks: (options: RunTaskOptions) => void;
   isInputGenerationSupported: boolean;
   preGeneratedInput: GeneralizedTaskInput | undefined;
-  onResetTaskRunIds: () => void;
+  onResetRunIds: () => void;
   saveToHistoryForInput: (input: GeneralizedTaskInput) => void;
   setGeneratedInput: (input: GeneralizedTaskInput | undefined) => void;
   setPreGeneratedInput: (input: GeneralizedTaskInput | undefined) => void;
@@ -34,7 +34,7 @@ export function useInputGenerator(props: UseInputGeneratorProps) {
     handleRunTasks,
     isInputGenerationSupported,
     preGeneratedInput,
-    onResetTaskRunIds,
+    onResetRunIds,
     saveToHistoryForInput,
     setGeneratedInput,
     setPreGeneratedInput,
@@ -104,7 +104,7 @@ export function useInputGenerator(props: UseInputGeneratorProps) {
       setGeneratedInput(voidInput);
       setInputLoading(true);
       resetStreamedChunks();
-      onResetTaskRunIds();
+      onResetRunIds();
 
       const currentAbortController = new AbortController();
       abortController.current = currentAbortController;
@@ -239,7 +239,7 @@ export function useInputGenerator(props: UseInputGeneratorProps) {
       setGeneratedInput,
       voidInput,
       resetStreamedChunks,
-      onResetTaskRunIds,
+      onResetRunIds,
       preGeneratedInput,
       generatePlaygroundInputWithText,
       tenant,

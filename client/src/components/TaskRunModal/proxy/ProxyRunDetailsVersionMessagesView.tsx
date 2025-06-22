@@ -83,7 +83,7 @@ export function ProxyRunDetailsVersionMessagesView(props: Props) {
           </div>
         </div>
 
-        <FeedbackBoxContainer taskRunId={run.id} tenant={tenant} taskId={run.task_id as TaskID} />
+        <FeedbackBoxContainer runId={run.id} tenant={tenant} taskId={run.task_id as TaskID} />
       </div>
     </div>
   );
