@@ -4,12 +4,15 @@ last_updated: 2025-06-12
 ---
 
 # OpenAPI Specification for WorkflowAI
-# This file will contain the customized OpenAPI spec 
 
-# TODO: 
-# api/api/routers/openai_proxy/_openai_proxy_models.py
+# This file will contain the customized OpenAPI spec
+
+# TODO:
+
+# api/api/routers/openai_proxy/\_openai_proxy_models.py
 
 TODO:
+
 - [ ] Add descriptions and examples for fields in OpenAIProxyChatCompletionRequest (use https://platform.openai.com/docs/api-reference/chat/create)
 - [ ] Add descriptions and examples for fields in StandardModelResponse
 - [ ] Set exclude=True for fields that are not meant to be exposed publicly
@@ -21,13 +24,96 @@ TODO:
 - [ ] Try Fumadocs OpenAPI first, and evaluate https://scalar.com/ too.
 
 # List of API endpoints to describe:
+
 - /v1/chat/completions
 - /v1/models
 - /v1/runs/{id}
 - /v1/agents/{agent_id}/runs/search
-- ... 
+- /v1/agents/{agent_id}
+- ...
 - [x] Do we need {tenant} in the path? Decided that we don't need `{tenant}` in the path of our public API endpoints.
 
 # Notes:
 
 - you can use `include_in_schema=False` to exclude a route from the OpenAPI spec
+
+---
+
+## API Endpoint Specifications
+
+### GET /v1/agents/{agent_id}
+
+Returns detailed agent information including schemas, run statistics, and current deployments.
+
+**Response:**
+
+```json
+{
+  "agent_id": "email-classifier",
+  "is_public": false,
+  "name": "Email Classification Agent",
+  "description": "Classifies emails into categories: spam, promotion, important, or general",
+  "schemas": [
+    {
+      "agent_schema_id": 1,
+      "created_at": "2024-01-10T09:15:00Z",
+      "input_json_schema": {
+        "type": "object",
+        "properties": {
+          "email_content": { "type": "string" }
+        }
+      },
+      "output_json_schema": {
+        "type": "object",
+        "properties": {
+          "category": { "type": "string" }
+        }
+      },
+      "is_hidden": false,
+      "last_active_at": "2024-01-20T15:45:00Z"
+    }
+  ],
+  "run_count": 1247,
+  "total_cost_usd": 12.45,
+  "deployments": {
+    "production": [
+      {
+        "schema_id": 1,
+        "version_id": "4.1",
+        "deployed_at": "2024-01-15T10:30:00Z",
+        "deployed_by": {
+          "email": "user@company.com"
+        },
+        "model": "gpt-4o-latest",
+        "run_count": 1247,
+        "last_active_at": "2024-01-20T15:45:00Z"
+      },
+      {
+        "schema_id": 2,
+        "version_id": "3.2",
+        "deployed_at": "2024-01-10T09:15:00Z",
+        "deployed_by": {
+          "email": "user@company.com"
+        },
+        "model": "gpt-4o-mini",
+        "run_count": 523,
+        "last_active_at": "2024-01-20T14:22:00Z"
+      }
+    ],
+    "staging": [
+      {
+        "schema_id": 1,
+        "version_id": "5.0",
+        "deployed_at": "2024-01-22T14:20:00Z",
+        "deployed_by": {
+          "email": "dev@company.com"
+        },
+        "model": "claude-3-5-sonnet-latest",
+        "run_count": 45,
+        "last_active_at": "2024-01-22T16:30:00Z"
+      }
+    ],
+    "dev": []
+  }
+}
+```
