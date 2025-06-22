@@ -459,6 +459,7 @@ class MCPService:
                 total_cost_usd=total_cost_usd,
                 name=agent.name,
                 description=agent.description,
+                metadata_fields=[],  # TODO: Implement metadata field discovery
             )
 
             return MCPToolReturn[AgentResponseDetailed](
