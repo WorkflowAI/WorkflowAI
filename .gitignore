@@ -262,3 +262,5 @@ junit
 openapi_fixed.json
 .ignored
 .source
+
+.playground/
