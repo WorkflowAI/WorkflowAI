@@ -70,6 +70,10 @@ June 20:
 - Keep the `ask_ai_engineer` tool, we don't know yet if in the future there is a big difference between a `ask_ai_engineer` and a `search_documentation` tool or even letting Cursor browse the public.
 - Make the guides public in the docs.
 
+June 22:
+
+- [ ] Pierre suggested a new `search_documentation` tool: https://linear.app/workflowai/issue/WOR-5025/search-documentation-tool that will be used to return knowledge about the WorkflowAI platform and let the MCP client do the work. In that path, we will not implement the `ask_ai_engineer` tool.
+
 ## Guides
 
 - [ ] Building a new agent (See docsv2/content/private/ai-engineer/guides/new_agent.md)
@@ -78,8 +82,8 @@ June 20:
 
 ## TODO:
 
-- [ ] Expose "guides" publicly, in the `guides` section of the docs.
-- [ ] Add `metadata` in the `new_agent` guide.
+- [x] Expose "guides" publicly, in the `guides` section of the docs.
+- [x] Add `metadata` in the `new_agent` guide.
 - [ ] write all guides for the AI Engineer agent.
 - [ ] add a guide about "deployments".
 - [ ] UX: how to connect the web app and the AI Engineer agent?

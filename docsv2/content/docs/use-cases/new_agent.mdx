@@ -1,4 +1,6 @@
-# Building a new agent with WorkflowAI
+---
+title: Building a new agent with WorkflowAI
+---
 
 **IMPORTANT: The following is a guide with recommended steps and general guidelines for building the first pass of an agent. You should deviate from this guide when you receive specific instructions from the user (e.g., using a particular dataset, following a specific script, or implementing a different evaluation approach). Always prioritize explicit user instructions over these general guidelines.**
 
@@ -9,8 +11,9 @@ This guide provides a systematic framework for creating the initial version of a
 1. **Requirements and constraints analysis** - understanding the user's priorities and limitations
 2. **Agent type identification** - understanding what kind of agent you're building
 3. **Strategic model selection** - choosing models based on user-defined constraints
-4. **A working prompt** that achieves the desired functionality for your agent type
-5. **Evaluation approach** aligned with the user's success criteria
+4. **Tool selection and configuration** - identifying and setting up the right tools for agent functionality
+5. **A working prompt** that achieves the desired functionality for your agent type
+6. **Evaluation approach** aligned with the user's success criteria
 
 ### Understanding User Constraints and Requirements
 
@@ -81,7 +84,7 @@ import openai
 
 client = openai.OpenAI(
     api_key="your_api_key", # you can use the `create_api_key` MCP tool to create an API key, or check if the API key is already available in the environment variables
-    base_url="https://run-preview.workflowai.com/v1" # the base_url must be set to the WorkflowAI API endpoint
+    base_url="https://run.workflowai.com/v1" # the base_url must be set to the WorkflowAI API endpoint
 )
 
 class Translation(BaseModel):
@@ -213,7 +216,14 @@ As you test with different models, you may discover that certain models perform 
 
 The specific models you choose should be directly informed by the user's answers to your constraint questions, not predetermined assumptions about their use case.
 
-### 5. Generate test inputs aligned with user requirements
+<!-- TODO: Add section 5 on tool selection and usage. This section should cover:
+- How to identify what tools an agent needs based on its requirements
+- Tool selection criteria (reliability, cost, performance, integration complexity)
+- How to configure and integrate tools with the agent
+- Best practices for tool usage and error handling
+- Testing tools in the context of the agent workflow -->
+
+### 6. Generate test inputs aligned with user requirements
 
 **Ask the user about their testing priorities and create test cases accordingly:**
 
