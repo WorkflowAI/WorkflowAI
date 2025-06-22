@@ -56,8 +56,26 @@ def normalize(s: str, case_sensitive: bool = False, remove_punctuation: bool = T
 
 def slugify(s: str) -> str:
     n = normalize(s, case_sensitive=True, remove_punctuation=False)
+
+    # Preserve existing separators by splitting on them, processing parts, then rejoining
+    has_underscore = "_" in s
+    has_hyphen = "-" in s
+
+    if has_underscore and has_hyphen:
+        # Mixed separators: preserve both in original positions
+        # Replace separators with placeholders, process, then restore
+        temp = n.replace("_", "§UNDERSCORE§").replace("-", "§HYPHEN§")
+        words = split_words(temp)
+        processed = "_".join(word.lower() for word in words)
+        # Restore original separators
+        result = processed.replace("§underscore§", "_").replace("§hyphen§", "-")
+        return re.sub(r"[^a-z0-9_-]", "", result).replace("__", "_").replace("--", "-")
+    if has_underscore:
+        # Use snake_case
+        n = to_snake_case(n)
+        return re.sub(r"[^a-z0-9_]", "", n).replace("__", "_")
+    # Use kebab-case (default)
     n = to_kebab_case(n)
-    # Making sure by removing any non-url safe characters
     return re.sub(r"[^a-z0-9-]", "", n).replace("--", "-")
 
 
