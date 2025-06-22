@@ -1,5 +1,6 @@
 ---
 title: Runs
+summary: Learn how to track, view, and search AI agent runs, including how to use metadata for debugging and troubleshooting.
 ---
 
 import { Tabs, Tab } from "fumadocs-ui/components/tabs"
@@ -91,6 +92,49 @@ curl -X POST https://run.workflowai.com/v1/chat/completions \
 
 <Callout type="info">
   TODO: @guillaume is there any limit on the metadata size?
+</Callout>
+
+### Discover available metadata fields
+
+Before searching for runs by metadata, you need to know what metadata fields are available for your agent. WorkflowAI provides several ways to discover the available metadata fields:
+
+#### Using MCP
+
+If you're using WorkflowAI's MCP (Model Context Protocol) integration, you can use the `get_agent` tool to discover available metadata fields:
+
+```
+Use the get_agent MCP tool with agent_id "my-agent-id" to see available metadata fields
+```
+
+The response will include a `metadata_fields` array with the exact field paths you can use for filtering:
+
+```json
+{
+  "success": true,
+  "data": {
+    "agent_id": "my-agent-id",
+    "metadata_fields": [
+      "metadata.user_id",
+      "metadata.user_email", 
+      "metadata.session_id",
+      "metadata.environment",
+      "metadata.source"
+    ],
+    // ... other agent details
+  }
+}
+```
+
+You can then use these exact field paths in the `search_runs` tool:
+
+```
+Search for runs where metadata.user_id equals "123" and metadata.environment equals "production"
+```
+
+#### Using the API
+
+<Callout type="info">
+TODO: @guillaume Document the API endpoint(s) that will return available metadata fields for an agent. This could be part of the agent details endpoint or a separate metadata discovery endpoint.
 </Callout>
 
 Then, you can [search for runs by metadata](/docs/observability/runs#search-runs).

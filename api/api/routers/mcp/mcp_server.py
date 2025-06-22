@@ -247,7 +247,7 @@ async def get_agent(
     ] = "",
 ) -> MCPToolReturn[AgentResponseDetailed]:
     """<when_to_use>
-    When the user wants to get detailed information about a specific agent, including full input/output schemas, versions, name, description, and statistics.
+    When the user wants to get detailed information about a specific agent, including full input/output schemas, versions, name, description, statistics, and available metadata fields for search filtering.
     </when_to_use>
     <returns>
     Returns detailed information for a specific agent including:
@@ -256,6 +256,7 @@ async def get_agent(
     - Complete schema information (created_at, is_hidden, last_active_at)
     - Run statistics (run count and total cost)
     - Agent metadata (is_public status)
+    - Available metadata fields: A list of metadata field paths that can be used for filtering runs with the search_runs tool
     </returns>"""
     service = await get_mcp_service()
     return await service.get_agent(

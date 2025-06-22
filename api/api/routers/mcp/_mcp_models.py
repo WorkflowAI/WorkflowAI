@@ -128,6 +128,12 @@ class AgentResponseDetailed(BaseModel):
     name: str | None = None
     description: str | None = None
 
+    # Available metadata fields for search filtering
+    metadata_fields: list[str] = Field(
+        default_factory=list,
+        description="List of available metadata field paths that can be used for filtering runs (e.g., 'metadata.user_email', 'metadata.environment')",
+    )
+
 
 class AgentResponseList(BaseModel):
     agents: list[AgentResponse]
