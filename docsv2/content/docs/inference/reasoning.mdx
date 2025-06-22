@@ -207,5 +207,48 @@ curl https://run.workflowai.com/v1/models?reasoning=true
 </Tab>
 </Tabs>
 
+## Using reasoning with MCP
+
+### Discovering reasoning models
+
+Use the `list_available_models` MCP tool to discover which models support reasoning:
+
+The response includes reasoning capability in the `supports` array:
+
+```json
+{
+  "success": true,
+  "items": [
+    {
+      "id": "claude-4-sonnet", 
+      "display_name": "Claude 4 Sonnet",
+      "supports": ["tool_calling", "input_image", "reasoning"],
+      "quality_index": 95,
+      "cost_per_input_token_usd": 0.000003,
+      "cost_per_output_token_usd": 0.000015,
+      "release_date": "2024-11-01T00:00:00Z"
+    },
+    {
+      "id": "gpt-4o-mini-latest",
+      "display_name": "GPT-4o Mini Latest", 
+      "supports": ["tool_calling", "input_image"],
+      "quality_index": 85,
+      "cost_per_input_token_usd": 0.00000015,
+      "cost_per_output_token_usd": 0.0000006,
+      "release_date": "2024-10-15T00:00:00Z"
+    }
+  ]
+}
+```
+
+**Key fields for reasoning:**
+- `supports` array: Look for "reasoning" in this array to identify reasoning-capable models
+- Models with "reasoning" in their supports array can generate step-by-step reasoning content
+- Use these models for complex problem-solving tasks
+
+<Callout type="warning">
+**TODO**: The reasoning capability exposure is currently in architectural design phase. Guillaume will implement the actual reasoning detection logic in the MCP model responses and the ability to access reasoning content through MCP tools.
+</Callout>
+
 
 
