@@ -207,5 +207,64 @@ curl https://run.workflowai.com/v1/models?reasoning=true
 </Tab>
 </Tabs>
 
+## Using reasoning with MCP
+
+WorkflowAI's Model Context Protocol (MCP) integration provides a convenient way to discover and use reasoning-capable models.
+
+### Discovering reasoning models
+
+Use the `list_available_models` MCP tool to discover which models support reasoning:
+
+```
+Use the list_available_models MCP tool to see all available models with their reasoning capabilities
+```
+
+The response includes a `reasoning` boolean field for each model:
+
+```json
+{
+  "success": true,
+  "items": [
+    {
+      "id": "claude-4-sonnet", 
+      "display_name": "Claude 4 Sonnet",
+      "supports": ["tool_calling", "input_image", "reasoning"],
+      "reasoning": true,
+      "quality_index": 95,
+      "cost_per_input_token_usd": 0.000003,
+      "cost_per_output_token_usd": 0.000015,
+      "release_date": "2024-11-01T00:00:00Z"
+    },
+    {
+      "id": "gpt-4o-mini-latest",
+      "display_name": "GPT-4o Mini Latest", 
+      "supports": ["tool_calling", "input_image"],
+      "reasoning": false,
+      "quality_index": 85,
+      "cost_per_input_token_usd": 0.00000015,
+      "cost_per_output_token_usd": 0.0000006,
+      "release_date": "2024-10-15T00:00:00Z"
+    }
+  ]
+}
+```
+
+**Key fields for reasoning:**
+- `reasoning`: Boolean indicating if the model supports reasoning mode
+- `supports`: Array that may include "reasoning" as a capability
+- Use models where `reasoning: true` for complex problem-solving tasks
+
+### Using reasoning in agent configuration
+
+When configuring your WorkflowAI agent with reasoning-capable models, you can enable reasoning mode through the completion API as shown in the previous sections.
+
+<Callout type="info">
+**MCP Integration**: The MCP tools automatically handle model discovery and agent configuration. Use `list_available_models` to find reasoning-capable models, then configure your agent accordingly.
+</Callout>
+
+<Callout type="warning">
+**TODO**: Add documentation for accessing reasoning content through MCP tools when available.
+</Callout>
+
 
 

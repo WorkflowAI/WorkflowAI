@@ -50,6 +50,9 @@ class ConciseModelResponse(BaseModel):
     cost_per_input_token_usd: float
     cost_per_output_token_usd: float
     release_date: str
+    reasoning: bool = Field(
+        description="Whether the model supports reasoning mode with step-by-step reasoning content",
+    )
 
     @classmethod
     def from_model_data(cls, id: str, model: FinalModelData):
@@ -59,6 +62,7 @@ class ConciseModelResponse(BaseModel):
             "supports_input_audio",
             "supports_audio_only",
             "supports_tool_calling",
+            "supports_reasoning",
         }
 
         provider_data = model.providers[0][1]
@@ -74,6 +78,7 @@ class ConciseModelResponse(BaseModel):
             cost_per_input_token_usd=provider_data.text_price.prompt_cost_per_token,
             cost_per_output_token_usd=provider_data.text_price.completion_cost_per_token,
             release_date=model.release_date.isoformat(),
+            reasoning=getattr(model, "supports_reasoning", False),
         )
 
     @classmethod
@@ -86,6 +91,7 @@ class ConciseModelResponse(BaseModel):
             cost_per_input_token_usd=model.price_per_input_token_usd,
             cost_per_output_token_usd=model.price_per_output_token_usd,
             release_date=model.release_date.isoformat(),
+            reasoning=False,
         )
 
 

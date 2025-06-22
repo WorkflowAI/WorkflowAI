@@ -180,6 +180,19 @@ class Model(BaseModel):
     @classmethod
     def from_domain(cls, id: str, model: FinalModelData) -> Self:
         provider_data = model.providers[0][1]
+
+        # Determine reasoning capabilities based on reasoning_level
+        reasoning = None
+        if model.reasoning_level and model.reasoning_level != "none":
+            # Calculate reasoning budgets based on max output tokens
+            max_output = model.max_tokens_data.max_output_tokens or model.max_tokens_data.max_tokens
+            reasoning = ModelReasoning(
+                can_be_disabled=True,  # Most reasoning models can disable reasoning
+                low_effort_reasoning_budget=int(max_output * 0.2),  # 20% of max output tokens
+                medium_effort_reasoning_budget=int(max_output * 0.5),  # 50% of max output tokens
+                high_effort_reasoning_budget=int(max_output * 0.8),  # 80% of max output tokens
+            )
+
         return cls(
             id=id,
             created=int(datetime.datetime.combine(model.release_date, datetime.time(0, 0)).timestamp()),
@@ -189,7 +202,7 @@ class Model(BaseModel):
             supports=ModelSupports.from_domain(model),
             pricing=ModelPricing.from_domain(provider_data),
             release_date=model.release_date,
-            reasoning=None,
+            reasoning=reasoning,
             context_window=ModelContextWindow.from_domain(model.max_tokens_data),
         )
 
@@ -213,8 +226,25 @@ def _model_data_iterator() -> Iterator[Model]:
 
 
 @router.get("")
-async def list_models() -> ModelResponse:
-    return ModelResponse(data=list(_model_data_iterator()))
+async def list_models(reasoning: bool | None = None) -> ModelResponse:
+    """List available models.
+
+    Args:
+        reasoning: If True, only return models that support reasoning.
+                  If False, only return models that don't support reasoning.
+                  If None, return all models.
+    """
+    models = list(_model_data_iterator())
+
+    if reasoning is not None:
+        if reasoning:
+            # Filter for models that support reasoning
+            models = [model for model in models if model.reasoning is not None]
+        else:
+            # Filter for models that don't support reasoning
+            models = [model for model in models if model.reasoning is None]
+
+    return ModelResponse(data=models)
 
 
 # Because the run and api containers are deployed at different times,
