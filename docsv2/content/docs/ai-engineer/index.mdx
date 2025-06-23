@@ -15,9 +15,11 @@ Access WorkflowAI's AI engineer by installing the WorkflowAI MCP (Model Context 
 
 ## Setup Instructions
 
-<Tabs items={['Cursor', 'Claude Code', 'Windsurf', 'GitHub Copilot']}>
+<Tabs items={['Cursor', 'Claude Code', 'Windsurf']}>
 
 <Tab value="Cursor">
+
+### Cursor Setup
 
 TODO add a direct link to install the MCP once built by Guillaume?
 
@@ -53,15 +55,8 @@ Cursor UI should now look like this (note the green indicator and the number of 
 
 ### Claude Code Setup
 
-#### 1. Install Dependencies
-
-```bash
-poetry install
-```
-
-#### 2. Add WorkflowAI MCP Server
-
-Configure Claude Code to use WorkflowAI's MCP server:
+1. Open Claude Code in your preferred terminal (standalone or within your IDE).
+2. Type the following to install:
 
 ```bash
 claude mcp add workflowai https://api.workflowai.com/mcp/ --transport http -H "Authorization: Bearer YOUR_API_KEY_HERE"
@@ -69,16 +64,10 @@ claude mcp add workflowai https://api.workflowai.com/mcp/ --transport http -H "A
 
 Replace `YOUR_API_KEY_HERE` with your WorkflowAI API key.
 
-#### 3. Verify Configuration
-
-Test your MCP server connection:
+3. Type the following to verify the server is properly connected:
 
 ```bash
-# Start Claude
-claude
-
-# Check server status
-/mcp
+/mcp 
 ```
 
 You should see the WorkflowAI server listed as "connected".
@@ -88,39 +77,7 @@ You should see the WorkflowAI server listed as "connected".
 
 <Tab value="Windsurf">
 
-### TODO
-
-   ```json
-   {
-     "mcpServers": {
-       "workflowai": {
-         "url": "https://api.workflowai.com/mcp/",
-         "headers": {
-           "Authorization": "Bearer <your_api_key_here>"
-         }
-       }
-     }
-   }
-   ```
-
-</Tab>
-
-<Tab value="GitHub Copilot">
-
-### TODO
-
-   ```json
-   {
-     "mcpServers": {
-       "workflowai": {
-         "url": "https://api.workflowai.com/mcp/",
-         "headers": {
-           "Authorization": "Bearer <your_api_key_here>"
-         }
-       }
-     }
-   }
-   ```
+*Coming soon*
 
 </Tab>
 
