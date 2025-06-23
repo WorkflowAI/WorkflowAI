@@ -184,6 +184,7 @@ class RunV1(_BaseRunV1):
     # TODO: add details field that contains part of the internal metadata
     # see https://linear.app/workflowai/issue/WOR-5044/fetch-run-details-mcp-tool-missing-deployment-environment-information#comment-d84e92a4
 
+    # TODO: Reference to documentation page about metadata: [URL will change soon]
     metadata: dict[str, Any] | None = Field(
         description="User defined metadata passed to the completion request",
     )
