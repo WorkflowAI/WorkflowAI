@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { AdvencedSettingsDetails } from '@/components/TaskRunModal/proxy/AdvencedSettingsDetails';
 import { TaskTemperatureView } from '@/components/v2/TaskTemperatureBadge';
 import { useCopy } from '@/lib/hooks/useCopy';
 import { ProxyMessagesView } from '../proxy-playground/proxy-messages/ProxyMessagesView';
@@ -65,6 +66,12 @@ export function VersionEntryContainerProperties(props: VersionEntryContainerProp
           />
         </div>
       </div>
+
+      <AdvencedSettingsDetails
+        majorVersionProperties={entry.majorVersion.properties}
+        style='single'
+        borderColor='border-gray-200'
+      />
     </div>
   );
 }

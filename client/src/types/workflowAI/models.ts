@@ -901,12 +901,23 @@ export type MajorVersion = {
 
 export type MajorVersionProperties = {
   temperature: number;
-  instructions: string;
+  instructions?: string;
   /**
    * The id of the full schema, including versions and examples
    */
   task_variant_id: string | null;
   messages?: ProxyMessage[] | undefined | null;
+
+  top_p?: number | null;
+  max_tokens?: number | null;
+  is_structured_generation_enabled?: boolean | null;
+  has_templated_instructions?: boolean | null;
+  stream?: boolean | null;
+  stream_options?: OpenAIProxyStreamOptions | null;
+  presence_penalty?: number | null;
+  frequency_penalty?: number | null;
+  stop?: string | Array<string> | null;
+  tool_choice?: string | OpenAIProxyToolChoice | null;
 };
 
 export type MetaAgentChatMessage = {
@@ -1870,6 +1881,12 @@ export type TaskGroupProperties_Output = {
    */
   is_structured_generation_enabled?: boolean | null;
   has_templated_instructions?: boolean | null;
+  stream?: boolean | null;
+  stream_options?: OpenAIProxyStreamOptions | null;
+  presence_penalty?: number | null;
+  frequency_penalty?: number | null;
+  stop?: string | Array<string> | null;
+  tool_choice?: string | OpenAIProxyToolChoice | null;
   [key: string]: unknown;
 };
 

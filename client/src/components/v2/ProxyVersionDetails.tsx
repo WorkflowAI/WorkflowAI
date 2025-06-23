@@ -4,10 +4,6 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useMemo, useState } from 'react';
 import { DebouncedState } from 'usehooks-ts';
 import { ProxyMessagesView } from '@/app/[tenant]/agents/[taskId]/[taskSchemaId]/proxy-playground/proxy-messages/ProxyMessagesView';
-import {
-  advencedSettingNameFromKey,
-  advencedSettingsVersionPropertiesKeys,
-} from '@/app/[tenant]/agents/[taskId]/[taskSchemaId]/proxy-playground/utils';
 import { TaskVersionNotes } from '@/components/TaskVersionNotes';
 import { TaskRunCountBadge } from '@/components/v2/TaskRunCountBadge/TaskRunCountBadge';
 import { useDemoMode } from '@/lib/hooks/useDemoMode';
@@ -18,6 +14,7 @@ import { environmentsForVersion, formatSemverVersion, isVersionSaved } from '@/l
 import { useVersions } from '@/store/versions';
 import { TaskSchemaID } from '@/types/aliases';
 import { ProxyMessage, VersionV1 } from '@/types/workflowAI';
+import { AdvencedSettingsDetails } from '../TaskRunModal/proxy/AdvencedSettingsDetails';
 import { Button } from '../ui/Button';
 import { TaskCostBadge } from './TaskCostBadge';
 import { TaskEnvironmentBadge } from './TaskEnvironmentBadge';
@@ -231,19 +228,12 @@ export function ProxyVersionDetails(props: TaskMetadataProps) {
         <TaskMetadataSection title='runs'>
           <TaskRunCountBadge runsCount={runCount} onClick={onViewRuns} />
         </TaskMetadataSection>
-
-        {advencedSettingsVersionPropertiesKeys.map((key) => {
-          const value = properties[key];
-          if (value === undefined) {
-            return null;
-          }
-          return (
-            <TaskMetadataSection key={key} title={advencedSettingNameFromKey(key)}>
-              <div className='text-[13px] font-medium text-gray-700 px-1.5 py-0.5 border border-gray-200 rounded-[2px]'>{`${value}`}</div>
-            </TaskMetadataSection>
-          );
-        })}
       </div>
+
+      <div className='flex w-full px-4'>
+        <AdvencedSettingsDetails version={version} style='single' borderColor='border-gray-200' />
+      </div>
+
       {children}
     </div>
   );
