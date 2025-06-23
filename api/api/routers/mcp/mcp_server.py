@@ -1,5 +1,6 @@
 from typing import Annotated, Any, Literal
 
+from anthropic import BaseModel
 from fastmcp import FastMCP
 from fastmcp.server.dependencies import get_http_request
 from pydantic import Field
@@ -35,8 +36,10 @@ from api.services.run import RunService
 from api.services.runs.runs_service import RunsService
 from api.services.security_service import SecurityService
 from api.services.task_deployments import TaskDeploymentsService
+from api.services.tools_service import ToolsService
 from api.services.versions import VersionsService
 from core.domain.analytics_events.analytics_events import OrganizationProperties, UserProperties
+from core.domain.tool import Tool
 from core.domain.users import UserIdentifier
 from core.storage.backend_storage import BackendStorage
 
@@ -693,8 +696,24 @@ async def create_api_key() -> LegacyMCPToolReturn:
     )
 
 
+class HostedToolItem(BaseModel):
+    """A tool hosted by WorkflowAI.
+    To use a WorkflowAI hosted tool:
+    - either refer to the tool name (e.g., '@search-google') in the first system message of
+    the completion request
+    - pass a tool with a corresponding name and no arguments in the `tools` argument of the completion request
+    """
+
+    name: str = Field(description="The tool handle/name (e.g., '@search-google')")
+    description: str = Field(description="Description of what the tool does")
+
+    @classmethod
+    def from_tool(cls, tool: Tool):
+        return cls(name=tool.name, description=tool.description or "")
+
+
 @_mcp.tool()
-async def list_hosted_tools() -> LegacyMCPToolReturn:
+async def list_hosted_tools() -> PaginatedMCPToolReturn[None, HostedToolItem]:
     """
     Read the documentation about hosted tools using the `search_documentation` tool.
 
@@ -705,24 +724,11 @@ async def list_hosted_tools() -> LegacyMCPToolReturn:
     <returns>
     Returns a list of all hosted tools available in WorkflowAI, including their names, descriptions.
     </returns>"""
-    from api.services.hosted_tools_service import HostedToolsService
 
-    try:
-        service = HostedToolsService()
-        tools = await service.list_hosted_tools()
-
-        return LegacyMCPToolReturn(
-            success=True,
-            data={
-                "tools": [tool.model_dump() for tool in tools],
-            },
-            messages=[f"Found {len(tools)} hosted tools available"],
-        )
-    except Exception as e:
-        return LegacyMCPToolReturn(
-            success=False,
-            error=f"Failed to list hosted tools: {e}",
-        )
+    return PaginatedMCPToolReturn(
+        success=True,
+        items=[HostedToolItem.from_tool(tool) for tool in ToolsService.hosted_tools()],
+    )
 
 
 def mcp_http_app():
