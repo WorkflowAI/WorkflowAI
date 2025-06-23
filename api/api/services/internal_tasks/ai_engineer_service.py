@@ -746,6 +746,8 @@ class AIEngineerService:
 
         GUIDE_INJECTION_MAPPING = {
             "{{building_new_agent_guide}}": "content/docs/use-cases/new_agent.mdx",
+            "{{migrating_existing_agent_guide}}": "content/docs/use-cases/migrating_existing_agent.mdx",
+            "{{improving_and_debugging_existing_agent_guide}}": "content/docs/use-cases/improving_and_debugging_existing_agent.mdx",
         }
 
         documentation_service = DocumentationService()
