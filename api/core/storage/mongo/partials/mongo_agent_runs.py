@@ -509,6 +509,7 @@ class MongoTaskRunStorage(PartialStorage[TaskRunDocument], TaskRunStorage):
         from_date: datetime,
         to_date: datetime | None = None,
         is_active: bool | None = None,
+        agent_uids: set[int] | None = None,
     ) -> AsyncIterator[TaskRunStorage.AgentRunCount]:
         raise NotImplementedError()
 

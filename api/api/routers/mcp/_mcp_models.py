@@ -13,11 +13,13 @@ from core.domain.error_response import ErrorResponse
 from core.domain.message import Message
 from core.domain.models.model_data import FinalModelData
 from core.domain.models.model_data_supports import ModelDataSupports
+from core.domain.task import SerializableTask
 from core.domain.task_group import TaskGroup
 from core.domain.task_group_properties import TaskGroupProperties
 from core.domain.task_variant import SerializableTaskVariant
 from core.domain.version_environment import VersionEnvironment
 from core.domain.version_major import VersionDeploymentMetadata, VersionMajor
+from core.storage.task_run_storage import TaskRunStorage
 from core.utils.fields import datetime_zero
 from core.utils.token_utils import tokens_from_string
 
@@ -89,7 +91,7 @@ class ConciseModelResponse(BaseModel):
         )
 
 
-class AgentResponse(BaseModel):
+class AgentListItem(BaseModel):
     agent_id: str
     is_public: bool
 
@@ -99,13 +101,32 @@ class AgentResponse(BaseModel):
         is_hidden: bool | None = None
         last_active_at: str | None
 
+        @classmethod
+        def from_domain(cls, v: SerializableTask.PartialTaskVersion):
+            return cls(
+                agent_schema_id=v.schema_id,
+                created_at=v.created_at.isoformat() if v.created_at else None,
+                is_hidden=v.is_hidden or False,
+                last_active_at=v.last_active_at.isoformat() if v.last_active_at else None,
+            )
+
     schemas: list[AgentSchema]
 
     run_count: int
     total_cost_usd: float
 
+    @classmethod
+    def from_domain(cls, agent: SerializableTask, stats: TaskRunStorage.AgentRunCount | None):
+        return cls(
+            agent_id=agent.id,
+            is_public=agent.is_public or False,
+            schemas=[cls.AgentSchema.from_domain(v) for v in agent.versions],
+            run_count=stats.run_count if stats else 0,
+            total_cost_usd=stats.total_cost_usd if stats else 0,
+        )
 
-class AgentResponseDetailed(BaseModel):
+
+class AgentResponse(BaseModel):
     """Detailed agent response with full schema information - used when fetching a single agent"""
 
     agent_id: str
@@ -114,23 +135,39 @@ class AgentResponseDetailed(BaseModel):
     class DetailedAgentSchema(BaseModel):
         agent_schema_id: int
         created_at: str | None = None
-        input_json_schema: dict[str, Any] | None = None
-        output_json_schema: dict[str, Any] | None = None
-        is_hidden: bool | None = None
+        input_json_schema: dict[str, Any] | None
+        output_json_schema: dict[str, Any] | None
+        is_hidden: bool | None
         last_active_at: str | None
+
+        @classmethod
+        def from_domain(cls, v: SerializableTask.PartialTaskVersion):
+            return cls(
+                agent_schema_id=v.schema_id,
+                created_at=v.created_at.isoformat() if v.created_at else None,
+                input_json_schema=v.input_schema,
+                output_json_schema=v.output_schema,
+                is_hidden=v.is_hidden or False,
+                last_active_at=v.last_active_at.isoformat() if v.last_active_at else None,
+            )
 
     schemas: list[DetailedAgentSchema]
 
     run_count: int
     total_cost_usd: float
 
-    # Additional detailed information that's useful when fetching a single agent
-    name: str | None = None
-    description: str | None = None
+    name: str | None
 
-
-class AgentResponseList(BaseModel):
-    agents: list[AgentResponse]
+    @classmethod
+    def from_domain(cls, agent: SerializableTask, stats: TaskRunStorage.AgentRunCount | None):
+        return cls(
+            agent_id=agent.id,
+            is_public=agent.is_public or False,
+            schemas=[cls.DetailedAgentSchema.from_domain(v) for v in agent.versions],
+            run_count=stats.run_count if stats else 0,
+            total_cost_usd=stats.total_cost_usd if stats else 0,
+            name=agent.name,
+        )
 
 
 T = TypeVar("T", bound=BaseModel)

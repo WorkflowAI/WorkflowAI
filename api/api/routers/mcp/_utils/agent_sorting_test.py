@@ -3,7 +3,7 @@ from typing import Literal
 
 import pytest
 
-from api.routers.mcp._mcp_models import AgentResponse
+from api.routers.mcp._mcp_models import AgentListItem
 from api.routers.mcp._utils.agent_sorting import sort_agents
 
 
@@ -12,13 +12,13 @@ def create_test_agent(
     run_count: int = 0,
     total_cost_usd: float = 0.0,
     last_active_ats: list[str | None] | None = None,
-) -> AgentResponse:
+) -> AgentListItem:
     """Helper function to create test agents."""
     if last_active_ats is None:
         last_active_ats = [None]
 
     schemas = [
-        AgentResponse.AgentSchema(
+        AgentListItem.AgentSchema(
             agent_schema_id=i + 1,
             created_at=datetime(2024, 1, 1).isoformat(),
             is_hidden=False,
@@ -27,7 +27,7 @@ def create_test_agent(
         for i, last_active_at in enumerate(last_active_ats)
     ]
 
-    return AgentResponse(
+    return AgentListItem(
         agent_id=agent_id,
         is_public=True,
         schemas=schemas,
@@ -197,7 +197,7 @@ class TestSortAgents:
 
     def test_empty_list(self):
         """Test sorting an empty list."""
-        agents: list[AgentResponse] = []
+        agents: list[AgentListItem] = []
 
         sorted_agents = sort_agents(agents, "last_active_at", "desc")
         assert sorted_agents == []

@@ -1,3 +1,4 @@
+import datetime
 from typing import Annotated, Any, Literal
 
 from fastmcp import FastMCP
@@ -7,8 +8,8 @@ from starlette.exceptions import HTTPException
 
 from api.dependencies.task_info import TaskTuple
 from api.routers.mcp._mcp_models import (
+    AgentListItem,
     AgentResponse,
-    AgentResponseDetailed,
     AgentSortField,
     AIEngineerReponseWithUsefulLinks,
     ConciseLatestModelResponse,
@@ -212,7 +213,7 @@ async def list_agents(
         int,
         Field(description="The page number to return. Defaults to 1."),
     ] = 1,
-) -> PaginatedMCPToolReturn[None, AgentResponse]:
+) -> PaginatedMCPToolReturn[None, AgentListItem]:
     """<when_to_use>
     When the user wants to see all agents they have created, along with their basic statistics (run counts and costs).
     </when_to_use>
@@ -240,12 +241,12 @@ async def get_agent(
         ),
     ],
     stats_from_date: Annotated[
-        str,
+        datetime.datetime | None,
         Field(
             description="ISO date string to filter usage (runs and costs) stats from (e.g., '2024-01-01T00:00:00Z'). Defaults to 7 days ago if not provided.",
         ),
-    ] = "",
-) -> MCPToolReturn[AgentResponseDetailed]:
+    ] = None,
+) -> MCPToolReturn[AgentResponse]:
     """<when_to_use>
     When the user wants to get detailed information about a specific agent, including full input/output schemas, versions, name, description, and statistics.
     </when_to_use>

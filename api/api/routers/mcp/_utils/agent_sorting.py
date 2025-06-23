@@ -2,14 +2,14 @@
 
 import datetime
 
-from api.routers.mcp._mcp_models import AgentResponse, AgentSortField, SortOrder
+from api.routers.mcp._mcp_models import AgentListItem, AgentSortField, SortOrder
 
 
 def sort_agents(
-    agents: list[AgentResponse],
+    agents: list[AgentListItem],
     sort_by: AgentSortField,
     order: SortOrder,
-) -> list[AgentResponse]:
+) -> list[AgentListItem]:
     """Sort agents based on the specified field and order with stable secondary sorting by agent_id.
 
     Args:
@@ -29,7 +29,7 @@ def sort_agents(
 
     if sort_by == "last_active_at":
 
-        def get_sort_key(agent: AgentResponse) -> tuple[float, str]:
+        def get_sort_key(agent: AgentListItem) -> tuple[float, str]:
             """Get the sort key for last_active_at sorting with stable ordering."""
             active_dates = [schema.last_active_at for schema in agent.schemas if schema.last_active_at is not None]
             if not active_dates:

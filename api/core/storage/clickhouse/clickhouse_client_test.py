@@ -1270,6 +1270,102 @@ class TestRunCountByAgentUid:
         assert 1 not in results
         assert 4 not in results
 
+    async def test_run_count_by_agent_uid_with_agent_uids_filter(self, clickhouse_client: ClickhouseClient):
+        # Test filtering by agent_uids parameter
+        now = datetime.datetime(2024, 1, 1)
+        runs = [
+            # Create runs for different agent UIDs
+            _ck_run(task_uid=1, created_at=now, cost_usd=10.0),
+            _ck_run(task_uid=1, created_at=now, cost_usd=20.0),  # Total for task_uid 1: 30.0
+            _ck_run(task_uid=2, created_at=now, cost_usd=30.0),
+            _ck_run(task_uid=3, created_at=now, cost_usd=60.0),
+        ]
+        await clickhouse_client.insert_models("runs", runs, {"async_insert": 0, "wait_for_async_insert": 0})
+
+        # Test filtering by specific agent UIDs
+        results = {
+            r.agent_uid: (r.run_count, r.total_cost_usd)
+            async for r in clickhouse_client.run_count_by_agent_uid(now, agent_uids={1, 3})
+        }
+        assert results == {
+            1: (2, pytest.approx(30.0)),  # pyright: ignore [reportUnknownMemberType]
+            3: (1, pytest.approx(60.0)),  # pyright: ignore [reportUnknownMemberType]
+        }
+        # Should not include agents 2 and 5
+        assert 2 not in results
+
+    async def test_run_count_by_agent_uid_with_single_agent_uid(self, clickhouse_client: ClickhouseClient):
+        # Test filtering by a single agent UID
+        now = datetime.datetime(2024, 1, 1)
+        runs = [
+            _ck_run(task_uid=1, created_at=now, cost_usd=10.0),
+            _ck_run(task_uid=1, created_at=now, cost_usd=20.0),
+            _ck_run(task_uid=2, created_at=now, cost_usd=30.0),
+            _ck_run(task_uid=3, created_at=now, cost_usd=40.0),
+        ]
+        await clickhouse_client.insert_models("runs", runs, {"async_insert": 0, "wait_for_async_insert": 0})
+
+        # Test filtering by single agent UID
+        results = {
+            r.agent_uid: (r.run_count, r.total_cost_usd)
+            async for r in clickhouse_client.run_count_by_agent_uid(now, agent_uids={2})
+        }
+        assert results == {
+            2: (1, pytest.approx(30.0)),  # pyright: ignore [reportUnknownMemberType]
+        }
+        # Should not include other agents
+        assert 1 not in results
+        assert 3 not in results
+
+    async def test_run_count_by_agent_uid_with_nonexistent_agent_uids(self, clickhouse_client: ClickhouseClient):
+        # Test filtering by agent UIDs that don't exist
+        now = datetime.datetime(2024, 1, 1)
+        runs = [
+            _ck_run(task_uid=1, created_at=now, cost_usd=10.0),
+            _ck_run(task_uid=2, created_at=now, cost_usd=20.0),
+        ]
+        await clickhouse_client.insert_models("runs", runs, {"async_insert": 0, "wait_for_async_insert": 0})
+
+        # Test filtering by non-existent agent UIDs
+        results = {
+            r.agent_uid: (r.run_count, r.total_cost_usd)
+            async for r in clickhouse_client.run_count_by_agent_uid(now, agent_uids={99, 100})
+        }
+        assert results == {}
+
+    async def test_run_count_by_agent_uid_combined_filters(self, clickhouse_client: ClickhouseClient):
+        # Test agent_uids combined with other filters (is_active, date range)
+        now = datetime.datetime(2024, 1, 1)
+        runs = [
+            # Active runs
+            _ck_run(task_uid=1, created_at=now, cost_usd=10.0, is_active=True),
+            _ck_run(task_uid=2, created_at=now, cost_usd=20.0, is_active=True),
+            _ck_run(task_uid=3, created_at=now, cost_usd=30.0, is_active=True),
+            # Inactive runs
+            _ck_run(task_uid=1, created_at=now, cost_usd=40.0, is_active=False),
+            _ck_run(task_uid=2, created_at=now, cost_usd=50.0, is_active=False),
+            # Runs outside date range
+            _ck_run(task_uid=1, created_at=now - datetime.timedelta(days=2), cost_usd=60.0, is_active=True),
+            _ck_run(task_uid=2, created_at=now - datetime.timedelta(days=2), cost_usd=70.0, is_active=True),
+        ]
+        await clickhouse_client.insert_models("runs", runs, {"async_insert": 0, "wait_for_async_insert": 0})
+
+        # Test combined filters: specific agent UIDs + active only + date range
+        results = {
+            r.agent_uid: (r.run_count, r.total_cost_usd)
+            async for r in clickhouse_client.run_count_by_agent_uid(
+                now,
+                agent_uids={1, 2},
+                is_active=True,
+            )
+        }
+        assert results == {
+            1: (1, pytest.approx(10.0)),  # pyright: ignore [reportUnknownMemberType]
+            2: (1, pytest.approx(20.0)),  # pyright: ignore [reportUnknownMemberType]
+        }
+        # Should not include agent 3 (not in agent_uids) or inactive runs
+        assert 3 not in results
+
 
 class TestWeeklyRunAggregate:
     def _start_of_week(self):
