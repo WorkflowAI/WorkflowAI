@@ -13,7 +13,7 @@ from core.domain.models.models import Model
 from core.domain.models.providers import Provider
 from core.storage.mongo.mongo_types import AsyncCollection
 from tests.component.common import IntegrationTestClient
-from tests.component.openai_proxy.common import save_version_from_completion
+from tests.component.openai_proxy.common import fetch_run_from_completion, save_version_from_completion
 from tests.pausable_memory_broker import PausableInMemoryBroker
 from tests.utils import approx
 
@@ -875,3 +875,47 @@ async def test_with_files_in_variables(test_client: IntegrationTestClient, opena
     assert req
     body = json.loads(req.content)
     assert body["messages"][0]["content"][1]["image_url"]["url"] == "http://blabla"
+
+
+async def test_hosted_tools_in_version_messages(test_client: IntegrationTestClient, openai_client: AsyncOpenAI):
+    test_client.mock_openai_call(
+        tool_calls_content=[
+            {
+                "id": "1",
+                "type": "function",
+                "function": {"name": "@perplexity-sonar", "arguments": '{"query": "What is the capital of France?"}'},
+            },
+        ],
+        raw_content=None,
+        is_reusable=False,
+    )
+    test_client.mock_openai_call(raw_content="The capital of France is Paris.")
+    test_client.httpx_mock.add_response(
+        url="https://api.perplexity.ai/chat/completions",
+        json={"choices": [{"message": {"content": "Perplexity: The capital of France is Paris."}}]},
+    )
+
+    agent = await test_client.create_agent_v1(
+        input_schema={"type": "object", "format": "messages"},
+        output_schema={"type": "string", "format": "message"},
+    )
+
+    res = await openai_client.chat.completions.create(
+        model="gpt-4.1-latest",
+        messages=[],
+        extra_body={
+            "workflowai_internal": {
+                "variant_id": agent["variant_id"],
+                "version_messages": [
+                    {"role": "system", "content": [{"text": "Use @perplexity-sonar to find information"}]},
+                ],
+            },
+            "agent_id": "greet",
+        },
+    )
+    assert res.choices[0].message.content == "The capital of France is Paris."
+
+    await test_client.wait_for_completed_tasks()
+
+    run = await fetch_run_from_completion(test_client, res)
+    assert run
