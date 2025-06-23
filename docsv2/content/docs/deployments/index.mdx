@@ -44,7 +44,7 @@ This example shows an agent that extracts event details from emails using input 
 Here's our initial agent with a hardcoded prompt:
 
 <Callout type="info">
-This agent is using Structured Outputs. Learn more about [Structured Outputs](/docs/inference/structured-outputs).
+This agent is using Structured Outputs. Learn more about [Structured Outputs](/inference/structured-outputs).
 </Callout>
 
 ```python
@@ -206,7 +206,7 @@ For both scenarios, the deployment process is the same:
 
 The deployment will be associated with a schema number that defines:
 - **Input variables** your code must provide (if any)
-- **Output format** (`response_format`) your code expects (when using [Structured Outputs](/docs/inference/structured-outputs))
+- **Output format** (`response_format`) your code expects (when using [Structured Outputs](/inference/structured-outputs))
 
 You can view all schemas in the **Schemas** section of the WorkflowAI dashboard.
 
@@ -271,7 +271,7 @@ When there's a mismatch between your code and the deployed schema (missing input
 
 ## Important notes
 
-- **Agent-specific**: Deployments work with named agents only, not the `default` agent. Learn how to [identify your agent](/docs/inference/models#identifying-your-agent).
+- **Agent-specific**: Deployments work with named agents only, not the `default` agent. Learn how to [identify your agent](/inference/models#identifying-your-agent).
 - **Environment isolation**: Each environment (development/staging/production) has independent deployments.
 - **Schema independence**: You can have different deployments for each schema without affecting each other.
 - **Input variables optional**: Not all agents need input variables: simple chatbots can store all instructions in the deployed prompt.

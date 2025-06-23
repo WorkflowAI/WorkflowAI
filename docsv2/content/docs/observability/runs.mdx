@@ -78,7 +78,7 @@ curl -X POST https://run.workflowai.com/v1/chat/completions \
 | Key | Description | Example | Added automatically |
 |-----|-------------|---------|-------------------|
 | `agent_id` | The ID of the agent that generated the run | `summarizer-agent`, `translation-agent` | No |
-| `conversation_id` | Groups related runs into [conversations](/docs/observability/conversations) for multi-turn interactions | `01234567-89ab-cdef-0123-456789abcdef` | Yes |
+| `conversation_id` | Groups related runs into [conversations](/observability/conversations) for multi-turn interactions | `01234567-89ab-cdef-0123-456789abcdef` | Yes |
 | `environment` | The environment of the run | `production`, `staging`, `development` | Yes, when using a deployment |
 | `source` | The source of the run request | `my+app` (from proxy), `WorkflowAI` (from web app) | Yes |
 | `temperature` | The temperature setting used in the LLM | `0.7`, `1.0` | Yes |
@@ -94,7 +94,7 @@ curl -X POST https://run.workflowai.com/v1/chat/completions \
   TODO: @guillaume is there any limit on the metadata size?
 </Callout>
 
-Then, you can [search for runs by metadata](/docs/observability/runs#search-runs).
+Then, you can [search for runs by metadata](/observability/runs#search-runs).
 
 ## View runs for a specific agent
 
