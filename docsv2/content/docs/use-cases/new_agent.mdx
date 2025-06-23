@@ -74,8 +74,8 @@ WorkflowAI exposes an API endpoint that is 100% compatible with the OpenAI API `
 
 So, in order to build a new agent, you can use the OpenAI SDK, for example:
 
-<!-- TODO: give code samples for other languages than Python. -->
-<!-- TODO: update URL to run.workflowai.com -->
+{/* TODO: give code samples for other languages than Python. */}
+{/* TODO: update URL to run.workflowai.com */}
 
 ### Example: One-off Processing Agent
 
@@ -120,7 +120,7 @@ def run_processing_agent(model: str, text: str) -> tuple[str, str, float, float]
     )
 ```
 
-<!-- TODO: add how to link a run to the web app: https://linear.app/workflowai/issue/WOR-5021/add-run-url-to-api-responses-and-mcp-tools-for-run-objects -->
+{/* TODO: add how to link a run to the web app: https://linear.app/workflowai/issue/WOR-5021/add-run-url-to-api-responses-and-mcp-tools-for-run-objects */}
 
 ### Example: Chat-based Agent
 
@@ -216,12 +216,12 @@ As you test with different models, you may discover that certain models perform 
 
 The specific models you choose should be directly informed by the user's answers to your constraint questions, not predetermined assumptions about their use case.
 
-<!-- TODO: Add section 5 on tool selection and usage. This section should cover:
+{/* TODO: Add section 5 on tool selection and usage. This section should cover:
 - How to identify what tools an agent needs based on its requirements
 - Tool selection criteria (reliability, cost, performance, integration complexity)
 - How to configure and integrate tools with the agent
 - Best practices for tool usage and error handling
-- Testing tools in the context of the agent workflow -->
+- Testing tools in the context of the agent workflow */}
 
 ### 6. Generate test inputs aligned with user requirements
 
@@ -254,7 +254,7 @@ Compare models (accuracy, latency, cost) by running the agent with each model, f
 
 #### Accuracy: use a LLM as a judge to compare the best models
 
-<!-- Read: https://cookbook.openai.com/examples/enhance_your_prompts_with_meta_prompting?utm_source=chatgpt.com -->
+{/* Read: https://cookbook.openai.com/examples/enhance_your_prompts_with_meta_prompting?utm_source=chatgpt.com */}
 
 Depending on the agent type and requirements, define evaluation criteria and write a prompt for an LLM to judge the best models.
 
@@ -360,7 +360,7 @@ def evaluate_chat_agent(model: str, conversation_context: str, agent_response: s
     return response.choices[0].message.content
 ```
 
-The model used in the LLM evaluation should be "gpt-4o-mini-latest". <!-- TODO: update the model used in LLM evals -->
+The model used in the LLM evaluation should be "gpt-4o-mini-latest". {/* TODO: update the model used in LLM evals */}
 
 ## Generate a report with constraint-based recommendations
 
