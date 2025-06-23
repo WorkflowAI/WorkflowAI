@@ -181,10 +181,11 @@ class RunV1(_BaseRunV1):
 
     conversation_id: str | None
 
+    # TODO: add details field that contains part of the internal metadata
+    # see https://linear.app/workflowai/issue/WOR-5044/fetch-run-details-mcp-tool-missing-deployment-environment-information#comment-d84e92a4
+
     metadata: dict[str, Any] | None = Field(
-        description="Combination of user defined metadata passed to the completion request and metadata "
-        "automatically added by WorkflowAI. WorkflowAI metadata fields are prefixed with `workflowai.` and add "
-        "details about the run, for example which providers were used during the run.",
+        description="User defined metadata passed to the completion request",
     )
 
     @classmethod
