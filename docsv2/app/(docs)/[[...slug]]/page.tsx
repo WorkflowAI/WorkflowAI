@@ -17,7 +17,7 @@ export default async function Page(props: { params: Promise<{ slug?: string[] }>
 
   const MDXContent = page.data.body;
 
-  // Generate LLM-friendly content for the copy button
+  // Generate LLM-friendly content
   const llmContent = await getLLMText(page);
 
   return (
