@@ -41,6 +41,7 @@ from api.services.versions import VersionsService
 from core.domain.analytics_events.analytics_events import OrganizationProperties, UserProperties
 from core.domain.users import UserIdentifier
 from core.storage.backend_storage import BackendStorage
+from core.utils.schema_formatter import format_schema_as_yaml_description
 
 _mcp = FastMCP("WorkflowAI 🚀", stateless_http=True)  # pyright: ignore [reportUnknownVariableType]
 
@@ -195,7 +196,22 @@ async def list_available_models(
     )
 
 
-@_mcp.tool()
+def description_for_list_agents() -> str:
+    """Generate dynamic description for list_agents tool based on Pydantic models"""
+    # Get the YAML-like description for AgentListItem
+    agent_item_description = format_schema_as_yaml_description(AgentListItem)
+
+    return f"""<when_to_use>
+When the user wants to see all agents they have created, along with their basic statistics (run counts and costs).
+</when_to_use>
+<returns>
+Returns a list of agents with the following structure:
+
+{agent_item_description}
+</returns>"""
+
+
+@_mcp.tool(description=description_for_list_agents())
 async def list_agents(
     sort_by: Annotated[
         AgentSortField,
@@ -214,16 +230,6 @@ async def list_agents(
         Field(description="The page number to return. Defaults to 1."),
     ] = 1,
 ) -> PaginatedMCPToolReturn[None, AgentListItem]:
-    """<when_to_use>
-    When the user wants to see all agents they have created, along with their basic statistics (run counts and costs).
-    </when_to_use>
-    <returns>
-    Returns a concise list of all agents with basic information:
-    - Agent ID and public status
-    - Basic schema information (schema_id, created_at, is_hidden, last_active_at)
-    - Run statistics (run count and total cost from last 7 days)
-    - No detailed schemas included for performance - use get_agent for full details
-    </returns>"""
     service = await get_mcp_service()
     return await service.list_agents(
         page=page,
