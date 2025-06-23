@@ -364,7 +364,8 @@ class OpenAIProxyHandler:
                 raise BadRequestError("Messages are not supported when a variant id is provided")
             if body.response_format:
                 raise BadRequestError("Response format is not supported when a variant id is provided")
-            return await self._prepare_for_variant_id(
+
+            prepared_run = await self._prepare_for_variant_id(
                 agent_id=body.agent_id,
                 model=body.model,
                 variant_id=body.workflowai_internal.variant_id,
@@ -372,42 +373,42 @@ class OpenAIProxyHandler:
                 input=body.input,
                 tenant_data=tenant_data,
             )
-
-        messages = Messages.with_messages(*body.domain_messages())
-
-        # First we need to locate the agent
-        try:
-            agent_ref = body.extract_references()
-        except MissingModelError as e:
-            raise await self.missing_model_error(e.extras.get("model"))
-
-        if isinstance(agent_ref, EnvironmentRef):
-            prepared_run = await self._prepare_for_deployment(
-                agent_ref=agent_ref,
-                tenant_data=tenant_data,
-                messages=messages,
-                input=body.input,
-                response_format=body.response_format,
-            )
-            # Keep track the run was made from a deployment
-            # TODO: Adding to the body is not great. We should add metadata to the prepared run and even remove the 'full_metadata'
-            body.register_metadata({METADATA_KEY_DEPLOYMENT_ENVIRONMENT: agent_ref.environment})
         else:
-            prepared_run = await self._prepare_for_model(
-                agent_ref=agent_ref,
-                tenant_data=tenant_data,
-                messages=messages,
-                input=body.input,
-                response_format=body.response_format,
-            )
+            messages = Messages.with_messages(*body.domain_messages())
 
-        self._check_final_input(
-            prepared_run.variant.input_schema,
-            prepared_run.final_input,
-            agent_ref,
-            tenant_data,
-            request_input_was_empty=not body.input,
-        )
+            # First we need to locate the agent
+            try:
+                agent_ref = body.extract_references()
+            except MissingModelError as e:
+                raise await self.missing_model_error(e.extras.get("model"))
+
+            if isinstance(agent_ref, EnvironmentRef):
+                prepared_run = await self._prepare_for_deployment(
+                    agent_ref=agent_ref,
+                    tenant_data=tenant_data,
+                    messages=messages,
+                    input=body.input,
+                    response_format=body.response_format,
+                )
+                # Keep track the run was made from a deployment
+                # TODO: Adding to the body is not great. We should add metadata to the prepared run and even remove the 'full_metadata'
+                body.register_metadata({METADATA_KEY_DEPLOYMENT_ENVIRONMENT: agent_ref.environment})
+            else:
+                prepared_run = await self._prepare_for_model(
+                    agent_ref=agent_ref,
+                    tenant_data=tenant_data,
+                    messages=messages,
+                    input=body.input,
+                    response_format=body.response_format,
+                )
+
+            self._check_final_input(
+                prepared_run.variant.input_schema,
+                prepared_run.final_input,
+                agent_ref,
+                tenant_data,
+                request_input_was_empty=not body.input,
+            )
         body.apply_to(prepared_run.properties)
 
         return prepared_run
