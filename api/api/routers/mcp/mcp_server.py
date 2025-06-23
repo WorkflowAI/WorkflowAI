@@ -1,4 +1,4 @@
-from typing import Annotated, Any, Literal
+from typing import Any, Literal
 
 from fastmcp import FastMCP
 from fastmcp.server.dependencies import get_http_request
@@ -141,40 +141,30 @@ async def get_task_tuple_from_task_id(storage: BackendStorage, agent_id: str) ->
 
 @_mcp.tool()
 async def list_available_models(
-    agent_id: Annotated[
-        str | None,
-        Field(
-            description="The id of the user's agent, MUST be passed when searching for models in the context of a specific agent. Example: 'agent_id': 'email-filtering-agent' in metadata, or 'email-filtering-agent' in 'model=email-filtering-agent/gpt-4o-latest'.",
-        ),
-    ] = None,
-    agent_schema_id: Annotated[
-        int | None,
-        Field(
-            description="The schema ID of the user's agent version, if known from model=<agent_id>/#<agent_schema_id>/<deployment_environment> or model=#<agent_schema_id>/<deployment_environment> when the workflowAI agent is already deployed, if not provided, all models are returned",
-        ),
-    ] = None,
-    agent_requires_tools: Annotated[
-        bool,
-        Field(
-            description="Whether the agent requires tools to be used, if not provided, the agent is assumed to not require tools",
-        ),
-    ] = False,
-    sort_by: Annotated[
-        ModelSortField,
-        Field(
-            description="The field name to sort by, e.g., 'release_date', 'quality_index' (default), 'cost'",
-        ),
-    ] = "quality_index",
-    order: Annotated[
-        SortOrder,
-        Field(
-            description="The direction to sort: 'asc' for ascending, 'desc' for descending (default)",
-        ),
-    ] = "desc",
-    page: Annotated[
-        int,
-        Field(description="The page number to return. Defaults to 1."),
-    ] = 1,
+    agent_id: str | None = Field(
+        default=None,
+        description="The id of the user's agent, MUST be passed when searching for models in the context of a specific agent. Example: 'agent_id': 'email-filtering-agent' in metadata, or 'email-filtering-agent' in 'model=email-filtering-agent/gpt-4o-latest'.",
+    ),
+    agent_schema_id: int | None = Field(
+        default=None,
+        description="The schema ID of the user's agent version, if known from model=<agent_id>/#<agent_schema_id>/<deployment_environment> or model=#<agent_schema_id>/<deployment_environment> when the workflowAI agent is already deployed, if not provided, all models are returned",
+    ),
+    agent_requires_tools: bool = Field(
+        default=False,
+        description="Whether the agent requires tools to be used, if not provided, the agent is assumed to not require tools",
+    ),
+    sort_by: ModelSortField = Field(
+        default="quality_index",
+        description="The field name to sort by, e.g., 'release_date', 'quality_index' (default), 'cost'",
+    ),
+    order: SortOrder = Field(
+        default="desc",
+        description="The direction to sort: 'asc' for ascending, 'desc' for descending (default)",
+    ),
+    page: int = Field(
+        default=1,
+        description="The page number to return. Defaults to 1.",
+    ),
 ) -> PaginatedMCPToolReturn[None, ConciseModelResponse | ConciseLatestModelResponse]:
     """<when_to_use>
     When you need to pick a model for the user's WorkflowAI agent, or any model-related goal.
@@ -195,40 +185,30 @@ async def list_available_models(
 
 @_mcp.tool()
 async def list_agents(
-    agent_id: Annotated[
-        str | None,
-        Field(
-            description="Filter on specific agent id. If omitted, all user's agents are returned. Example: 'agent_id': 'email-filtering-agent' in metadata, or 'email-filtering-agent' in 'model=email-filtering-agent/gpt-4o-latest'.",
-        ),
-    ] = None,
-    with_schemas: Annotated[
-        bool,
-        Field(
-            description="If true, the response will include the input and output schemas of the different schema ids of the agent. Useful to find on which schema id you are working on.",
-        ),
-    ] = False,
-    stats_from_date: Annotated[
-        str,
-        Field(
-            description="ISO date string to filter usage (runs and costs) stats from (e.g., '2024-01-01T00:00:00Z'). Defaults to 7 days ago if not provided.",
-        ),
-    ] = "",
-    sort_by: Annotated[
-        AgentSortField,
-        Field(
-            description="The field name to sort by, e.g., 'last_active_at' (default), 'total_cost_usd', 'run_count'",
-        ),
-    ] = "last_active_at",
-    order: Annotated[
-        SortOrder,
-        Field(
-            description="The direction to sort: 'asc' for ascending, 'desc' for descending (default)",
-        ),
-    ] = "desc",
-    page: Annotated[
-        int,
-        Field(description="The page number to return. Defaults to 1."),
-    ] = 1,
+    agent_id: str | None = Field(
+        default=None,
+        description="Filter on specific agent id. If omitted, all user's agents are returned. Example: 'agent_id': 'email-filtering-agent' in metadata, or 'email-filtering-agent' in 'model=email-filtering-agent/gpt-4o-latest'.",
+    ),
+    with_schemas: bool = Field(
+        default=False,
+        description="If true, the response will include the input and output schemas of the different schema ids of the agent. Useful to find on which schema id you are working on.",
+    ),
+    stats_from_date: str = Field(
+        default="",
+        description="ISO date string to filter usage (runs and costs) stats from (e.g., '2024-01-01T00:00:00Z'). Defaults to 7 days ago if not provided.",
+    ),
+    sort_by: AgentSortField = Field(
+        default="last_active_at",
+        description="The field name to sort by, e.g., 'last_active_at' (default), 'total_cost_usd', 'run_count'",
+    ),
+    order: SortOrder = Field(
+        default="desc",
+        description="The direction to sort: 'asc' for ascending, 'desc' for descending (default)",
+    ),
+    page: int = Field(
+        default=1,
+        description="The page number to return. Defaults to 1.",
+    ),
 ) -> PaginatedMCPToolReturn[None, AgentResponse]:
     """<when_to_use>
     When the user wants to see all agents they have created, along with their statistics (run counts and costs on the last 7 days).
@@ -249,20 +229,18 @@ async def list_agents(
 
 @_mcp.tool()
 async def fetch_run_details(
-    agent_id: Annotated[
-        str | None,
-        Field(
-            description="The id of the user's agent. Example: 'agent_id': 'email-filtering-agent' in metadata, or 'email-filtering-agent' in 'model=email-filtering-agent/gpt-4o-latest'.",
-        ),
-    ] = None,
-    run_id: Annotated[
-        str | None,
-        Field(description="The id of the run to fetch details for"),
-    ] = None,
-    run_url: Annotated[
-        str | None,
-        Field(description="The url of the run to fetch details for"),
-    ] = None,
+    agent_id: str | None = Field(
+        default=None,
+        description="The id of the user's agent. Example: 'agent_id': 'email-filtering-agent' in metadata, or 'email-filtering-agent' in 'model=email-filtering-agent/gpt-4o-latest'.",
+    ),
+    run_id: str | None = Field(
+        default=None,
+        description="The id of the run to fetch details for",
+    ),
+    run_url: str | None = Field(
+        default=None,
+        description="The url of the run to fetch details for",
+    ),
 ) -> MCPToolReturn[MCPRun]:
     """<when_to_use>
     When the user wants to investigate a specific run of a WorkflowAI agent, for debugging, improving the agent, fixing a problem on a specific use case, or any other reason. This is particularly useful for:
@@ -308,20 +286,17 @@ async def fetch_run_details(
 
 @_mcp.tool()
 async def get_agent_versions(
-    agent_id: Annotated[
-        str,
-        Field(
-            description="The id of the user's agent. Example: 'agent_id': 'email-filtering-agent' in metadata, or 'email-filtering-agent' in 'model=email-filtering-agent/gpt-4o-latest'.",
-        ),
-    ],
-    version_id: Annotated[
-        str | None,
-        Field(description="An optional version id, e-g 1.1. If not provided all versions are returned"),
-    ] = None,
-    page: Annotated[
-        int,
-        Field(description="The page number to return. Defaults to 1."),
-    ] = 1,
+    agent_id: str = Field(
+        description="The id of the user's agent. Example: 'agent_id': 'email-filtering-agent' in metadata, or 'email-filtering-agent' in 'model=email-filtering-agent/gpt-4o-latest'.",
+    ),
+    version_id: str | None = Field(
+        default=None,
+        description="An optional version id, e-g 1.1. If not provided all versions are returned",
+    ),
+    page: int = Field(
+        default=1,
+        description="The page number to return. Defaults to 1.",
+    ),
 ) -> PaginatedMCPToolReturn[None, MajorVersion]:
     """<when_to_use>
     When the user wants to retrieve details of versions of a WorkflowAI agent, or when they want to compare a specific version of an agent.
@@ -344,30 +319,24 @@ async def get_agent_versions(
 
 @_mcp.tool()
 async def search_runs(
-    agent_id: Annotated[
-        str,
-        Field(
-            description="The id of the user's agent. Example: 'agent_id': 'email-filtering-agent' in metadata, or 'email-filtering-agent' in 'model=email-filtering-agent/gpt-4o-latest'.",
-        ),
-    ],
-    field_queries: Annotated[
-        list[dict[str, Any]],
-        Field(
-            description="List of field queries to search runs. Each query should have: field_name (string), operator (string), values (list of values), and optionally type (string like 'string', 'number', 'date', etc.)",
-        ),
-    ],
-    limit: Annotated[
-        int,
-        Field(description="Maximum number of results to return"),
-    ] = 20,
-    offset: Annotated[
-        int,
-        Field(description="Number of results to skip"),
-    ] = 0,
-    page: Annotated[
-        int,
-        Field(description="The page number to return. Defaults to 1."),
-    ] = 1,
+    agent_id: str = Field(
+        description="The id of the user's agent. Example: 'agent_id': 'email-filtering-agent' in metadata, or 'email-filtering-agent' in 'model=email-filtering-agent/gpt-4o-latest'.",
+    ),
+    field_queries: list[dict[str, Any]] = Field(
+        description="List of field queries to search runs. Each query should have: field_name (string), operator (string), values (list of values), and optionally type (string like 'string', 'number', 'date', etc.)",
+    ),
+    limit: int = Field(
+        default=20,
+        description="Maximum number of results to return",
+    ),
+    offset: int = Field(
+        default=0,
+        description="Number of results to skip",
+    ),
+    page: int = Field(
+        default=1,
+        description="The page number to return. Defaults to 1.",
+    ),
 ) -> PaginatedMCPToolReturn[None, MCPRun]:
     """<when_to_use>
     When the user wants to search agent runs based on various criteria including metadata values, run properties (status, time, cost, latency), model parameters, input/output content, and reviews.
@@ -562,34 +531,22 @@ async def search_runs(
 
 @_mcp.tool()
 async def ask_ai_engineer(
-    agent_id: Annotated[
-        str,
-        Field(
-            description="The id of the user's agent, MUST be passed when the user is asking a question in the context of a specific agent. Example: 'agent_id': 'email-filtering-agent' in metadata, or 'email-filtering-agent' in 'model=email-filtering-agent/gpt-4o-latest'. Pass 'NEW_AGENT' when the user wants to create a new agent.",
-        ),
-    ],
-    message: Annotated[
-        str,
-        Field(description="Your message to the AI engineer about what help you need"),
-    ],
-    user_programming_language: Annotated[
-        str,
-        Field(
-            description="The programming language and integration (if known) used by the user, e.g, Typescript, Python with OpenAI SDK, etc.",
-        ),
-    ],
-    user_code_extract: Annotated[
-        str,
-        Field(
-            description="The code you are working on to improve the user's agent, if any. Please DO NOT include API keys or other sensitive information.",
-        ),
-    ],
-    agent_schema_id: Annotated[
-        int | None,
-        Field(
-            description="The schema ID of the user's agent version, if known from model=<agent_id>/#<agent_schema_id>/<deployment_environment> or model=#<agent_schema_id>/<deployment_environment> when the workflowAI agent is already deployed",
-        ),
-    ] = None,
+    agent_id: str = Field(
+        description="The id of the user's agent, MUST be passed when the user is asking a question in the context of a specific agent. Example: 'agent_id': 'email-filtering-agent' in metadata, or 'email-filtering-agent' in 'model=email-filtering-agent/gpt-4o-latest'. Pass 'NEW_AGENT' when the user wants to create a new agent.",
+    ),
+    message: str = Field(
+        description="Your message to the AI engineer about what help you need",
+    ),
+    user_programming_language: str = Field(
+        description="The programming language and integration (if known) used by the user, e.g, Typescript, Python with OpenAI SDK, etc.",
+    ),
+    user_code_extract: str = Field(
+        description="The code you are working on to improve the user's agent, if any. Please DO NOT include API keys or other sensitive information.",
+    ),
+    agent_schema_id: int | None = Field(
+        default=None,
+        description="The schema ID of the user's agent version, if known from model=<agent_id>/#<agent_schema_id>/<deployment_environment> or model=#<agent_schema_id>/<deployment_environment> when the workflowAI agent is already deployed",
+    ),
 ) -> MCPToolReturn[AIEngineerReponseWithUsefulLinks] | LegacyMCPToolReturn:
     """
     <when_to_use>
@@ -613,22 +570,15 @@ async def ask_ai_engineer(
 
 @_mcp.tool()
 async def deploy_agent_version(
-    agent_id: Annotated[
-        str,
-        Field(
-            description="The id of the user's agent. Example: 'agent_id': 'email-filtering-agent' in metadata, or 'email-filtering-agent' in 'model=email-filtering-agent/gpt-4o-latest'.",
-        ),
-    ],
-    version_id: Annotated[
-        str,
-        Field(
-            description="The version ID to deploy (e.g., '1.0', '2.1', or a hash). This can be obtained from the agent versions list or from the version_id metadata in chat completion responses.",
-        ),
-    ],
-    environment: Annotated[
-        Literal["dev", "staging", "production"],
-        Field(description="The deployment environment. Must be one of: 'dev', 'staging', or 'production'"),
-    ],
+    agent_id: str = Field(
+        description="The id of the user's agent. Example: 'agent_id': 'email-filtering-agent' in metadata, or 'email-filtering-agent' in 'model=email-filtering-agent/gpt-4o-latest'.",
+    ),
+    version_id: str = Field(
+        description="The version ID to deploy (e.g., '1.0', '2.1', or a hash). This can be obtained from the agent versions list or from the version_id metadata in chat completion responses.",
+    ),
+    environment: Literal["dev", "staging", "production"] = Field(
+        description="The deployment environment. Must be one of: 'dev', 'staging', or 'production'",
+    ),
 ) -> LegacyMCPToolReturn:
     """<when_to_use>
     When the user wants to deploy a specific version of their WorkflowAI agent to an environment (dev, staging, or production).
