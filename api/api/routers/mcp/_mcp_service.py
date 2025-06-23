@@ -689,6 +689,7 @@ class MCPService:
             return LegacyMCPToolReturn(
                 success=True,
                 data={"search_results": search_results},
+                messages=[f"Found {len(search_results)} relevant documentation sections"],
             )
 
         except Exception as e:
@@ -716,9 +717,15 @@ class MCPService:
             all_sections = documentation_service.get_all_doc_sections()
             available_pages = [section.title for section in all_sections]
 
+            # Limit available pages list to prevent overwhelming output
+            if len(available_pages) > 10:
+                available_pages_str = ", ".join(available_pages[:10]) + "..."
+            else:
+                available_pages_str = ", ".join(available_pages)
+
             return LegacyMCPToolReturn(
                 success=False,
-                error=f"Page '{page}' not found. Available pages: {','.join(available_pages)}",
+                error=f"Page '{page}' not found. Available pages: {available_pages_str}",
             )
 
         except Exception as e:

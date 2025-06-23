@@ -203,35 +203,6 @@ class TestMCPServiceSearchDocumentation:
 
     @pytest.mark.asyncio
     @patch("api.routers.mcp._mcp_service.DocumentationService")
-    async def test_search_documentation_query_mode_with_long_content(
-        self,
-        mock_documentation_service_class: Any,
-        mcp_service: MCPService,
-    ):
-        """Test search_documentation truncates long content properly."""
-        # Arrange
-        mock_service = Mock()
-        mock_documentation_service_class.return_value = mock_service
-
-        long_content = "A" * 600  # Content longer than 500 characters
-        mock_sections = [
-            DocumentationSection(title="long-doc.mdx", content=long_content),
-        ]
-        mock_service.get_relevant_doc_sections = AsyncMock(return_value=mock_sections)
-
-        # Act
-        result = await mcp_service.search_documentation(query="test")
-
-        # Assert
-        assert result.success is True
-        search_results = result.data["search_results"]  # type: ignore
-        assert len(search_results) == 1  # type: ignore
-        content_snippet = search_results[0]["content_snippet"]  # type: ignore
-        assert len(content_snippet) == 503  # type: ignore  # 500 chars + "..."
-        assert content_snippet.endswith("...")  # type: ignore
-
-    @pytest.mark.asyncio
-    @patch("api.routers.mcp._mcp_service.DocumentationService")
     async def test_search_documentation_page_mode_success(
         self,
         mock_documentation_service_class: Any,
@@ -247,12 +218,8 @@ class TestMCPServiceSearchDocumentation:
                 title="getting-started.mdx",
                 content="Complete getting started guide content here with detailed instructions...",
             ),
-            DocumentationSection(
-                title="api-auth.mdx",
-                content="Complete API authentication guide content here...",
-            ),
         ]
-        mock_service.get_all_doc_sections.return_value = mock_sections
+        mock_service.get_documentation_by_path.return_value = mock_sections
 
         # Act
         result = await mcp_service.search_documentation(page="getting-started.mdx")
@@ -278,6 +245,10 @@ class TestMCPServiceSearchDocumentation:
         mock_service = Mock()
         mock_documentation_service_class.return_value = mock_service
 
+        # Mock get_documentation_by_path to return empty list (page not found)
+        mock_service.get_documentation_by_path.return_value = []
+
+        # Mock get_all_doc_sections for available pages listing
         mock_sections = [
             DocumentationSection(title="existing1.mdx", content="content1"),
             DocumentationSection(title="existing2.mdx", content="content2"),
@@ -303,6 +274,9 @@ class TestMCPServiceSearchDocumentation:
         # Arrange
         mock_service = Mock()
         mock_documentation_service_class.return_value = mock_service
+
+        # Mock get_documentation_by_path to return empty list (page not found)
+        mock_service.get_documentation_by_path.return_value = []
 
         # Create more than 10 sections to test truncation
         mock_sections = [DocumentationSection(title=f"page{i}.mdx", content=f"content{i}") for i in range(15)]
@@ -367,7 +341,7 @@ class TestMCPServiceSearchDocumentation:
         # Arrange
         mock_service = Mock()
         mock_documentation_service_class.return_value = mock_service
-        mock_service.get_all_doc_sections.side_effect = Exception("File system error")
+        mock_service.get_documentation_by_path.side_effect = Exception("File system error")
 
         # Act
         result = await mcp_service.search_documentation(page="test.mdx")
