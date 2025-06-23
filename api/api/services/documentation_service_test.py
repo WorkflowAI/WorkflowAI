@@ -187,9 +187,9 @@ async def test_get_all_doc_sections_remote_success(documentation_service: Docume
             result = await documentation_service._get_all_doc_sections_remote()
 
             assert len(result) == 2
-            assert result[0].title == "Getting Started"
+            assert result[0].title == "getting-started/index"
             assert result[0].content == "# Getting Started\nThis is the getting started content."
-            assert result[1].title == "API Reference"
+            assert result[1].title == "reference/api"
             assert result[1].content == "# API Reference\nThis is the API reference content."
 
 
