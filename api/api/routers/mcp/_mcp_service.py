@@ -29,6 +29,7 @@ from api.services.task_deployments import TaskDeploymentsService
 from api.services.versions import VersionsService
 from core.domain.agent_run import AgentRun
 from core.domain.consts import WORKFLOWAI_APP_URL
+from core.domain.fields.chat_message import ChatMessage
 from core.domain.models.model_data import FinalModelData, LatestModel
 from core.domain.models.model_datas_mapping import MODEL_DATAS
 from core.domain.models.models import Model
@@ -673,8 +674,8 @@ class MCPService:
         try:
             documentation_service = DocumentationService()
             relevant_sections = await documentation_service.get_relevant_doc_sections(
-                chat_messages=[],  # Empty chat messages for now
-                agent_instructions=query,  # Use query as agent instructions for relevance picking
+                chat_messages=[ChatMessage(role="USER", content=query)],
+                agent_instructions="",
             )
 
             # Convert to SearchResult format with content snippets
@@ -686,10 +687,18 @@ class MCPService:
                 for section in relevant_sections
             ]
 
+            if len(search_results) == 0:
+                return LegacyMCPToolReturn(
+                    success=True,
+                    messages=[f"No relevant documentation sections found for query: {query}"],
+                )
+
             return LegacyMCPToolReturn(
                 success=True,
                 data={"search_results": search_results},
-                messages=[f"Found {len(search_results)} relevant documentation sections"],
+                messages=[
+                    f"Successfully found relevant documentation sections: {[section.title for section in relevant_sections]}",
+                ],
             )
 
         except Exception as e:
