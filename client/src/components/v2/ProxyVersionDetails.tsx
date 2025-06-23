@@ -183,7 +183,7 @@ export function ProxyVersionDetails(props: TaskMetadataProps) {
       )}
       {model && (
         <TaskMetadataSection title='model'>
-          <TaskModelBadge model={model} providerId={provider} />
+          <TaskModelBadge model={model} providerId={provider} reasoning={'medium'} allowTooltips={false} />
         </TaskMetadataSection>
       )}
 

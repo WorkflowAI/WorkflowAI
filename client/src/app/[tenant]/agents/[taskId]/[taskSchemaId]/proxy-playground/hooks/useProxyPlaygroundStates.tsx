@@ -67,6 +67,13 @@ export function useProxyPlaygroundStates(tenant: TenantID | undefined, taskId: T
     setModel2,
     setModel3,
 
+    modelReasoning1,
+    modelReasoning2,
+    modelReasoning3,
+    setModelReasoning1,
+    setModelReasoning2,
+    setModelReasoning3,
+
     schemaId,
     setSchemaId,
     changeURLSchemaId,
@@ -222,7 +229,13 @@ export function useProxyPlaygroundStates(tenant: TenantID | undefined, taskId: T
     model3,
     setModel1,
     setModel2,
-    setModel3
+    setModel3,
+    modelReasoning1,
+    modelReasoning2,
+    modelReasoning3,
+    setModelReasoning1,
+    setModelReasoning2,
+    setModelReasoning3
   );
 
   return {

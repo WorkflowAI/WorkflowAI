@@ -1,10 +1,9 @@
 import { useCallback, useMemo } from 'react';
 import { useState } from 'react';
-import { AIModelCombobox } from '@/components/AIModelsCombobox/aiModelCombobox';
+import { ProxyModelCombobox } from '@/components/ProxyModelsCombobox/ProxyModelCombobox';
 import { useRedirectWithParams } from '@/lib/queryString';
 import { JsonSchema } from '@/types';
 import { TenantID } from '@/types/aliases';
-import { Model } from '@/types/aliases';
 import { TaskSchemaID } from '@/types/aliases';
 import { TaskID } from '@/types/aliases';
 import { VersionV1 } from '@/types/workflowAI';
@@ -13,7 +12,7 @@ import { TaskInputDict } from '@/types/workflowAI';
 import { RunV1 } from '@/types/workflowAI';
 import { ModelOutputErrorInformation } from '../../playground/components/ModelOutputErrorInformation';
 import { TaskRunner } from '../../playground/hooks/useTaskRunners';
-import { PlaygroundModels } from '../../playground/hooks/utils';
+import { ProxyPlaygroundModels, getModelAndReasoning } from '../utils';
 import { ProxyModelOutputContent } from './ProxyModelOutputContent';
 import { ProxyRunButton } from './ProxyRunButton';
 
@@ -25,8 +24,8 @@ type Props = {
   index: number;
   minimumCostTaskRun: RunV1 | undefined;
   minimumLatencyTaskRun: RunV1 | undefined;
-  models: PlaygroundModels;
-  onModelsChange: (index: number, newModel: Model | null | undefined) => void;
+  models: ProxyPlaygroundModels;
+  onModelsChange: (index: number, newModel: string | undefined, newReasoning: string | undefined) => void;
   outputSchema: JsonSchema | undefined;
   referenceValue: Record<string, unknown> | undefined;
   taskId: TaskID;
@@ -73,7 +72,7 @@ export function ProxyModelOutput(props: Props) {
     });
   }, [taskRunId, redirectWithParams]);
 
-  const currentModel = models[index];
+  const { model: currentModel, reasoning: currentReasoning } = getModelAndReasoning(index, models);
   const currentAIModel = useMemo(
     () => aiModels.find((model) => model.id === taskRun?.version.properties?.model),
     [aiModels, taskRun?.version.properties?.model]
@@ -84,10 +83,17 @@ export function ProxyModelOutput(props: Props) {
   );
 
   const handleModelChange = useCallback(
-    (value: Model) => {
-      onModelsChange(index, value);
+    (value: string) => {
+      onModelsChange(index, value, undefined);
     },
     [index, onModelsChange]
+  );
+
+  const handleReasoningChange = useCallback(
+    (reasoning: string | undefined) => {
+      onModelsChange(index, currentModel, reasoning);
+    },
+    [index, currentModel, onModelsChange]
   );
 
   const taskOutput = useMemo(() => {
@@ -108,8 +114,10 @@ export function ProxyModelOutput(props: Props) {
     <div className='flex flex-col sm:flex-1 sm:w-1/3 pt-3 pb-2 sm:pb-4 justify-between overflow-hidden'>
       <div className='flex flex-col w-full'>
         <div className='flex items-center gap-2 justify-between px-2'>
-          <AIModelCombobox
-            value={currentModel || ''}
+          <ProxyModelCombobox
+            value={currentModel}
+            reasoning={currentReasoning}
+            onReasoningChange={handleReasoningChange}
             onModelChange={handleModelChange}
             models={aiModels}
             noOptionsMessage='Choose Model'

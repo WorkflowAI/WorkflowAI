@@ -2,6 +2,7 @@ import { cx } from 'class-variance-authority';
 import { FileText } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 import { TaskRunEnvironments } from '@/app/[tenant]/agents/[taskId]/[taskSchemaId]/runs/taskRunTable/TaskRunEnvironments';
+import { ResoningBadge } from '@/components/ProxyModelsCombobox/entry/ResoningBadge';
 import { TaskVersionBadgeContainer } from '@/components/TaskIterationBadge/TaskVersionBadgeContainer';
 import { SimpleRadioIndicator } from '@/components/ui/RadioGroup';
 import { TaskEnvironmentBadge } from '@/components/v2/TaskEnvironmentBadge';
@@ -85,7 +86,12 @@ export function TaskVersionEntry(props: TaskVersionEntryProps) {
           </div>
           <div className='flex items-center overflow-hidden truncate gap-1.5 flex-1'>
             {!!environments && <TaskRunEnvironments environments={environments} />}
-            {!!version.model && <div className='truncate text-gray-700 text-[13px] font-normal'>{version.model}</div>}
+            {!!version.model && (
+              <div className='flex flex-row items-center gap-1 overflow-hidden'>
+                <div className='truncate text-gray-700 text-[13px] font-normal'>{version.model}</div>
+                <ResoningBadge reasoning={'medium'} allowTooltips={true} />
+              </div>
+            )}
           </div>
           <div className={cn('flex items-center', SMALL_COLUMN_WIDTHS[ColumnName.Price])}>
             <TaskCostBadge cost={version.cost_estimate_usd} className='text-gray-500 bg-gray-50' />

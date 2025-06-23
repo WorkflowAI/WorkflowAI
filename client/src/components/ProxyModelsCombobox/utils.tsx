@@ -9,6 +9,8 @@ import { GroqIcon } from '../icons/models/groqIcon';
 import { MistralAIIcon } from '../icons/models/mistralAIIcon';
 import { OpenAIIcon } from '../icons/models/openAIIcon';
 
+export type ReasoningValue = 'low' | 'medium' | 'high' | number | 'disabled';
+
 export type AIModelComboboxOption = {
   model: ModelResponse;
   value: string;

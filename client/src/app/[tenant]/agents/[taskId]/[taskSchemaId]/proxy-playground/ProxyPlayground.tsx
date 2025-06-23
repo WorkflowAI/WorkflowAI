@@ -220,8 +220,8 @@ export function ProxyPlayground(props: Props) {
   });
 
   const setModelAndRun = useCallback(
-    async (index: number, model: ModelOptional) => {
-      setOutputModels(index, model ?? null);
+    async (index: number, model: string | undefined, reasoning: string | undefined) => {
+      setOutputModels(index, model, reasoning);
       onPerformRuns([index]);
     },
     [onPerformRuns, setOutputModels]
@@ -248,9 +248,9 @@ export function ProxyPlayground(props: Props) {
 
   const playgroundState: PlaygroundState = useMemo(() => {
     const models: SelectedModels = {
-      column_1: outputModels[0] ?? null,
-      column_2: outputModels[1] ?? null,
-      column_3: outputModels[2] ?? null,
+      column_1: outputModels.model1 ?? null,
+      column_2: outputModels.model2 ?? null,
+      column_3: outputModels.model3 ?? null,
     };
 
     const result = {
@@ -287,7 +287,7 @@ export function ProxyPlayground(props: Props) {
     ) => {
       const individualOptions: Record<number, RunTaskOptions> = {};
       columnsAndModels.forEach((columnAndModel) => {
-        setOutputModels(columnAndModel.column, columnAndModel.model);
+        setOutputModels(columnAndModel.column, columnAndModel.model ?? undefined, undefined);
         if (columnAndModel.model) {
           individualOptions[columnAndModel.column] = {
             externalModel: columnAndModel.model,

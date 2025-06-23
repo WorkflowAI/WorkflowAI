@@ -63,6 +63,9 @@ export function useProxyPlaygroundSearchParams(
     model1: model1FromParams,
     model2: model2FromParams,
     model3: model3FromParams,
+    modelReasoning1: modelReasoning1FromParams,
+    modelReasoning2: modelReasoning2FromParams,
+    modelReasoning3: modelReasoning3FromParams,
     scrollToBottom: scrollToBottomFromParams,
     temperature: temperatureFromParams,
     cache: cacheFromParams,
@@ -88,6 +91,9 @@ export function useProxyPlaygroundSearchParams(
     'model1',
     'model2',
     'model3',
+    'modelReasoning1',
+    'modelReasoning2',
+    'modelReasoning3',
     'scrollToBottom',
     'cache',
     'top_p',
@@ -114,6 +120,9 @@ export function useProxyPlaygroundSearchParams(
   const [model1, setModel1] = useState<string | undefined>(model1FromParams);
   const [model2, setModel2] = useState<string | undefined>(model2FromParams);
   const [model3, setModel3] = useState<string | undefined>(model3FromParams);
+  const [modelReasoning1, setModelReasoning1] = useState<string | undefined>(modelReasoning1FromParams);
+  const [modelReasoning2, setModelReasoning2] = useState<string | undefined>(modelReasoning2FromParams);
+  const [modelReasoning3, setModelReasoning3] = useState<string | undefined>(modelReasoning3FromParams);
 
   const [scrollToBottom, setScrollToBottom] = useState(scrollToBottomFromParams);
   const [cache, setCache] = useState<string | undefined>(cacheFromParams);
@@ -144,6 +153,9 @@ export function useProxyPlaygroundSearchParams(
       model1: model1,
       model2: model2,
       model3: model3,
+      modelReasoning1: modelReasoning1,
+      modelReasoning2: modelReasoning2,
+      modelReasoning3: modelReasoning3,
       cache: cache,
       top_p,
       max_tokens,
@@ -169,6 +181,9 @@ export function useProxyPlaygroundSearchParams(
     model1,
     model2,
     model3,
+    modelReasoning1,
+    modelReasoning2,
+    modelReasoning3,
     cache,
     top_p,
     max_tokens,
@@ -279,6 +294,13 @@ export function useProxyPlaygroundSearchParams(
     setModel1,
     setModel2,
     setModel3,
+
+    modelReasoning1,
+    modelReasoning2,
+    modelReasoning3,
+    setModelReasoning1,
+    setModelReasoning2,
+    setModelReasoning3,
 
     schemaId,
     setSchemaId,

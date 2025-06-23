@@ -47,6 +47,7 @@ export function ProxyRunDetailsVersionMessagesView(props: Props) {
                 model={version.properties.model_name}
                 providerId={version.properties.provider}
                 modelIcon={version.properties.model_icon}
+                reasoning={'medium'}
               />
             </div>
 

@@ -24,14 +24,16 @@ import { AIModelComboboxOption, modelComparator } from './utils';
 
 type TriggerContentProps = {
   value: string;
+  reasoning: string | undefined;
   selectedOption: AIModelComboboxOption | undefined;
   defaultLabel: string;
   isProxy?: boolean;
   taskId?: TaskID;
+  onReasoningChange?: (reasoning: string | undefined) => void;
 };
 
 function TriggerContent(props: TriggerContentProps) {
-  const { value, selectedOption, defaultLabel, isProxy, taskId } = props;
+  const { value, reasoning, selectedOption, defaultLabel, isProxy, taskId, onReasoningChange } = props;
   if (!value) {
     return (
       <div className='flex items-center gap-2'>
@@ -52,28 +54,32 @@ function TriggerContent(props: TriggerContentProps) {
         isProxy={isProxy}
         taskId={taskId}
         mode='selected'
+        reasoning={reasoning}
+        onReasoningChange={onReasoningChange}
       />
     );
   }
   return defaultLabel;
 }
 
-export type AIModelComboboxProps = {
+export type ProxyModelComboboxProps = {
   disabled?: boolean;
   emptyMessage?: string;
   noOptionsMessage?: string;
   onModelChange: (value: Model) => void;
   models: ModelResponse[];
   placeholder?: string;
-  value: string;
+  value: string | undefined;
+  reasoning: string | undefined;
   fitToContent?: boolean;
   open?: boolean;
   setOpen?: (open: boolean) => void;
   isProxy?: boolean;
   taskId?: TaskID;
+  onReasoningChange?: (reasoning: string | undefined) => void;
 };
 
-export function AIModelCombobox(props: AIModelComboboxProps) {
+export function ProxyModelCombobox(props: ProxyModelComboboxProps) {
   const {
     disabled,
     emptyMessage = 'No option found',
@@ -82,11 +88,13 @@ export function AIModelCombobox(props: AIModelComboboxProps) {
     models,
     placeholder: placeholderFromParameters,
     value,
+    reasoning,
     fitToContent = true,
     open: propsOpen,
     setOpen: propsSetOpen,
     isProxy = false,
     taskId,
+    onReasoningChange,
   } = props;
   const [internalOpen, setInternalOpen] = React.useState(false);
 
@@ -177,13 +185,17 @@ export function AIModelCombobox(props: AIModelComboboxProps) {
             fitToContent ? 'min-w-[75px] justify-between' : 'w-full justify-between'
           )}
         >
-          <TriggerContent
-            value={value}
-            selectedOption={selectedOption}
-            defaultLabel={noOptionsMessage}
-            isProxy={isProxy}
-            taskId={taskId}
-          />
+          {value && (
+            <TriggerContent
+              value={value}
+              reasoning={reasoning}
+              onReasoningChange={onReasoningChange}
+              selectedOption={selectedOption}
+              defaultLabel={noOptionsMessage}
+              isProxy={isProxy}
+              taskId={taskId}
+            />
+          )}
           <ChevronUpDownFilled className='h-4 w-4 shrink-0 text-gray-500 ml-2' />
         </div>
       </PopoverTrigger>

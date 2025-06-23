@@ -14,8 +14,11 @@ import { JsonSchema } from '@/types/json_schema';
 import { GeneralizedTaskInput } from '@/types/task_run';
 import { ProxyMessage, ToolKind, Tool_Output } from '@/types/workflowAI';
 import { useFetchTaskRunUntilCreated } from '../../playground/hooks/useFetchTaskRunUntilCreated';
-import { PlaygroundModels } from '../../playground/hooks/utils';
-import { removeInputEntriesNotMatchingSchemaAndKeepMessages } from '../utils';
+import {
+  ProxyPlaygroundModels,
+  getModelAndReasoning,
+  removeInputEntriesNotMatchingSchemaAndKeepMessages,
+} from '../utils';
 import { AdvancedSettings } from './useProxyPlaygroundSearchParams';
 import { useProxyStreamedChunks } from './useProxyStreamedChunks';
 
@@ -36,7 +39,7 @@ type Props = {
   changeURLSchemaId: (schemaId: TaskSchemaID, scrollToBottom?: boolean) => void;
   proxyMessages: ProxyMessage[] | undefined;
   proxyToolCalls: (ToolKind | Tool_Output)[] | undefined;
-  outputModels: PlaygroundModels;
+  outputModels: ProxyPlaygroundModels;
   input: GeneralizedTaskInput | undefined;
   setScheduledPlaygroundStateMessage: (message: string | undefined) => void;
   advancedSettings: AdvancedSettings;
@@ -84,7 +87,7 @@ export function useProxyPerformRuns(props: Props) {
     outputSchemaRef.current = outputSchema;
   }, [outputSchema]);
 
-  const outputModelsRef = useRef<PlaygroundModels>(outputModels);
+  const outputModelsRef = useRef<ProxyPlaygroundModels>(outputModels);
   outputModelsRef.current = outputModels;
   useEffect(() => {
     outputModelsRef.current = outputModels;
@@ -218,7 +221,8 @@ export function useProxyPerformRuns(props: Props) {
         return;
       }
 
-      const model = outputModelsRef.current[index];
+      // After adding the resoning to the endpoint we should also use the returned reasoning
+      const { model } = getModelAndReasoning(index, outputModelsRef.current);
       if (!model) {
         return;
       }
@@ -285,7 +289,7 @@ export function useProxyPerformRuns(props: Props) {
           return;
         }
 
-        const model = outputModelsRef.current[index];
+        const { model } = getModelAndReasoning(index, outputModelsRef.current);
         if (error instanceof Error && !!model) {
           setModelError(model, error);
         }

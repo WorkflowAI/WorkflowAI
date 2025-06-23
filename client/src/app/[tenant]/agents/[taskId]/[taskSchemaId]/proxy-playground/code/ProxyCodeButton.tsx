@@ -16,11 +16,10 @@ import {
   Tool_Output,
   VersionV1,
 } from '@/types/workflowAI';
-import { PlaygroundModels } from '../../playground/hooks/utils';
 import { SideBySideVersionPopoverItem } from '../../side-by-side/SideBySideVersionPopoverItem';
 import { SideBySideVersionPopoverModelItem } from '../../side-by-side/SideBySideVersionPopoverModelItem';
 import { AdvancedSettings } from '../hooks/useProxyPlaygroundSearchParams';
-import { addAdvencedSettingsToProperties } from '../utils';
+import { ProxyPlaygroundModels, addAdvencedSettingsToProperties, getModelAndReasoning } from '../utils';
 
 type Props = {
   tenant: TenantID | undefined;
@@ -29,7 +28,7 @@ type Props = {
 
   runs: (RunV1 | undefined)[];
   versionsForRuns: Record<string, VersionV1>;
-  outputModels: PlaygroundModels;
+  outputModels: ProxyPlaygroundModels;
   models: ModelResponse[];
 
   proxyMessages: ProxyMessage[] | undefined;
@@ -65,7 +64,7 @@ export function ProxyCodeButton(props: Props) {
         return;
       }
 
-      const modelId = outputModels?.[index] ?? undefined;
+      const { model: modelId } = getModelAndReasoning(index, outputModels);
       if (modelId) {
         const model = models.find((model) => model.id === modelId);
         if (model) {

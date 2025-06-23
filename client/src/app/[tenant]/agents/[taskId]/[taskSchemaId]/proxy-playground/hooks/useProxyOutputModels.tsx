@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo } from 'react';
 import { useCompatibleAIModels } from '@/lib/hooks/useCompatibleAIModels';
-import { ModelOptional, TaskID, TaskSchemaID, TenantID } from '@/types/aliases';
+import { TaskID, TaskSchemaID, TenantID } from '@/types/aliases';
 import { RunV1 } from '@/types/workflowAI';
-import { PlaygroundModels } from '../../playground/hooks/utils';
+import { ProxyPlaygroundModels } from '../utils';
 
 export function useProxyOutputModels(
   tenant: TenantID | undefined,
@@ -16,7 +16,13 @@ export function useProxyOutputModels(
   model3: string | undefined,
   setModel1: (model: string | undefined) => void,
   setModel2: (model: string | undefined) => void,
-  setModel3: (model: string | undefined) => void
+  setModel3: (model: string | undefined) => void,
+  modelReasoning1: string | undefined,
+  modelReasoning2: string | undefined,
+  modelReasoning3: string | undefined,
+  setModelReasoning1: (model: string | undefined) => void,
+  setModelReasoning2: (model: string | undefined) => void,
+  setModelReasoning3: (model: string | undefined) => void
 ) {
   const { compatibleModels, allModels, defaultModels } = useCompatibleAIModels({
     tenant,
@@ -33,29 +39,35 @@ export function useProxyOutputModels(
     }, 0);
   }, [allModels]);
 
-  const outputModels = useMemo(() => {
-    return [
-      model1 ?? defaultModels[0]?.id ?? undefined,
-      model2 ?? defaultModels[1]?.id ?? undefined,
-      model3 ?? defaultModels[2]?.id ?? undefined,
-    ] as PlaygroundModels;
-  }, [model1, model2, model3, defaultModels]);
+  const outputModels: ProxyPlaygroundModels = useMemo(() => {
+    return {
+      model1: model1 ?? defaultModels[0]?.id ?? undefined,
+      model2: model2 ?? defaultModels[1]?.id ?? undefined,
+      model3: model3 ?? defaultModels[2]?.id ?? undefined,
+      modelReasoning1: model1 ? modelReasoning1 : undefined,
+      modelReasoning2: model2 ? modelReasoning2 : undefined,
+      modelReasoning3: model3 ? modelReasoning3 : undefined,
+    };
+  }, [model1, model2, model3, modelReasoning1, modelReasoning2, modelReasoning3, defaultModels]);
 
   const setOutputModels = useCallback(
-    (index: number, model: ModelOptional) => {
+    (index: number, model: string | undefined, modelReasoning: string | undefined) => {
       switch (index) {
         case 0:
           setModel1(model ?? undefined);
+          setModelReasoning1(modelReasoning ?? undefined);
           break;
         case 1:
           setModel2(model ?? undefined);
+          setModelReasoning2(modelReasoning ?? undefined);
           break;
         case 2:
           setModel3(model ?? undefined);
+          setModelReasoning3(modelReasoning ?? undefined);
           break;
       }
     },
-    [setModel1, setModel2, setModel3]
+    [setModel1, setModel2, setModel3, setModelReasoning1, setModelReasoning2, setModelReasoning3]
   );
 
   useEffect(() => {

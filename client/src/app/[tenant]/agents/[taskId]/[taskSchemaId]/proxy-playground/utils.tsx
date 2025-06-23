@@ -4,6 +4,38 @@ import { CacheUsage, ProxyMessage, TaskGroupProperties_Input, ToolKind, VersionV
 import { allTools } from '../playground/components/Toolbox/utils';
 import { AdvancedSettings } from './hooks/useProxyPlaygroundSearchParams';
 
+export type ProxyPlaygroundModels = {
+  model1: string | undefined;
+  model2: string | undefined;
+  model3: string | undefined;
+  modelReasoning1: string | undefined;
+  modelReasoning2: string | undefined;
+  modelReasoning3: string | undefined;
+};
+
+export function getModelAndReasoning(
+  index: number,
+  models: ProxyPlaygroundModels | undefined
+): {
+  model: string | undefined;
+  reasoning: string | undefined;
+} {
+  if (!models) {
+    return { model: undefined, reasoning: undefined };
+  }
+
+  switch (index) {
+    case 0:
+      return { model: models.model1, reasoning: models.modelReasoning1 };
+    case 1:
+      return { model: models.model2, reasoning: models.modelReasoning2 };
+    case 2:
+      return { model: models.model3, reasoning: models.modelReasoning3 };
+    default:
+      return { model: undefined, reasoning: undefined };
+  }
+}
+
 export function checkInputSchemaForInputVaribles(inputSchema: JsonSchema | undefined) {
   if (!inputSchema) {
     return false;
