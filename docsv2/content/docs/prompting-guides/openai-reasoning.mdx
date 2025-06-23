@@ -1,0 +1,261 @@
+---
+title: OpenAI Reasoning Models - Best Practices
+description: Best practices for prompting OpenAI's reasoning models (o1, o3, o4-mini) to maximize performance and reliability.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="info">
+This guide is compiled from OpenAI's official documentation and cookbooks. For the most up-to-date information, refer to [OpenAI's original resources](https://cookbook.openai.com/examples/o-series/o3o4-mini_prompting_guide).
+</Callout>
+
+## Overview
+
+OpenAI's o-series reasoning models (o1, o3, o4-mini) are trained to think for longer before responding, making them the smartest models available. These models are trained to use tools natively within their chain of thought (CoT), which unlocks improved reasoning capabilities around when and how to use tools.
+
+## Key Concepts
+
+### Developer Messages vs System Messages
+
+For reasoning models, OpenAI introduced **developer messages** to make it explicit that an instruction is coming from the developer. In o-series models, any system message provided by the developer is automatically converted to a developer message internally.
+
+For practical purposes, you can treat the developer prompt as analogous to the traditional system prompt.
+
+## Best Practices for Function Calling
+
+### Context Setting via Developer Message
+
+#### 1. General Context
+Role prompting is helpful in setting the base behavior, tone and outlining the set of actions that are possible:
+
+```
+You are an AI retail agent.
+
+As a retail agent, you can help users cancel or modify pending orders, return or exchange delivered orders, modify their default user address, or provide information about their own profile, orders, and related products.
+```
+
+#### 2. Function Call Ordering
+o3/o4-mini models can make mistakes in the order of tool calls. To guard against these cases, explicitly outline the orders to accomplish certain tasks:
+
+```
+check to see if directories exist before making files
+```
+
+For high volume and well defined tasks, you can make it even more robust by outlining the sequence of functions to call explicitly:
+
+```
+To Process a refund for a delivered order, follow the following steps:
+1. Confirm the order was delivered. Use: `order_status_check`
+2. Check the refund eligibility policy. Use: `refund_policy_check`
+3. Create the refund request. Use: `refund_create`
+4. Notify the user of refund status. Use: `user_notify`
+```
+
+#### 3. Defining Boundaries on Tool Usage
+Clarify when and when not to invoke certain tools. This can be done both at the developer prompt level and at the tool description level:
+
+```
+Be proactive in using tools to accomplish the user's goal. If a task cannot be completed with a single step, keep going and use multiple tools as needed until the task is completed. Do not stop at the first failure. Try alternative steps or tool combinations until you succeed.
+
+- Use tools when:
+  - The user wants to cancel or modify an order.
+  - The user wants to return or exchange a delivered product.
+  - The user wants to update their address or contact details.
+  - The user asks for current or personalized order or profile info.
+
+- Do not use tools when:
+  - The user asks a general question like "What's your return policy?"
+  - The user asks something outside your retail role (e.g., "Write a poem").
+
+If a task is not possible due to real constraints (For example, trying to cancel an already delivered order), explain why clearly and do not call tools blindly.
+```
+
+### Function Description Best Practices
+
+#### 1. Usage Criteria
+Similar to how you can refine function calling proactiveness through the developer prompt, you can further refine how a function gets called at the function description level:
+
+```
+Creates a new file with the specified name and contents in a target directory. This function should be used when persistent storage is needed and the file does not already exist.
+- Only call this function if the target directory exists. Check first using the `directory_check` tool.  
+- Do not use for temporary or one-off content—prefer direct responses for those cases.  
+- Do not overwrite existing files. Always ensure the file name is unique.
+- Do not overwrite existing files.  
+  If replacement is intended and confirmed, use `file_delete` followed by `file_create`, or use `file_update` instead.
+```
+
+#### 2. Few-Shot Prompting
+While reasoning models do not benefit from few-shot prompting as much as non-reasoning models, few-shot prompting can improve tool calling performance, especially when the model struggles to accurately construct function arguments:
+
+```
+Use this tool to run fast, exact regex searches over text files using the `ripgrep` engine.
+
+- Always escape special regex characters: ( ) [ ] { } + * ? ^ $ | . \\
+- Use `\\` to escape any of these characters when they appear in your search string.
+- Do NOT perform fuzzy or semantic matches.
+- Return only a valid regex pattern string.
+
+Examples:
+Literal            -> Regex Pattern         
+function(          -> function\\(           
+value[index]       -> value\\[index\\]      
+file.txt           -> file\\.txt            
+user|admin         -> user\\|admin          
+path\to\file       -> path\\\\to\\\\file     
+```
+
+#### 3. Key Rules Up Front
+Note in the above example, the instruction to escape a special character is relatively the first thing the model reads. Place the most important rules and constraints at the beginning of function descriptions.
+
+### Guarding Against Function Calling Hallucinations
+
+<Callout type="warning">
+The o3 model may be more prone to hallucinations than other models. These hallucinations may appear as the model promising to call tools in the background without actually doing so, or promising to call a tool in future turns.
+</Callout>
+
+#### 1. Explicit Instructions
+Explicitly instruct the model to avoid common hallucinations:
+
+```
+Do NOT promise to call a function later. If a function call is required, emit it now; otherwise respond normally.
+```
+
+#### 2. Catch Bad Arguments Early
+Setting `strict` to `true` will ensure function calls reliably adhere to the function schema. We recommend turning it on whenever possible.
+
+If your arguments have additional complex format requirements (e.g valid python code etc), adding the following instruction can remind the model of the expected format:
+
+```
+Validate arguments against the format before sending the call; if you are unsure, ask for clarification instead of guessing.
+```
+
+#### 3. Addressing Lazy Behavior
+In rare instances of lazy behavior from o3 (stating it doesn't have enough time, promising to follow up separately, or giving terse answers), follow these steps:
+
+- **Start a new conversation for unrelated topics**: When switching to a new or unrelated topic, begin a fresh conversation thread rather than continuing in the same context.
+- **Discard irrelevant past tool calls/outputs**: If the conversation history contains a long list of previous tool calls or outputs that are no longer relevant, remove them from the context and provide a concise summary instead.
+
+### Avoid Chain of Thought Prompting
+
+<Callout type="info">
+Since these models are reasoning models and produce an internal chain of thought, they do not need to be explicitly prompted to plan and reason between tool calls.
+</Callout>
+
+Do not try to induce additional reasoning before each function call by asking the model to plan more extensively. Asking a reasoning model to reason more may actually hurt performance.
+
+## Using the Responses API
+
+### Reasoning Items for Better Performance
+o3/o4-mini models are trained with their internal reasoning persisted between tool calls within a single turn. Using the Responses API and allowing the model access to reasoning items between function calls is the easiest way to maximize performance for function calls.
+
+Example using encrypted content (where OpenAI doesn't retain state):
+
+```python
+from openai import OpenAI
+import requests
+import json
+
+client = OpenAI()
+
+def get_weather(latitude, longitude):
+    response = requests.get(f"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&current=temperature_2m,wind_speed_10m&hourly=temperature_2m,relative_humidity_2m,wind_speed_10m")
+    data = response.json()
+    return data['current']['temperature_2m']
+
+tools = [{
+    "type": "function",
+    "name": "get_weather",
+    "description": "Get current temperature for provided coordinates in celsius.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "latitude": {"type": "number"},
+            "longitude": {"type": "number"}
+        },
+        "required": ["latitude", "longitude"],
+        "additionalProperties": False
+    },
+    "strict": True
+}]
+
+context = [{"role": "user", "content": "What's the weather like in Paris today?"}]
+
+response = client.responses.create(
+    model="o3",
+    input=context,
+    tools=tools,
+    store=False,
+    include=["reasoning.encrypted_content"] # Encrypted chain of thought is passed back
+)
+
+context += response.output # Add the response to the context (including encrypted chain of thought)
+tool_call = response.output[1]
+args = json.loads(tool_call.arguments)
+
+result = get_weather(args["latitude"], args["longitude"])
+
+context.append({                               
+    "type": "function_call_output",
+    "call_id": tool_call.call_id,
+    "output": str(result)
+})
+
+response_2 = client.responses.create(
+    model="o3",
+    input=context,
+    tools=tools,
+    store=False,
+    include=["reasoning.encrypted_content"]
+)
+
+print(response_2.output_text)
+```
+
+## Agentic Experience with Hosted Tools
+
+### Tool Usage Boundaries
+When mixing hosted tools and custom tools, explicitly define tool usage boundaries in the developer prompt:
+
+```
+You are a helpful research assistant with access to the following tools:
+- python tool: for any computation involving math, statistics, or code execution
+- calculator: for basic arithmetic or unit conversions when speed is preferred
+
+Always use the python tool for anything involving logic, scripts, or multistep math. Use the calculator tool only for simple 1-step math problems.
+```
+
+### Clarifying When Internal Knowledge Is Not Sufficient
+Even though o3/o4-mini models can often solve tasks on their own, tools may provide more reliable answers:
+
+```
+You have access to a `code_interpreter`. Always prefer using `code_interpreter` when a user asks a question involving:
+- math problems
+- data analysis
+- generating or executing code
+- formatting or transforming structured text
+
+Avoid doing these directly in your own response. Always use the tool instead.
+```
+
+## Common Questions
+
+### How Many Functions Is Too Many?
+For o3 and o4-mini models, any setup with fewer than ~100 tools and fewer than ~20 arguments per tool is considered in-distribution and should perform within expected reliability bounds.
+
+However, more tools can introduce ambiguity or confusion:
+- **Function description clarity becomes critical**: If multiple tools have overlapping purposes or vague descriptions, models may call the wrong one
+- **Tool list size can affect latency and reasoning depth**: Longer lists mean the model has more options to parse during reasoning
+- **Tool hallucinations can increase with complexity**: Especially with o3, there have been reports of hallucinated tool calls when the toolset is large and under-defined
+
+### Should I Use Nested Parameters or Flat Schemas?
+There's no hard guidance, but flat structures are often easier for the model to reason about. With deeply nested objects, especially ones with repeated or semantically similar field names, the model is more likely to omit or misuse arguments.
+
+For domains that naturally involve structured input, nesting helps organize related parameters, but you must use techniques like clear field descriptions, anyOf logic, or strict schemas to guard against invalid argument combinations.
+
+## Original Sources
+
+This guide is compiled from:
+- [OpenAI's o3/o4-mini Function Calling Guide](https://cookbook.openai.com/examples/o-series/o3o4-mini_prompting_guide)
+- [OpenAI Platform Documentation](https://platform.openai.com/docs/guides/reasoning-best-practices)
+
+For the most current information and additional examples, refer to these original sources. 

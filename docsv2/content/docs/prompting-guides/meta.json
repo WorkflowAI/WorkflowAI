@@ -1,0 +1,5 @@
+{
+  "title": "Prompting Guides",
+  "icon": "Brain",
+  "pages": ["index", "openai-reasoning", "openai-gpt4-1"]
+}

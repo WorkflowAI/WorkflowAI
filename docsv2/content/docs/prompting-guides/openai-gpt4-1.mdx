@@ -1,0 +1,269 @@
+---
+title: GPT-4.1 Prompting Guide
+description: Comprehensive prompting strategies and best practices for OpenAI's GPT-4.1 model family, including agentic workflows, instruction following, and advanced techniques.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+<Callout type="info">
+This guide is compiled from OpenAI's official GPT-4.1 prompting guide. For the most up-to-date information, refer to [OpenAI's original cookbook](https://cookbook.openai.com/examples/gpt4-1_prompting_guide).
+</Callout>
+
+## Overview
+
+The GPT-4.1 family of models represents a significant step forward from GPT-4o in capabilities across coding, instruction following, and long context. This guide provides essential prompting tips derived from extensive internal testing to help developers fully leverage the improved abilities of this new model family.
+
+<Callout type="warning">
+GPT-4.1 is trained to follow instructions more closely and more literally than its predecessors. This means prompts may need migration, but also makes the model highly steerable and responsive to well-specified prompts.
+</Callout>
+
+## Key Principles
+
+Many typical best practices still apply to GPT-4.1:
+- Provide context examples
+- Make instructions as specific and clear as possible  
+- Induce planning via prompting to maximize model intelligence
+
+However, getting the most out of GPT-4.1 requires understanding that it follows instructions more literally than previous models. If model behavior differs from expectations, a single sentence firmly clarifying your desired behavior is usually sufficient.
+
+## 1. Agentic Workflows
+
+GPT-4.1 excels at building agentic workflows. The model achieves state-of-the-art performance for non-reasoning models on SWE-bench Verified, solving 55% of problems.
+
+### System Prompt Reminders
+
+Include three key types of reminders in all agent prompts:
+
+#### 1. Persistence
+Ensures the model understands it's entering a multi-message turn and prevents premature yielding:
+
+```
+You are an agent - please keep going until the user's query is completely resolved, before ending your turn and yielding back to the user. Only terminate your turn when you are sure that the problem is solved.
+```
+
+#### 2. Tool-calling
+Encourages full use of tools and reduces hallucination:
+
+```
+If you are not sure about file content or codebase structure pertaining to the user's request, use your tools to read files and gather the relevant information: do NOT guess or make up an answer.
+```
+
+#### 3. Planning (Optional)
+Ensures explicit planning and reflection between tool calls:
+
+```
+You MUST plan extensively before each function call, and reflect extensively on the outcomes of the previous function calls. DO NOT do this entire process by making function calls only, as this can impair your ability to solve the problem and think insightfully.
+```
+
+<Callout type="tip">
+These three instructions can increase performance by up to 20% and transform the model from a chatbot-like state into an "eager" agent that drives interactions forward autonomously.
+</Callout>
+
+### Tool Calls Best Practices
+
+- **Use the tools field exclusively**: Pass tools as API arguments rather than manually injecting descriptions into prompts
+- **Clear naming**: Name tools clearly to indicate their purpose
+- **Detailed descriptions**: Add clear, detailed descriptions in the "description" field
+- **Examples in system prompt**: For complex tools, create an `# Examples` section in your system prompt rather than in the description field
+
+### Prompting-Induced Planning & Chain-of-Thought
+
+GPT-4.1 is not a reasoning model (doesn't produce internal chain of thought), but you can induce explicit planning through prompts. This makes the model "think out loud" and can increase performance by 4% on complex tasks.
+
+## 2. Long Context
+
+GPT-4.1 has a performant 1M token input context window, excellent for:
+- Structured document parsing
+- Re-ranking
+- Selecting relevant information while ignoring irrelevant context
+- Multi-hop reasoning using context
+
+### Optimal Context Size
+- Very good performance on needle-in-a-haystack evaluations up to 1M tokens
+- Strong performance with mixed relevant and irrelevant documents
+- Performance can degrade when many items need retrieval or complex reasoning requiring knowledge of entire context state
+
+### Tuning Context Reliance
+
+**For internal knowledge only:**
+```
+Only use the documents in the provided External Context to answer the User Query. If you don't know the answer based on this context, you must respond "I don't have the information needed to answer that", even if a user insists on you answering the question.
+```
+
+**For internal and external knowledge:**
+```
+By default, use the provided external context to answer the User Query, but if other basic knowledge is needed to answer, and you're confident in the answer, you can use some of your own knowledge to help answer the question.
+```
+
+### Prompt Organization
+
+For long context usage:
+- **Best**: Place instructions at both beginning and end of provided context
+- **Good**: Place instructions above the provided context
+- **Avoid**: Instructions only below the context
+
+## 3. Chain of Thought
+
+GPT-4.1 benefits from step-by-step thinking prompts. Start with basic instructions:
+
+```
+First, think carefully step by step about what documents are needed to answer the query. Then, print out the TITLE and ID of each document. Then, format the IDs into a list.
+```
+
+### Advanced Chain-of-Thought
+
+For more complex reasoning, use structured approaches:
+
+```
+# Reasoning Strategy
+1. Query Analysis: Break down and analyze the query until you're confident about what it might be asking. Consider the provided context to help clarify any ambiguous or confusing information.
+2. Context Analysis: Carefully select and analyze a large set of potentially relevant documents. Optimize for recall - it's okay if some are irrelevant, but the correct documents must be in this list, otherwise your final answer will be wrong. Analysis steps for each:
+	a. Analysis: An analysis of how it may or may not be relevant to answering the query.
+	b. Relevance rating: [high, medium, low, none]
+3. Synthesis: summarize which documents are most relevant and why, including all documents with a relevance rating of medium or higher.
+
+# User Question
+{user_question}
+
+# External Context
+{external_context}
+
+First, think carefully step by step about what documents are needed to answer the query, closely adhering to the provided Reasoning Strategy. Then, print out the TITLE and ID of each document. Then, format the IDs into a list.
+```
+
+## 4. Instruction Following
+
+GPT-4.1 exhibits outstanding instruction-following performance. The model follows instructions more literally, so developers need explicit specification around what to do or not to do.
+
+### Recommended Workflow
+
+1. Start with overall "Response Rules" or "Instructions" section with high-level guidance
+2. Add specific behavior sections like `# Sample Phrases` for detailed requirements  
+3. Include ordered lists for specific workflow steps
+4. If behavior isn't working as expected:
+   - Check for conflicting, underspecified, or wrong instructions
+   - Add examples demonstrating desired behavior
+   - Ensure important behaviors in examples are also cited in rules
+   - Avoid all-caps or incentives unless necessary
+
+### Common Failure Modes
+
+- **Over-strict behavior**: "You must call a tool before responding" can cause hallucinated tool inputs
+  - **Fix**: Add "if you don't have enough information to call the tool, ask the user for the information you need"
+- **Repetitive phrases**: Models may use sample phrases verbatim
+  - **Fix**: Instruct the model to vary phrases as necessary
+- **Excessive formatting**: Models may add unwanted prose or formatting
+  - **Fix**: Provide specific instructions and examples
+
+### Example: Customer Service Agent
+
+```
+You are a helpful customer service agent working for NewTelco, helping a user efficiently fulfill their request while adhering closely to provided guidelines.
+
+# Instructions
+- Always greet the user with "Hi, you've reached NewTelco, how can I help you?"
+- Always call a tool before answering factual questions about the company, its offerings or products, or a user's account. Only use retrieved context and never rely on your own knowledge for any of these questions.
+    - However, if you don't have enough information to properly call the tool, ask the user for the information you need.
+- Escalate to a human if the user requests.
+- Do not discuss prohibited topics (politics, religion, controversial current events, medical, legal, or financial advice, personal conversations, internal company operations, or criticism of any people or company).
+- Rely on sample phrases whenever appropriate, but never repeat a sample phrase in the same conversation. Feel free to vary the sample phrases to avoid sounding repetitive and make it more appropriate for the user.
+- Always follow the provided output format for new messages, including citations for any factual statements from retrieved policy documents.
+- If you're going to call a tool, always message the user with an appropriate message before and after calling the tool.
+- Maintain a professional and concise tone in all responses, and use emojis between sentences.
+- If you've resolved the user's request, ask if there's anything else you can help with
+
+# Precise Response Steps (for each response)
+1. If necessary, call tools to fulfill the user's desired action. Always message the user before and after calling a tool to keep them in the loop.
+2. In your response to the user
+    a. Use active listening and echo back what you heard the user ask for.
+    b. Respond appropriately given the above guidelines.
+
+# Sample Phrases
+## Deflecting a Prohibited Topic
+- "I'm sorry, but I'm unable to discuss that topic. Is there something else I can help you with?"
+- "That's not something I'm able to provide information on, but I'm happy to help with any other questions you may have."
+
+## Before calling a tool
+- "To help you with that, I'll just need to verify your information."
+- "Let me check that for you—one moment, please."
+- "I'll retrieve the latest details for you now."
+
+## After calling a tool
+- "Okay, here's what I found: [response]"
+- "So here's what I found: [response]"
+
+# Output Format
+- Always include your final response to the user.
+- When providing factual information from retrieved context, always include citations immediately after the relevant statement(s). Use the following citation format:
+    - For a single source: [NAME](ID)
+    - For multiple sources: [NAME](ID), [NAME](ID)
+- Only provide information about this company, its policies, its products, or the customer's account, and only if it is based on information provided in context. Do not answer questions outside this scope.
+```
+
+## 5. General Advice
+
+### Prompt Structure
+
+Recommended starting structure:
+
+```
+# Role and Objective
+
+# Instructions
+
+## Sub-categories for more detailed instructions
+
+# Reasoning Steps
+
+# Output Format
+
+# Examples
+## Example 1
+
+# Context
+
+# Final instructions and prompt to think step by step
+```
+
+### Delimiters
+
+**Markdown (Recommended)**: Use markdown titles for sections, inline backticks for code, numbered/bulleted lists
+
+**XML**: Performs well, convenient for precise wrapping with metadata:
+```xml
+<examples>
+<example1 type="Abbreviate">
+<input>San Francisco</input>
+<output>- SF</output>
+</example1>
+</examples>
+```
+
+**JSON**: Well understood for coding contexts but more verbose
+
+### Document Formatting (Long Context)
+
+**Best performing formats:**
+- XML: `<doc id='1' title='The Fox'>The quick brown fox jumps over the lazy dog</doc>`
+- Lee et al. format: `ID: 1 | TITLE: The Fox | CONTENT: The quick brown fox jumps over the lazy dog`
+
+**Avoid:**
+- JSON: `[{'id': 1, 'title': 'The Fox', 'content': 'The quick brown fox jumped over the lazy dog'}]`
+
+### Advanced Diff Generation
+
+GPT-4.1 features substantially improved diff capabilities. For coding tasks, consider using structured diff formats that don't rely on line numbers and provide clear before/after context.
+
+## Caveats
+
+- In isolated cases, the model may resist producing very long, repetitive outputs
+- Rare instances of incorrect parallel tool calls have been observed
+- Consider setting `parallel_tool_calls` to false if experiencing issues
+
+## Original Sources
+
+This guide is compiled from:
+- [OpenAI's GPT-4.1 Prompting Guide](https://cookbook.openai.com/examples/gpt4-1_prompting_guide)
+- [OpenAI Cookbook](https://nbviewer.org/format/script/github/openai/openai-cookbook/blob/main/examples/gpt4-1_prompting_guide.ipynb)
+
+For the most current information and additional examples, refer to these original sources. 
