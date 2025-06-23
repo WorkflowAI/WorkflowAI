@@ -682,7 +682,7 @@ class MCPService:
             search_results: list[dict[str, str]] = [
                 {
                     "content_snippet": section.content,
-                    "source_page": section.title.replace("content/docs/", ""),
+                    "source_page": section.title.replace("content/", ""),
                 }
                 for section in relevant_sections
             ]
@@ -712,7 +712,7 @@ class MCPService:
         try:
             documentation_service = DocumentationService()
 
-            sections = documentation_service.get_documentation_by_path([f"content/docs/{page}"])
+            sections = documentation_service.get_documentation_by_path([f"content/{page}"])
 
             # Find the requested page
             if sections:
