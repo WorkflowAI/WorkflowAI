@@ -137,12 +137,14 @@ async def ai_guides_engineer_agent(
 
     async for chunk in response:
         # Parse tool calls if present
-        parsed_tool_call = ParsedToolCall()
-        if chunk.choices and chunk.choices[0].delta.tool_calls:
-            tool_call = chunk.choices[0].delta.tool_calls[0]
-            parsed_tool_call = parse_tool_call(tool_call)
 
-        yield AIGuidesEngineerAgentOutput(
-            assistant_answer=chunk.choices[0].delta.content,
-            search_documentation_query=parsed_tool_call.search_documentation_query,
-        )
+        parsed_tool_call = ParsedToolCall()
+        if chunk.choices:
+            if chunk.choices[0].delta.tool_calls:
+                tool_call = chunk.choices[0].delta.tool_calls[0]
+                parsed_tool_call = parse_tool_call(tool_call)
+
+            yield AIGuidesEngineerAgentOutput(
+                assistant_answer=chunk.choices[0].delta.content,
+                search_documentation_query=parsed_tool_call.search_documentation_query,
+            )
