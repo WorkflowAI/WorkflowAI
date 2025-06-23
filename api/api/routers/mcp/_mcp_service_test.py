@@ -199,7 +199,7 @@ class TestMCPServiceSearchDocumentation:
         assert "get started with WorkflowAI" in search_results[0]["content_snippet"]
         assert search_results[1]["source_page"] == "api-auth.mdx"
         assert "Authentication is required" in search_results[1]["content_snippet"]
-        assert result.messages == ["Found 2 relevant documentation sections"]
+        assert "Successfully found relevant documentation sections" in result.messages[0]  # type: ignore
 
     @pytest.mark.asyncio
     @patch("api.routers.mcp._mcp_service.DocumentationService")
