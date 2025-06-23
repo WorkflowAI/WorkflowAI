@@ -3,7 +3,7 @@
 
 import pytest
 
-from api.api.routers.mcp._utils.sort_validation import (
+from api.routers.mcp._utils.sort_validation import (
     SortValidationError,
     get_valid_agent_sort_fields,
     get_valid_model_sort_fields,

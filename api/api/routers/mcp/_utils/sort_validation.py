@@ -2,7 +2,7 @@
 
 from typing import cast, get_args
 
-from api.api.routers.mcp._mcp_models import AgentSortField, ModelSortField, SortOrder
+from api.routers.mcp._mcp_models import AgentSortField, ModelSortField, SortOrder
 
 
 class SortValidationError(Exception):
