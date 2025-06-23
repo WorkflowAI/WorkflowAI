@@ -219,7 +219,7 @@ class TestMCPServiceSearchDocumentation:
                 content="Complete getting started guide content here with detailed instructions...",
             ),
         ]
-        mock_service.get_documentation_by_path.return_value = mock_sections
+        mock_service.get_documentation_by_path = AsyncMock(return_value=mock_sections)
 
         # Act
         result = await mcp_service.search_documentation(page="getting-started.mdx")
@@ -246,14 +246,14 @@ class TestMCPServiceSearchDocumentation:
         mock_documentation_service_class.return_value = mock_service
 
         # Mock get_documentation_by_path to return empty list (page not found)
-        mock_service.get_documentation_by_path.return_value = []
+        mock_service.get_documentation_by_path = AsyncMock(return_value=[])
 
         # Mock get_all_doc_sections for available pages listing
         mock_sections = [
             DocumentationSection(title="existing1.mdx", content="content1"),
             DocumentationSection(title="existing2.mdx", content="content2"),
         ]
-        mock_service.get_all_doc_sections.return_value = mock_sections
+        mock_service.get_all_doc_sections = AsyncMock(return_value=mock_sections)
 
         # Act
         result = await mcp_service.search_documentation(page="non-existent.mdx")
@@ -276,11 +276,11 @@ class TestMCPServiceSearchDocumentation:
         mock_documentation_service_class.return_value = mock_service
 
         # Mock get_documentation_by_path to return empty list (page not found)
-        mock_service.get_documentation_by_path.return_value = []
+        mock_service.get_documentation_by_path = AsyncMock(return_value=[])
 
         # Create more than 10 sections to test truncation
         mock_sections = [DocumentationSection(title=f"page{i}.mdx", content=f"content{i}") for i in range(15)]
-        mock_service.get_all_doc_sections.return_value = mock_sections
+        mock_service.get_all_doc_sections = AsyncMock(return_value=mock_sections)
 
         # Act
         result = await mcp_service.search_documentation(page="non-existent.mdx")
@@ -341,7 +341,7 @@ class TestMCPServiceSearchDocumentation:
         # Arrange
         mock_service = Mock()
         mock_documentation_service_class.return_value = mock_service
-        mock_service.get_documentation_by_path.side_effect = Exception("File system error")
+        mock_service.get_documentation_by_path = AsyncMock(side_effect=Exception("File system error"))
 
         # Act
         result = await mcp_service.search_documentation(page="test.mdx")
