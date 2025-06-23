@@ -182,8 +182,9 @@ class RunV1(_BaseRunV1):
     conversation_id: str | None
 
     metadata: dict[str, Any] | None = Field(
-        description="Combination of user defined metadata passed to the completion request, and system metadata "
-        "added by WorkflowAI",
+        description="Combination of user defined metadata passed to the completion request and metadata "
+        "automatically added by WorkflowAI. WorkflowAI metadata fields are prefixed with `workflowai.` and add "
+        "details about the run, for example which providers were used during the run.",
     )
 
     @classmethod
