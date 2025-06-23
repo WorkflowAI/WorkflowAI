@@ -676,6 +676,7 @@ class MCPService:
             relevant_sections = await documentation_service.get_relevant_doc_sections(
                 chat_messages=[ChatMessage(role="USER", content=query)],
                 agent_instructions="",
+                mode="remote",
             )
 
             # Convert to SearchResult format with content snippets
@@ -712,7 +713,7 @@ class MCPService:
         try:
             documentation_service = DocumentationService()
 
-            sections = documentation_service.get_documentation_by_path([f"content/{page}"])
+            sections = await documentation_service.get_documentation_by_path([f"content/{page}"])
 
             # Find the requested page
             if sections:
@@ -723,7 +724,7 @@ class MCPService:
                 )
 
             # Page not found - list available pages for user reference
-            all_sections = documentation_service.get_all_doc_sections()
+            all_sections = await documentation_service.get_all_doc_sections(mode="remote")
             available_pages = [section.title for section in all_sections]
 
             # Limit available pages list to prevent overwhelming output
