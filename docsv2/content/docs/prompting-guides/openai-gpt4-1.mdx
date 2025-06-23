@@ -1,12 +1,12 @@
 ---
 title: GPT-4.1 Prompting Guide
-description: Comprehensive prompting strategies and best practices for OpenAI's GPT-4.1 model family, including agentic workflows, instruction following, and advanced techniques.
+description: Comprehensive prompting strategies and best practices for OpenAI's GPT-4.1 model family using the chat completions endpoint, including agentic workflows, instruction following, and advanced techniques.
 ---
 
 import { Callout } from 'fumadocs-ui/components/callout';
 
 <Callout type="info">
-This guide is compiled from OpenAI's official GPT-4.1 prompting guide. For the most up-to-date information, refer to [OpenAI's original cookbook](https://cookbook.openai.com/examples/gpt4-1_prompting_guide).
+This guide is compiled from OpenAI's official GPT-4.1 prompting guide and adapted for WorkflowAI's chat completions endpoint. For the most up-to-date information, refer to [OpenAI's original cookbook](https://cookbook.openai.com/examples/gpt4-1_prompting_guide).
 </Callout>
 
 ## Overview
@@ -69,6 +69,65 @@ These three instructions can increase performance by up to 20% and transform the
 ### Prompting-Induced Planning & Chain-of-Thought
 
 GPT-4.1 is not a reasoning model (doesn't produce internal chain of thought), but you can induce explicit planning through prompts. This makes the model "think out loud" and can increase performance by 4% on complex tasks.
+
+### Example: Code Analysis Agent
+
+```python
+import openai
+
+client = openai.OpenAI(
+    api_key="YOUR_WORKFLOWAI_API_KEY",
+    base_url="https://run.workflowai.com/v1"
+)
+
+system_prompt = """
+You are an agent - please keep going until the user's query is completely resolved, before ending your turn and yielding back to the user. Only terminate your turn when you are sure that the problem is solved.
+
+If you are not sure about file content or codebase structure pertaining to the user's request, use your tools to read files and gather the relevant information: do NOT guess or make up an answer.
+
+You MUST plan extensively before each function call, and reflect extensively on the outcomes of the previous function calls. DO NOT do this entire process by making function calls only, as this can impair your ability to solve the problem and think insightfully.
+
+You will be tasked to analyze code issues. Always:
+1. Read the relevant files first
+2. Understand the problem deeply
+3. Plan your analysis step by step
+4. Provide comprehensive solutions
+"""
+
+tools = [
+    {
+        "type": "function",
+        "name": "read_file",
+        "description": "Read the contents of a file",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "filepath": {"type": "string", "description": "Path to the file to read"}
+            },
+            "required": ["filepath"]
+        }
+    }
+]
+
+messages = [
+    {"role": "system", "content": system_prompt},
+    {"role": "user", "content": "Analyze the bug in src/main.py and suggest a fix"}
+]
+
+response = client.chat.completions.create(
+    model="gpt-4.1",
+    messages=messages,
+    tools=tools,
+    metadata={"agent_id": "code-analyzer"}
+)
+
+# Handle the conversation with function calls as needed
+if response.choices[0].message.tool_calls:
+    # Process tool calls and continue conversation
+    # Add assistant message and tool results back to messages
+    # Make another completion to get the final response
+    pass
+```
 
 ## 2. Long Context
 
@@ -157,7 +216,15 @@ GPT-4.1 exhibits outstanding instruction-following performance. The model follow
 
 ### Example: Customer Service Agent
 
-```
+```python
+import openai
+
+client = openai.OpenAI(
+    api_key="YOUR_WORKFLOWAI_API_KEY",
+    base_url="https://run.workflowai.com/v1"
+)
+
+system_prompt = """
 You are a helpful customer service agent working for NewTelco, helping a user efficiently fulfill their request while adhering closely to provided guidelines.
 
 # Instructions
@@ -198,6 +265,40 @@ You are a helpful customer service agent working for NewTelco, helping a user ef
     - For a single source: [NAME](ID)
     - For multiple sources: [NAME](ID), [NAME](ID)
 - Only provide information about this company, its policies, its products, or the customer's account, and only if it is based on information provided in context. Do not answer questions outside this scope.
+"""
+
+tools = [
+    {
+        "type": "function",
+        "name": "lookup_policy_document",
+        "description": "Tool to look up internal documents and policies by topic or keyword.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "topic": {
+                    "type": "string",
+                    "description": "The topic or keyword to search for in company policies or documents.",
+                },
+            },
+            "required": ["topic"],
+            "additionalProperties": False,
+        },
+    }
+]
+
+messages = [
+    {"role": "system", "content": system_prompt},
+    {"role": "user", "content": "How much will it cost for international service? I'm traveling to France."}
+]
+
+response = client.chat.completions.create(
+    model="gpt-4.1",
+    messages=messages,
+    tools=tools,
+    metadata={"agent_id": "customer-service"}
+)
+
+print(response.choices[0].message.content)
 ```
 
 ## 5. General Advice
@@ -254,6 +355,51 @@ Recommended starting structure:
 
 GPT-4.1 features substantially improved diff capabilities. For coding tasks, consider using structured diff formats that don't rely on line numbers and provide clear before/after context.
 
+## Working with Function Calls
+
+### Multi-Step Function Calling
+
+```python
+def handle_conversation_with_tools(client, messages, tools, model="gpt-4.1"):
+    """Handle a conversation that may involve multiple function calls"""
+    
+    while True:
+        response = client.chat.completions.create(
+            model=model,
+            messages=messages,
+            tools=tools,
+            metadata={"agent_id": "multi-tool-agent"}
+        )
+        
+        assistant_message = response.choices[0].message
+        messages.append(assistant_message)
+        
+        # Check if the model wants to call functions
+        if not assistant_message.tool_calls:
+            break
+            
+        # Execute each function call
+        for tool_call in assistant_message.tool_calls:
+            function_name = tool_call.function.name
+            function_args = json.loads(tool_call.function.arguments)
+            
+            # Execute the function (implement your function logic here)
+            if function_name == "read_file":
+                result = read_file(function_args["filepath"])
+            elif function_name == "search_code":
+                result = search_code(function_args["query"])
+            # Add more function handlers as needed
+            
+            # Add the function result back to the conversation
+            messages.append({
+                "role": "tool",
+                "tool_call_id": tool_call.id,
+                "content": result
+            })
+    
+    return messages[-1].content if messages else None
+```
+
 ## Caveats
 
 - In isolated cases, the model may resist producing very long, repetitive outputs
@@ -262,7 +408,7 @@ GPT-4.1 features substantially improved diff capabilities. For coding tasks, con
 
 ## Original Sources
 
-This guide is compiled from:
+This guide is compiled and adapted from:
 - [OpenAI's GPT-4.1 Prompting Guide](https://cookbook.openai.com/examples/gpt4-1_prompting_guide)
 - [OpenAI Cookbook](https://nbviewer.org/format/script/github/openai/openai-cookbook/blob/main/examples/gpt4-1_prompting_guide.ipynb)
 
