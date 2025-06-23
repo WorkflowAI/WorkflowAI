@@ -693,5 +693,129 @@ async def create_api_key() -> LegacyMCPToolReturn:
     )
 
 
+@_mcp.tool()
+async def search_documentation(
+    query: str | None = Field(
+        default=None,
+        description="Search across all WorkflowAI documentation. Use this when you need to find specific information across multiple pages.",
+    ),
+    page: str | None = Field(
+        default=None,
+        description="Direct access to specific documentation page. Available pages are dynamically determined from the docsv2 directory structure.",
+    ),
+) -> LegacyMCPToolReturn:
+    """Search WorkflowAI documentation OR fetch a specific documentation page.
+
+     <when_to_use>
+     Enable MCP clients to explore WorkflowAI documentation without web access through a dual-mode search tool:
+     1. Search mode ('query' parameter): Search across all documentation to find relevant documentation sections. Use search mode when you need to find information but don't know which specific page contains it.
+     2. Direct navigation mode ('page' parameter): Fetch the complete content of a specific documentation page (see <available_pages> below for available pages). Use direct navigation mode when you want to read the full content of a specific page. Example: 'page': 'reference/authentication'
+    </when_to_use>
+
+     <available_pages>
+     The following documentation pages are available for direct access:
+
+     **Getting Started:**
+     - 'index.mdx' (Main documentation home)
+     - 'why-workflowai.mdx' (Why WorkflowAI overview)
+     - 'self-hosting.mdx' (Self-hosting guide)
+     - 'pricing.mdx' (Pricing information)
+     - 'organizations.mdx' (Organizations management)
+     - 'glossary.mdx' (Terms and definitions)
+     - 'ask-ai.mdx' (AI Assistant feature)
+     - 'changelog.mdx' (Product updates)
+     - 'compliance.mdx' (Security and compliance)
+
+     **Use Cases:**
+     - 'use-cases/agent.mdx' (Agent use cases)
+     - 'use-cases/chatbot.mdx' (Chatbot implementation)
+     - 'use-cases/classifier.mdx' (Classification tasks)
+     - 'use-cases/image-generation.mdx' (Image generation)
+     - 'use-cases/image-input.mdx' (Image input handling)
+     - 'use-cases/mcp.mdx' (Model Control Protocol)
+     - 'use-cases/pdf-input.mdx' (PDF processing)
+
+     **API Reference:**
+     - 'reference/api-errors.mdx' (Error codes and handling)
+     - 'reference/api-responses.mdx' (Response formats)
+     - 'reference/authentication.mdx' (Authentication methods)
+     - 'reference/prompt-templating.mdx' (Prompt engineering)
+     - 'reference/supported-models.mdx' (Available models)
+     - 'reference/supported-parameters.mdx' (API parameters)
+
+     **Quickstarts:**
+     - 'quickstarts/index.mdx' (Quickstart overview)
+     - 'quickstarts/instructor-python.mdx' (Instructor Python integration)
+     - 'quickstarts/no-code.mdx' (No-code solutions)
+     - 'quickstarts/openai-agents.mdx' (OpenAI Agents integration)
+     - 'quickstarts/openai-javascript-typescript.mdx' (OpenAI JS/TS SDK)
+     - 'quickstarts/openai-python.mdx' (OpenAI Python SDK)
+     - 'quickstarts/pydanticai.mdx' (PydanticAI integration)
+     - 'quickstarts/vercelai.mdx' (Vercel AI SDK)
+
+     **Playground:**
+     - 'playground/index.mdx' (Playground overview)
+     - 'playground/additional-features.mdx' (Advanced features)
+     - 'playground/ai-assistant.mdx' (AI Assistant in playground)
+     - 'playground/compare-models.mdx' (Model comparison)
+     - 'playground/data-generation.mdx' (Data generation tools)
+     - 'playground/diff-mode.mdx' (Diff mode feature)
+     - 'playground/price-and-latency.mdx' (Performance metrics)
+     - 'playground/sharing-playgrounds.mdx' (Sharing functionality)
+     - 'playground/versioning.mdx' (Version management)
+
+     **Observability:**
+     - 'observability/index.mdx' (Observability overview)
+     - 'observability/conversations.mdx' (Conversation tracking)
+     - 'observability/costs.mdx' (Cost monitoring)
+     - 'observability/insights.mdx' (Analytics insights)
+     - 'observability/reports.mdx' (Reporting features)
+     - 'observability/runs.mdx' (Run monitoring)
+     - 'observability/search.mdx' (Search functionality)
+     - 'observability/versions.mdx' (Version tracking)
+
+     **Inference:**
+     - 'inference/index.mdx' (Inference overview)
+     - 'inference/caching.mdx' (Caching strategies)
+     - 'inference/cost.mdx' (Cost optimization)
+     - 'inference/models.mdx' (Model selection)
+     - 'inference/reasoning.mdx' (Reasoning capabilities)
+     - 'inference/reliability.mdx' (Reliability features)
+     - 'inference/streaming.mdx' (Streaming responses)
+     - 'inference/structured-outputs.mdx' (Structured data)
+
+     **Deployments:**
+     - 'deployments/index.mdx' (Deployment guide)
+
+     **Evaluations:**
+     - 'evaluations/index.mdx' (Evaluation overview)
+     - 'evaluations/benchmarks.mdx' (Benchmarking)
+     - 'evaluations/reviews.mdx' (Review system)
+     - 'evaluations/side-by-side.mdx' (Comparison tools)
+     - 'evaluations/user-feedback.mdx' (Feedback collection)
+
+     **Agents:**
+     - 'agents/index.mdx' (Agents overview)
+     - 'agents/mcp.mdx' (Model Control Protocol for agents)
+     - 'agents/memory.mdx' (Agent memory systems)
+     - 'agents/tools.mdx' (Agent tooling)
+
+     **AI Engineer:**
+     - 'ai-engineer/index.mdx' (AI Engineer assistant)
+
+     **Components:**
+     - 'components/index.mdx' (UI components)
+     </available_pages>
+
+     <returns>
+     - If using query: Returns a list of SearchResult objects with relevant documentation sections and source page references
+     - If using page: Returns the complete content of the specified documentation page as a string
+     - Error message if both or neither parameters are provided, or if the requested page is not found
+     </returns>"""
+
+    service = await get_mcp_service()
+    return await service.search_documentation(query=query, page=page)
+
+
 def mcp_http_app():
     return _mcp.http_app(path="/")

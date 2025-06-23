@@ -27,6 +27,13 @@ ModelSortField: TypeAlias = Literal["release_date", "quality_index", "cost"]
 SortOrder: TypeAlias = Literal["asc", "desc"]
 
 
+class SearchResult(BaseModel):
+    """A search result containing a content snippet and source page reference"""
+
+    content_snippet: str = Field(description="A snippet of the content that matches the search query")
+    source_page: str = Field(description="The page/file path where this content was found")
+
+
 class UsefulLinks(BaseModel):
     class Link(BaseModel):
         title: str

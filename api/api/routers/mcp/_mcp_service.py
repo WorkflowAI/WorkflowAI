@@ -20,6 +20,7 @@ from api.routers.mcp._mcp_models import (
 from api.routers.mcp._utils.agent_sorting import sort_agents
 from api.routers.mcp._utils.model_sorting import sort_models
 from api.services import tasks
+from api.services.documentation_service import DocumentationService
 from api.services.internal_tasks.ai_engineer_service import AIEngineerChatMessage, AIEngineerReponse, AIEngineerService
 from api.services.models import ModelsService
 from api.services.runs.runs_service import RunsService
@@ -627,6 +628,103 @@ class MCPService:
             return LegacyMCPToolReturn(
                 success=False,
                 error=f"Failed to deploy version: {str(e)}",
+            )
+
+    async def search_documentation(
+        self,
+        query: str | None = None,
+        page: str | None = None,
+    ) -> LegacyMCPToolReturn:
+        """Search WorkflowAI documentation OR fetch a specific documentation page.
+
+        Args:
+            query: Search across all documentation to find relevant content snippets
+            page: Direct access to specific documentation page
+
+        Returns:
+            LegacyMCPToolReturn with either search results or page content
+        """
+        if query and page:
+            return LegacyMCPToolReturn(
+                success=False,
+                error="Use either 'query' OR 'page' parameter, not both",
+            )
+
+        if not query and not page:
+            return LegacyMCPToolReturn(
+                success=False,
+                error="Provide either 'query' or 'page' parameter",
+            )
+
+        if query:
+            return await self._search_documentation_by_query(query)
+
+        if page:
+            return await self._get_documentation_page(page)
+
+        # This should never be reached due to the parameter validation above
+        return LegacyMCPToolReturn(
+            success=False,
+            error="Invalid parameters provided",
+        )
+
+    async def _search_documentation_by_query(self, query: str) -> LegacyMCPToolReturn:
+        """Search documentation using query and return snippets."""
+        try:
+            documentation_service = DocumentationService()
+            relevant_sections = await documentation_service.get_relevant_doc_sections(
+                chat_messages=[],  # Empty chat messages for now
+                agent_instructions=query,  # Use query as agent instructions for relevance picking
+            )
+
+            # Convert to SearchResult format with content snippets
+            search_results: list[dict[str, str]] = [
+                {
+                    "content_snippet": section.content,
+                    "source_page": section.title.replace("content/docs/", ""),
+                }
+                for section in relevant_sections
+            ]
+
+            return LegacyMCPToolReturn(
+                success=True,
+                data={"search_results": search_results},
+            )
+
+        except Exception as e:
+            return LegacyMCPToolReturn(
+                success=False,
+                error=f"Search failed: {str(e)}",
+            )
+
+    async def _get_documentation_page(self, page: str) -> LegacyMCPToolReturn:
+        """Get specific documentation page content."""
+        try:
+            documentation_service = DocumentationService()
+
+            sections = documentation_service.get_documentation_by_path([f"content/docs/{page}"])
+
+            # Find the requested page
+            if sections:
+                return LegacyMCPToolReturn(
+                    success=True,
+                    data={"page_content": sections[0].content},
+                    messages=[f"Retrieved content for page: {page}"],
+                )
+
+            # Page not found - list available pages for user reference
+            all_sections = documentation_service.get_all_doc_sections()
+            available_pages = [section.title for section in all_sections]
+
+            return LegacyMCPToolReturn(
+                success=False,
+                error=f"Page '{page}' not found. Available pages: {','.join(available_pages)}",
+            )
+
+        except Exception as e:
+            return LegacyMCPToolReturn(
+                success=False,
+                error=f"Failed to retrieve page: {str(e)}",
             )
 
     async def _map_runs(self, task_tuple: tuple[str, int], runs: list[AgentRun]) -> list[MCPRun]:
