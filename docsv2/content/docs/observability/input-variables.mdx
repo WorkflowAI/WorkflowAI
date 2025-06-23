@@ -18,9 +18,9 @@ Input variables allow you to separate static agent instructions from dynamic dat
 - **Deployment Support**: Required for [deployments](/deployments) to be able to edit prompts without a code change.
 </Callout>
 
-## Basic Usage
+## Basic usage
 
-### Providing Input Variables
+### Providing input variables
 
 Input variables are provided via the `extra_body` parameter in your completion request:
 
@@ -80,7 +80,7 @@ curl -X POST https://run.workflowai.com/v1/chat/completions \
 </Tab>
 </Tabs>
 
-### Template Syntax
+### Template syntax
 
 WorkflowAI uses **Jinja2** templating with these key patterns:
 
@@ -175,9 +175,9 @@ extra_body = {
 </Tab>
 </Tabs>
 
-## Observability Benefits
+## Observability benefits
 
-### Viewing Variables in Run Details
+### Viewing variables in run details
 
 When you use input variables, WorkflowAI automatically separates them in the run view:
 
@@ -198,7 +198,7 @@ This separation makes it much easier to:
 - Understand what changed between runs
 - Test different variable values while keeping instructions constant
 
-### Searching by Variables
+### Searching by variables
 
 You can search for runs using input variable values:
 
@@ -213,14 +213,14 @@ You can search for runs using input variable values:
 </Callout>
 
 <Callout type="info">
-Learn more about advanced run searching in the [Search documentation](/observability/runs#search-runs).
+Learn more about advanced run searching, including using the MCP tool and API, in the [Search documentation](/observability/runs#search-runs).
 </Callout>
 
-## Error Handling and Debugging
+## Error handling and debugging
 
-### Common Template Errors
+### Common template errors
 
-<Tabs items={['Missing Variable', 'Syntax Error', 'Nonexistent Properties']}>
+<Tabs items={['Missing Variable', 'Syntax Error']}>
 <Tab value="Missing Variable">
 **Error message:**
 ```
@@ -248,25 +248,5 @@ Template syntax error: unexpected character '{' at line 1
 **Common causes:**
 - Single braces instead of double: `{variable}` → `{{variable}}`
 - Unmatched braces: `{{variable}` → `{{variable}}`
-
-</Tab>
-<Tab value="Nonexistent Properties">
-**Error message:**
-```
-Template error: 'dict object' has no attribute 'invalid_property'
-```
-
-**Solution:** Use conditional checks or default values:
-
-```python
-# ❌ May fail if property doesn't exist
-"content": "User email: {{user.email}}"
-
-# ✅ Safe with default
-"content": "User email: {{user.email|default('Not provided')}}"
-
-# ✅ Safe with conditional
-"content": "{% if user.email %}User email: {{user.email}}{% endif %}"
-```
 </Tab>
 </Tabs>

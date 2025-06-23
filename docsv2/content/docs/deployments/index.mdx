@@ -35,7 +35,7 @@ Teams typically use deployments when they want:
 
 Let's walk through two common scenarios for setting up deployments.
 
-### Scenario 1: Data Extraction Agent (with input variables)
+### Scenario 1: Data extraction agent (with input variables)
 
 This example shows an agent that extracts event details from emails using input variables.
 
@@ -94,7 +94,13 @@ completion = client.beta.chat.completions.parse(
 )
 ```
 
-**Why input variables?** Input variables help WorkflowAI understand which parts of your prompt are dynamic (change with each request) versus static (part of the prompt template). This separation allows prompt engineers to modify the static template without affecting the dynamic data your code provides.
+<Callout type="info">
+**Why input variables?**
+
+Input variables help WorkflowAI understand which parts of your prompt are dynamic (change with each request) versus static (part of the prompt template). This separation allows anyone to modify the static template without affecting the dynamic data your code provides.
+
+Learn more about input variables, including template syntax and examples, in the [Input Variables documentation](/observability/input-variables).
+</Callout>
 
 #### Step 3: Deploy the version and update code
 
@@ -117,7 +123,7 @@ completion = client.beta.chat.completions.parse(
 )
 ```
 
-### Scenario 2: Chatbot Agent (no input variables needed)
+### Scenario 2: Chatbot agent (no input variables needed)
 
 This example shows a chatbot where all instructions are stored as the system message in WorkflowAI.
 
