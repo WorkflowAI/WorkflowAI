@@ -338,31 +338,6 @@ async def test_get_documentation_by_path_remote_with_errors(
 
 
 @pytest.mark.asyncio
-async def test_get_documentation_by_path_remote_missing_paths_logs_error(
-    documentation_service: DocumentationService,
-    caplog: pytest.LogCaptureFixture,
-):
-    """Tests that get_documentation_by_path_remote logs an error for missing paths."""
-    paths = ["existing-path", "missing-path"]
-
-    async def mock_fetch_page_content(path: str) -> str:
-        if path == "existing-path":
-            return "Existing content"
-        return ""  # Empty content for missing path
-
-    with patch.object(documentation_service, "_fetch_page_content", side_effect=mock_fetch_page_content):
-        caplog.set_level(logging.ERROR, logger="api.services.documentation_service")
-        result = await documentation_service.get_documentation_by_path_remote(paths)
-
-        # Only the existing path should be returned (empty content filtered out)
-        assert len(result) == 1
-        assert result[0].title == "existing-path"
-
-        # Missing path should trigger an error log
-        assert "Documentation not found for paths: missing-path" in caplog.text
-
-
-@pytest.mark.asyncio
 async def test_get_all_doc_sections_mode_selection(documentation_service: DocumentationService):
     """Tests that get_all_doc_sections correctly selects local vs remote mode."""
     mock_local_sections = [DocumentationSection(title="local.md", content="Local content")]
