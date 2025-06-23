@@ -110,6 +110,7 @@ export function ApiContent(props: ApiContentProps) {
                 setIntegrationId={setSelectedIntegrationId}
                 className='border-gray-300 text-[12px] py-[3px]'
                 entryClassName='text-[12px]'
+                showOnlyOpenAISdk={true}
               />
             </ApiContentSectionItem>
           ) : (

@@ -17,6 +17,13 @@ function searchValueForIntegration(integration: Integration | undefined) {
   return `${integration.display_name} ${integration.id} ${integration.programming_language}`.toLowerCase();
 }
 
+function isOpenAISdkIntegration(integration: Integration): boolean {
+  const displayName = integration.display_name.toLowerCase();
+
+  // Check if it's an OpenAI SDK integration by display name
+  return displayName.includes('openai sdk');
+}
+
 type IntegrationComboboxEntryProps = {
   integration: Integration | undefined;
   trigger: boolean;
@@ -68,10 +75,11 @@ type IntegrationComboboxProps = {
   setIntegrationId: (integrationId: string | undefined) => void;
   className?: string;
   entryClassName?: string;
+  showOnlyOpenAISdk?: boolean;
 };
 
 export function IntegrationCombobox(props: IntegrationComboboxProps) {
-  const { integrations, integrationId, setIntegrationId, className, entryClassName } = props;
+  const { integrations, integrationId, setIntegrationId, className, entryClassName, showOnlyOpenAISdk = false } = props;
   const [search, setSearch] = useState('');
 
   const integration = useMemo(() => {
@@ -82,11 +90,20 @@ export function IntegrationCombobox(props: IntegrationComboboxProps) {
     if (!integrations) {
       return [];
     }
-    return integrations.filter((integration) => {
+
+    let availableIntegrations = integrations;
+
+    // Filter to only OpenAI SDK integrations if required
+    if (showOnlyOpenAISdk) {
+      availableIntegrations = integrations.filter(isOpenAISdkIntegration);
+    }
+
+    // Apply search filter
+    return availableIntegrations.filter((integration) => {
       const text = searchValueForIntegration(integration);
       return text ? text.includes(search.toLowerCase()) : false;
     });
-  }, [integrations, search]);
+  }, [integrations, search, showOnlyOpenAISdk]);
 
   const [open, setOpen] = useState(false);
 
@@ -143,7 +160,7 @@ export function IntegrationCombobox(props: IntegrationComboboxProps) {
           <CustomCommandInput placeholder={'Search...'} search={search} onSearchChange={setSearch} />
           {filteredIntegrations.length === 0 && (
             <div className='flex w-full h-[80px] items-center justify-center text-gray-500 text-[13px] font-medium mt-1'>
-              No integrations found
+              {showOnlyOpenAISdk ? 'No OpenAI SDK integrations found' : 'No integrations found'}
             </div>
           )}
           <ScrollArea>
