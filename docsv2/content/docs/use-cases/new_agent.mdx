@@ -1,0 +1,424 @@
+---
+title: Building a new agent with WorkflowAI
+---
+
+**IMPORTANT: The following is a guide with recommended steps and general guidelines for building the first pass of an agent. You should deviate from this guide when you receive specific instructions from the user (e.g., using a particular dataset, following a specific script, or implementing a different evaluation approach). Always prioritize explicit user instructions over these general guidelines.**
+
+## Framework Overview
+
+This guide provides a systematic framework for creating the initial version of an agent. As an AI engineer, your success depends on understanding the user's requirements, constraints, and use case before diving into implementation. The goal is to establish:
+
+1. **Requirements and constraints analysis** - understanding the user's priorities and limitations
+2. **Agent type identification** - understanding what kind of agent you're building
+3. **Strategic model selection** - choosing models based on user-defined constraints
+4. **Tool selection and configuration** - identifying and setting up the right tools for agent functionality
+5. **A working prompt** that achieves the desired functionality for your agent type
+6. **Evaluation approach** aligned with the user's success criteria
+
+### Understanding User Constraints and Requirements
+
+**Before starting development, you must understand the user's constraints and priorities.** Different use cases have dramatically different requirements:
+
+**Critical Questions to Ask:**
+
+1. **Volume and Scale**:
+
+   - Will this agent run a few times per day where accuracy is paramount?
+   - Or thousands/millions of times where cost efficiency is critical?
+
+2. **Performance Priorities** (rank in order of importance):
+
+   - **Accuracy**: How critical is perfect output quality?
+   - **Latency**: Are there real-time response requirements?
+   - **Cost**: What's the budget per run or monthly budget?
+
+3. **Quality vs. Efficiency Trade-offs**:
+
+   - Is it better to spend more for higher accuracy?
+   - Can you accept slightly lower quality for significant cost savings?
+   - Are there hard latency requirements (e.g., user-facing vs. batch processing)?
+
+4. **Specific Constraints**:
+   - Budget limitations (cost per run, monthly budget)
+   - Response time requirements (sub-second, few seconds, minutes)
+   - Accuracy thresholds (acceptable error rates)
+   - Model preferences or restrictions
+
+**The key is to ask these questions directly rather than making assumptions.** Each user's situation is unique, and their answers will guide your technical decisions about model selection, prompt complexity, and evaluation criteria.
+
+### Agent Types
+
+There are two main types of AI agents, each requiring different approaches:
+
+**1. Chat-based Agents**
+
+- Interactive, back-and-forth conversations with users
+- Multi-turn dialogue capability
+- Context maintenance across conversation
+- Examples: Customer support bots, advisory agents, tutoring systems
+- May use structured outputs when extracting information from conversations (user intent, entities, structured data)
+
+**2. One-off Processing Agents**
+
+- Single input/output operations
+- Information extraction, classification, transformation tasks
+- No conversation state needed
+- Examples: Document classifiers, data extractors, content moderators, translators
+- Often use structured outputs for precise data extraction
+
+**The agent type fundamentally affects your prompt design, evaluation approach, and whether you need structured outputs.**
+
+Note that **prompts and models are interconnected** - you may need to adjust prompts for specific models or try different model-prompt combinations. This initial framework focuses on getting a solid first pass, but expect to iterate on both prompts and model selection as you gather more data and refine your approach.
+
+WorkflowAI exposes an API endpoint that is 100% compatible with the OpenAI API `/v1/chat/completions`.
+
+So, in order to build a new agent, you can use the OpenAI SDK, for example:
+
+{/* TODO: give code samples for other languages than Python. */}
+{/* TODO: update URL to run.workflowai.com */}
+
+### Example: One-off Processing Agent
+
+```python
+import openai
+
+client = openai.OpenAI(
+    api_key="your_api_key", # you can use the `create_api_key` MCP tool to create an API key, or check if the API key is already available in the environment variables
+    base_url="https://run.workflowai.com/v1" # the base_url must be set to the WorkflowAI API endpoint
+)
+
+class Translation(BaseModel):
+    translation: str
+
+def run_processing_agent(model: str, text: str) -> tuple[str, str, float, float]:
+    """
+    Run the one-off processing agent (e.g., translation, classification).
+    Returns the response, cost (USD), and duration (seconds).
+    """
+    response = client.beta.chat.completions.parse( # use `client.beta.chat.completions.parse` when response_format is provided
+        model=model,
+        messages=[
+            {"role": "system", "content": "Translate the following text to French: {{text}}"}, # the text is passed as a variable as Jinja2 template
+        ],
+        response_format=Translation,
+        metadata={
+            "agent_id": "your_agent_id", # recommended to identify the agent in the logs, for example "translate_to_french"
+            "customer_id": "cust_42",  # optional metadata – later you can filter runs by this key in the WorkflowAI dashboard
+        },
+        extra_body={
+            "input": {
+                "text": text # passing the text as a variable improves the observability of the run
+            }
+        }
+    )
+
+    return (
+        response.id, # identify the run in the logs
+        response.choices[0].message.parsed.translation,
+        response.choices[0].cost_usd, # calculated by WorkflowAI
+        response.choices[0].duration_seconds # calculated by WorkflowAI
+    )
+```
+
+{/* TODO: add how to link a run to the web app: https://linear.app/workflowai/issue/WOR-5021/add-run-url-to-api-responses-and-mcp-tools-for-run-objects */}
+
+### Example: Chat-based Agent
+
+```python
+def run_chat_agent(model: str, conversation_history: list, user_message: str) -> tuple[str, str, float, float]:
+    """
+    Run the chat-based agent with conversation history.
+    Returns the response, cost (USD), and duration (seconds).
+    """
+    # Build messages with conversation history
+    messages = [
+        {"role": "system", "content": "You are a helpful customer support agent. Be friendly and professional."}
+    ]
+
+    # Add conversation history
+    messages.extend(conversation_history)
+
+    # Add current user message
+    messages.append({"role": "user", "content": user_message})
+
+    response = client.chat.completions.create(
+        model=model,
+        messages=messages,
+        metadata={
+            "agent_id": "customer_support_chat", # identify the chat agent
+        },
+        extra_body={
+            "input": {
+                "user_message": user_message,
+                "conversation_length": len(conversation_history)
+            }
+        }
+    )
+
+    return (
+        response.id,
+        response.choices[0].message.content,
+        response.choices[0].cost_usd,
+        response.choices[0].duration_seconds
+    )
+```
+
+## Steps
+
+### 1. Understand user requirements and constraints
+
+**Start by clarifying the user's priorities and constraints before any technical decisions:**
+
+Ask specific questions about:
+
+- **Expected volume**: Daily/monthly run count estimates
+- **Budget constraints**: Cost per run limits or total budget
+- **Performance requirements**: Latency needs, accuracy thresholds
+- **Business context**: Critical vs. nice-to-have functionality
+- **Quality standards**: What constitutes success/failure for this agent
+
+This understanding will guide every subsequent decision about model selection, prompt complexity, and evaluation approach.
+
+### 2. Identify the agent type and define the goal
+
+**Based on the user's requirements, determine what type of agent you're building:**
+
+- **Chat-based agent**: Multi-turn conversations, context maintenance, interactive dialogue
+- **One-off processing agent**: Single input/output, data processing, classification, extraction
+
+This choice will determine your prompt structure, whether you need structured outputs, and how you handle conversations.
+
+### 3. Write a prompt for the agent
+
+This is your initial prompt design based on your agent type:
+
+- **Chat-based agents**: Focus on conversational flow, context handling, and maintaining helpful dialogue
+- **One-off processing agents**: Focus on clear input/output expectations and specific task completion
+
+As you test with different models, you may discover that certain models perform better with slight prompt variations.
+
+### 4. Strategic model selection based on constraints
+
+**Choose models strategically based on the user's constraints, not arbitrary selection.**
+
+**Model Selection Process:**
+
+1. **Review the user's constraint priorities** from your earlier questions
+2. **Use the `list_models` tool** to see available options
+3. **Filter models based on the user's stated priorities:**
+
+   - If cost is the primary concern, focus on efficient models
+   - If accuracy is paramount, consider premium models
+   - If latency is critical, prioritize models with fast response times
+   - If balanced performance is needed, compare across different capability tiers
+
+4. **Select 2-3 models for comparison** that best align with their constraints
+
+The specific models you choose should be directly informed by the user's answers to your constraint questions, not predetermined assumptions about their use case.
+
+{/* TODO: Add section 5 on tool selection and usage. This section should cover:
+- How to identify what tools an agent needs based on its requirements
+- Tool selection criteria (reliability, cost, performance, integration complexity)
+- How to configure and integrate tools with the agent
+- Best practices for tool usage and error handling
+- Testing tools in the context of the agent workflow */}
+
+### 6. Generate test inputs aligned with user requirements
+
+**Ask the user about their testing priorities and create test cases accordingly:**
+
+- What types of inputs will be most common in their use case?
+- What edge cases or challenging scenarios are they most concerned about?
+- Are there specific failure modes they want to avoid?
+- What would represent a "successful" vs "failed" output for their use case?
+
+Based on their answers, start with 2-3 representative test cases that reflect their actual usage patterns and concerns.
+
+### 6. Compare models against user constraints
+
+**Evaluate models based on the user's stated priorities:**
+
+**Design your evaluation approach around the user's top priorities:**
+
+- If they prioritized cost: Calculate cost per 1000 runs for their expected volume, identify cost-quality trade-offs
+- If they prioritized accuracy: Use rigorous evaluation methods, test edge cases and failure modes
+- If they prioritized latency: Measure P90/P95 latency, test under realistic load conditions
+
+**Key evaluation questions to answer:**
+
+- Does this model meet their stated performance thresholds?
+- What are the trade-offs between their top priorities?
+- Which model provides the best value given their specific constraints?
+
+Compare models (accuracy, latency, cost) by running the agent with each model, focusing on the metrics that matter most to the user.
+
+#### Accuracy: use a LLM as a judge to compare the best models
+
+{/* Read: https://cookbook.openai.com/examples/enhance_your_prompts_with_meta_prompting?utm_source=chatgpt.com */}
+
+Depending on the agent type and requirements, define evaluation criteria and write a prompt for an LLM to judge the best models.
+
+**For One-off Processing Agents**: Use structured outputs to get precise scores and classifications.
+**For Chat-based Agents**: Focus on conversational quality, helpfulness, and context maintenance - structured outputs are useful when extracting information from the chat (e.g., user intent, entities, structured data).
+
+### Example: Structured Evaluation for One-off Processing Agent
+
+```python
+evaluation_prompt = """
+You are an expert editor tasked with evaluating the quality of a news article summary. Below is the original article and the summary to be evaluated:
+
+**Original Article**:
+{{original_article}}
+
+**Summary**: {{summary}}
+
+Please evaluate the summary based on the following criteria, using a scale of 1 to 5 (1 being the lowest and 5 being the highest). Be critical in your evaluation and only give high scores for exceptional summaries:
+
+1. **Categorization and Context**: Does the summary clearly identify the type or category of news (e.g., Politics, Technology, Sports) and provide appropriate context?
+2. **Keyword and Tag Extraction**: Does the summary include relevant keywords or tags that accurately capture the main topics and themes of the article?
+3. **Sentiment Analysis**: Does the summary accurately identify the overall sentiment of the article and provide a clear, well-supported explanation for this sentiment?
+4. **Clarity and Structure**: Is the summary clear, well-organized, and structured in a way that makes it easy to understand the main points?
+5. **Detail and Completeness**: Does the summary provide a detailed account that includes all necessary components (type of news, tags, sentiment) comprehensively?
+
+
+Provide your scores and justifications for each criterion, ensuring a rigorous and detailed evaluation.
+"""
+
+class ScoreCard(BaseModel):
+    justification: str
+    categorization: int
+    keyword_extraction: int
+    sentiment_analysis: int
+    clarity_structure: int
+    detail_completeness: int
+
+def evaluate_model(model: str, original_article: str, summary: str, evaluated_run_id: str) -> ScoreCard:
+    """
+    Evaluate the model's performance using the evaluation prompt.
+    """
+    response = client.beta.chat.completions.parse(
+        model=model,
+        messages=[
+            {"role": "system", "content": evaluation_prompt},
+        ],
+        response_format=ScoreCard,
+        metadata={
+            "agent_id": "your_agent_id:judge", # recommended to identify the agent in the logs
+            "evaluated_run_id": evaluated_run_id, # identify the evaluated run
+        },
+        extra_body={
+            "input": {
+                "original_article": original_article, # passing variables improves observability
+                "summary": summary
+            }
+        }
+    )
+
+    return response.choices[0].message.parsed
+```
+
+### Example: Chat-based Agent Evaluation
+
+```python
+chat_evaluation_prompt = """
+You are evaluating a customer support chat interaction. Below is the conversation history and the agent's latest response:
+
+**Conversation Context**: {{conversation_context}}
+**Agent Response**: {{agent_response}}
+
+Please evaluate the agent's response on a scale of 1-5 for each criterion:
+
+1. **Helpfulness**: Does the response address the user's question or concern effectively?
+2. **Professionalism**: Is the tone appropriate and professional?
+3. **Context Awareness**: Does the response show understanding of the conversation history?
+4. **Clarity**: Is the response clear and easy to understand?
+
+Provide a brief justification for each score.
+"""
+
+def evaluate_chat_agent(model: str, conversation_context: str, agent_response: str, evaluated_run_id: str) -> str:
+    """
+    Evaluate the chat agent's performance - using simple text response for conversational evaluation.
+    """
+    response = client.chat.completions.create(
+        model=model,
+        messages=[
+            {"role": "system", "content": chat_evaluation_prompt},
+        ],
+        metadata={
+            "agent_id": "your_agent_id:chat_judge",
+            "evaluated_run_id": evaluated_run_id,
+        },
+        extra_body={
+            "input": {
+                "conversation_context": conversation_context,
+                "agent_response": agent_response
+            }
+        }
+    )
+
+    return response.choices[0].message.content
+```
+
+The model used in the LLM evaluation should be "gpt-4o-mini-latest". {/* TODO: update the model used in LLM evals */}
+
+## Generate a report with constraint-based recommendations
+
+Based on the results, generate a report that **addresses the user's specific constraints and priorities**.
+
+**Structure your recommendations around the user's stated priorities:**
+
+1. **Primary recommendation**: The model that best fits the user's main constraint (cost, accuracy, or latency)
+2. **Alternative options**: Trade-off analysis for different scenarios
+3. **Volume-based projections**: Cost calculations for the user's expected volume
+4. **Performance benchmarks**: Metrics that matter most to their use case
+
+**Tailor your recommendations to their specific situation:**
+
+- Reference the exact constraints and priorities they shared with you
+- Use their actual volume estimates and budget numbers in your calculations
+- Address their specific accuracy thresholds or latency requirements
+- Explain trade-offs in the context of their business needs
+
+Costs should be displayed in USD, per 1000 runs and projected for the user's expected volume.
+Average latency and P90 latency should be displayed in seconds.
+
+When useful for the user reading the report, add a section comparing the different models side-by-side, with one row per input.
+
+Save the report in a markdown file.
+
+## Next Steps: Production Data Feedback Loop
+
+Once your agent is deployed and running, WorkflowAI automatically logs all runs, including:
+
+- Input data and outputs
+- Model performance metrics (cost, latency)
+- Success/failure rates
+
+**Note**: User feedback is not automatically logged and needs to be implemented as part of your agent design. While the WorkflowAI platform supports user feedback functionality, you must build this into your application to capture user ratings, reviews, or satisfaction scores.
+
+This automatic logging (plus any user feedback you implement) enables a powerful **second phase of optimization**:
+
+1. **Real Production Data Analysis**: Once you have real production data or data from a beta group, you can analyze actual usage patterns and performance
+2. **Data-Driven Improvements**: Use the logged production data to identify:
+   - Common failure cases not caught in initial testing
+   - Opportunities for prompt refinement based on real user inputs
+   - Model performance trends across different use cases
+   - Cost optimization opportunities
+3. **Continuous Iteration**: Establish a feedback loop where production insights inform prompt updates, model selection changes, and expanded test datasets
+
+This production data feedback loop is often more valuable than initial testing because it's based on real user behavior and edge cases you might not have anticipated during the initial development phase.
+
+## Files organization
+
+- Keep the different agents in different files.
+- Separate the code for the agent that is being built from the code for the tests and evaluations.
+
+### Why metadata matters
+
+Metadata you pass via the `metadata=` argument is stored with every run and searchable. Adding meaningful keys lets you:
+
+1. **Group runs by agent** – adding an `agent_id` groups related runs together in the UI (strongly recommended for clarity, but not technically required).
+2. **Slice & search logs** – custom keys such as `customer_id`, `order_id`, or `lead_id` make it trivial to find exactly the runs you care about when debugging.
+
+Keep the set of keys small and consistent; treat them as tags that help you (and your future self) navigate production data.
