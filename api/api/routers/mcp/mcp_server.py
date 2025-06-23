@@ -140,7 +140,7 @@ async def get_task_tuple_from_task_id(storage: BackendStorage, agent_id: str) ->
 
 
 @_mcp.tool()
-async def list_available_models(
+async def list_models(
     agent_id: Annotated[
         str | None,
         Field(
@@ -183,7 +183,7 @@ async def list_available_models(
     Returns a list of all available AI models from WorkflowAI.
     </returns>"""
     service = await get_mcp_service()
-    return await service.list_available_models(
+    return await service.list_models(
         page=page,
         agent_id=agent_id,
         agent_schema_id=agent_schema_id,

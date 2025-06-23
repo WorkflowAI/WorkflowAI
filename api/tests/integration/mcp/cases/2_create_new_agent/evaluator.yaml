@@ -1,5 +1,5 @@
 required_tools:
-  - name: list_available_models
+  - name: list_models
 assertions:
   code:
     - a route was added with an agent using the openai sdk
