@@ -1,5 +1,6 @@
 ---
 title: Memory
+summary: "Simplify chatbot development with managed conversation history. Learn how to use the `reply_to_run_id` parameter to effortlessly maintain context in multi-turn conversations."
 description: ...
 ---
 
@@ -62,7 +63,7 @@ You can combine the Deployments feature with the stateful conversation feature (
 
 Make an API call specifying:
 
-1.  The target deployment in the `model` parameter: `model="<agent-name>/#<schema_id>/<deployment-id>"`
+1.  The target deployment in the `model` parameter: `model="<agent-name>/#<schema_id>/<deployment-id>`"
 2.  The previous run ID in the `extra_body`: `extra_body={"reply_to_run_id": "chatcmpl-xxxx"}`
 3.  Typically, only the *new* user message(s) in the `messages` array.
 
