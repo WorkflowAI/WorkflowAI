@@ -71,7 +71,6 @@ class TestDeleteAPIKey:
         """
         # Setup non-anonymous organization
         mock_user_org_dep.return_value.org_id = "org_123"
-        mock_user_org_dep.return_value.is_anonymous = False
 
         # Mock API key authentication (user will be None)
         mock_user_dep.return_value = None
@@ -96,7 +95,6 @@ class TestDeleteAPIKey:
         """Test that users with empty user_id are still unauthorized."""
         # Setup non-anonymous organization
         mock_user_org_dep.return_value.org_id = "org_123"
-        mock_user_org_dep.return_value.is_anonymous = False
 
         # Mock user with empty user_id (invalid user)
         mock_user_dep.return_value = Mock(user_id="")
@@ -119,7 +117,6 @@ class TestDeleteAPIKey:
         """Test deleting a non-existent API key."""
         # Setup non-anonymous organization
         mock_user_org_dep.return_value.org_id = "org_123"
-        mock_user_org_dep.return_value.is_anonymous = False
 
         # Mock user authentication
         mock_user_dep.return_value = Mock(user_id="user123")
@@ -143,7 +140,6 @@ class TestDeleteAPIKey:
         """Test successful deletion with user authentication."""
         # Setup non-anonymous organization
         mock_user_org_dep.return_value.org_id = "org_123"
-        mock_user_org_dep.return_value.is_anonymous = False
 
         # Mock user authentication
         mock_user_dep.return_value = Mock(user_id="user123")
