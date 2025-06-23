@@ -43,3 +43,36 @@ If you're truly hitting context limits:
 1. **Switch to a larger context model** (use MCP tools or /v1/models to identify the best option)
 2. **Batch processing for large datasets** - process data in smaller chunks
 3. **Optimize output format** - reduce verbosity in structured outputs
+
+## Using metadata for debugging
+
+When debugging production issues, you often know there's an issue affecting a specific user or customer, but don't know which exact runs caused the problem. The solution is to add metadata that matches how you receive bug reports.
+
+**Add metadata fields that correspond to how users report bugs to you.** For detailed information about metadata, see [Metadata in Runs](/docs/observability/runs#metadata).
+
+### Example: Adding metadata for debugging
+
+```python
+completion = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[...],
+    metadata={
+        "agent_id": "document_processor",
+        "user_id": "usr_12345",
+        "team_id": "team_acme_marketing",
+        "customer_email": "john@company.com",
+    }
+)
+```
+
+### Searching runs by metadata
+
+**Using MCP:**
+
+TODO: @pierre add example of how to search runs by metadata using MCP.
+
+**Using the API:**
+
+<Callout type="info">
+TODO: Document API endpoints for searching runs by metadata once [PR #437](https://github.com/WorkflowAI/WorkflowAI/pull/437) is merged, which adds `/v1/runs/search` endpoint for cross-agent run searches.
+</Callout>
