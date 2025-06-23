@@ -298,3 +298,199 @@ client.chat.completions.create(
     }]
 }
 ```
+
+### API Key Authentication
+```python
+{
+    "mcp_servers": [{
+        "type": "http",
+        "name": "database",
+        "url": "https://api.example.com/mcp",
+        "auth": {
+            "type": "api_key",
+            "header": "X-API-Key",
+            "value": "your-api-key"
+        }
+    }]
+}
+```
+
+## Advanced Features
+
+### Error Handling
+
+...
+
+## Combining with Existing Features
+
+### MCP + Caching
+
+**Important Consideration**: How should MCP tool calls interact with WorkflowAI's existing caching system? This behavior needs to be defined:
+
+- Should MCP tool calls disable caching (like current `tools` behavior)?
+- Should caching work with special considerations for MCP servers?
+- Should different MCP servers have different caching behaviors?
+
+*This is an open design question that requires further specification.*
+
+Current implementation assumption:
+```python
+# MCP tool calls respect WorkflowAI's caching behavior
+response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[{"role": "user", "content": "What's the latest on quantum computing?"}],
+    temperature=0,  # Enable caching
+    metadata={"agent_id": "research-assistant"},
+    extra_body={
+        "use_cache": "always",  # Force cache check
+        "mcp_servers": [{
+            "type": "sse",
+            "name": "arxiv",
+            "url": "https://mcp.arxiv.org/sse"
+        }]
+    }
+)
+```
+
+### MCP + Deployments + Conversations
+
+```python
+# Initial request with MCP server
+initial_response = client.chat.completions.create(
+    model="code-reviewer/#1/production",
+    messages=[{"role": "user", "content": "Review my latest commit"}],
+    extra_body={
+        "mcp_servers": [{
+            "type": "sse",
+            "name": "github",
+            "url": "https://mcp.github.com/sse",
+            "auth": {"type": "bearer", "token": "ghp-token"}
+        }]
+    }
+)
+
+# Follow-up using conversation state
+followup_response = client.chat.completions.create(
+    model="code-reviewer/#1/production", 
+    messages=[{"role": "user", "content": "Apply the suggested changes"}],
+    extra_body={
+        "reply_to_run_id": initial_response.id,
+        # MCP servers from initial request are automatically available
+    }
+)
+```
+
+## Security Considerations
+
+### Authentication Best Practices
+
+1. **Use Environment Variables**: Store sensitive tokens in environment variables, not in code
+2. **Scope Permissions**: Use tokens with minimal required permissions
+3. **Rotate Credentials**: Regularly rotate API keys and access tokens
+4. **Monitor Usage**: Track MCP server usage for unusual patterns
+
+### Safe Server Configuration
+
+```python
+# Good: Minimal permissions, specific scopes
+{
+    "type": "sse",
+    "name": "github",
+    "url": "https://mcp.github.com/sse", 
+    "auth": {
+        "type": "bearer",
+        "token": os.getenv("GITHUB_TOKEN")  # Read-only token with repo scope
+    }
+}
+```
+
+### Data Privacy
+
+- **User Consent**: Ensure users understand what data MCP servers can access
+- **Data Boundaries**: Configure MCP servers with appropriate scope limitations  
+- **Audit Logging**: Enable logging for MCP server interactions in production
+
+## Troubleshooting
+
+**TODO**: Comprehensive error handling and troubleshooting documentation will be added in a future release. This will include detailed error codes, common issues, and resolution strategies for MCP server integration.
+
+## API Reference
+
+### MCP Server Configuration Schema
+
+```python
+{
+    "mcp_servers": [
+        {
+            "type": "sse|http",           # Required: Server type
+            "name": "server-name",        # Required: Unique identifier
+            "url": "https://...",         # Required: Server URL
+            "headers": {...},             # Optional: HTTP headers
+            "auth": {...}                 # Optional: Authentication config
+        }
+    ]
+}
+```
+
+### Request Format Options
+
+**Option 1: Extended Tools Parameter**
+```python
+tools = [
+    # Traditional tools
+    {"type": "function", "function": {...}},
+    # MCP servers
+    {"type": "mcp_server", "mcp_server": MCPServerConfig}
+]
+```
+
+**Option 2: Separate MCP Servers Parameter**
+```python
+extra_body = {
+    "mcp_servers": [MCPServerConfig, ...],
+    "mcp_options": {
+        "parallel_execution": True,
+        "max_tools_per_server": 50,
+        "error_handling": "graceful"
+    }
+}
+```
+
+### Response Format
+
+MCP tool calls appear in the response like standard tool calls:
+
+```json
+{
+    "choices": [{
+        "message": {
+            "role": "assistant",
+            "content": null,
+            "tool_calls": [{
+                "id": "call_abc123",
+                "type": "function", 
+                "function": {
+                    "name": "search_papers",
+                    "arguments": "{\"query\": \"quantum computing\"}"
+                },
+                "mcp_server": "arxiv"  # Additional field indicating MCP server
+            }]
+        }
+    }],
+    "usage": {
+        "prompt_tokens": 100,
+        "completion_tokens": 50,
+        "total_tokens": 150,
+        "mcp_servers_used": ["arxiv", "database"]  # Additional field
+    }
+}
+```
+
+## Provider Documentation References
+
+For additional context and implementation details, refer to the official MCP documentation from other providers:
+
+- **OpenAI MCP Documentation**: [OpenAI Agents SDK - Model Context Protocol](https://openai.github.io/openai-agents-python/mcp/)
+- **Mistral MCP Documentation**: [Mistral AI - MCP Integration](https://docs.mistral.ai/agents/mcp/#how-to-use-a-remote-mcp-server-with-authentication)
+- **Anthropic MCP Documentation**: [Anthropic - MCP Connector](https://docs.anthropic.com/en/docs/agents-and-tools/mcp-connector)
+- **MCP Specification**: [Model Context Protocol Official Specification](https://modelcontextprotocol.io/specification/2025-03-26/index)
