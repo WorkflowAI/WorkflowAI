@@ -1,3 +1,4 @@
+import datetime
 from typing import Annotated, Any, Literal
 
 from fastmcp import FastMCP
@@ -7,6 +8,7 @@ from starlette.exceptions import HTTPException
 
 from api.dependencies.task_info import TaskTuple
 from api.routers.mcp._mcp_models import (
+    AgentListItem,
     AgentResponse,
     AgentSortField,
     AIEngineerReponseWithUsefulLinks,
@@ -195,24 +197,6 @@ async def list_available_models(
 
 @_mcp.tool()
 async def list_agents(
-    agent_id: Annotated[
-        str | None,
-        Field(
-            description="Filter on specific agent id. If omitted, all user's agents are returned. Example: 'agent_id': 'email-filtering-agent' in metadata, or 'email-filtering-agent' in 'model=email-filtering-agent/gpt-4o-latest'.",
-        ),
-    ] = None,
-    with_schemas: Annotated[
-        bool,
-        Field(
-            description="If true, the response will include the input and output schemas of the different schema ids of the agent. Useful to find on which schema id you are working on.",
-        ),
-    ] = False,
-    stats_from_date: Annotated[
-        str,
-        Field(
-            description="ISO date string to filter usage (runs and costs) stats from (e.g., '2024-01-01T00:00:00Z'). Defaults to 7 days ago if not provided.",
-        ),
-    ] = "",
     sort_by: Annotated[
         AgentSortField,
         Field(
@@ -229,21 +213,55 @@ async def list_agents(
         int,
         Field(description="The page number to return. Defaults to 1."),
     ] = 1,
-) -> PaginatedMCPToolReturn[None, AgentResponse]:
+) -> PaginatedMCPToolReturn[None, AgentListItem]:
     """<when_to_use>
-    When the user wants to see all agents they have created, along with their statistics (run counts and costs on the last 7 days).
+    When the user wants to see all agents they have created, along with their basic statistics (run counts and costs).
     </when_to_use>
     <returns>
-    Returns a list of all agents for the user along with their statistics (run counts and costs).
+    Returns a concise list of all agents with basic information:
+    - Agent ID and public status
+    - Basic schema information (schema_id, created_at, is_hidden, last_active_at)
+    - Run statistics (run count and total cost from last 7 days)
+    - No detailed schemas included for performance - use get_agent for full details
     </returns>"""
     service = await get_mcp_service()
     return await service.list_agents(
-        agent_id=agent_id,
-        stats_from_date=stats_from_date,
-        with_schemas=with_schemas,
         page=page,
         sort_by=sort_by,
         order=order,
+    )
+
+
+@_mcp.tool()
+async def get_agent(
+    agent_id: Annotated[
+        str,
+        Field(
+            description="The id of the user's agent. Example: 'agent_id': 'email-filtering-agent' in metadata, or 'email-filtering-agent' in 'model=email-filtering-agent/gpt-4o-latest'.",
+        ),
+    ],
+    stats_from_date: Annotated[
+        datetime.datetime | None,
+        Field(
+            description="ISO date string to filter usage (runs and costs) stats from (e.g., '2024-01-01T00:00:00Z'). Defaults to 7 days ago if not provided.",
+        ),
+    ] = None,
+) -> MCPToolReturn[AgentResponse]:
+    """<when_to_use>
+    When the user wants to get detailed information about a specific agent, including full input/output schemas, versions, name, description, and statistics.
+    </when_to_use>
+    <returns>
+    Returns detailed information for a specific agent including:
+    - Full input and output JSON schemas for each schema version
+    - Agent name and description
+    - Complete schema information (created_at, is_hidden, last_active_at)
+    - Run statistics (run count and total cost)
+    - Agent metadata (is_public status)
+    </returns>"""
+    service = await get_mcp_service()
+    return await service.get_agent(
+        agent_id=agent_id,
+        stats_from_date=stats_from_date,
     )
 
 

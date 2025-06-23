@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from api.routers.mcp._mcp_models import (
+    AgentListItem,
     AgentResponse,
     AgentSortField,
     AIEngineerReponseWithUsefulLinks,
@@ -38,7 +39,6 @@ from core.domain.users import UserIdentifier
 from core.domain.version_environment import VersionEnvironment
 from core.storage import ObjectNotFoundException
 from core.storage.backend_storage import BackendStorage
-from core.storage.task_run_storage import TaskRunStorage
 from core.utils.schemas import FieldType
 
 # Claude Code only support 25k tokens, for example.
@@ -341,80 +341,60 @@ class MCPService:
         page: int,
         sort_by: AgentSortField,
         order: SortOrder,
-        agent_id: str | None = None,
-        stats_from_date: str = "",
-        with_schemas: bool = False,
-    ) -> PaginatedMCPToolReturn[None, AgentResponse]:
+        stats_from_date: datetime | None = None,
+    ) -> PaginatedMCPToolReturn[None, AgentListItem]:
         """List all agents with their statistics."""
+
+        # Use default date (7 days ago)
+        parsed_from_date = stats_from_date or datetime.now() - timedelta(days=7)
+
+        # Get agents and their stats
+        agents = await tasks.list_tasks(self.storage, with_schemas=False)
+        stats_by_uid = {
+            stat.agent_uid: stat
+            async for stat in self.storage.task_runs.run_count_by_agent_uid(from_date=parsed_from_date)
+        }
+
+        agent_responses = [AgentListItem.from_domain(agent, stats_by_uid.get(agent.uid)) for agent in agents]
+
+        sort_agents(agent_responses, sort_by, order)
+
+        return PaginatedMCPToolReturn[None, AgentListItem](
+            success=True,
+            items=agent_responses,
+        ).paginate(max_tokens=MAX_TOOL_RETURN_TOKENS, page=page)
+
+    async def get_agent(
+        self,
+        agent_id: str,
+        stats_from_date: datetime | None,
+    ) -> MCPToolReturn[AgentResponse]:
+        """Get detailed information for a specific agent."""
+
+        parsed_from_date = stats_from_date or datetime.now() - timedelta(days=7)
+
         try:
-            # Parse from_date or use default
-            parsed_from_date = None
-            if stats_from_date:
-                try:
-                    parsed_from_date = datetime.fromisoformat(stats_from_date.replace("Z", "+00:00"))
-                except ValueError:
-                    pass
-
-            if not parsed_from_date:
-                parsed_from_date = datetime.now() - timedelta(days=7)
-
-            # Get agent stats
-            stats_by_uid: dict[int, TaskRunStorage.AgentRunCount] = {}
-            async for stat in self.storage.task_runs.run_count_by_agent_uid(parsed_from_date):
-                stats_by_uid[stat.agent_uid] = stat
-
-            if agent_id:
-                agents = [await tasks.get_task_by_id(self.storage, agent_id, with_schemas=with_schemas)]
-            else:
-                agents = await tasks.list_tasks(self.storage, with_schemas=with_schemas)
-
-            # Enrich agents with stats
-            agent_responses: list[AgentResponse] = []
-            for agent in agents:
-                # Get stats for this agent
-                if agent.uid and agent.uid in stats_by_uid:
-                    agent_stats: TaskRunStorage.AgentRunCount = stats_by_uid[agent.uid]
-                    run_count: int = agent_stats.run_count
-                    total_cost_usd: float = agent_stats.total_cost_usd
-                else:
-                    run_count: int = 0
-                    total_cost_usd: float = 0.0
-
-                # Build schemas from versions
-                schemas = [
-                    AgentResponse.AgentSchema(
-                        agent_schema_id=v.schema_id,
-                        created_at=v.created_at.isoformat() if v.created_at else None,
-                        input_json_schema=v.input_schema,
-                        output_json_schema=v.output_schema,
-                        is_hidden=v.is_hidden or False,
-                        last_active_at=v.last_active_at.isoformat() if v.last_active_at else None,
-                    )
-                    for v in agent.versions
-                ]
-
-                agent_response = AgentResponse(
-                    agent_id=agent.id,
-                    is_public=agent.is_public or False,
-                    schemas=schemas,
-                    run_count=run_count,
-                    total_cost_usd=total_cost_usd,
+            # Get single agent with detailed information
+            agent = await tasks.get_task_by_id(self.storage, agent_id, with_schemas=True)
+            stats = {
+                stat.agent_uid: stat
+                async for stat in self.storage.task_runs.run_count_by_agent_uid(
+                    from_date=parsed_from_date,
+                    agent_uids={agent.uid},
                 )
+            }
 
-                agent_responses.append(agent_response)
+            detailed_response = AgentResponse.from_domain(agent, stats.get(agent.uid))
 
-            sort_agents(agent_responses, sort_by, order)
-
-            return PaginatedMCPToolReturn[None, AgentResponse](
+            return MCPToolReturn[AgentResponse](
                 success=True,
-                items=agent_responses,
-            ).paginate(max_tokens=MAX_TOOL_RETURN_TOKENS, page=page)
+                data=detailed_response,
+            )
 
-        except Exception as e:
-            return PaginatedMCPToolReturn(
+        except ObjectNotFoundException:
+            return MCPToolReturn[AgentResponse](
                 success=False,
-                error=f"Failed to list agents with stats: {str(e)}",
-                data=None,
+                error=f"Agent {agent_id} not found",
             )
 
     async def get_agent_version(
