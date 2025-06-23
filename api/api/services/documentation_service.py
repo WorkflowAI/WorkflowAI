@@ -83,7 +83,7 @@ class DocumentationService:
                 page_contents = await asyncio.gather(*tasks)
 
                 for page_raw, page_content in zip(response.json()["pages"], page_contents):
-                    page_title = page_raw["title"]
+                    page_title = page_raw["url"].lstrip("/")
                     doc_sections.append(
                         DocumentationSection(title=page_title, content=page_content),
                     )

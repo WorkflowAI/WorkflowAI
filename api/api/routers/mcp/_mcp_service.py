@@ -712,7 +712,7 @@ class MCPService:
         try:
             documentation_service = DocumentationService()
 
-            sections = await documentation_service.get_documentation_by_path([f"content/{page}"])
+            sections = await documentation_service.get_documentation_by_path([page])
 
             # Find the requested page
             if sections:
