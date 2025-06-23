@@ -125,7 +125,7 @@ class DocumentationService:
                 )
                 return "Error fetching page content"
 
-    async def get_all_doc_sections(self, mode: DocModeEnum = "local") -> list[DocumentationSection]:
+    async def get_all_doc_sections(self, mode: DocModeEnum = "remote") -> list[DocumentationSection]:
         """Get all documentation sections based on the configured mode"""
         match mode:
             case "local":
@@ -176,7 +176,7 @@ class DocumentationService:
     async def get_documentation_by_path(
         self,
         paths: list[str],
-        mode: DocModeEnum = "local",
+        mode: DocModeEnum = "remote",
     ) -> list[DocumentationSection]:
         """Get documentation by path based on the configured mode"""
         match mode:
@@ -189,7 +189,7 @@ class DocumentationService:
         self,
         chat_messages: list[ChatMessage],
         agent_instructions: str,
-        mode: DocModeEnum = "local",
+        mode: DocModeEnum = "remote",
     ) -> list[DocumentationSection]:
         all_doc_sections: list[DocumentationSection] = await self.get_all_doc_sections(mode)
 

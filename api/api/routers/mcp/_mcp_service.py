@@ -676,7 +676,6 @@ class MCPService:
             relevant_sections = await documentation_service.get_relevant_doc_sections(
                 chat_messages=[ChatMessage(role="USER", content=query)],
                 agent_instructions="",
-                mode="remote",
             )
 
             # Convert to SearchResult format with content snippets

@@ -554,7 +554,6 @@ class AIEngineerService:
             workflowai_documentation_sections=await DocumentationService().get_relevant_doc_sections(
                 chat_messages=[message.to_chat_message() for message in messages],
                 agent_instructions="",
-                mode="remote",
             ),
             available_hosted_tools_description=internal_tools_description(
                 include={ToolKind.WEB_BROWSER_TEXT, ToolKind.WEB_SEARCH_PERPLEXITY_SONAR_PRO},

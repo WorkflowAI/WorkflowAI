@@ -149,7 +149,6 @@ class IntegrationService:
             relevant_documentation_sections = await doc_service.get_relevant_doc_sections(
                 chat_messages=[ChatMessage(role=message.role, content=message.content) for message in messages],
                 agent_instructions=INTEGRATION_AGENT_INSTRUCTIONS,
-                mode="remote",
             )
         except Exception as e:
             self._logger.exception("Error getting relevant documentation sections", exc_info=e)
@@ -470,7 +469,6 @@ well organized (by agent) on WorkflowAI (trust me, makes everything easier).
             version_messages=version_messages,
             integration_documentations=await DocumentationService().get_documentation_by_path(
                 integration.documentation_filepaths,
-                mode="remote",
             ),
             version_deployment_environment=version.deployments[0].environment if version.deployments else None,
             is_using_instruction_variables=agent.input_schema.json_schema.get("properties", None) is not None,
