@@ -138,7 +138,7 @@ async def ai_guides_engineer_agent(
     async for chunk in response:
         # Parse tool calls if present
         parsed_tool_call = ParsedToolCall()
-        if chunk.choices[0].delta.tool_calls:
+        if chunk.choices and chunk.choices[0].delta.tool_calls:
             tool_call = chunk.choices[0].delta.tool_calls[0]
             parsed_tool_call = parse_tool_call(tool_call)
 
