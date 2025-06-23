@@ -23,7 +23,7 @@ import { ComboboxModelEntry, formatAIModel, formatAIModels } from './entry/Combo
 import { AIModelComboboxOption, modelComparator } from './utils';
 
 type TriggerContentProps = {
-  value: string;
+  value: string | undefined;
   reasoning: string | undefined;
   selectedOption: AIModelComboboxOption | undefined;
   defaultLabel: string;
@@ -185,17 +185,15 @@ export function ProxyModelCombobox(props: ProxyModelComboboxProps) {
             fitToContent ? 'min-w-[75px] justify-between' : 'w-full justify-between'
           )}
         >
-          {value && (
-            <TriggerContent
-              value={value}
-              reasoning={reasoning}
-              onReasoningChange={onReasoningChange}
-              selectedOption={selectedOption}
-              defaultLabel={noOptionsMessage}
-              isProxy={isProxy}
-              taskId={taskId}
-            />
-          )}
+          <TriggerContent
+            value={value}
+            reasoning={reasoning}
+            onReasoningChange={onReasoningChange}
+            selectedOption={selectedOption}
+            defaultLabel={noOptionsMessage}
+            isProxy={isProxy}
+            taskId={taskId}
+          />
           <ChevronUpDownFilled className='h-4 w-4 shrink-0 text-gray-500 ml-2' />
         </div>
       </PopoverTrigger>
