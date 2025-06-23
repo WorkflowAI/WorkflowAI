@@ -181,6 +181,14 @@ class RunV1(_BaseRunV1):
 
     conversation_id: str | None
 
+    # TODO: add details field that contains part of the internal metadata
+    # see https://linear.app/workflowai/issue/WOR-5044/fetch-run-details-mcp-tool-missing-deployment-environment-information#comment-d84e92a4
+
+    # TODO: Reference to documentation page about metadata: [URL will change soon]
+    metadata: dict[str, Any] | None = Field(
+        description="User defined metadata passed to the completion request",
+    )
+
     @classmethod
     def from_domain_task_run(cls, run: AgentRun, feedback_token: str):
         return cls(
@@ -205,6 +213,7 @@ class RunV1(_BaseRunV1):
             ),
             feedback_token=feedback_token,
             conversation_id=run.conversation_id,
+            metadata=run.metadata,
         )
 
 
@@ -231,7 +240,7 @@ async def get_run(
     runs_service: RunsServiceDep,
     feedback_token_generator: RunFeedbackGeneratorDep,
 ) -> RunV1:
-    run = await runs_service.run_by_id(task_tuple, run_id)
+    run = await runs_service.run_by_id(task_tuple, run_id, exclude={"llm_completions"})
     return RunV1.from_domain_task_run(run, feedback_token_generator(run.id))
 
 
