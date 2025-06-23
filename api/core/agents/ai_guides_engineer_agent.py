@@ -41,7 +41,7 @@ def parse_tool_call(tool_call: Any) -> ParsedToolCall:
 
     if function_name == "search_documentation":
         return ParsedToolCall(
-            search_documentation_query=arguments["search_documentation_query"],
+            search_documentation_query=arguments.get("search_documentation_query"),
         )
 
     return ParsedToolCall()
