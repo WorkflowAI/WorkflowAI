@@ -745,7 +745,7 @@ class AIEngineerService:
         """Fetch the guides from the documentation service."""
 
         GUIDE_INJECTION_MAPPING = {
-            "{{building_new_agent_guide}}": "content/docs/agents/private/new_agent.md",
+            "{{building_new_agent_guide}}": "content/docs/use-cases/new_agent.mdx",
         }
 
         documentation_service = DocumentationService()
