@@ -78,4 +78,4 @@ When both are provided, WorkflowAI performs the following:
 
 **Important Interaction Note:** In this specific scenario (using both `reply_to_run_id` and a Deployment ID), the prompt template defined within the Deployment configuration is **not applied**. The message history fetched via `reply_to_run_id` provides the necessary context, and the Deployment ID primarily serves to select the correct model for the next turn in the conversation. Any `input` variables in `extra_body` will apply to templates within the *new* message(s) provided in the current call.
 
-**Benefit:** This allows you to maintain conversation state effortlessly using `reply_to_run_id` while ensuring that the appropriate, environment-specific model (managed via Deployments) is used for generating the next response.
+**Benefit:****Benefit:** This allows you to maintain conversation state effortlessly using `reply_to_run_id` while ensuring that the appropriate, environment-specific model (managed via Deployments) is used for generating the next response.
