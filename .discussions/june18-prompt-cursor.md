@@ -10,7 +10,7 @@ Write your process and interesting implement details in a new file in a .discuss
 
 Make sure the tests of files you're editing are passing. (and report back about the status of these tests in the .discussions/ file)
 
-Make sure to read the instructions from the AGENT.md file in the root of the folder.
+Make sure to read the instructions from the AGENTS.md file in the root of the folder, including running the required quality checks (ruff and pyright) before committing.
 
 Do not set python.languageServer to "None" in .vscode/settings.json
 
@@ -26,14 +26,5 @@ The .discussions/ file should have the following structure:
 # Potential next steps
 
 </file>
-
-<IMPORTANT>
-Before you commit, run the following commands on the files impacted by your changes and fix any issues:
-```bash
-poetry run ruff check <path-to-file>
-poetry run pyright <path-to-file>
-````
-
-</IMPORTANT>
 
 [branch=<BRANCH>]
