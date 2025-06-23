@@ -3,13 +3,8 @@
   "icon": "Play",
   "pages": [
     "index",
-    "compare-models",
-    "price-and-latency",
-    "sharing-playgrounds",
-    "ai-assistant",
-    "data-generation",
-    "versioning",
-    "diff-mode",
-    "additional-features"
+    "easy-iterating",
+    "version-comparison",
+    "collaboration-tools"
   ]
 }

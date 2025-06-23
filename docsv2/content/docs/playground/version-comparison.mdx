@@ -1,10 +1,21 @@
 ---
-title: Additional Features
-summary: Enhance your AI development with advanced playground features. Learn how to control model creativity with temperature settings and provide better guidance with field descriptions and examples.
-description: Discover more helpful playground features including temperature controls, field descriptions, examples, and other tools to enhance your AI development experience.
+title: Version Comparison Features
+summary: Compare models side-by-side, track performance metrics, visualize output differences, and manage prompt versions in the playground.
 ---
+
 import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
 
+## Versioning: Test freely without fear of losing your work
+
+TODO: clean up
+
+Track, compare, and manage different versions of your prompts to maintain a history of improvements and easily revert changes.
+
+Here are the parameters that comprise a version:
+
+### Prompt/System Message
+
+TODO add
 
 ### Temperature
 Temperature is a parameter that controls the randomness of the LLM's outputs. WorkflowAI provides three preset temperature settings:
@@ -61,6 +72,66 @@ Examples and Descriptions edits are made on the playground by:
 <div style={{ position: 'relative', paddingTop: '56.25%' }}>
   <iframe
     src="https://customer-turax1sz4f7wbpuv.cloudflarestream.com/b631d5bd71c86c9c2ae7e4f52f97de1f/iframe?autoplay=false&muted=false&controls=true"
+    style={{ 
+      border: 'none', 
+      position: 'absolute', 
+      top: 0, 
+      left: 0,
+      height: '100%', 
+      width: '100%' 
+    }}
+    allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
+    allowFullScreen={true}
+  ></iframe>
+</div>
+
+## Model Comparison: Compare [X] different models to find the best one for your use case. 
+
+TODO: clean up
+
+...
+- number of models [view supported models](/docs/reference/supported-models)
+- no setup required (no API key)
+
+The playground is WorkflowAI's tool to allow quick and easy iterating on prompts and models, so you can create the best version of your AI feature possible.
+
+![Playground](/images/playground/playground-fullscreen.png)
+
+
+
+## Price and Latency Comparison: See the price and latency for each model you try
+
+For each output, WorkflowAI also displays:
+- 💰 Cost: The total price in USD for generating this output
+- ⚡ Latency: How long it took to get a response from the model, in seconds
+- 📊 Context window usage: How much of the model's maximum token limit was used, shown as a percentage
+
+> WorkflowAI Cloud offers a price-match guarantee, meaning that you're not charged more than the price per token of the model you're using. Learn more about the price-match guarantee [here](https://workflowai.com/pricing).
+
+<div style={{ position: 'relative', paddingTop: '56.25%' }}>
+  <iframe
+    src="https://customer-turax1sz4f7wbpuv.cloudflarestream.com/045750fa2005dc315713368a503ebd29/iframe?autoplay=false&muted=false&controls=true"
+    style={{ 
+      border: 'none', 
+      position: 'absolute', 
+      top: 0, 
+      left: 0,
+      height: '100%', 
+      width: '100%' 
+    }}
+    allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
+    allowFullScreen={true}
+  ></iframe>
+</div>
+
+## Output Diff Mode: Unlock easy output comparison with diff mode
+
+Compare LLM outputs side-by-side with visual highlighting to easily spot differences between models and prompt variations.
+You can enable diff mode to highlight the differences between LLM outputs, making it easy to spot differences in how models handle your task. Diff mode can be especially helpful for text-heavy outputs, like texts summarizations or composition.
+
+<div style={{ position: 'relative', paddingTop: '56.25%' }}>
+  <iframe
+    src="https://customer-turax1sz4f7wbpuv.cloudflarestream.com/a4407bafc47b930a877f00ffe1f7644a/iframe?autoplay=false&muted=false&controls=true"
     style={{ 
       border: 'none', 
       position: 'absolute', 
