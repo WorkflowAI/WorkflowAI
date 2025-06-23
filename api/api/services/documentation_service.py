@@ -153,10 +153,9 @@ class DocumentationService:
         for path in paths:
             try:
                 content = await self._fetch_page_content(path)
-                if content:
-                    doc_sections.append(
-                        DocumentationSection(title=path, content=content),
-                    )
+                doc_sections.append(
+                    DocumentationSection(title=path, content=content),
+                )
             except Exception as e:
                 _logger.warning(
                     "Failed to fetch documentation by path",
