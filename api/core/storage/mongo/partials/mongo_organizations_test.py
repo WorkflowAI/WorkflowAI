@@ -841,7 +841,7 @@ class TestDeleteAPIKeyForOrganization:
         keys = await organization_storage.get_api_keys_for_organization()
         assert not any(key.id == doc.id for key in keys)
 
-    async def test_create_api_key_after_deleting_last_key(
+    async def test_delete_last_api_key_duplicate(
         self,
         organization_storage: MongoOrganizationStorage,
         org_col: AsyncCollection,
