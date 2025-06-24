@@ -296,7 +296,7 @@ class TestMCPRunFromDomain:
 
         output_schema = {"type": "object", "properties": {"result": {"type": "string"}}}
 
-        result = MCPRun.from_domain(agent_run, version_group, output_schema)
+        result = MCPRun.from_domain(agent_run, version_group, output_schema, "")
 
         assert result.id == "run-123"
         assert result.conversation_id == "conv-456"
@@ -329,7 +329,7 @@ class TestMCPRunFromDomain:
             status="success",
         )
 
-        result = MCPRun.from_domain(agent_run, None, None)
+        result = MCPRun.from_domain(agent_run, None, None, "")
 
         assert result.id == "run-456"
         assert result.status == "success"
@@ -358,7 +358,7 @@ class TestMCPRunFromDomain:
             error=error,
         )
 
-        result = MCPRun.from_domain(agent_run, None, None)
+        result = MCPRun.from_domain(agent_run, None, None, "")
 
         assert result.id == "run-error-123"
         assert result.status == "error"  # Non-success status should map to "error"
@@ -374,7 +374,7 @@ class TestMCPRunFromDomain:
             conversation_id=None,
         )
 
-        result = MCPRun.from_domain(agent_run, None, None)
+        result = MCPRun.from_domain(agent_run, None, None, "")
 
         # conversation_id should default to empty string when None
         assert result.conversation_id == ""
@@ -385,7 +385,7 @@ class TestMCPRunFromDomain:
         agent_run = test_models.task_run_ser(id="run-no-input")
         agent_run.task_input = None
 
-        result = MCPRun.from_domain(agent_run, None, None)
+        result = MCPRun.from_domain(agent_run, None, None, "")
 
         assert result.agent_input is None
 
@@ -400,7 +400,7 @@ class TestMCPRunFromDomain:
             },
         )
 
-        result = MCPRun.from_domain(agent_run, None, None)
+        result = MCPRun.from_domain(agent_run, None, None, "")
 
         # 'workflowai.messages' should be filtered out
         expected_input = {"param1": "value1", "param2": "value2"}
@@ -415,7 +415,7 @@ class TestMCPRunFromDomain:
             },
         )
 
-        result = MCPRun.from_domain(agent_run, None, None)
+        result = MCPRun.from_domain(agent_run, None, None, "")
 
         # Should result in empty dict, not None
         assert result.agent_input == {}
@@ -427,7 +427,7 @@ class TestMCPRunFromDomain:
             task_input={},
         )
 
-        result = MCPRun.from_domain(agent_run, None, None)
+        result = MCPRun.from_domain(agent_run, None, None, "")
 
         # Empty dict is falsy, so the conditional evaluates to None
         assert result.agent_input is None
@@ -436,12 +436,12 @@ class TestMCPRunFromDomain:
         """Test status mapping for different run statuses"""
         # Test success status
         success_run = test_models.task_run_ser(id="success-run", status="success")
-        result = MCPRun.from_domain(success_run, None, None)
+        result = MCPRun.from_domain(success_run, None, None, "")
         assert result.status == "success"
 
         # Test failure status maps to "error"
         failure_run = test_models.task_run_ser(id="failure-run", status="failure")
-        result = MCPRun.from_domain(failure_run, None, None)
+        result = MCPRun.from_domain(failure_run, None, None, "")
         assert result.status == "error"
 
     def test_none_values_handling(self):
@@ -453,7 +453,7 @@ class TestMCPRunFromDomain:
             metadata=None,
         )
 
-        result = MCPRun.from_domain(agent_run, None, None)
+        result = MCPRun.from_domain(agent_run, None, None, "")
 
         assert result.duration_seconds is None
         assert result.cost_usd is None
@@ -474,11 +474,11 @@ class TestMCPRunFromDomain:
             "required": ["name"],
         }
 
-        result = MCPRun.from_domain(agent_run, None, complex_schema)
+        result = MCPRun.from_domain(agent_run, None, complex_schema, "")
         assert result.response_json_schema == complex_schema
 
         # Test with None schema
-        result = MCPRun.from_domain(agent_run, None, None)
+        result = MCPRun.from_domain(agent_run, None, None, "")
         assert result.response_json_schema is None
 
     @pytest.mark.parametrize(
@@ -496,6 +496,6 @@ class TestMCPRunFromDomain:
             created_at=created_at,
         )
 
-        result = MCPRun.from_domain(agent_run, None, None)
+        result = MCPRun.from_domain(agent_run, None, None, "")
 
         assert result.created_at == expected_created_at

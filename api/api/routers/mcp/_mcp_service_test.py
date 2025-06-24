@@ -6,23 +6,25 @@ import pytest
 
 from api.routers.mcp._mcp_service import MCPService
 from core.domain.documentation_section import DocumentationSection
+from core.domain.tenant_data import PublicOrganizationData
+
+
+@pytest.fixture
+def mcp_service():
+    """Create a MCPService instance for testing search_documentation."""
+    return MCPService(
+        storage=Mock(),
+        ai_engineer_service=Mock(),
+        runs_service=Mock(),
+        versions_service=Mock(),
+        models_service=Mock(),
+        task_deployments_service=Mock(),
+        user_email=None,
+        tenant=PublicOrganizationData(slug="test-tenant"),
+    )
 
 
 class TestMCPServiceSearchDocumentation:
-    @pytest.fixture
-    def mcp_service(self):
-        """Create a MCPService instance for testing search_documentation."""
-        return MCPService(
-            storage=Mock(),
-            ai_engineer_service=Mock(),
-            runs_service=Mock(),
-            versions_service=Mock(),
-            models_service=Mock(),
-            task_deployments_service=Mock(),
-            user_email=None,
-            tenant_slug=None,
-        )
-
     @patch("api.routers.mcp._mcp_service.DocumentationService")
     async def test_search_documentation_query_mode_success(
         self,

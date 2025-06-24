@@ -104,5 +104,5 @@ async def get_mcp_service() -> MCPService:
         models_service=models_service,
         task_deployments_service=task_deployments_service,
         user_email=user_identifier.user_email,
-        tenant_slug=tenant.slug,
+        tenant=tenant,
     )

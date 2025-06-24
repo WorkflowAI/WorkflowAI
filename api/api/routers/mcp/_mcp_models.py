@@ -609,12 +609,15 @@ class MCPRun(BaseModel):
     )
     error: Error | None = Field(description="An error returned by the model")
 
+    url: str
+
     @classmethod
     def from_domain(
         cls,
         run: AgentRun,
         version: TaskGroup | None,
         output_schema: dict[str, Any] | None,
+        url: str,
     ):
         return cls(
             id=run.id,
@@ -635,6 +638,7 @@ class MCPRun(BaseModel):
             metadata=run.metadata,
             response_json_schema=output_schema,
             error=Error.from_domain(run.error) if run.error else None,
+            url=url,
         )
 
 

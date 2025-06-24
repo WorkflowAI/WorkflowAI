@@ -39,6 +39,7 @@ from core.domain.models.models import Model
 from core.domain.search_query import FieldQuery, SearchOperator
 from core.domain.task_group import TaskGroup, TaskGroupQuery
 from core.domain.task_info import TaskInfo
+from core.domain.tenant_data import PublicOrganizationData
 from core.domain.users import UserIdentifier
 from core.domain.version_environment import VersionEnvironment
 from core.storage import ObjectNotFoundException
@@ -60,7 +61,7 @@ class MCPService:
         models_service: ModelsService,
         task_deployments_service: TaskDeploymentsService,
         user_email: str | None,
-        tenant_slug: str | None,
+        tenant: PublicOrganizationData,
     ):
         self.storage = storage
         self.ai_engineer_service = ai_engineer_service
@@ -69,13 +70,13 @@ class MCPService:
         self.models_service = models_service
         self.task_deployments_service = task_deployments_service
         self.user_email = user_email
-        self.tenant_slug = tenant_slug
+        self.tenant = tenant
 
     def _get_useful_links(self, agent_id: str | None, agent_schema_id: int | None) -> UsefulLinks:
         if agent_id is None:
             agent_id = "<example_agent_id>"
 
-        tenant_slug = self.tenant_slug
+        tenant_slug = self.tenant.slug
 
         return UsefulLinks(
             useful_links=[
@@ -231,7 +232,12 @@ class MCPService:
         else:
             variant = None
 
-        return MCPRun.from_domain(run, version, variant.output_schema.json_schema if variant else None)
+        return MCPRun.from_domain(
+            run,
+            version,
+            variant.output_schema.json_schema if variant else None,
+            self.tenant.app_run_url(agent_id, run_id),
+        )
 
     async def list_agents(
         self,
@@ -548,7 +554,13 @@ class MCPService:
         }
 
         return [
-            MCPRun.from_domain(run, versions.get(run.group.id), schema_by_id.get(run.task_schema_id)) for run in runs
+            MCPRun.from_domain(
+                run,
+                versions.get(run.group.id),
+                schema_by_id.get(run.task_schema_id),
+                url=self.tenant.app_run_url(task_tuple[0], run.id),
+            )
+            for run in runs
         ]
 
     @classmethod
