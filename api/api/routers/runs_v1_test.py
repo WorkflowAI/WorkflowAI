@@ -48,6 +48,7 @@ class TestLatestRun:
         response = await test_api_client.get("/v1/_/agents/bla/runs/latest")
         assert response.status_code == 200
         assert response.json()["id"] == returned_run.id
+        assert response.json()["url"]
 
         mock_storage.task_runs.fetch_task_run_resources.assert_called_once_with(
             task_uid=2,
@@ -162,6 +163,7 @@ class TestGetRunByID:
             "user_id": "456",
             "custom_data": "test_value",
         }
+        assert response_data["url"]
 
         mock_storage.task_runs.fetch_task_run_resource.assert_called_once_with(
             ("bla", 2),

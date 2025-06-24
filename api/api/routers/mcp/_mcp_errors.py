@@ -19,7 +19,10 @@ class MCPError(Exception):
         return base
 
 
-async def mcp_wrap(coro: Coroutine[Any, Any, BM], message: Callable[[BM], str | None]) -> MCPToolReturn[BM]:
+async def mcp_wrap(
+    coro: Coroutine[Any, Any, BM],
+    message: Callable[[BM], str | None] | None = None,
+) -> MCPToolReturn[BM]:
     """Wraps a coroutine to return a MCPToolReturn and handle MCPError"""
     try:
         value = await coro
@@ -31,5 +34,5 @@ async def mcp_wrap(coro: Coroutine[Any, Any, BM], message: Callable[[BM], str | 
     return MCPToolReturn(
         success=True,
         data=value,
-        message=message(value),
+        message=message(value) if message else None,
     )

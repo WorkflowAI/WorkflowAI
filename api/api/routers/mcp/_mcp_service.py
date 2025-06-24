@@ -19,6 +19,7 @@ from api.routers.mcp._mcp_models import (
     SortOrder,
     UsefulLinks,
 )
+from api.routers.mcp._mcp_utils import extract_agent_id_and_run_id
 from api.routers.mcp._utils.agent_sorting import sort_agents
 from api.routers.mcp._utils.model_sorting import sort_models
 from api.services import tasks
@@ -38,6 +39,7 @@ from core.domain.models.models import Model
 from core.domain.search_query import FieldQuery, SearchOperator
 from core.domain.task_group import TaskGroup, TaskGroupQuery
 from core.domain.task_info import TaskInfo
+from core.domain.tenant_data import PublicOrganizationData
 from core.domain.users import UserIdentifier
 from core.domain.version_environment import VersionEnvironment
 from core.storage import ObjectNotFoundException
@@ -59,7 +61,7 @@ class MCPService:
         models_service: ModelsService,
         task_deployments_service: TaskDeploymentsService,
         user_email: str | None,
-        tenant_slug: str | None,
+        tenant: PublicOrganizationData,
     ):
         self.storage = storage
         self.ai_engineer_service = ai_engineer_service
@@ -68,13 +70,13 @@ class MCPService:
         self.models_service = models_service
         self.task_deployments_service = task_deployments_service
         self.user_email = user_email
-        self.tenant_slug = tenant_slug
+        self.tenant = tenant
 
     def _get_useful_links(self, agent_id: str | None, agent_schema_id: int | None) -> UsefulLinks:
         if agent_id is None:
             agent_id = "<example_agent_id>"
 
-        tenant_slug = self.tenant_slug
+        tenant_slug = self.tenant.slug
 
         return UsefulLinks(
             useful_links=[
@@ -196,133 +198,31 @@ class MCPService:
             items=model_responses,
         ).paginate(max_tokens=MAX_TOOL_RETURN_TOKENS, page=page)
 
-    def _extract_agent_id_and_run_id(self, run_url: str) -> tuple[str, str]:  # noqa: C901
-        """Extract the agent ID and run ID from the run URL.
-
-        Supports multiple URL formats:
-        1. https://workflowai.com/workflowai/agents/classify-email-domain/runs/019763ae-ba9f-70a9-8d44-5a626c82e888
-        2. http://localhost:3000/workflowai/agents/sentiment/2/runs?taskRunId=019763a5-12a7-73b7-9b0c-e6413d2da52f
-
-        Args:
-            run_url: The run URL to parse
-
-        Returns:
-            A tuple of (agent_id, run_id)
-
-        Raises:
-            ValueError: If the URL format is invalid or doesn't match the expected pattern
-        """
-        if not run_url:
-            raise ValueError("run_url must be a non-empty string")
-
-        # Parse query parameters first
-        from urllib.parse import parse_qs, urlparse
-
-        parsed_url = urlparse(run_url)
-        query_params = parse_qs(parsed_url.query)
-
-        # Remove trailing slash from path
-        clean_path = parsed_url.path.rstrip("/")
-
-        # Split by "/" and filter out empty parts
-        parts = [part for part in clean_path.split("/") if part]
-
-        # Find "agents" keyword and extract agent_id
-        try:
-            agents_index = None
-            for i, part in enumerate(parts):
-                if part == "agents":
-                    agents_index = i
-                    break
-
-            if agents_index is None or agents_index + 1 >= len(parts):
-                raise ValueError(f"Could not find 'agents/{{agent_id}}' pattern in URL: {run_url}")
-
-            agent_id = parts[agents_index + 1]
-            if not agent_id:
-                raise ValueError(f"Agent ID is empty in URL: {run_url}")
-
-            # Look for run ID in different places
-            run_id = None
-
-            # Method 1: Check for taskRunId in query parameters
-            if "taskRunId" in query_params and query_params["taskRunId"]:
-                run_id = query_params["taskRunId"][0]
-
-            # Method 2: Check for standard pattern agents/agent_id/runs/run_id
-            if not run_id:
-                # Look for "runs" after agent_id (may have schema_id in between)
-                runs_index = None
-                for i in range(agents_index + 2, len(parts)):
-                    if parts[i] == "runs" and i + 1 < len(parts):
-                        runs_index = i
-                        break
-
-                if runs_index is not None:
-                    run_id = parts[runs_index + 1]
-
-            # Method 3: Check for pattern agents/agent_id/schema_id/runs (runs list page with taskRunId param)
-            if not run_id:
-                # Look for pattern where "runs" comes after agent_id (with optional schema_id)
-                for i in range(agents_index + 2, len(parts)):
-                    if parts[i] == "runs":
-                        # This is probably a runs list page, check query params again
-                        if "taskRunId" in query_params and query_params["taskRunId"]:
-                            run_id = query_params["taskRunId"][0]
-                        break
-
-            if not run_id:
-                raise ValueError(f"Could not find run ID in URL: {run_url}")
-
-            return agent_id, run_id
-
-        except (IndexError, ValueError) as e:
-            raise ValueError(f"Invalid run URL format: {run_url}") from e
-
     async def fetch_run_details(
         self,
         agent_id: str | None,
         run_id: str | None,
         run_url: str | None,
-    ) -> MCPToolReturn[MCPRun]:
+    ) -> MCPRun:
         """Fetch details of a specific agent run."""
 
         if run_url:
-            try:
-                agent_id, run_id = self._extract_agent_id_and_run_id(run_url)
-                # find the task tuple from the agent id
-            except ValueError:
-                return MCPToolReturn(
-                    success=False,
-                    error="Invalid run URL, must be in the format 'https://workflowai.com/workflowai/agents/agent-id/runs/run-id', or you must pass 'agent_id' and 'run_id'",
-                )
+            agent_id, run_id = extract_agent_id_and_run_id(run_url)
 
         if not agent_id:
-            return MCPToolReturn(
-                success=False,
-                error="Agent ID is required",
-            )
+            raise MCPError("Agent ID is required")
 
         if not run_id:
-            return MCPToolReturn(
-                success=False,
-                error="Run ID is required",
-            )
+            raise MCPError("Run ID is required")
 
         task_info = await self.storage.tasks.get_task_info(agent_id)
         task_tuple = task_info.id_tuple
         if not task_tuple:
-            return MCPToolReturn(
-                success=False,
-                error=f"Agent {agent_id} not found",
-            )
+            raise MCPError(f"Agent {agent_id} not found")
         try:
             run = await self.runs_service.run_by_id(task_tuple, run_id)
         except ObjectNotFoundException:
-            return MCPToolReturn(
-                success=False,
-                error=f"Run {run_id} not found",
-            )
+            raise MCPError(f"Run {run_id} not found")
 
         # Retrieve variant to get output schema
         version = await self.storage.task_groups.get_task_group_by_id(task_tuple[0], run.group.id)
@@ -332,11 +232,11 @@ class MCPService:
         else:
             variant = None
 
-        mcp_run = MCPRun.from_domain(run, version, variant.output_schema.json_schema if variant else None)
-
-        return MCPToolReturn(
-            success=True,
-            data=mcp_run,
+        return MCPRun.from_domain(
+            run,
+            version,
+            variant.output_schema.json_schema if variant else None,
+            self.tenant.app_run_url(agent_id, run_id),
         )
 
     async def list_agents(
@@ -654,8 +554,54 @@ class MCPService:
         }
 
         return [
-            MCPRun.from_domain(run, versions.get(run.group.id), schema_by_id.get(run.task_schema_id)) for run in runs
+            MCPRun.from_domain(
+                run,
+                versions.get(run.group.id),
+                schema_by_id.get(run.task_schema_id),
+                url=self.tenant.app_run_url(task_tuple[0], run.id),
+            )
+            for run in runs
         ]
+
+    @classmethod
+    def _process_run_fields(cls, field_queries: list[dict[str, Any]]) -> list[FieldQuery]:
+        # TODO: we should be using the runs search service here
+
+        # Convert the field queries to the proper format
+        parsed_field_queries: list[FieldQuery] = []
+        for idx, query_dict in enumerate(field_queries):
+            # Validate required fields
+            if "field_name" not in query_dict:
+                raise MCPError(f"Missing required field 'field_name' in field query {idx}")
+
+            if "operator" not in query_dict:
+                raise MCPError(f"Missing required field 'operator' in field query {idx}")
+
+            if "values" not in query_dict:
+                raise MCPError(f"Missing required field 'values' in field query {idx}")
+
+            # Parse the operator
+            try:
+                operator = SearchOperator(query_dict["operator"])
+            except ValueError:
+                raise MCPError(
+                    f"Invalid operator: {query_dict['operator']}. Valid operators are: {', '.join([op.value for op in SearchOperator])}",
+                )
+
+            # Parse the field type if provided
+            field_type: FieldType | None = None
+            if "type" in query_dict and query_dict["type"]:
+                field_type = query_dict["type"]
+
+            field_query = FieldQuery(
+                field_name=query_dict["field_name"],
+                operator=operator,
+                values=query_dict["values"],
+                type=field_type,
+            )
+            parsed_field_queries.append(field_query)
+
+        return parsed_field_queries
 
     async def search_runs(  # noqa: C901
         self,
@@ -666,85 +612,29 @@ class MCPService:
         limit: int,
         offset: int,
         page: int,
-        include_full_data: bool = True,
     ) -> PaginatedMCPToolReturn[None, MCPRun]:
         """Search agent runs by metadata fields."""
-        try:
-            # Convert the field queries to the proper format
-            parsed_field_queries: list[FieldQuery] = []
-            for query_dict in field_queries:
-                try:
-                    # Validate required fields
-                    if "field_name" not in query_dict:
-                        return PaginatedMCPToolReturn[None, MCPRun](
-                            success=False,
-                            error="Missing required field 'field_name' in field query",
-                        )
 
-                    if "operator" not in query_dict:
-                        return PaginatedMCPToolReturn[None, MCPRun](
-                            success=False,
-                            error="Missing required field 'operator' in field query",
-                        )
+        # Use the runs search service to perform the search
+        search_service = RunsSearchService(self.storage)
+        parsed_field_queries = self._process_run_fields(field_queries)
 
-                    if "values" not in query_dict:
-                        query_dict["values"] = []
+        page_result = await search_service.search_task_runs(
+            task_uid=task_tuple,
+            field_queries=parsed_field_queries,
+            limit=limit,
+            offset=offset,
+            map=lambda x: x,
+            # tool_calls and llm_completions are not needed here
+            # tool_calls contains the entirety of tool calls executed during the request
+            # llm_completions contains each individual round trip with the LLM
+            # TODO: ultimately we should only need the "messages" field
+            # Using the full "llm_completions" here. It might be heavy but we really want
+            # to have the full context of the run.
+            exclude_fields={"tool_calls"},
+        )
 
-                    # Parse the operator
-                    try:
-                        operator = SearchOperator(query_dict["operator"])
-                    except ValueError:
-                        return PaginatedMCPToolReturn[None, MCPRun](
-                            success=False,
-                            error=f"Invalid operator: {query_dict['operator']}. Valid operators are: {', '.join([op.value for op in SearchOperator])}",
-                        )
-
-                    # Parse the field type if provided
-                    field_type: FieldType | None = None
-                    if "type" in query_dict and query_dict["type"]:
-                        field_type = query_dict["type"]
-
-                    field_query = FieldQuery(
-                        field_name=query_dict["field_name"],
-                        operator=operator,
-                        values=query_dict["values"],  # type: ignore
-                        type=field_type,
-                    )
-                    parsed_field_queries.append(field_query)
-                except Exception as e:
-                    return PaginatedMCPToolReturn[None, MCPRun](
-                        success=False,
-                        error=f"Error parsing field query: {str(e)}",
-                    )
-            # Use the runs search service to perform the search
-            search_service = RunsSearchService(self.storage)
-
-            try:
-                page_result = await search_service.search_task_runs(
-                    task_uid=task_tuple,
-                    field_queries=parsed_field_queries,
-                    limit=limit,
-                    offset=offset,
-                    map=lambda x: x,
-                    # tool_calls and llm_completions are not needed here
-                    # tool_calls contains the entirety of tool calls executed during the request
-                    # llm_completions contains each individual round trip with the LLM
-                    # TODO: ultimately we should only need the "messages" field
-                    exclude_fields={"llm_completions", "tool_calls"},
-                )
-            except Exception as e:
-                return PaginatedMCPToolReturn[None, MCPRun](
-                    success=False,
-                    error=f"Failed to search runs: {str(e)}",
-                )
-
-            return PaginatedMCPToolReturn[None, MCPRun](
-                success=True,
-                items=await self._map_runs(task_tuple, page_result.items),
-            ).paginate(max_tokens=MAX_TOOL_RETURN_TOKENS, page=page)
-
-        except Exception as e:
-            return PaginatedMCPToolReturn[None, MCPRun](
-                success=False,
-                error=f"Failed to search runs by metadata: {str(e)}",
-            )
+        return PaginatedMCPToolReturn[None, MCPRun](
+            success=True,
+            items=await self._map_runs(task_tuple, page_result.items),
+        ).paginate(max_tokens=MAX_TOOL_RETURN_TOKENS, page=page)

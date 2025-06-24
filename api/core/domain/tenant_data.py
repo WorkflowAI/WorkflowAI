@@ -42,6 +42,9 @@ class PublicOrganizationData(BaseModel):
     def app_deployments_url(self, agent_id: str, schema_id: int):
         return f"{self.app_schema_url(agent_id, schema_id)}/deployments"
 
+    def app_run_url(self, agent_id: str, run_id: str):
+        return f"{self.base_app_url}/agents/{agent_id}/runs/{run_id}"
+
 
 class TenantData(PublicOrganizationData):
     anonymous_user_id: str | None = Field(default=None)

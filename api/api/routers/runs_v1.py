@@ -4,8 +4,9 @@ from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Query
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
+from api.dependencies.security import URLPublicOrganizationDep
 from api.dependencies.services import (
     ModelsServiceDep,
     RunFeedbackGeneratorDep,
@@ -26,9 +27,12 @@ from core.domain.page import Page
 from core.domain.search_query import FieldQuery, SearchOperator
 from core.domain.task_group import TaskGroup
 from core.domain.task_group_properties import TaskGroupProperties
+from core.domain.tenant_data import PublicOrganizationData
+from core.domain.tool_call import ToolCall
 from core.domain.types import AgentInput, AgentOutput
 from core.storage import ObjectNotFoundException
 from core.utils.iter_utils import safe_map_optional
+from core.utils.models.previews import compute_preview
 from core.utils.schemas import FieldType
 from core.utils.stream_response_utils import safe_streaming_response
 
@@ -97,6 +101,8 @@ class _BaseRunV1(BaseModel):
         description="A signed token that can be used to post feedback from a client side application",
     )
 
+    url: str = Field(description="The URL of the run")
+
 
 class RunItemV1(_BaseRunV1):
     task_input_preview: str = Field(description="A preview of the input data")
@@ -116,7 +122,7 @@ class RunItemV1(_BaseRunV1):
     error: Error | None
 
     @classmethod
-    def from_domain(cls, run: AgentRunBase, feedback_token: str):
+    def from_domain(cls, run: AgentRunBase, feedback_token: str, org: PublicOrganizationData | None):
         return cls(
             id=run.id,
             task_id=run.task_id,
@@ -132,6 +138,7 @@ class RunItemV1(_BaseRunV1):
             user_review=run.user_review,
             ai_review=run.ai_review,
             feedback_token=feedback_token,
+            url=org.app_run_url(run.task_id, run.id) if org else "",
         )
 
 
@@ -141,6 +148,7 @@ async def search_runs(
     service: RunsSearchServiceDep,
     task: TaskInfoDep,
     feedback_token_generator: RunFeedbackGeneratorDep,
+    org: URLPublicOrganizationDep,
 ) -> Page[RunItemV1]:
     if not task:
         raise ObjectNotFoundException("Task not found")
@@ -149,14 +157,37 @@ async def search_runs(
         request.field_queries,
         request.limit,
         request.offset,
-        lambda run: RunItemV1.from_domain(run, feedback_token_generator(run.id)),
+        lambda run: RunItemV1.from_domain(run, feedback_token_generator(run.id), org),
     )
+
+
+class _ToolCallPreview(BaseModel):
+    id: str
+    name: str
+    input_preview: str
+    output_preview: str | None
+    error: str | None
+
+    @classmethod
+    def from_domain(cls, tool_call: ToolCall):
+        return cls(
+            id=tool_call.id,
+            name=tool_call.tool_name,
+            input_preview=tool_call.input_preview,
+            output_preview=compute_preview(tool_call.result) if tool_call.result else None,
+            error=tool_call.error if tool_call.error else None,
+        )
+
+    model_config = ConfigDict(title="ToolCallPreview")
 
 
 class RunV1(_BaseRunV1):
     task_input: AgentInput
     task_output: AgentOutput
 
+    tool_calls: list[_ToolCallPreview] | None = Field(
+        description="A preview of tool calls that were executed during the run",
+    )
     reasoning_steps: list[ReasoningStep] | None
 
     class Error(BaseModel):
@@ -190,7 +221,7 @@ class RunV1(_BaseRunV1):
     )
 
     @classmethod
-    def from_domain_task_run(cls, run: AgentRun, feedback_token: str):
+    def from_domain_task_run(cls, run: AgentRun, feedback_token: str, org: PublicOrganizationData | None):
         return cls(
             id=run.id,
             task_id=run.task_id,
@@ -211,9 +242,11 @@ class RunV1(_BaseRunV1):
                 APIToolCallRequest.from_domain,
                 logger=_logger,
             ),
+            tool_calls=safe_map_optional(run.tool_calls, _ToolCallPreview.from_domain, logger=_logger),
             feedback_token=feedback_token,
             conversation_id=run.conversation_id,
             metadata=run.metadata,
+            url=org.app_run_url(run.task_id, run.id) if org else "",
         )
 
 
@@ -226,11 +259,12 @@ async def get_latest_run(
     task_tuple: TaskTupleDep,
     runs_service: RunsServiceDep,
     feedback_token_generator: RunFeedbackGeneratorDep,
+    org: URLPublicOrganizationDep,
     schema_id: Annotated[int | None, Query(ge=1)] = None,
     is_success: Annotated[bool | None, Query()] = None,
 ) -> RunV1:
     run = await runs_service.latest_run(task_tuple, schema_id, is_success)
-    return RunV1.from_domain_task_run(run, feedback_token_generator(run.id))
+    return RunV1.from_domain_task_run(run, feedback_token_generator(run.id), org)
 
 
 @router.get("/{run_id}", response_model_exclude_none=True)
@@ -239,9 +273,10 @@ async def get_run(
     run_id: str,
     runs_service: RunsServiceDep,
     feedback_token_generator: RunFeedbackGeneratorDep,
+    org: URLPublicOrganizationDep,
 ) -> RunV1:
     run = await runs_service.run_by_id(task_tuple, run_id, exclude={"llm_completions"})
-    return RunV1.from_domain_task_run(run, feedback_token_generator(run.id))
+    return RunV1.from_domain_task_run(run, feedback_token_generator(run.id), org)
 
 
 # We use response_model_exclude_none to hide the empty field in standard messages, payload

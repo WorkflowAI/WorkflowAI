@@ -31,6 +31,7 @@ async def test_raw_string_output(test_client: IntegrationTestClient, openai_clie
     assert res.choices[0].cost_usd > 0  # type: ignore
     assert res.choices[0].duration_seconds  # type: ignore
     assert res.choices[0].feedback_token  # type: ignore
+    assert res.choices[0].url  # type: ignore
 
     await test_client.wait_for_completed_tasks()
 

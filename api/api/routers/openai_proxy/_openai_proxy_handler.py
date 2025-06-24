@@ -483,6 +483,7 @@ class OpenAIProxyHandler:
                 model=body.model,
                 deprecated_function=body.uses_deprecated_functions,
                 feedback_generator=_feedback_generator,
+                org=tenant_data,
             )
             return JSONResponse(content=response_object.model_dump(mode="json", exclude_none=True))
 
@@ -505,6 +506,7 @@ class OpenAIProxyHandler:
                     output_mapper=output_mapper,
                     feedback_generator=_feedback_generator,
                     aggregate_content=aggregate_content,
+                    org=tenant_data,
                 ),
                 source=source,
             ),
