@@ -9,7 +9,11 @@ from pydantic import BaseModel, Field
 
 class MCPToolCallObserverOutput(BaseModel):
     success: bool = Field(description="Whether the feedback was processed successfully")
-    error_criticity: Literal["low", "medium", "high"] | None = Field(
+    error_origin: Literal["mcp_client", "our_mcp_server"] | None = Field(
+        description="The origin of the error, if any. 'mcp_client' are typically wrong arguments passed etc, and are less critical. 'our_mcp_server' are more serious errors, like the server not being able to process the request.",
+        default=None,
+    )
+    error_criticity: Literal["low", "medium", "high", "unsure"] | None = Field(
         description="The criticity of the error, if any",
         default=None,
     )
@@ -30,16 +34,14 @@ async def mcp_tool_call_observer_agent(
     organization_name: str | None = None,
     user_email: str | None = None,
 ) -> MCPToolCallObserverOutput | None:
-    system_message = """You are an MCP tool call observer agent. Overall, our goal is to be the warrant of the quality of interaction between MTP clients (for example, Cursor, etc.) and our MTP server.
-    Assess if the tool call was successful and if not, and if not, provide a summary of the error and the error criticity.
+    system_message = """You are an MCP tool call observer agent. Overall, our goal is to be the guarantor of the quality of interaction between MCP clients (for example, Cursor, etc.) and WorkflowAI's MCP server.
+    Assess if the New tool call was successful and if not, provide a summary of the error and the error criticity. Use Previous tool calls to understand the context of the new tool call and the overall conversation.
     """
 
-    user_message = """Here is the tool call:
-    Current date and time: {{current_date_and_time}}
-    Previous tool calls: {{previous_tool_calls}}
-    New tool call: {{new_tool_call}}
-    MCP session ID: {{mcp_session_id}}
-    """
+    user_message = """Current date and time: {{current_date_and_time}}
+Previous tool calls: {{previous_tool_calls}}
+New tool call: {{new_tool_call}}
+MCP session ID: {{mcp_session_id}}"""
 
     client = AsyncOpenAI(
         api_key=os.environ["WORKFLOWAI_API_KEY"],

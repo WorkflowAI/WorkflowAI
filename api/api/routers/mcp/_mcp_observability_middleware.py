@@ -1,7 +1,6 @@
 import json
 import logging
 import time
-import uuid
 from datetime import datetime, timezone
 from typing import Any, Callable
 
@@ -18,10 +17,6 @@ from ._mcp_observer_agent import mcp_tool_call_observer_agent
 
 logger = logging.getLogger(__name__)
 
-
-# Global session storage
-_session_store: dict[str, SessionState] = {}
-
 # Track tool call start times per request
 _tool_call_start_times: dict[str, datetime] = {}
 
@@ -29,8 +24,8 @@ _tool_call_start_times: dict[str, datetime] = {}
 class MCPObservabilityMiddleware(BaseHTTPMiddleware):
     """Enhanced middleware to log MCP tool calls and track session observability"""
 
-    def _extract_session_id(self, request: Request) -> str:
-        """Extract or create session ID for the request"""
+    def _extract_session_id(self, request: Request) -> str | None:
+        """Extract session ID from request headers"""
         # Check for MCP session ID header
         session_id = request.headers.get("mcp-session-id")
         if session_id:
@@ -41,26 +36,13 @@ class MCPObservabilityMiddleware(BaseHTTPMiddleware):
         if session_id:
             return session_id
 
-        # Generate a new session ID
-        return str(uuid.uuid4())
+        # Return None if no session ID found
+        return None
 
-    def _get_or_create_session(self, session_id: str, user_agent: str) -> SessionState:
-        """Get existing session or create a new one"""
-        if session_id not in _session_store:
-            _session_store[session_id] = SessionState(session_id, user_agent)
-
-            # Log new session creation
-            logger.info(
-                "New MCP session created",
-                extra={
-                    "mcp_event": "session_created",
-                    "session_id": session_id,
-                    "user_agent": user_agent,
-                    "session_created_at": _session_store[session_id].created_at,
-                },
-            )
-
-        return _session_store[session_id]
+    async def _get_or_create_session(self, session_id: str | None, user_agent: str) -> SessionState:
+        """Get existing session or create a new one using Redis"""
+        session_state, is_new = await SessionState.get_or_create(session_id, user_agent)
+        return session_state
 
     def _is_mcp_tool_call(self, request_data: dict[str, Any] | None) -> bool:
         """Check if this is an MCP tool call request"""
@@ -216,8 +198,8 @@ class MCPObservabilityMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable[[Request], Any]) -> Response:  # noqa: C901
         start_time = time.time()
         user_agent = request.headers.get("user-agent", "unknown")
-        session_id: str = self._extract_session_id(request)
-        session_state = self._get_or_create_session(session_id, user_agent)
+        session_id_from_header = self._extract_session_id(request)
+        session_state = await self._get_or_create_session(session_id_from_header, user_agent)
 
         # Read request body
         body = await request.body()
@@ -233,7 +215,7 @@ class MCPObservabilityMiddleware(BaseHTTPMiddleware):
                 extra={
                     "body": body.decode(),
                     "user_agent": user_agent,
-                    "session_id": session_id,
+                    "session_id": session_state.session_id,
                 },
             )
 
@@ -243,12 +225,12 @@ class MCPObservabilityMiddleware(BaseHTTPMiddleware):
                 "Non-MCP tool call request, passing through",
                 extra={
                     "method": request_data.get("method") if request_data else None,
-                    "session_id": session_id,
+                    "session_id": session_state.session_id,
                 },
             )
             response = await call_next(request)
-            response.headers["mcp-session-id"] = session_id
-            response.headers["x-session-id"] = session_id
+            response.headers["mcp-session-id"] = session_state.session_id
+            response.headers["x-session-id"] = session_state.session_id
             return response
 
         # At this point, request_data is guaranteed to be a dict with method="tools/call"
@@ -287,8 +269,9 @@ class MCPObservabilityMiddleware(BaseHTTPMiddleware):
                     user_agent=user_agent,
                 )
 
-                # Update session state with completed tool call
-                session_state.register_tool_call(tool_call_data)
+                # Update session state with completed tool call (async call in sync context)
+                async def update_session():
+                    await session_state.register_tool_call(tool_call_data)
 
                 # Clean up start time tracking
                 _tool_call_start_times.pop(request_id, None)
@@ -302,7 +285,7 @@ class MCPObservabilityMiddleware(BaseHTTPMiddleware):
                         tool_result=tool_result,
                         duration_seconds=duration,
                         user_agent=user_agent,
-                        mcp_session_id=session_id,
+                        mcp_session_id=session_state.session_id,
                         request_id=str(request_id),
                         # TODO: Extract from request if available
                         organization_name=None,
@@ -311,14 +294,18 @@ class MCPObservabilityMiddleware(BaseHTTPMiddleware):
 
                     # Create background task for observer agent
                     async def run_observer_background():
+                        # Update session first, then run observer
+                        await update_session()
                         await self._run_observer_agent_background(observer_data)
 
                     add_background_task(run_observer_background())
                 else:
+                    # Just update session if no response body
+                    add_background_task(update_session())
                     logger.error(
                         "No response body received, skipping observer agent",
                         extra={
-                            "session_id": session_id,
+                            "session_id": session_state.session_id,
                             "request_id": request_id,
                         },
                     )
@@ -326,7 +313,7 @@ class MCPObservabilityMiddleware(BaseHTTPMiddleware):
                 # Log completion
                 self._log_tool_call_completion(
                     tool_call_data,
-                    session_id,
+                    session_state.session_id,
                     original_response,
                     user_agent,
                     session_state,
@@ -338,7 +325,7 @@ class MCPObservabilityMiddleware(BaseHTTPMiddleware):
                     "Error processing streaming response completion",
                     extra={
                         "error": str(e),
-                        "session_id": session_id,
+                        "session_id": session_state.session_id,
                         "request_id": request_id,
                     },
                 )
@@ -352,7 +339,7 @@ class MCPObservabilityMiddleware(BaseHTTPMiddleware):
                     "Non-streaming response type, cannot observe",
                     extra={
                         "response_type": type(original_response).__name__,
-                        "session_id": session_id,
+                        "session_id": session_state.session_id,
                         "request_id": request_id,
                     },
                 )
@@ -362,6 +349,6 @@ class MCPObservabilityMiddleware(BaseHTTPMiddleware):
             response = original_response
 
         # Add session ID to response headers
-        response.headers["mcp-session-id"] = session_id
-        response.headers["x-session-id"] = session_id
+        response.headers["mcp-session-id"] = session_state.session_id
+        response.headers["x-session-id"] = session_state.session_id
         return response
