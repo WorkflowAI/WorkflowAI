@@ -193,6 +193,11 @@ class AgentRun(AgentRunBase):
     def messages(self) -> list[Message]:
         # TODO: This should be a stored property, not computed
         # see https://linear.app/workflowai/issue/WOR-4914/expose-the-full-list-of-computed-messages-and-store-as-is
+        if self.llm_completions:
+            # When completions are available, we use the last completion to get the messages
+            # It's closer to the actual messages that were sent to the model
+            return self.llm_completions[-1].to_messages()
+
         try:
             # Extract the added messages from the task input
             # This will only extract additional messages for now

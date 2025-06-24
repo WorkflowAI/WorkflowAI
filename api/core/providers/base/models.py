@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from core.domain.fields.file import File
 from core.domain.llm_completion import LLMCompletion
 from core.domain.llm_usage import LLMUsage
-from core.domain.message import MessageDeprecated
+from core.domain.message import Message, MessageContent, MessageDeprecated
 from core.domain.tool_call import ToolCall, ToolCallRequestWithID
 from core.utils.fields import datetime_factory
 
@@ -171,4 +171,53 @@ def message_standard_to_domain_deprecated(message: StandardMessage):
         files=files or None,
         tool_call_requests=tool_call_requests or None,
         tool_call_results=tool_call_results or None,
+    )
+
+
+def _standard_content_to_domain(
+    content: TextContentDict
+    | ImageContentDict
+    | AudioContentDict
+    | DocumentContentDict
+    | ToolCallRequestDict
+    | ToolCallResultDict,
+):
+    match content["type"]:
+        case "text":
+            return MessageContent(text=content["text"])
+        case "image_url":
+            return MessageContent(file=File(url=content["image_url"]["url"]))
+        case "document_url":
+            return MessageContent(file=File(url=content["source"]["url"]))
+        case "audio_url":
+            return MessageContent(file=File(url=content["audio_url"]["url"]))
+        case "tool_call_request":
+            return MessageContent(
+                tool_call_request=ToolCallRequestWithID(
+                    id=content["id"] or "",
+                    tool_name=content["tool_name"],
+                    tool_input_dict=content["tool_input_dict"] or {},
+                ),
+            )
+        case "tool_call_result":
+            return MessageContent(
+                tool_call_result=ToolCall(
+                    id=content["id"] or "",
+                    tool_name=content["tool_name"] or "",
+                    tool_input_dict=content["tool_input_dict"] or {},
+                    result=content["result"],
+                    error=content["error"],
+                ),
+            )
+
+
+def message_standard_to_domain(message: StandardMessage):
+    if isinstance(message["content"], str):
+        content = [MessageContent(text=message["content"])]
+    else:
+        content = [_standard_content_to_domain(item) for item in message["content"]]
+
+    return Message(
+        role=message["role"] or "user",
+        content=content,
     )

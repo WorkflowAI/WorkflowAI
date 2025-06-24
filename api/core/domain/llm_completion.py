@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 
 from core.domain.error_response import ErrorResponse
 from core.domain.llm_usage import LLMUsage
-from core.domain.message import MessageDeprecated
+from core.domain.message import Message, MessageContent, MessageDeprecated
 from core.domain.models import Provider
 from core.domain.models.models import Model
 from core.domain.tool_call import ToolCallRequestWithID
@@ -73,6 +73,29 @@ class LLMCompletion(BaseModel):
                     role=MessageDeprecated.Role.ASSISTANT,
                 ),
             )
+        return base
+
+    def _assistant_message(self) -> Message:
+        content: list[MessageContent] = []
+        if self.response:
+            content.append(MessageContent(text=self.response))
+        if self.tool_calls:
+            content.extend(
+                (MessageContent(tool_call_request=tool_call) for tool_call in self.tool_calls),
+            )
+        return Message(
+            content=content,
+            role="assistant",
+        )
+
+    def to_messages(self) -> list[Message]:
+        # TODO: this really should not be here but we will eventually remove the standard messages so we
+        # can leave for now
+        from core.providers.base.models import StandardMessage, message_standard_to_domain
+
+        base = [message_standard_to_domain(cast(StandardMessage, message)) for message in self.messages]
+        if self.tool_calls or self.response:
+            base.append(self._assistant_message())
         return base
 
     @property

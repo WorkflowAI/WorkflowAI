@@ -597,10 +597,8 @@ class MCPRun(BaseModel):
     status: Literal[
         "success",
         "error",
-    ]  # not sure about the exact list of statuses, but you get the idea (we should use Pydantic every-where!)
+    ]
     agent_input: dict[str, Any] | None
-    # TODO: until https://linear.app/workflowai/issue/WOR-4914/expose-the-full-list-of-computed-messages-and-store-as-is
-    # the list of messages will not include messages from the version
     messages: list[Message] = Field(description="The exchanged messages, including the returned assistant message")
     duration_seconds: float | None
     cost_usd: float | None
