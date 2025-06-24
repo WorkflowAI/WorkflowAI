@@ -49,7 +49,7 @@ class DocumentationService:
                     with open(full_path, "r") as f:  # noqa: ASYNC230
                         doc_sections.append(
                             DocumentationSection(
-                                title=relative_path.replace(".mdx", "").replace(".md", ""),
+                                title=relative_path.rstrip(".mdx").rstrip(".md"),
                                 content=f.read(),
                             ),
                         )
