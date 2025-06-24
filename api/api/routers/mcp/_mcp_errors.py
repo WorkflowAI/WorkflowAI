@@ -8,7 +8,7 @@ from core.utils.generics import BM
 
 class MCPError(Exception):
     def __init__(self, message: str, data: Any | None = None):
-        super().__init__(self.message)
+        super().__init__(message)
         self.message = message
         self.data = data
 
