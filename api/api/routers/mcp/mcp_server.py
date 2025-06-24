@@ -1,10 +1,12 @@
 import datetime
+import logging
 from typing import Annotated, Any, Literal
 
 from fastmcp import FastMCP
 from fastmcp.server.dependencies import get_http_request
 from pydantic import BaseModel, Field
 from starlette.exceptions import HTTPException
+from starlette.middleware import Middleware
 
 from api.dependencies.task_info import TaskTuple
 from api.routers.mcp._mcp_models import (
@@ -21,6 +23,7 @@ from api.routers.mcp._mcp_models import (
     PaginatedMCPToolReturn,
     SortOrder,
 )
+from api.routers.mcp._mcp_observability_middleware import MCPObservabilityMiddleware
 from api.routers.mcp._mcp_service import MCPService
 from api.services import file_storage, storage
 from api.services.analytics import analytics_service
@@ -43,6 +46,9 @@ from core.domain.tool import Tool
 from core.domain.users import UserIdentifier
 from core.storage.backend_storage import BackendStorage
 from core.utils.schema_formatter import format_schema_as_yaml_description
+
+logger = logging.getLogger(__name__)
+
 
 _mcp = FastMCP("WorkflowAI 🚀", stateless_http=True)  # pyright: ignore [reportUnknownVariableType]
 
@@ -828,5 +834,13 @@ async def search_documentation(
     return await service.search_documentation(query=query, page=page)
 
 
+@_mcp.tool()
+async def tool_that_raises_an_error():
+    raise Exception("This is a test error")
+
+
 def mcp_http_app():
-    return _mcp.http_app(path="/")
+    custom_middleware = [
+        Middleware(MCPObservabilityMiddleware),
+    ]
+    return _mcp.http_app(path="/", middleware=custom_middleware)
