@@ -116,7 +116,7 @@ export const taskSampleRoute = (tenant: TenantID, taskId: TaskID, taskSchemaId: 
   `${taskSchemaRoute(tenant, taskId, taskSchemaId)}/examples/${taskSampleId}`;
 
 export function taskRunRoute(tenant: TenantID, taskId: TaskID, taskSchemaId: TaskSchemaID, taskRunId: string) {
-  return `/${decodeURIComponent(tenant)}/agents/${taskId}/${taskSchemaId}/runs?taskRunId=${taskRunId}`;
+  return `/${decodeURIComponent(tenant)}/agents/${taskId}/${taskSchemaId}/runs?runId=${taskRunId}`;
 }
 
 export function replaceTenant(url: string, urlTenant: string, tenant: string) {

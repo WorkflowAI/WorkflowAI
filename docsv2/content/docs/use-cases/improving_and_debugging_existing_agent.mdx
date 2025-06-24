@@ -1,0 +1,79 @@
+---
+title: Improving and debugging an existing agent
+summary: Guide for troubleshooting and optimizing existing AI agents. Covers common errors like max_tokens_exceeded, debugging with metadata, and performance optimization strategies.
+---
+
+## Error: `max_tokens_exceeded`
+
+When you encounter a `max_tokens_exceeded` error, this indicates the model hit a token limit. Follow this diagnostic process:
+
+### Step 1: Check the `max_tokens` parameter first
+
+**Most common cause:** The `max_tokens` parameter in your completion call is set too low, not that you've exceeded the model's context window.
+
+```python
+# ❌ Problem: max_tokens too low
+response = openai.chat.completions.create(
+    model="gpt-4o",
+    messages=[...],
+    max_tokens=1000  # Too low for complex outputs
+)
+
+# ✅ Solution: Increase max_tokens
+response = openai.chat.completions.create(
+    model="gpt-4o",
+    messages=[...],
+    max_tokens=4000  # Higher limit for output
+)
+```
+
+### Step 2: Check model context window limits
+
+If increasing `max_tokens` doesn't solve the issue, you may be hitting the model's total context window.
+
+**Use MCP tools to find models with larger context windows:**
+
+- Use `list_models` with `sort_by="max_tokens"` and `order="desc"` to see models with the highest context windows first
+- Alternatively, use the v1/models API endpoint to get current context window information
+- Compare your current model's limits with available alternatives
+
+### Step 3: Solutions for context window issues
+
+If you're truly hitting context limits:
+
+1. **Switch to a larger context model** (use MCP tools or /v1/models to identify the best option)
+2. **Batch processing for large datasets** - process data in smaller chunks
+3. **Optimize output format** - reduce verbosity in structured outputs
+
+## Using metadata for debugging
+
+When debugging production issues, you often know there's an issue affecting a specific user or customer, but don't know which exact runs caused the problem. The solution is to add metadata that matches how you receive bug reports.
+
+**Add metadata fields that correspond to how users report bugs to you.** For detailed information about metadata, see [Metadata in Runs](/docs/observability/runs#metadata).
+
+### Example: Adding metadata for debugging
+
+```python
+completion = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[...],
+    metadata={
+        "agent_id": "document_processor",
+        "user_id": "usr_12345",
+        "team_id": "team_acme_marketing",
+        "customer_email": "john@company.com",
+    }
+)
+```
+
+### Searching runs by metadata
+
+**Using MCP:**
+
+TODO: @pierre add example of how to search runs by metadata using MCP.
+
+**Using the API:**
+
+<Callout type="info">
+TODO: Document API endpoints for searching runs by metadata once [PR #437](https://github.com/WorkflowAI/WorkflowAI/pull/437) is merged, which adds `/v1/runs/search` endpoint for cross-agent run searches.
+</Callout>

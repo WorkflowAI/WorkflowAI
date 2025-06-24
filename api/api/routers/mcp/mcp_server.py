@@ -1,3 +1,4 @@
+import datetime
 from typing import Annotated, Any, Literal
 
 from anthropic import BaseModel
@@ -8,6 +9,7 @@ from starlette.exceptions import HTTPException
 
 from api.dependencies.task_info import TaskTuple
 from api.routers.mcp._mcp_models import (
+    AgentListItem,
     AgentResponse,
     AgentSortField,
     AIEngineerReponseWithUsefulLinks,
@@ -42,6 +44,7 @@ from core.domain.analytics_events.analytics_events import OrganizationProperties
 from core.domain.tool import Tool
 from core.domain.users import UserIdentifier
 from core.storage.backend_storage import BackendStorage
+from core.utils.schema_formatter import format_schema_as_yaml_description
 
 _mcp = FastMCP("WorkflowAI 🚀", stateless_http=True)  # pyright: ignore [reportUnknownVariableType]
 
@@ -143,7 +146,7 @@ async def get_task_tuple_from_task_id(storage: BackendStorage, agent_id: str) ->
 
 
 @_mcp.tool()
-async def list_available_models(
+async def list_models(
     agent_id: Annotated[
         str | None,
         Field(
@@ -186,7 +189,7 @@ async def list_available_models(
     Returns a list of all available AI models from WorkflowAI.
     </returns>"""
     service = await get_mcp_service()
-    return await service.list_available_models(
+    return await service.list_models(
         page=page,
         agent_id=agent_id,
         agent_schema_id=agent_schema_id,
@@ -196,26 +199,23 @@ async def list_available_models(
     )
 
 
-@_mcp.tool()
+def description_for_list_agents() -> str:
+    """Generate dynamic description for list_agents tool based on Pydantic models"""
+    # Get the YAML-like description for AgentListItem
+    agent_item_description = format_schema_as_yaml_description(AgentListItem)
+
+    return f"""<when_to_use>
+When the user wants to see all agents they have created, along with their basic statistics (run counts and costs).
+</when_to_use>
+<returns>
+Returns a list of agents with the following structure:
+
+{agent_item_description}
+</returns>"""
+
+
+@_mcp.tool(description=description_for_list_agents())
 async def list_agents(
-    agent_id: Annotated[
-        str | None,
-        Field(
-            description="Filter on specific agent id. If omitted, all user's agents are returned. Example: 'agent_id': 'email-filtering-agent' in metadata, or 'email-filtering-agent' in 'model=email-filtering-agent/gpt-4o-latest'.",
-        ),
-    ] = None,
-    with_schemas: Annotated[
-        bool,
-        Field(
-            description="If true, the response will include the input and output schemas of the different schema ids of the agent. Useful to find on which schema id you are working on.",
-        ),
-    ] = False,
-    stats_from_date: Annotated[
-        str,
-        Field(
-            description="ISO date string to filter usage (runs and costs) stats from (e.g., '2024-01-01T00:00:00Z'). Defaults to 7 days ago if not provided.",
-        ),
-    ] = "",
     sort_by: Annotated[
         AgentSortField,
         Field(
@@ -232,21 +232,45 @@ async def list_agents(
         int,
         Field(description="The page number to return. Defaults to 1."),
     ] = 1,
-) -> PaginatedMCPToolReturn[None, AgentResponse]:
-    """<when_to_use>
-    When the user wants to see all agents they have created, along with their statistics (run counts and costs on the last 7 days).
-    </when_to_use>
-    <returns>
-    Returns a list of all agents for the user along with their statistics (run counts and costs).
-    </returns>"""
+) -> PaginatedMCPToolReturn[None, AgentListItem]:
     service = await get_mcp_service()
     return await service.list_agents(
-        agent_id=agent_id,
-        stats_from_date=stats_from_date,
-        with_schemas=with_schemas,
         page=page,
         sort_by=sort_by,
         order=order,
+    )
+
+
+@_mcp.tool()
+async def get_agent(
+    agent_id: Annotated[
+        str,
+        Field(
+            description="The id of the user's agent. Example: 'agent_id': 'email-filtering-agent' in metadata, or 'email-filtering-agent' in 'model=email-filtering-agent/gpt-4o-latest'.",
+        ),
+    ],
+    stats_from_date: Annotated[
+        datetime.datetime | None,
+        Field(
+            description="ISO date string to filter usage (runs and costs) stats from (e.g., '2024-01-01T00:00:00Z'). Defaults to 7 days ago if not provided.",
+        ),
+    ] = None,
+) -> MCPToolReturn[AgentResponse]:
+    """<when_to_use>
+    When the user wants to get detailed information about a specific agent, including full input/output schemas, versions, name, description, and statistics.
+    </when_to_use>
+    <returns>
+    Returns detailed information for a specific agent including:
+    - Full input and output JSON schemas for each schema version
+    - Agent name and description
+    - Complete schema information (created_at, is_hidden, last_active_at)
+    - Run statistics (run count and total cost)
+    - Agent metadata (is_public status)
+    </returns>"""
+    service = await get_mcp_service()
+    return await service.get_agent(
+        agent_id=agent_id,
+        stats_from_date=stats_from_date,
     )
 
 
@@ -729,6 +753,132 @@ async def list_hosted_tools() -> PaginatedMCPToolReturn[None, HostedToolItem]:
         success=True,
         items=[HostedToolItem.from_tool(tool) for tool in ToolsService.hosted_tools()],
     )
+
+
+@_mcp.tool()
+async def search_documentation(
+    query: str | None = Field(
+        default=None,
+        description="Search across all WorkflowAI documentation. Use this when you need to find specific information across multiple pages.",
+    ),
+    page: str | None = Field(
+        default=None,
+        description="Direct access to specific documentation page. Available pages are dynamically determined from the docsv2 directory structure.",
+    ),
+) -> LegacyMCPToolReturn:
+    """Search WorkflowAI documentation OR fetch a specific documentation page.
+
+     <when_to_use>
+     Enable MCP clients to explore WorkflowAI documentation without web access through a dual-mode search tool:
+     1. Search mode ('query' parameter): Search across all documentation to find relevant documentation sections. Use search mode when you need to find information but don't know which specific page contains it.
+     2. Direct navigation mode ('page' parameter): Fetch the complete content of a specific documentation page (see <available_pages> below for available pages). Use direct navigation mode when you want to read the full content of a specific page. Example: 'page': 'reference/authentication'
+    </when_to_use>
+
+     <available_pages>
+     The following documentation pages are available for direct access:
+
+     **Getting Started:**
+     - 'index' - Introduction to the WorkflowAI documentation. Provides information on what WorkflowAI is and how to get started with building, deploying, and improving AI agents.
+     - 'why-workflowai' - An explanation of the WorkflowAI platform. Covers its commitment to open standards, provider flexibility, and developer and agent experience.
+     - 'self-hosting' - Guide for deploying and managing WorkflowAI in your own environment. Provides step-by-step instructions for self-hosting to have control over data and infrastructure.
+     - 'pricing' - Documentation on the pay-as-you-go pricing model. Explains the price-match guarantee, what you pay for, and answers common questions about billing and costs.
+     - 'organizations' - Documentation on team collaboration using organizations. Covers creating, joining, and switching between organizations, as well as managing members and join settings.
+     - 'glossary' - A glossary of key terms and concepts used throughout the WorkflowAI documentation. Provides definitions for important terminology.
+     - 'ask-ai' - Documentation for the 'Ask AI' assistant. Explains how to ask questions, use commands, and get guidance on using the platform.
+     - 'changelog' - A chronological record of updates, improvements, and new model integrations to the WorkflowAI platform.
+     - 'compliance' - Information on security and compliance. Covers SOC2 compliance, data handling policies, and provides answers to frequently asked questions about data privacy.
+
+     **Use Cases:**
+     - 'use-cases/chatbot' - Use case guide for building a conversational AI chatbot. Covers basic setup, conversation management, streaming, error handling, and deployment.
+     - 'use-cases/new_agent' - Comprehensive framework for building AI agents from scratch. Covers requirements analysis, agent types, model selection, prompt design, evaluation methods, and best practices.
+     - 'use-cases/migrating_existing_agent' - Step-by-step guide for migrating existing AI agents to the WorkflowAI platform. Covers understanding your current agent, data requirements, and migration best practices.
+     - 'use-cases/improving_and_debugging_existing_agent' - Guide for troubleshooting and optimizing existing AI agents. Covers common errors like max_tokens_exceeded, debugging with metadata, and performance optimization strategies.
+     - 'use-cases/classifier' - Use case guide for building AI classifiers. Covers techniques for text categorization, sentiment analysis, and more, from basic to advanced implementations.
+     - 'use-cases/image-input' - Use case guide for using images as input for AI agents. Covers processing and analyzing images to extract information, answer questions, and perform vision-based tasks.
+     - 'use-cases/pdf-input' - Use case guide for processing and extracting information from PDF documents. Covers techniques for using PDF files as input for summarization, data extraction, and question-answering tasks.
+     - 'use-cases/image-generation' - Use case guide for generating and editing images. Covers best practices for prompting, customizing image outputs, and using the WorkflowAI SDK for image generation tasks.
+     - 'use-cases/mcp' - A collection of use-case scenarios for AI agents that interact with the WorkflowAI platform. Outlines the required capabilities for agents to perform tasks like optimization, debugging, and deployment.
+
+     **API Reference:**
+     - 'reference/api-errors' - Reference for API error codes and meanings from chat completion endpoints and SDKs.
+     - 'reference/api-responses' - Response formats documentation (detailed content available in file)
+     - 'reference/authentication' - Explains API authentication using bearer tokens. Covers API key management, security best practices, and the authentication process.
+     - 'reference/prompt-templating' - Prompt engineering documentation (detailed content available in file)
+     - 'reference/supported-models' - Available models documentation (detailed content available in file)
+     - 'reference/supported-parameters' - API parameters documentation (detailed content available in file)
+
+     **Quickstarts:**
+     - 'quickstarts' - Provides quickstart guides for getting started with WorkflowAI. Includes instructions for creating agents without code and integrating with popular SDKs.
+     - 'quickstarts/instructor-python' - Instructor Python integration guide (detailed content available in file)
+     - 'quickstarts/no-code' - No-code solutions guide (detailed content available in file)
+     - 'quickstarts/openai-agents' - OpenAI Agents integration guide (detailed content available in file)
+     - 'quickstarts/openai-javascript-typescript' - OpenAI JS/TS SDK integration guide (detailed content available in file)
+     - 'quickstarts/openai-python' - OpenAI Python SDK integration guide (detailed content available in file)
+     - 'quickstarts/pydanticai' - PydanticAI integration guide (detailed content available in file)
+     - 'quickstarts/vercelai' - Vercel AI SDK integration guide (detailed content available in file)
+
+     **Playground:**
+     - 'playground' - Overview of the WorkflowAI Playground. Lists its features for comparing models, optimizing prompts, and team collaboration.
+     - 'playground/additional-features' - Advanced playground features documentation (detailed content available in file)
+     - 'playground/ai-assistant' - AI Assistant in playground documentation (detailed content available in file)
+     - 'playground/compare-models' - Model comparison tools documentation (detailed content available in file)
+     - 'playground/data-generation' - Data generation tools documentation (detailed content available in file)
+     - 'playground/diff-mode' - Diff mode feature documentation (detailed content available in file)
+     - 'playground/price-and-latency' - Performance metrics documentation (detailed content available in file)
+     - 'playground/sharing-playgrounds' - Sharing functionality documentation (detailed content available in file)
+     - 'playground/versioning' - Version management documentation (detailed content available in file)
+
+     **Observability:**
+     - 'observability' - Overview of observability tools for AI applications. Explains how to automatically monitor, analyze, and optimize agent performance.
+     - 'observability/conversations' - Conversation tracking documentation (detailed content available in file)
+     - 'observability/costs' - Cost monitoring documentation (detailed content available in file)
+     - 'observability/insights' - Analytics insights documentation (detailed content available in file)
+     - 'observability/reports' - Reporting features documentation (detailed content available in file)
+     - 'observability/runs' - Run monitoring documentation (detailed content available in file)
+     - 'observability/search' - Search functionality documentation (detailed content available in file)
+     - 'observability/versions' - Version tracking documentation (detailed content available in file)
+
+     **Inference:**
+     - 'inference' - Overview of the WorkflowAI inference API. Lists key features, including OpenAI compatibility, multi-provider support, structured outputs, and caching.
+     - 'inference/caching' - Caching strategies documentation (detailed content available in file)
+     - 'inference/cost' - Cost optimization documentation (detailed content available in file)
+     - 'inference/models' - Model selection documentation (detailed content available in file)
+     - 'inference/reasoning' - Reasoning capabilities documentation (detailed content available in file)
+     - 'inference/reliability' - Reliability features documentation (detailed content available in file)
+     - 'inference/streaming' - Streaming responses documentation (detailed content available in file)
+     - 'inference/structured-outputs' - Structured data documentation (detailed content available in file)
+
+     **Deployments:**
+     - 'deployments' - Documentation on using deployments to manage and update AI agents. Covers separating prompts from code, managing environments, and versioning with schemas.
+
+     **Evaluations:**
+     - 'evaluations' - Overview of the evaluations feature for systematic testing of AI applications. Covers prompt evaluation, model comparison, regression testing, and best practices.
+     - 'evaluations/benchmarks' - Benchmarking documentation (detailed content available in file)
+     - 'evaluations/reviews' - Review system documentation (detailed content available in file)
+     - 'evaluations/side-by-side' - Comparison tools documentation (detailed content available in file)
+     - 'evaluations/user-feedback' - Feedback collection documentation (detailed content available in file)
+
+     **Agents:**
+     - 'agents' - Overview of AI agents in WorkflowAI. Covers what agents are and their purpose in the platform for automating tasks.
+     - 'agents/mcp' - Model Control Protocol for agents documentation (detailed content available in file)
+     - 'agents/memory' - Explains how to manage conversational memory using `reply_to_run_id`. This feature maintains chat history for stateful, multi-turn interactions.
+     - 'agents/tools' - Documentation for using tools with AI agents. Covers hosted tools like web search and defining custom tools for specific use cases.
+
+     **AI Engineer:**
+     - 'ai-engineer' - Setup guide for the AI Engineer. Walks through the necessary installation and configuration steps.
+
+     **Components:**
+     - 'components' - Overview of the reusable UI component library. Lists available components like buttons, forms, and cards.
+     </available_pages>
+
+     <returns>
+     - If using query: Returns a list of SearchResult objects with relevant documentation sections and source page references
+     - If using page: Returns the complete content of the specified documentation page as a string
+     - Error message if both or neither parameters are provided, or if the requested page is not found
+     </returns>"""
+
+    service = await get_mcp_service()
+    return await service.search_documentation(query=query, page=page)
 
 
 def mcp_http_app():

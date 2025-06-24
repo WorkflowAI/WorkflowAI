@@ -58,7 +58,7 @@ def sort_models(models: list[ConciseModelResponse | ConciseLatestModelResponse],
 
 ### MCP Tool Parameters
 
-**list_available_models tool:**
+**list_models tool:**
 
 ```json
 {

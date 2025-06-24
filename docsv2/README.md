@@ -1,58 +1,61 @@
-# my-app
+# WorkflowAI Documentation
 
-This is a Next.js application generated with
-[Create Fumadocs](https://github.com/fuma-nama/fumadocs).
+This is the documentation site for WorkflowAI, built with [Fumadocs](https://github.com/fuma-nama/fumadocs) and Next.js.
 
-## Setup from Scratch
+## Development Setup
 
 ### Prerequisites
 
 Before setting up this project, make sure you have the following installed:
 
 - **Node.js** (version 18.0 or later) - [Download here](https://nodejs.org/)
-- **npm**, **pnpm**, or **yarn** package manager
+- **Yarn** package manager (this project uses yarn workspaces)
 
-### Installation
+### Local Development
 
-1. **Clone or download the project**
+⚠️ **Important**: This documentation site is part of a yarn workspace. You must run the development server from the **root directory** of the WorkflowAI project, not from the `docsv2` directory.
+
+1. **Navigate to the project root**
+
    ```bash
-   # If using git
-   git clone <repository-url>
-   cd my-app
-   
-   # Or download and extract the project files
+   cd /path/to/WorkflowAI  # Go to the root directory, not docsv2
    ```
 
-2. **Install dependencies**
+2. **Install dependencies** (if not already done)
+
    ```bash
-   # Using npm
-   npm install
-   
-   # Using pnpm (recommended)
-   pnpm install
-   
-   # Using yarn
    yarn install
    ```
 
-3. **Start the development server**
+3. **Start the documentation development server**
+
    ```bash
-   npm run dev
-   # or
-   pnpm dev
-   # or
-   yarn dev
+   yarn workspace docs dev
    ```
 
 4. **Open your browser**
-   
-   Navigate to [http://localhost:3000](http://localhost:3000) to see the application running.
+
+   Navigate to [http://localhost:3000](http://localhost:3000) to see the documentation site.
+
+### Common Issues
+
+**Problem**: Getting `@clerk/nextjs: Missing publishableKey` error
+**Solution**: Make sure you're using `yarn workspace docs dev` from the root directory, not `npm run dev` from the docsv2 directory. The workspace command properly isolates the documentation project from the main client application.
+
+**Problem**: `Couldn't find any pages or app directory` error
+**Solution**: Ensure you're running the command from the WorkflowAI root directory, not from inside the docsv2 folder.
 
 ## Development
 
 The development server will automatically reload when you make changes to your code. You can start editing the pages and see your changes in real-time.
 
-## Explore
+### Adding New Documentation
+
+1. Create `.mdx` files in `content/docs/`
+2. Update the `meta.json` files to include your new pages in the navigation
+3. Use the existing pages as templates for formatting and structure
+
+## Project Structure
 
 In the project, you can see:
 
@@ -70,6 +73,14 @@ In the project, you can see:
 A `source.config.ts` config file has been included, you can customise different options like frontmatter schema.
 
 Read the [Introduction](https://fumadocs.dev/docs/mdx) for further details.
+
+## Building for Production
+
+```bash
+# From the root directory
+yarn workspace docs build
+yarn workspace docs start
+```
 
 ## Learn More
 
