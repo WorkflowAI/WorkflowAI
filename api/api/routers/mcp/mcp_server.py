@@ -1,10 +1,9 @@
 import datetime
 from typing import Annotated, Any, Literal
 
-from anthropic import BaseModel
 from fastmcp import FastMCP
 from fastmcp.server.dependencies import get_http_request
-from pydantic import Field
+from pydantic import BaseModel, Field
 from starlette.exceptions import HTTPException
 
 from api.dependencies.task_info import TaskTuple
