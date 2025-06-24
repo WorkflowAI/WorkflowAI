@@ -226,7 +226,7 @@ async def fetch_run_details(
     This data structure provides everything needed for debugging, performance analysis, cost tracking, and understanding the complete execution context of your WorkflowAI agent.
     </returns>"""
     service = await get_mcp_service()
-    return await service.fetch_run_details(agent_id, run_id, run_url)
+    return await mcp_wrap(service.fetch_run_details(agent_id, run_id, run_url))
 
 
 @_mcp.tool()
@@ -464,23 +464,17 @@ async def search_runs(
     Returns a paginated list of agent runs that match the search criteria, including run details.
     </returns>"""
 
-    try:
-        service = await get_mcp_service()
+    service = await get_mcp_service()
 
-        task_tuple = await get_task_tuple_from_task_id(service.storage, agent_id)
+    task_tuple = await get_task_tuple_from_task_id(service.storage, agent_id)
 
-        return await service.search_runs(
-            task_tuple=task_tuple,
-            field_queries=field_queries,
-            limit=limit,
-            offset=offset,
-            page=page,
-        )
-    except Exception as e:
-        return PaginatedMCPToolReturn(
-            success=False,
-            error=f"Failed to search runs: {e}",
-        )
+    return await service.search_runs(
+        task_tuple=task_tuple,
+        field_queries=field_queries,
+        limit=limit,
+        offset=offset,
+        page=page,
+    )
 
 
 @_mcp.tool()

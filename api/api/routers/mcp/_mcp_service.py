@@ -284,7 +284,7 @@ class MCPService:
         agent_id: str | None,
         run_id: str | None,
         run_url: str | None,
-    ) -> MCPToolReturn[MCPRun]:
+    ) -> MCPRun:
         """Fetch details of a specific agent run."""
 
         if run_url:
@@ -292,37 +292,24 @@ class MCPService:
                 agent_id, run_id = self._extract_agent_id_and_run_id(run_url)
                 # find the task tuple from the agent id
             except ValueError:
-                return MCPToolReturn(
-                    success=False,
-                    error="Invalid run URL, must be in the format 'https://workflowai.com/workflowai/agents/agent-id/runs/run-id', or you must pass 'agent_id' and 'run_id'",
+                raise MCPError(
+                    "Invalid run URL, must be in the format 'https://workflowai.com/workflowai/agents/agent-id/runs/run-id', or you must pass 'agent_id' and 'run_id'",
                 )
 
         if not agent_id:
-            return MCPToolReturn(
-                success=False,
-                error="Agent ID is required",
-            )
+            raise MCPError("Agent ID is required")
 
         if not run_id:
-            return MCPToolReturn(
-                success=False,
-                error="Run ID is required",
-            )
+            raise MCPError("Run ID is required")
 
         task_info = await self.storage.tasks.get_task_info(agent_id)
         task_tuple = task_info.id_tuple
         if not task_tuple:
-            return MCPToolReturn(
-                success=False,
-                error=f"Agent {agent_id} not found",
-            )
+            raise MCPError(f"Agent {agent_id} not found")
         try:
             run = await self.runs_service.run_by_id(task_tuple, run_id)
         except ObjectNotFoundException:
-            return MCPToolReturn(
-                success=False,
-                error=f"Run {run_id} not found",
-            )
+            raise MCPError(f"Run {run_id} not found")
 
         # Retrieve variant to get output schema
         version = await self.storage.task_groups.get_task_group_by_id(task_tuple[0], run.group.id)
@@ -332,12 +319,7 @@ class MCPService:
         else:
             variant = None
 
-        mcp_run = MCPRun.from_domain(run, version, variant.output_schema.json_schema if variant else None)
-
-        return MCPToolReturn(
-            success=True,
-            data=mcp_run,
-        )
+        return MCPRun.from_domain(run, version, variant.output_schema.json_schema if variant else None)
 
     async def list_agents(
         self,
@@ -657,6 +639,46 @@ class MCPService:
             MCPRun.from_domain(run, versions.get(run.group.id), schema_by_id.get(run.task_schema_id)) for run in runs
         ]
 
+    @classmethod
+    def _process_run_fields(cls, field_queries: list[dict[str, Any]]) -> list[FieldQuery]:
+        # TODO: we should be using the runs search service here
+
+        # Convert the field queries to the proper format
+        parsed_field_queries: list[FieldQuery] = []
+        for idx, query_dict in enumerate(field_queries):
+            # Validate required fields
+            if "field_name" not in query_dict:
+                raise MCPError(f"Missing required field 'field_name' in field query {idx}")
+
+            if "operator" not in query_dict:
+                raise MCPError(f"Missing required field 'operator' in field query {idx}")
+
+            if "values" not in query_dict:
+                raise MCPError(f"Missing required field 'values' in field query {idx}")
+
+            # Parse the operator
+            try:
+                operator = SearchOperator(query_dict["operator"])
+            except ValueError:
+                raise MCPError(
+                    f"Invalid operator: {query_dict['operator']}. Valid operators are: {', '.join([op.value for op in SearchOperator])}",
+                )
+
+            # Parse the field type if provided
+            field_type: FieldType | None = None
+            if "type" in query_dict and query_dict["type"]:
+                field_type = query_dict["type"]
+
+            field_query = FieldQuery(
+                field_name=query_dict["field_name"],
+                operator=operator,
+                values=query_dict["values"],
+                type=field_type,
+            )
+            parsed_field_queries.append(field_query)
+
+        return parsed_field_queries
+
     async def search_runs(  # noqa: C901
         self,
         task_tuple: tuple[str, int],
@@ -666,85 +688,29 @@ class MCPService:
         limit: int,
         offset: int,
         page: int,
-        include_full_data: bool = True,
     ) -> PaginatedMCPToolReturn[None, MCPRun]:
         """Search agent runs by metadata fields."""
-        try:
-            # Convert the field queries to the proper format
-            parsed_field_queries: list[FieldQuery] = []
-            for query_dict in field_queries:
-                try:
-                    # Validate required fields
-                    if "field_name" not in query_dict:
-                        return PaginatedMCPToolReturn[None, MCPRun](
-                            success=False,
-                            error="Missing required field 'field_name' in field query",
-                        )
 
-                    if "operator" not in query_dict:
-                        return PaginatedMCPToolReturn[None, MCPRun](
-                            success=False,
-                            error="Missing required field 'operator' in field query",
-                        )
+        # Use the runs search service to perform the search
+        search_service = RunsSearchService(self.storage)
+        parsed_field_queries = self._process_run_fields(field_queries)
 
-                    if "values" not in query_dict:
-                        query_dict["values"] = []
+        page_result = await search_service.search_task_runs(
+            task_uid=task_tuple,
+            field_queries=parsed_field_queries,
+            limit=limit,
+            offset=offset,
+            map=lambda x: x,
+            # tool_calls and llm_completions are not needed here
+            # tool_calls contains the entirety of tool calls executed during the request
+            # llm_completions contains each individual round trip with the LLM
+            # TODO: ultimately we should only need the "messages" field
+            # Using the full "llm_completions" here. It might be heavy but we really want
+            # to have the full context of the run.
+            exclude_fields={"tool_calls"},
+        )
 
-                    # Parse the operator
-                    try:
-                        operator = SearchOperator(query_dict["operator"])
-                    except ValueError:
-                        return PaginatedMCPToolReturn[None, MCPRun](
-                            success=False,
-                            error=f"Invalid operator: {query_dict['operator']}. Valid operators are: {', '.join([op.value for op in SearchOperator])}",
-                        )
-
-                    # Parse the field type if provided
-                    field_type: FieldType | None = None
-                    if "type" in query_dict and query_dict["type"]:
-                        field_type = query_dict["type"]
-
-                    field_query = FieldQuery(
-                        field_name=query_dict["field_name"],
-                        operator=operator,
-                        values=query_dict["values"],  # type: ignore
-                        type=field_type,
-                    )
-                    parsed_field_queries.append(field_query)
-                except Exception as e:
-                    return PaginatedMCPToolReturn[None, MCPRun](
-                        success=False,
-                        error=f"Error parsing field query: {str(e)}",
-                    )
-            # Use the runs search service to perform the search
-            search_service = RunsSearchService(self.storage)
-
-            try:
-                page_result = await search_service.search_task_runs(
-                    task_uid=task_tuple,
-                    field_queries=parsed_field_queries,
-                    limit=limit,
-                    offset=offset,
-                    map=lambda x: x,
-                    # tool_calls and llm_completions are not needed here
-                    # tool_calls contains the entirety of tool calls executed during the request
-                    # llm_completions contains each individual round trip with the LLM
-                    # TODO: ultimately we should only need the "messages" field
-                    exclude_fields={"llm_completions", "tool_calls"},
-                )
-            except Exception as e:
-                return PaginatedMCPToolReturn[None, MCPRun](
-                    success=False,
-                    error=f"Failed to search runs: {str(e)}",
-                )
-
-            return PaginatedMCPToolReturn[None, MCPRun](
-                success=True,
-                items=await self._map_runs(task_tuple, page_result.items),
-            ).paginate(max_tokens=MAX_TOOL_RETURN_TOKENS, page=page)
-
-        except Exception as e:
-            return PaginatedMCPToolReturn[None, MCPRun](
-                success=False,
-                error=f"Failed to search runs by metadata: {str(e)}",
-            )
+        return PaginatedMCPToolReturn[None, MCPRun](
+            success=True,
+            items=await self._map_runs(task_tuple, page_result.items),
+        ).paginate(max_tokens=MAX_TOOL_RETURN_TOKENS, page=page)
