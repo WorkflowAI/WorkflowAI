@@ -388,6 +388,79 @@ ALT:
 ### what is required:
 - ...
 
+## Scenario 13: Create Evaluation Script for Agent Testing
+
+### Customer Request:
+> "Hey, thanks for your help with the fraud detection agent! 
+> 
+> So Pierre was probably talking about reviews indeed. I started using reviews that help, but it forces us to use a manual approach.
+> 
+> First I'll talk about the need instead of jumping into the solution:
+> - The need is to assess whether an AI agent is reliable enough to be deployed into production with barely anyone monitoring  
+> - For several AI agents, we have a lot of past data that we had to analyze ourselves, with input and output
+> - For example, we're working on an email campaign fraud alert, and we have thousands of emails and whether they should be flagged as fraud or not
+> 
+> As to how I imagine the process:
+> - First I build the agent, and define its schema
+> - I format a csv/xlsx/JSON file that contains a relatively high number of rows (up to 1000 should be enough I'd say, but the more the better), with one row per run, and one column per input and expected output (if agent has 2 inputs - email subject and email content - and 2 outputs - boolean is_fraud and a number for the confidence, that would make 4 columns)  
+> - I upload the file in WorkflowAI, I chose the AI agent version I want to test
+> - It runs for a while
+> - I get a comparison of output vs expected_output (% that match, list of non-matching inputs to dig further)
+> 
+> Right now we can try to do this via scripts but it's only feasible for devs, not PMs
+> 
+> Hope that helps!"
+
+### initial state:
+```
+- agent is deployed on WorkflowAI (e.g., email fraud detection agent)
+- user has a CSV/JSON dataset with test cases containing inputs and expected outputs
+- dataset format: email_content, expected_is_fraud, expected_confidence_score
+```
+
+### goal:
+```
+- create a script that can automatically test my agent against this dataset
+- run the agent on each test case and compare actual vs expected results
+- generate a report showing accuracy, precision, recall, and specific failure cases
+- identify which test cases the agent got wrong so I can improve the prompts
+- make it easy to re-run this evaluation after making changes to the agent
+```
+
+### what is required:
+- ability to load and parse the evaluation dataset (CSV/JSON/XLSX)
+- programmatic access to run the agent on each test case via WorkflowAI API
+- comparison logic to evaluate actual vs expected outputs
+- statistical analysis to calculate performance metrics (accuracy, precision, recall, F1-score)
+- report generation with detailed breakdown of results
+- identification and logging of specific failure cases with reasons
+- ability to save evaluation results for comparison across agent versions
+- batch processing capabilities for large datasets (up to 1000+ rows)
+- error handling for API failures or malformed responses
+- configurable evaluation criteria (exact match vs semantic similarity)
+- user-friendly interface accessible to PMs, not just developers
+
+## Scenario 14: Add Memory Feature to Conversation Agent
+
+### initial state:
+```
+- basic chat agent that responds to user messages
+- agent has no memory between conversations 
+```
+
+### goal:
+```
+- I want to add memory to my conversation agent so it can remember previous interactions
+- The agent should remember user preferences, previous topics discussed, and personal details shared
+- Memory should persist across different chat sessions
+- I want to be able to control what gets remembered and what gets forgotten
+- Test that the memory is working correctly and the agent can recall information from previous conversations
+- Make sure the memory doesn't slow down the agent too much
+```
+
+### what is required:
+- TBD
+
 # References
 
 ## Neon MCP 
