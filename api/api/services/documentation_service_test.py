@@ -1,7 +1,9 @@
 # Removed the test for the private function _extract_doc_title as it's no longer used.
 # pyright: reportPrivateUsage=false
+# pyright: reportMissingTypeStubs=false
 import logging
 import os
+import tempfile
 from typing import NamedTuple
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -151,6 +153,41 @@ async def test_get_documentation_by_path_with_missing_paths_logs_error(
         assert [s.title for s in result] == ["a.md"]
         # The missing path should trigger an error log
         assert "Documentation not found for paths: c.md" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_get_all_doc_sections_local_excludes_private_files(documentation_service: DocumentationService):
+    """Tests that _get_all_doc_sections_local excludes files with .private in their name."""
+    # Create a temporary directory structure for testing
+    import os
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Create test files
+        public_file = os.path.join(temp_dir, "public.mdx")
+        private_file = os.path.join(temp_dir, "page.private.mdx")
+        hidden_file = os.path.join(temp_dir, ".hidden.mdx")
+
+        # Write content to files
+        with open(public_file, "w") as f:
+            f.write("# Public content")
+        with open(private_file, "w") as f:
+            f.write("# Private content")
+        with open(hidden_file, "w") as f:
+            f.write("# Hidden content")
+
+        # Patch the LOCAL_DOCS_DIR to use our temp directory
+        with patch.object(DocumentationService, "_LOCAL_DOCS_DIR", temp_dir):
+            result = await documentation_service._get_all_doc_sections_local()
+
+            # Should only include the public file
+            assert len(result) == 1
+            assert result[0].title == "public"
+            assert result[0].content == "# Public content"
+
+            # Private and hidden files should be excluded
+            titles = [section.title for section in result]
+            assert "page.private" not in titles
+            assert ".hidden" not in titles
 
 
 # Remote functionality tests

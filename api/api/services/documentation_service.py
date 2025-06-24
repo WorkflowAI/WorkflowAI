@@ -41,7 +41,7 @@ class DocumentationService:
             for file in files:
                 if not file.endswith(tuple(self._LOCAL_FILE_EXTENSIONS)):
                     continue
-                if file.startswith("."):  # Ignore hidden files like .DS_Store
+                if file.startswith(".") or ".private" in file:  # Ignore hidden files and private pages
                     continue
                 full_path: str = os.path.join(root, file)
                 relative_path: str = os.path.relpath(full_path, base_dir)
