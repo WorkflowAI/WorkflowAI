@@ -10,6 +10,11 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from api.routers.mcp._mcp_obersavilibity_session_state import ObserverAgentData, SessionState, ToolCallData
+from api.services import storage
+from api.services.analytics import analytics_service
+from api.services.event_handler import system_event_router
+from api.services.security_service import SecurityService
+from core.domain.analytics_events.analytics_events import OrganizationProperties, UserProperties
 from core.utils.background import add_background_task
 from core.utils.json_utils import extract_json_str
 
@@ -21,8 +26,59 @@ logger = logging.getLogger(__name__)
 _tool_call_start_times: dict[str, datetime] = {}
 
 
+class TenantInfo:
+    """Container for tenant authentication information"""
+
+    def __init__(self, tenant: Any, org_properties: OrganizationProperties, user_properties: UserProperties | None):
+        self.tenant = tenant
+        self.org_properties = org_properties
+        self.user_properties = user_properties
+
+    @property
+    def organization_name(self) -> str | None:
+        return self.tenant.slug if self.tenant else None
+
+    @property
+    def user_email(self) -> str | None:
+        # TODO: Extract user email from tenant if available
+        return None
+
+
 class MCPObservabilityMiddleware(BaseHTTPMiddleware):
     """Enhanced middleware to log MCP tool calls and track session observability"""
+
+    async def _extract_tenant_info(self, request: Request) -> TenantInfo | None:
+        """Extract tenant information from request using auth header"""
+        try:
+            auth_header = request.headers.get("Authorization")
+            if not auth_header or not auth_header.startswith("Bearer "):
+                logger.debug("No valid Authorization header found in request")
+                return None
+
+            _system_storage = storage.system_storage(storage.shared_encryption())
+            security_service = SecurityService(
+                _system_storage.organizations,
+                system_event_router(),
+                analytics_service(user_properties=None, organization_properties=None, task_properties=None),
+            )
+
+            tenant = await security_service.tenant_from_credentials(auth_header.split(" ")[1])
+            if not tenant:
+                logger.debug("Invalid bearer token provided")
+                return None
+
+            org_properties = OrganizationProperties.build(tenant)
+            # TODO: user analytics - extract user properties if available
+            user_properties: UserProperties | None = None
+
+            return TenantInfo(tenant, org_properties, user_properties)
+
+        except Exception as e:
+            logger.warning(
+                "Failed to extract tenant info from request",
+                extra={"error": str(e)},
+            )
+            return None
 
     def _extract_session_id(self, request: Request) -> str | None:
         """Extract session ID from request headers"""
@@ -164,6 +220,55 @@ class MCPObservabilityMiddleware(BaseHTTPMiddleware):
 
         logger.info("MCP tool call completed", extra=log_extra)
 
+    def _log_tool_call_completion_with_tenant(
+        self,
+        tool_call_data: ToolCallData,
+        session_id: str,
+        response: Response,
+        user_agent: str,
+        session_state: SessionState,
+        tenant_info: TenantInfo | None,
+        error_info: dict[str, Any] | None,
+    ):
+        """Log tool call completion with session context and tenant information"""
+        log_extra = {
+            "mcp_event": "tool_call_complete",
+            "session_id": session_id,
+            "duration_seconds": tool_call_data.duration,
+            "status_code": response.status_code,
+            "user_agent": user_agent,
+            "tool_name": tool_call_data.tool_name,
+            "request_id": tool_call_data.request_id,
+            "has_result": tool_call_data.result is not None,
+            "has_error": error_info is not None,
+        }
+
+        # Add tenant information if available
+        if tenant_info:
+            log_extra["organization_name"] = tenant_info.organization_name
+            log_extra["user_email"] = tenant_info.user_email
+            log_extra["is_authenticated"] = True
+        else:
+            log_extra["is_authenticated"] = False
+
+        # Include the actual tool result for debugging (truncated if too long)
+        if tool_call_data.result is not None:
+            try:
+                result_str = json.dumps(tool_call_data.result)
+                if len(result_str) > 1000:  # Truncate very long results
+                    log_extra["tool_result_preview"] = result_str[:1000] + "... (truncated)"
+                else:
+                    log_extra["tool_result"] = tool_call_data.result
+            except (TypeError, ValueError):
+                log_extra["tool_result"] = str(tool_call_data.result)[:500]
+
+        # Include error details if present (but limit size)
+        if error_info:
+            log_extra["error_code"] = error_info.get("code", "unknown")
+            log_extra["error_message"] = str(error_info.get("message", ""))[:200]
+
+        logger.info("MCP tool call completed with tenant context", extra=log_extra)
+
     async def _run_observer_agent_background(self, observer_data: ObserverAgentData):
         """Run observer agent in background for analysis"""
         try:
@@ -200,6 +305,25 @@ class MCPObservabilityMiddleware(BaseHTTPMiddleware):
         user_agent = request.headers.get("user-agent", "unknown")
         session_id_from_header = self._extract_session_id(request)
         session_state = await self._get_or_create_session(session_id_from_header, user_agent)
+
+        # Extract tenant information for authentication and metadata
+        tenant_info = await self._extract_tenant_info(request)
+
+        # Log authentication status for debugging
+        if tenant_info:
+            logger.debug(
+                "Authenticated MCP request with tenant info",
+                extra={
+                    "session_id": session_state.session_id,
+                    "organization_name": tenant_info.organization_name,
+                    "has_user_email": tenant_info.user_email is not None,
+                },
+            )
+        else:
+            logger.debug(
+                "Unauthenticated MCP request - no tenant info available",
+                extra={"session_id": session_state.session_id},
+            )
 
         # Read request body
         body = await request.body()
@@ -249,6 +373,7 @@ class MCPObservabilityMiddleware(BaseHTTPMiddleware):
         original_response = await call_next(request)
 
         # Create callback to process response after streaming completes
+        # Note: tenant_info is captured in the closure for use in the callback
         def on_streaming_complete(response_body: bytes) -> None:
             """Process the complete response body after streaming is done"""
             try:
@@ -287,9 +412,9 @@ class MCPObservabilityMiddleware(BaseHTTPMiddleware):
                         user_agent=user_agent,
                         mcp_session_id=session_state.session_id,
                         request_id=str(request_id),
-                        # TODO: Extract from request if available
-                        organization_name=None,
-                        user_email=None,
+                        # Extract organization and user info from authenticated tenant
+                        organization_name=tenant_info.organization_name if tenant_info else None,
+                        user_email=tenant_info.user_email if tenant_info else None,
                     )
 
                     # Create background task for observer agent
@@ -310,13 +435,14 @@ class MCPObservabilityMiddleware(BaseHTTPMiddleware):
                         },
                     )
 
-                # Log completion
-                self._log_tool_call_completion(
+                # Log completion with tenant context
+                self._log_tool_call_completion_with_tenant(
                     tool_call_data,
                     session_state.session_id,
                     original_response,
                     user_agent,
                     session_state,
+                    tenant_info,
                     None,  # error_info - we could parse this from response if needed
                 )
 
