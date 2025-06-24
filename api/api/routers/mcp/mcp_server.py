@@ -11,7 +11,6 @@ from api.routers.mcp._mcp_models import (
     AgentListItem,
     AgentResponse,
     AgentSortField,
-    AIEngineerReponseWithUsefulLinks,
     ConciseLatestModelResponse,
     ConciseModelResponse,
     LegacyMCPToolReturn,
@@ -582,57 +581,6 @@ async def search_runs(
             success=False,
             error=f"Failed to search runs: {e}",
         )
-
-
-@_mcp.tool()
-async def ask_ai_engineer(
-    agent_id: Annotated[
-        str,
-        Field(
-            description="The id of the user's agent, MUST be passed when the user is asking a question in the context of a specific agent. Example: 'agent_id': 'email-filtering-agent' in metadata, or 'email-filtering-agent' in 'model=email-filtering-agent/gpt-4o-latest'. Pass 'NEW_AGENT' when the user wants to create a new agent.",
-        ),
-    ],
-    message: Annotated[
-        str,
-        Field(description="Your message to the AI engineer about what help you need"),
-    ],
-    user_programming_language: Annotated[
-        str,
-        Field(
-            description="The programming language and integration (if known) used by the user, e.g, Typescript, Python with OpenAI SDK, etc.",
-        ),
-    ],
-    user_code_extract: Annotated[
-        str,
-        Field(
-            description="The code you are working on to improve the user's agent, if any. Please DO NOT include API keys or other sensitive information.",
-        ),
-    ],
-    agent_schema_id: Annotated[
-        int | None,
-        Field(
-            description="The schema ID of the user's agent version, if known from model=<agent_id>/#<agent_schema_id>/<deployment_environment> or model=#<agent_schema_id>/<deployment_environment> when the workflowAI agent is already deployed",
-        ),
-    ] = None,
-) -> MCPToolReturn[AIEngineerReponseWithUsefulLinks] | LegacyMCPToolReturn:
-    """
-    <when_to_use>
-    Most user request about WorkflowAI must be processed by starting a conversation with the AI engineer agent to get insight about the WorkflowAI platform and the user's agents.
-    </when_to_use>
-
-    <returns>
-    Returns a response from WorkflowAI's AI engineer (meta agent) to help improve your agent.
-    </returns>
-    Get a response from WorkflowAI's AI engineer (meta agent) to help improve your agent.
-    """
-    service = await get_mcp_service()
-    return await service.ask_ai_engineer(
-        agent_schema_id=agent_schema_id,
-        agent_id=agent_id,
-        message=message,
-        user_programming_language=user_programming_language,
-        user_code_extract=user_code_extract,
-    )
 
 
 @_mcp.tool()
