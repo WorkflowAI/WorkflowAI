@@ -45,7 +45,7 @@ A conversation can represent either:
 - A series of LLM completions involving tool calls
 
 <Callout type="warning">
-A conversation is always agent specific, meaning that runs that have the same conversation id but are from different agents are not considered part of the same conversation. Make sure to set [`agent_id`](/docs/observability#identify-your-agent) in the `metadata` of your requests.
+A conversation is always agent specific, meaning that runs that have the same conversation id but are from different agents are not considered part of the same conversation. Make sure to set [`agent_id`](/observability#identify-your-agent) in the `metadata` of your requests.
 </Callout>
 
 <Callout type="info">
@@ -233,7 +233,7 @@ curl -X POST https://run.workflowai.com/v1/chat/completions \
 To access a specific conversation, you need the `conversation_id`. There are two ways to obtain the `conversation_id`:
 
 - **Manual conversation grouping**: If you [manually set a `conversation_id`](#manual-conversation-grouping), the `conversation_id` is available immediately in your code
-- **Automatic conversation grouping**: The `conversation_id` is generated during run storage and is not returned in the inference response. You can retrieve the `conversation_id` later using the [runs API endpoints](/docs/observability/runs) (e.g., `/runs/{id}` or `/runs/search`), or in the UI.
+- **Automatic conversation grouping**: The `conversation_id` is generated during run storage and is not returned in the inference response. You can retrieve the `conversation_id` later using the [runs API endpoints](/observability/runs) (e.g., `/runs/{id}` or `/runs/search`), or in the UI.
 
 Once you have the `conversation_id`, you can view the conversation:
 
