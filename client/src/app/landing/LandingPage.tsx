@@ -155,6 +155,18 @@ export function LandingPage() {
           className='sm:mt-20 mt-14 sm:mb-20 mb-14'
           routeForSignUp={routeForSignUp}
         />
+
+        {/* Simple footer with Stripe Fulfillment Policy link */}
+        <div className='flex justify-center w-full py-4 px-4 border-t border-gray-100'>
+          <a
+            href='https://docs.workflowai.com/workflowai-cloud/pricing#stripe-fulfillment-policy'
+            target='_blank'
+            rel='noopener noreferrer'
+            className='text-sm text-gray-600 underline hover:text-gray-800 transition-colors'
+          >
+            Stripe Fulfillment Policy
+          </a>
+        </div>
       </LandingPageContainer>
     </div>
   );
