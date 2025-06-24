@@ -983,7 +983,9 @@ export function PlaygroundContent(props: PlaygroundContentBodyProps) {
   const useParametersFromMajorVersion = useCallback(
     (version: MajorVersion) => {
       onResetTaskRunIds();
-      setInstructions(version.properties.instructions);
+      if (version.properties.instructions) {
+        setInstructions(version.properties.instructions);
+      }
       setTemperature(version.properties.temperature);
       setVariantId(!!version.properties.task_variant_id ? version.properties.task_variant_id : undefined);
       setUserSelectedMajor(version.major);
