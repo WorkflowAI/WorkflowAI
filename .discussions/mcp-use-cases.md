@@ -23,10 +23,4 @@ flow (from the MCP client):
 
 ---
 
-- [ ] Some pages needs to be updated to be marked as "private" (e.g., `use-cases/mcp.private.mdx`). https://linear.app/workflowai/issue/WOR-5068/implement-private-page-functionality-for-documentation.
-
-Because otherwise `search_documentation` will return information that is not meant to be public yet (new features, ..).
-
----
-
 ## ...
