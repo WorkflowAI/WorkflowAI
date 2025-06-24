@@ -17,7 +17,7 @@ from api.services.runs.runs_service import RunsService
 from api.services.security_service import SecurityService
 from api.services.task_deployments import TaskDeploymentsService
 from api.services.versions import VersionsService
-from core.domain.analytics_events.analytics_events import OrganizationProperties, UserProperties
+from core.domain.analytics_events.analytics_events import OrganizationProperties, SourceType, UserProperties
 from core.domain.users import UserIdentifier
 
 
@@ -96,6 +96,23 @@ async def get_mcp_service() -> MCPService:
         reviews_service=reviews_service,
     )
 
+    user_properties = UserProperties(
+        user_id=None,
+        client_source=SourceType.MCP,
+        client_version=None,
+        client_language=None,
+    )
+
+    organization_properties = OrganizationProperties.build(tenant)
+
+    event_router = tenant_event_router(
+        tenant=tenant.slug,
+        tenant_uid=tenant.uid,
+        user_properties=user_properties,
+        organization_properties=organization_properties,
+        task_properties=None,
+    )
+
     return MCPService(
         storage=_storage,
         ai_engineer_service=ai_engineer_service,
@@ -105,4 +122,6 @@ async def get_mcp_service() -> MCPService:
         task_deployments_service=task_deployments_service,
         user_email=user_identifier.user_email,
         tenant=tenant,
+        event_router=event_router,
+        analytics_service=analytics,
     )

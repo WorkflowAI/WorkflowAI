@@ -420,7 +420,7 @@ class _OpenAIProxyExtraFields(BaseModel):
 
 
 class OpenAIProxyChatCompletionRequest(_OpenAIProxyExtraFields):
-    messages: list[OpenAIProxyMessage]
+    messages: list[OpenAIProxyMessage] = Field(default_factory=list)
     model: str
     frequency_penalty: float | None = None
     function_call: str | OpenAIProxyToolChoiceFunction | None = None

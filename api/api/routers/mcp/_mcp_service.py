@@ -1,7 +1,8 @@
 from collections.abc import Iterator
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, NamedTuple
 
+from api.dependencies.services import _feedback_token_generator  # pyright: ignore[reportPrivateUsage]
 from api.routers.mcp._mcp_errors import MCPError
 from api.routers.mcp._mcp_models import (
     AgentListItem,
@@ -22,23 +23,34 @@ from api.routers.mcp._mcp_models import (
 from api.routers.mcp._mcp_utils import extract_agent_id_and_run_id
 from api.routers.mcp._utils.agent_sorting import sort_agents
 from api.routers.mcp._utils.model_sorting import sort_models
+from api.routers.openai_proxy._openai_proxy_handler import OpenAIProxyHandler
+from api.routers.openai_proxy._openai_proxy_models import (
+    OpenAIProxyChatCompletionRequest,
+    OpenAIProxyChatCompletionResponse,
+)
 from api.services import tasks
+from api.services.analytics._analytics_service import AnalyticsService
 from api.services.documentation_service import DocumentationService
+from api.services.groups import GroupService
 from api.services.internal_tasks.ai_engineer_service import AIEngineerService
 from api.services.models import ModelsService
+from api.services.run import RunService
 from api.services.runs.runs_service import RunsService
 from api.services.runs_search import RunsSearchService
 from api.services.task_deployments import TaskDeploymentsService
 from api.services.versions import VersionsService
 from core.domain.agent_run import AgentRun
-from core.domain.consts import WORKFLOWAI_APP_URL
+from core.domain.consts import INPUT_KEY_MESSAGES, WORKFLOWAI_APP_URL
+from core.domain.events import EventRouter
 from core.domain.fields.chat_message import ChatMessage
+from core.domain.message import Messages
 from core.domain.models.model_data import FinalModelData, LatestModel
 from core.domain.models.model_datas_mapping import MODEL_DATAS
 from core.domain.models.models import Model
 from core.domain.search_query import FieldQuery, SearchOperator
 from core.domain.task_group import TaskGroup, TaskGroupQuery
 from core.domain.task_info import TaskInfo
+from core.domain.task_variant import SerializableTaskVariant
 from core.domain.tenant_data import PublicOrganizationData
 from core.domain.users import UserIdentifier
 from core.domain.version_environment import VersionEnvironment
@@ -61,6 +73,8 @@ class MCPService:
         models_service: ModelsService,
         task_deployments_service: TaskDeploymentsService,
         user_email: str | None,
+        event_router: EventRouter,
+        analytics_service: AnalyticsService,
         tenant: PublicOrganizationData,
     ):
         self.storage = storage
@@ -71,6 +85,25 @@ class MCPService:
         self.task_deployments_service = task_deployments_service
         self.user_email = user_email
         self.tenant = tenant
+        self.event_router = event_router
+        self.analytics_service = analytics_service
+
+    def group_service(self):
+        return GroupService(
+            storage=self.storage,
+            event_router=self.event_router,
+            analytics_service=self.analytics_service,
+            user=None,  # TODO: ?
+        )
+
+    def run_service(self, group_service: GroupService):
+        return RunService(
+            storage=self.storage,
+            event_router=self.event_router,
+            analytics_service=self.analytics_service,
+            group_service=group_service,
+            user=None,  # TODO: ?
+        )
 
     def _get_useful_links(self, agent_id: str | None, agent_schema_id: int | None) -> UsefulLinks:
         if agent_id is None:
@@ -198,6 +231,33 @@ class MCPService:
             items=model_responses,
         ).paginate(max_tokens=MAX_TOOL_RETURN_TOKENS, page=page)
 
+    class RunVersionVariant(NamedTuple):
+        run: AgentRun
+        version: TaskGroup
+        variant: SerializableTaskVariant | None
+        task_info: TaskInfo
+
+    async def _fetch_run_version_variant(self, agent_id: str, run_id: str):
+        """Fetch a run and the retrieve the version"""
+        task_info = await self.storage.tasks.get_task_info(agent_id)
+        task_tuple = task_info.id_tuple
+        if not task_tuple:
+            raise MCPError(f"Agent {agent_id} not found")
+        try:
+            run = await self.runs_service.run_by_id(task_tuple, run_id)
+        except ObjectNotFoundException:
+            raise MCPError(f"Run {run_id} not found")
+
+        # Retrieve variant to get output schema
+        version = await self.storage.task_groups.get_task_group_by_id(task_tuple[0], run.group.id)
+
+        if variant_id := version.properties.task_variant_id:
+            variant = await self.storage.task_version_resource_by_id(task_tuple[0], variant_id)
+        else:
+            variant = None
+
+        return self.RunVersionVariant(run, version, variant, task_info)
+
     async def fetch_run_details(
         self,
         agent_id: str | None,
@@ -215,27 +275,12 @@ class MCPService:
         if not run_id:
             raise MCPError("Run ID is required")
 
-        task_info = await self.storage.tasks.get_task_info(agent_id)
-        task_tuple = task_info.id_tuple
-        if not task_tuple:
-            raise MCPError(f"Agent {agent_id} not found")
-        try:
-            run = await self.runs_service.run_by_id(task_tuple, run_id)
-        except ObjectNotFoundException:
-            raise MCPError(f"Run {run_id} not found")
-
-        # Retrieve variant to get output schema
-        version = await self.storage.task_groups.get_task_group_by_id(task_tuple[0], run.group.id)
-        # Version Properties should always have a variant id
-        if variant_id := version.properties.task_variant_id:
-            variant = await self.storage.task_version_resource_by_id(task_tuple[0], variant_id)
-        else:
-            variant = None
+        data = await self._fetch_run_version_variant(agent_id, run_id)
 
         return MCPRun.from_domain(
-            run,
-            version,
-            variant.output_schema.json_schema if variant else None,
+            data.run,
+            data.version,
+            data.variant.output_schema.json_schema if data.variant else None,
             self.tenant.app_run_url(agent_id, run_id),
         )
 
@@ -638,3 +683,84 @@ class MCPService:
             success=True,
             items=await self._map_runs(task_tuple, page_result.items),
         ).paginate(max_tokens=MAX_TOOL_RETURN_TOKENS, page=page)
+
+    async def create_completion(
+        self,
+        # TODO: required for now, we should remove once we have a way to retrieve
+        # a run by its ID without the agent_id
+        agent_id: str,
+        original_run_id: str | None,
+        request: OpenAIProxyChatCompletionRequest,
+    ) -> OpenAIProxyChatCompletionResponse:
+        if original_run_id:
+            run_data = await self._fetch_run_version_variant(agent_id, original_run_id)
+        else:
+            run_data = None
+
+        # No matter what we are not streaming
+        request.stream_options = None
+        request.stream = False
+
+        group_service = self.group_service()
+        run_service = self.run_service(group_service)
+
+        handler = OpenAIProxyHandler(
+            group_service=group_service,
+            storage=self.storage,
+            run_service=run_service,
+            event_router=self.event_router,
+            feedback_generator=_feedback_token_generator,
+        )
+        prepared = await handler.prepare_run(request, self.tenant)
+        if run_data:
+            # We make sure we provide defaults for fields present in the run
+            merged_properties = run_data.version.properties.model_copy(update=prepared.properties.model_dump())
+
+            # TODO: we should likely raise if there is a difference in schema here
+            # Not possible right now because prepared.variant will always be set
+            # So we can't really detect "default variants"
+            merged_variant = run_data.variant or prepared.variant
+
+            prepared = handler.PreparedRun(
+                properties=merged_properties,
+                variant=merged_variant,
+                final_input=_merge_inputs(original_input=run_data.run.task_input, new_input=prepared.final_input),
+            )
+
+        res = await handler.handle_prepared_run(prepared, request, None, 0, self.tenant)
+        if not isinstance(res, OpenAIProxyChatCompletionResponse):
+            # That should never happen since we are not streaming
+            raise ValueError("Unexpected response type")
+        return res
+
+
+def _merge_inputs(
+    original_input: dict[str, Any] | None,
+    new_input: dict[str, Any] | None | Messages,
+) -> dict[str, Any] | Messages:
+    if not original_input:
+        if not new_input:
+            raise MCPError("Missing messages")
+        return new_input or {}
+    if not new_input:
+        return original_input
+
+    # Here we merge the messages and the rest separately
+    if isinstance(new_input, Messages):
+        merged = {}
+        # TODO: remove, Same hack as in OpenAIProxyHandler
+        new_input_messages = new_input.model_dump(mode="json", exclude_none=True)[INPUT_KEY_MESSAGES]
+    else:
+        merged = {k: v for k, v in new_input.items() if k != INPUT_KEY_MESSAGES}
+        new_input_messages = new_input.get(INPUT_KEY_MESSAGES)
+
+    if not merged:
+        # No actual input in the new input so we can fetch from the original input
+        merged = {k: v for k, v in original_input.items() if k != INPUT_KEY_MESSAGES}
+
+    # Then we set the messages in the same way
+    merged[INPUT_KEY_MESSAGES] = (
+        new_input_messages if new_input_messages is not None else original_input.get(INPUT_KEY_MESSAGES)
+    )
+
+    return merged

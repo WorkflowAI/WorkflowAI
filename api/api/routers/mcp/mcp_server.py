@@ -25,6 +25,10 @@ from api.routers.mcp._mcp_models import (
     SortOrder,
 )
 from api.routers.mcp._mcp_serializer import tool_serializer
+from api.routers.openai_proxy._openai_proxy_models import (
+    OpenAIProxyChatCompletionRequest,
+    OpenAIProxyChatCompletionResponse,
+)
 from api.services.tools_service import ToolsService
 from core.domain.tool import Tool
 from core.domain.users import UserIdentifier
@@ -730,6 +734,28 @@ async def search_documentation(
             success=False,
             error=str(e),
         )
+
+
+@_mcp.tool()
+async def create_completion(
+    # TODO: we should not need the agent id here
+    agent_id: str = Field(
+        description="The id of the user's agent. Example: 'agent_id': 'email-filtering-agent' in metadata, or 'email-filtering-agent' in 'model=email-filtering-agent/gpt-4o-latest'.",
+    ),
+    # TODO: we should likely split the completion request object
+    request: OpenAIProxyChatCompletionRequest = Field(
+        description="A partial completion request. The model is always required. If original_run_id is not provided, messages is required",
+    ),
+    original_run_id: str | None = Field(
+        default=None,
+        description="A run ID to repeat. Parameters provided in the request will override the "
+        "parameters in the original completion request",
+    ),
+) -> MCPToolReturn[OpenAIProxyChatCompletionResponse]:
+    request.check_supported_fields()
+    service = await get_mcp_service()
+
+    return await mcp_wrap(service.create_completion(agent_id, original_run_id, request))
 
 
 def mcp_http_app():

@@ -310,15 +310,14 @@ class OpenAIProxyHandler:
 
     def _check_final_input(
         self,
-        input_io: SerializableTaskIO,
-        final_input: dict[str, Any] | Messages,
-        agent_ref: EnvironmentRef | ModelRef,
+        prepared_run: PreparedRun,
         tenant_data: PublicOrganizationData,
         request_input_was_empty: bool,
     ):
-        if isinstance(final_input, Messages) or request_input_was_empty:
+        variant = prepared_run.variant
+        if isinstance(prepared_run.final_input, Messages) or request_input_was_empty:
             # That can happen if the user passed a None input
-            if input_io.uses_raw_messages:
+            if variant.input_schema.uses_raw_messages:
                 # Everything is ok here, we received messages with no input and expected no input
                 return
 
@@ -326,30 +325,30 @@ class OpenAIProxyHandler:
             # We should have a proper input dict
             raise (
                 BadRequestError(
-                    f"Your deployment on schema #{agent_ref.schema_id} expects input variables but you did not send any."
-                    f"Please check your schema at {tenant_data.app_schema_url(agent_ref.agent_id, agent_ref.schema_id)}",
+                    f"Your deployment on schema #{variant.task_schema_id} expects input variables but you did not send any."
+                    f"Please check your schema at {tenant_data.app_schema_url(variant.task_id, variant.task_schema_id)}",
                 )
-                if isinstance(agent_ref, EnvironmentRef)
+                if variant.task_schema_id
                 else BadRequestError("It seems that your messages expect templated variables but you did not send any.")
             )
 
-        if input_io.uses_raw_messages and not request_input_was_empty:
+        if variant.input_schema.uses_raw_messages and not request_input_was_empty:
             raise (
                 BadRequestError(
-                    f"You passed input variables to a deployment on schema #{agent_ref.schema_id} but schema "
-                    f"#{agent_ref.schema_id} does not expect any."
+                    f"You passed input variables to a deployment on schema #{variant.task_schema_id} but schema "
+                    f"#{variant.task_schema_id} does not expect any."
                     "You likely have a typo in your schema number."
-                    f"Please check your schema at {tenant_data.app_schema_url(agent_ref.agent_id, agent_ref.schema_id)}",
+                    f"Please check your schema at {tenant_data.app_schema_url(variant.task_id, variant.task_schema_id)}",
                 )
-                if isinstance(agent_ref, EnvironmentRef)
+                if variant.task_schema_id
                 else BadRequestError(
                     "It looks like you sent input variables but there are no input variables in your messages.",
                 )
             )
 
-        input_io.enforce(final_input, files_as_strings=True)
+        variant.input_schema.enforce(prepared_run.final_input, files_as_strings=True)
 
-    async def _prepare_run(self, body: OpenAIProxyChatCompletionRequest, tenant_data: PublicOrganizationData):
+    async def prepare_run(self, body: OpenAIProxyChatCompletionRequest, tenant_data: PublicOrganizationData):
         if body.workflowai_internal:
             # "Internal way" of using the proxy endpoint
             # this is used by the playground to easily run a single variant, since it already
@@ -402,26 +401,27 @@ class OpenAIProxyHandler:
                     response_format=body.response_format,
                 )
 
-            self._check_final_input(
-                prepared_run.variant.input_schema,
-                prepared_run.final_input,
-                agent_ref,
-                tenant_data,
-                request_input_was_empty=not body.input,
-            )
         body.apply_to(prepared_run.properties)
 
         return prepared_run
 
-    async def handle(
+    async def handle_prepared_run(
         self,
+        prepared_run: PreparedRun,
         body: OpenAIProxyChatCompletionRequest,
-        request: Request,
+        metadata: dict[str, Any] | None,
+        start_time: float,
         tenant_data: PublicOrganizationData,
     ):
         body.check_supported_fields()
 
-        prepared_run = await self._prepare_run(body, tenant_data)
+        prepared_run = await self.prepare_run(body, tenant_data)
+
+        self._check_final_input(
+            prepared_run,
+            tenant_data,
+            request_input_was_empty=not body.input,
+        )
 
         try:
             parsed_fallback = body.parsed_use_fallback()
@@ -450,8 +450,8 @@ class OpenAIProxyHandler:
             runner=runner,
             task_input=prepared_run.final_input,
             task_run_id=None,
-            metadata=body.full_metadata(request.headers),
-            start_time=get_start_time(request),
+            metadata=metadata,
+            start_time=start_time,
             is_different_version=False,
             author_tenant=None,
             private_fields=set(),
@@ -477,7 +477,7 @@ class OpenAIProxyHandler:
                 source=source,
                 store_inline=False,
             )
-            response_object = OpenAIProxyChatCompletionResponse.from_domain(
+            return OpenAIProxyChatCompletionResponse.from_domain(
                 task_run,
                 output_mapper=output_mapper,
                 model=body.model,
@@ -485,33 +485,49 @@ class OpenAIProxyHandler:
                 feedback_generator=_feedback_generator,
                 org=tenant_data,
             )
-            return JSONResponse(content=response_object.model_dump(mode="json", exclude_none=True))
 
-        return StreamingResponse(
-            self._run_service.stream_run(
-                builder=builder,
-                runner=runner,
-                cache=cache,
-                trigger=trigger,
-                chunk_serializer=OpenAIProxyChatCompletionChunk.stream_serializer(
-                    agent_id=prepared_run.variant.task_id,
-                    model=body.model,
-                    output_mapper=output_mapper,
-                    deprecated_function=body.uses_deprecated_functions,
-                    aggregate_content=aggregate_content,
-                ),
-                serializer=OpenAIProxyChatCompletionChunk.serializer(
-                    model=body.model,
-                    deprecated_function=body.uses_deprecated_functions,
-                    output_mapper=output_mapper,
-                    feedback_generator=_feedback_generator,
-                    aggregate_content=aggregate_content,
-                    org=tenant_data,
-                ),
-                source=source,
+        return self._run_service.stream_run(
+            builder=builder,
+            runner=runner,
+            cache=cache,
+            trigger=trigger,
+            chunk_serializer=OpenAIProxyChatCompletionChunk.stream_serializer(
+                agent_id=prepared_run.variant.task_id,
+                model=body.model,
+                output_mapper=output_mapper,
+                deprecated_function=body.uses_deprecated_functions,
+                aggregate_content=aggregate_content,
             ),
-            media_type="text/event-stream",
+            serializer=OpenAIProxyChatCompletionChunk.serializer(
+                model=body.model,
+                deprecated_function=body.uses_deprecated_functions,
+                output_mapper=output_mapper,
+                feedback_generator=_feedback_generator,
+                aggregate_content=aggregate_content,
+                org=tenant_data,
+            ),
+            source=source,
         )
+
+    async def handle(
+        self,
+        body: OpenAIProxyChatCompletionRequest,
+        request: Request,
+        tenant_data: PublicOrganizationData,
+    ):
+        body.check_supported_fields()
+
+        prepared_run = await self.prepare_run(body, tenant_data)
+        response = await self.handle_prepared_run(
+            prepared_run,
+            body,
+            metadata=body.full_metadata(request.headers),
+            start_time=get_start_time(request),
+            tenant_data=tenant_data,
+        )
+        if isinstance(response, OpenAIProxyChatCompletionResponse):
+            return JSONResponse(content=response.model_dump(mode="json", exclude_none=True))
+        return StreamingResponse(response, media_type="text/event-stream")
 
     @classmethod
     async def missing_model_error(cls, model: str | None, prefix: str = ""):
