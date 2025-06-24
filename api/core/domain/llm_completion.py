@@ -55,15 +55,15 @@ class LLMCompletion(BaseModel):
             return True
         return not (self.response is None and self.usage.completion_token_count == 0)
 
-    def to_messages(self) -> list[MessageDeprecated]:
+    def to_deprecated_messages(self) -> list[MessageDeprecated]:
         # TODO: this really should not be here but we will eventually remove the standard messages so we
         # can leave for now
-        from core.providers.base.models import StandardMessage, message_standard_to_domain
+        from core.providers.base.models import StandardMessage, message_standard_to_domain_deprecated
 
         # Convert the LLMCompletion to a list of messages
         # Warning: this will only work if the LLMCompletion messages has been converted to
         # a list of standard messages
-        base = [message_standard_to_domain(cast(StandardMessage, message)) for message in self.messages]
+        base = [message_standard_to_domain_deprecated(cast(StandardMessage, message)) for message in self.messages]
 
         if self.tool_calls or self.response:
             base.append(

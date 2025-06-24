@@ -11,7 +11,7 @@ from core.providers.base.models import (
     TextContentDict,
     ToolCallRequestDict,
     ToolCallResultDict,
-    message_standard_to_domain,
+    message_standard_to_domain_deprecated,
     role_domain_to_standard,
     role_standard_to_domain,
 )
@@ -41,7 +41,7 @@ class TestMessageFromStandard:
             "role": "user",
             "content": "Hello world",
         }
-        message = message_standard_to_domain(standard_msg)
+        message = message_standard_to_domain_deprecated(standard_msg)
         assert message.role == MessageDeprecated.Role.USER
         assert message.content == "Hello world"
         assert message.files is None
@@ -57,7 +57,7 @@ class TestMessageFromStandard:
             "role": "assistant",
             "content": [text1, text2, image, doc, audio],
         }
-        message = message_standard_to_domain(standard_msg)
+        message = message_standard_to_domain_deprecated(standard_msg)
         assert message.role == MessageDeprecated.Role.ASSISTANT
         assert message.content == "First line\nSecond line"
         assert message.files is not None
@@ -71,7 +71,7 @@ class TestMessageFromStandard:
             "role": None,
             "content": "Hello world",
         }
-        message = message_standard_to_domain(standard_msg)
+        message = message_standard_to_domain_deprecated(standard_msg)
         assert message.role == MessageDeprecated.Role.USER  # Default role
         assert message.content == "Hello world"
 
@@ -85,7 +85,7 @@ class TestMessageFromStandard:
             "role": "user",
             "content": [text, invalid_content],  # type: ignore
         }
-        message = message_standard_to_domain(standard_msg)
+        message = message_standard_to_domain_deprecated(standard_msg)
         assert message.role == MessageDeprecated.Role.USER
         assert message.content == "Valid text"
 
@@ -98,7 +98,7 @@ class TestMessageFromStandard:
             "role": "user",
             "content": [text, malformed_image],  # type: ignore
         }
-        message = message_standard_to_domain(standard_msg)
+        message = message_standard_to_domain_deprecated(standard_msg)
         assert message.role == MessageDeprecated.Role.USER
         assert message.content == "Valid text"
         assert message.files is None  # Malformed content should be skipped
@@ -116,7 +116,7 @@ class TestMessageFromStandard:
             "role": "assistant",
             "content": [text, tool_call],
         }
-        message = message_standard_to_domain(standard_msg)
+        message = message_standard_to_domain_deprecated(standard_msg)
         assert message.role == MessageDeprecated.Role.ASSISTANT
         assert message.content == "Some text"
         assert message.tool_call_requests is not None
@@ -140,7 +140,7 @@ class TestMessageFromStandard:
             "role": "assistant",
             "content": [text, tool_result],
         }
-        message = message_standard_to_domain(standard_msg)
+        message = message_standard_to_domain_deprecated(standard_msg)
         assert message.role == MessageDeprecated.Role.ASSISTANT
         assert message.content == "Some text"
         assert message.tool_call_results is not None

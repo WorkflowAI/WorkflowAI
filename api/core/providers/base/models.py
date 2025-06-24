@@ -120,7 +120,7 @@ def role_domain_to_standard(role: MessageDeprecated.Role) -> Literal["system", "
     return role.value  # type: ignore
 
 
-def message_standard_to_domain(message: StandardMessage):
+def message_standard_to_domain_deprecated(message: StandardMessage):
     role = role_standard_to_domain(message["role"])
     raw = message["content"]
     if isinstance(raw, str):
