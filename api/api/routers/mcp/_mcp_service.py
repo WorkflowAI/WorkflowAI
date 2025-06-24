@@ -140,7 +140,7 @@ class MCPService:
             ],
         )
 
-    async def list_available_models(
+    async def list_models(
         self,
         page: int,
         sort_by: ModelSortField,
