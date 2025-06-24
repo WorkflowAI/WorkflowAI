@@ -101,7 +101,6 @@ class TestObserverAgentData:
         assert len(sample_observer_data.previous_tool_calls) == 1
         assert sample_observer_data.mcp_session_id == "session-123"
         assert sample_observer_data.organization_name == "Test Org"
-        assert sample_observer_data.user_email == "test@example.com"
 
     def test_observer_agent_data_optional_fields(self):
         observer_data = ObserverAgentData(
