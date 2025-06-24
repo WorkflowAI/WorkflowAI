@@ -408,9 +408,7 @@ class MCPObservabilityMiddleware(BaseHTTPMiddleware):
                                 user_agent=user_agent,
                                 mcp_session_id=session_state.session_id,
                                 request_id=str(request_id),
-                                # TODO: Extract from request if available
-                                organization_name=None,
-                                user_email=None,
+                                organization_name=tenant_info.slug,
                             )
 
                             # Create background task for observer agent

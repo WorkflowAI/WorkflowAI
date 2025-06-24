@@ -40,7 +40,6 @@ class ObserverAgentData(BaseModel):
     mcp_session_id: str
     request_id: str
     organization_name: str | None = None
-    user_email: str | None = None
 
 
 class SessionState:
