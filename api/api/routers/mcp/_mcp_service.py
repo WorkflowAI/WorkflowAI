@@ -19,6 +19,7 @@ from api.routers.mcp._mcp_models import (
     SortOrder,
     UsefulLinks,
 )
+from api.routers.mcp._mcp_utils import extract_agent_id_and_run_id
 from api.routers.mcp._utils.agent_sorting import sort_agents
 from api.routers.mcp._utils.model_sorting import sort_models
 from api.services import tasks
@@ -196,89 +197,6 @@ class MCPService:
             items=model_responses,
         ).paginate(max_tokens=MAX_TOOL_RETURN_TOKENS, page=page)
 
-    def _extract_agent_id_and_run_id(self, run_url: str) -> tuple[str, str]:  # noqa: C901
-        """Extract the agent ID and run ID from the run URL.
-
-        Supports multiple URL formats:
-        1. https://workflowai.com/workflowai/agents/classify-email-domain/runs/019763ae-ba9f-70a9-8d44-5a626c82e888
-        2. http://localhost:3000/workflowai/agents/sentiment/2/runs?taskRunId=019763a5-12a7-73b7-9b0c-e6413d2da52f
-
-        Args:
-            run_url: The run URL to parse
-
-        Returns:
-            A tuple of (agent_id, run_id)
-
-        Raises:
-            ValueError: If the URL format is invalid or doesn't match the expected pattern
-        """
-        if not run_url:
-            raise ValueError("run_url must be a non-empty string")
-
-        # Parse query parameters first
-        from urllib.parse import parse_qs, urlparse
-
-        parsed_url = urlparse(run_url)
-        query_params = parse_qs(parsed_url.query)
-
-        # Remove trailing slash from path
-        clean_path = parsed_url.path.rstrip("/")
-
-        # Split by "/" and filter out empty parts
-        parts = [part for part in clean_path.split("/") if part]
-
-        # Find "agents" keyword and extract agent_id
-        try:
-            agents_index = None
-            for i, part in enumerate(parts):
-                if part == "agents":
-                    agents_index = i
-                    break
-
-            if agents_index is None or agents_index + 1 >= len(parts):
-                raise ValueError(f"Could not find 'agents/{{agent_id}}' pattern in URL: {run_url}")
-
-            agent_id = parts[agents_index + 1]
-            if not agent_id:
-                raise ValueError(f"Agent ID is empty in URL: {run_url}")
-
-            # Look for run ID in different places
-            run_id = None
-
-            # Method 1: Check for taskRunId in query parameters
-            if "taskRunId" in query_params and query_params["taskRunId"]:
-                run_id = query_params["taskRunId"][0]
-
-            # Method 2: Check for standard pattern agents/agent_id/runs/run_id
-            if not run_id:
-                # Look for "runs" after agent_id (may have schema_id in between)
-                runs_index = None
-                for i in range(agents_index + 2, len(parts)):
-                    if parts[i] == "runs" and i + 1 < len(parts):
-                        runs_index = i
-                        break
-
-                if runs_index is not None:
-                    run_id = parts[runs_index + 1]
-
-            # Method 3: Check for pattern agents/agent_id/schema_id/runs (runs list page with taskRunId param)
-            if not run_id:
-                # Look for pattern where "runs" comes after agent_id (with optional schema_id)
-                for i in range(agents_index + 2, len(parts)):
-                    if parts[i] == "runs":
-                        # This is probably a runs list page, check query params again
-                        if "taskRunId" in query_params and query_params["taskRunId"]:
-                            run_id = query_params["taskRunId"][0]
-                        break
-
-            if not run_id:
-                raise ValueError(f"Could not find run ID in URL: {run_url}")
-
-            return agent_id, run_id
-
-        except (IndexError, ValueError) as e:
-            raise ValueError(f"Invalid run URL format: {run_url}") from e
-
     async def fetch_run_details(
         self,
         agent_id: str | None,
@@ -288,13 +206,7 @@ class MCPService:
         """Fetch details of a specific agent run."""
 
         if run_url:
-            try:
-                agent_id, run_id = self._extract_agent_id_and_run_id(run_url)
-                # find the task tuple from the agent id
-            except ValueError:
-                raise MCPError(
-                    "Invalid run URL, must be in the format 'https://workflowai.com/workflowai/agents/agent-id/runs/run-id', or you must pass 'agent_id' and 'run_id'",
-                )
+            agent_id, run_id = extract_agent_id_and_run_id(run_url)
 
         if not agent_id:
             raise MCPError("Agent ID is required")
