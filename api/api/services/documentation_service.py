@@ -16,28 +16,18 @@ from core.utils.redis_cache import redis_cached
 _logger = logging.getLogger(__name__)
 
 
-# TODO: we won't need this when the playground agent will be directly connected to update to date WorkflowAI docs
-DEFAULT_DOC_SECTIONS: list[DocumentationSection] = [
-    DocumentationSection(
-        title="Business Associate Agreements (BAA)",
-        content="WorkflowAI has signed BBAs with all the providers offered on the WorkflowAI platform (OpenAI, Anthropic, Fireworks, etc.).",
-    ),
-    DocumentationSection(
-        title="Hosting of DeepSeek models",
-        content="Also alse the DeepSeek models offered by WorkflowAI are US hosted.",
-    ),
-]
-
 # local reads from local docsv2 folder,
 # 'remote' reads from the fumadocs nextjs app instance
 # TODO: totally decomission local mode
 DocModeEnum = Literal["local", "remote"]
 
+DEFAULT_DOC_MODE: DocModeEnum = "local"
+
 WORKFLOWAI_DOCS_URL = os.getenv("WORKFLOWAI_DOCS_URL", "https://docs2.workflowai.com")
 
 
 class DocumentationService:
-    _LOCAL_DOCS_DIR: str = "docsv2"
+    _LOCAL_DOCS_DIR: str = "docsv2/content/docs"
     _LOCAL_FILE_EXTENSIONS: list[str] = [".mdx", ".md"]
 
     async def _get_all_doc_sections_local(self) -> list[DocumentationSection]:
@@ -58,7 +48,10 @@ class DocumentationService:
                 try:
                     with open(full_path, "r") as f:  # noqa: ASYNC230
                         doc_sections.append(
-                            DocumentationSection(title=relative_path, content=f.read()),
+                            DocumentationSection(
+                                title=relative_path.replace(".mdx", "").replace(".md", ""),
+                                content=f.read(),
+                            ),
                         )
                 except Exception as e:
                     _logger.exception(
@@ -125,7 +118,7 @@ class DocumentationService:
                 )
                 return "Error fetching page content"
 
-    async def get_all_doc_sections(self, mode: DocModeEnum = "remote") -> list[DocumentationSection]:
+    async def get_all_doc_sections(self, mode: DocModeEnum = DEFAULT_DOC_MODE) -> list[DocumentationSection]:
         """Get all documentation sections based on the configured mode"""
         match mode:
             case "local":
@@ -175,7 +168,7 @@ class DocumentationService:
     async def get_documentation_by_path(
         self,
         paths: list[str],
-        mode: DocModeEnum = "remote",
+        mode: DocModeEnum = DEFAULT_DOC_MODE,
     ) -> list[DocumentationSection]:
         """Get documentation by path based on the configured mode"""
         match mode:
@@ -188,7 +181,7 @@ class DocumentationService:
         self,
         chat_messages: list[ChatMessage],
         agent_instructions: str,
-        mode: DocModeEnum = "remote",
+        mode: DocModeEnum = DEFAULT_DOC_MODE,
     ) -> list[DocumentationSection]:
         all_doc_sections: list[DocumentationSection] = await self.get_all_doc_sections(mode)
 
@@ -207,6 +200,6 @@ class DocumentationService:
             # Fallback on all doc sections (no filtering)
             relevant_doc_sections: list[str] = [doc_category.title for doc_category in all_doc_sections]
 
-        return DEFAULT_DOC_SECTIONS + [
+        return [
             document_section for document_section in all_doc_sections if document_section.title in relevant_doc_sections
         ]

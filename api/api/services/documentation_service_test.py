@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from api.services.documentation_service import DEFAULT_DOC_SECTIONS, WORKFLOWAI_DOCS_URL, DocumentationService
+from api.services.documentation_service import WORKFLOWAI_DOCS_URL, DocumentationService
 from core.domain.documentation_section import DocumentationSection
 
 API_DOCS_DIR = "api/docsv2"
@@ -74,7 +74,7 @@ async def test_get_relevant_doc_sections_success(
     relevant_sections = await documentation_service.get_relevant_doc_sections([], agent_instructions)
 
     # Expected sections: Defaults + the ones identified as relevant
-    expected_sections = DEFAULT_DOC_SECTIONS + [
+    expected_sections = [
         DocumentationSection(title="section1.md", content="Content 1"),
         DocumentationSection(title="security.md", content="Security Content"),
     ]
@@ -111,12 +111,9 @@ async def test_get_relevant_doc_sections_pick_error(
     agent_instructions = "Focus on security."
     relevant_sections = await documentation_service.get_relevant_doc_sections([], agent_instructions)
 
-    # Expected sections: Defaults + all available sections as fallback
-    expected_sections = DEFAULT_DOC_SECTIONS + all_sections
-
     # Convert to sets of tuples for order-independent comparison
     actual_section_tuples = {(s.title, s.content) for s in relevant_sections}
-    expected_section_tuples = {(s.title, s.content) for s in expected_sections}
+    expected_section_tuples = {(s.title, s.content) for s in all_sections}
 
     assert actual_section_tuples == expected_section_tuples
     mock_get_all_sections.assert_called_once()

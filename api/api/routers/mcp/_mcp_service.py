@@ -703,18 +703,12 @@ class MCPService:
                 )
 
             # Page not found - list available pages for user reference
-            all_sections = await documentation_service.get_all_doc_sections(mode="remote")
+            all_sections = await documentation_service.get_all_doc_sections()
             available_pages = [section.title for section in all_sections]
-
-            # Limit available pages list to prevent overwhelming output
-            if len(available_pages) > 10:
-                available_pages_str = ", ".join(available_pages[:10]) + "..."
-            else:
-                available_pages_str = ", ".join(available_pages)
 
             return LegacyMCPToolReturn(
                 success=False,
-                error=f"Page '{page}' not found. Available pages: {available_pages_str}",
+                error=f"Page '{page}' not found. Available pages: {', '.join(available_pages)}",
             )
 
         except Exception as e:
