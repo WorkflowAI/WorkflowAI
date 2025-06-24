@@ -63,7 +63,6 @@ def sample_observer_data():
         mcp_session_id="session-123",
         request_id="req-123",
         organization_name="Test Org",
-        user_email="test@example.com",
     )
 
 
@@ -117,7 +116,6 @@ class TestObserverAgentData:
             # Optional fields not provided
         )
         assert observer_data.organization_name is None
-        assert observer_data.user_email is None
 
 
 class TestSessionState:

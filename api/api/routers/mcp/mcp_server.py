@@ -834,11 +834,6 @@ async def search_documentation(
     return await service.search_documentation(query=query, page=page)
 
 
-@_mcp.tool()
-async def tool_that_raises_an_error():
-    raise Exception("This is a test error")
-
-
 def mcp_http_app():
     custom_middleware = [
         Middleware(MCPObservabilityMiddleware),

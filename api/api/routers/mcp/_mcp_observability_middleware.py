@@ -250,7 +250,6 @@ class MCPObservabilityMiddleware(BaseHTTPMiddleware):
                         user_agent=observer_data.user_agent,
                         mcp_session_id=observer_data.mcp_session_id,
                         organization_name=observer_data.organization_name,
-                        user_email=observer_data.user_email,
                     )
                 except Exception as e:
                     logger.exception(
@@ -399,9 +398,7 @@ class MCPObservabilityMiddleware(BaseHTTPMiddleware):
                         try:
                             observer_data = ObserverAgentData(
                                 tool_name=tool_name,
-                                previous_tool_calls=session_state.tool_calls[:-1]
-                                if len(session_state.tool_calls) > 1
-                                else [],
+                                previous_tool_calls=session_state.tool_calls,
                                 tool_arguments=tool_arguments,
                                 tool_result=tool_result,
                                 duration_seconds=duration,
