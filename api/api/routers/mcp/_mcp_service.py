@@ -19,6 +19,7 @@ from api.routers.mcp._mcp_models import (
     UsefulLinks,
 )
 from api.routers.mcp._utils.agent_sorting import sort_agents
+from api.routers.mcp._utils.documentation_discovery import DocumentationDiscovery
 from api.routers.mcp._utils.model_sorting import sort_models
 from api.services import tasks
 from api.services.documentation_service import DocumentationService
@@ -702,13 +703,51 @@ class MCPService:
                     messages=[f"Retrieved content for page: {page}"],
                 )
 
-            # Page not found - list available pages for user reference
-            all_sections = await documentation_service.get_all_doc_sections()
-            available_pages = [section.title for section in all_sections]
+            # Page not found - dynamically discover available pages
+            docs_structure = await DocumentationDiscovery.discover_documentation_structure()
+
+            # Format available pages for error message
+            available_pages_by_category: dict[str, list[str]] = {}
+            for page_key, metadata in sorted(docs_structure.items()):
+                # Determine category
+                if page_key.startswith("use-cases/"):
+                    category = "Use Cases"
+                elif page_key.startswith("reference/"):
+                    category = "API Reference"
+                elif page_key.startswith("quickstarts/"):
+                    category = "Quickstarts"
+                elif page_key.startswith("playground/"):
+                    category = "Playground"
+                elif page_key.startswith("observability/"):
+                    category = "Observability"
+                elif page_key.startswith("inference/"):
+                    category = "Inference"
+                elif page_key.startswith("deployments/"):
+                    category = "Deployments"
+                elif page_key.startswith("evaluations/"):
+                    category = "Evaluations"
+                elif page_key.startswith("agents/"):
+                    category = "Agents"
+                elif page_key.startswith("ai-engineer/"):
+                    category = "AI Engineer"
+                elif page_key.startswith("components/"):
+                    category = "Components"
+                else:
+                    category = "Getting Started"
+
+                if category not in available_pages_by_category:
+                    available_pages_by_category[category] = []
+                available_pages_by_category[category].append(page_key)
+
+            # Build error message with available pages
+            error_parts = [f"Page '{page}' not found. Available pages by category:"]
+            for category, pages in available_pages_by_category.items():
+                if pages:
+                    error_parts.append(f"\n{category}: {', '.join(sorted(pages))}")
 
             return LegacyMCPToolReturn(
                 success=False,
-                error=f"Page '{page}' not found. Available pages: {', '.join(available_pages)}",
+                error="\n".join(error_parts),
             )
 
         except Exception as e:
