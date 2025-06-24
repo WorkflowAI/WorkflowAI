@@ -688,97 +688,97 @@ async def search_documentation(
      The following documentation pages are available for direct access:
 
      **Getting Started:**
-     - 'index.mdx' - Introduction to the WorkflowAI documentation. Provides information on what WorkflowAI is and how to get started with building, deploying, and improving AI agents.
-     - 'why-workflowai.mdx' - An explanation of the WorkflowAI platform. Covers its commitment to open standards, provider flexibility, and developer and agent experience.
-     - 'self-hosting.mdx' - Guide for deploying and managing WorkflowAI in your own environment. Provides step-by-step instructions for self-hosting to have control over data and infrastructure.
-     - 'pricing.mdx' - Documentation on the pay-as-you-go pricing model. Explains the price-match guarantee, what you pay for, and answers common questions about billing and costs.
-     - 'organizations.mdx' - Documentation on team collaboration using organizations. Covers creating, joining, and switching between organizations, as well as managing members and join settings.
-     - 'glossary.mdx' - A glossary of key terms and concepts used throughout the WorkflowAI documentation. Provides definitions for important terminology.
-     - 'ask-ai.mdx' - Documentation for the 'Ask AI' assistant. Explains how to ask questions, use commands, and get guidance on using the platform.
-     - 'changelog.mdx' - A chronological record of updates, improvements, and new model integrations to the WorkflowAI platform.
-     - 'compliance.mdx' - Information on security and compliance. Covers SOC2 compliance, data handling policies, and provides answers to frequently asked questions about data privacy.
+     - 'index' - Introduction to the WorkflowAI documentation. Provides information on what WorkflowAI is and how to get started with building, deploying, and improving AI agents.
+     - 'why-workflowai' - An explanation of the WorkflowAI platform. Covers its commitment to open standards, provider flexibility, and developer and agent experience.
+     - 'self-hosting' - Guide for deploying and managing WorkflowAI in your own environment. Provides step-by-step instructions for self-hosting to have control over data and infrastructure.
+     - 'pricing' - Documentation on the pay-as-you-go pricing model. Explains the price-match guarantee, what you pay for, and answers common questions about billing and costs.
+     - 'organizations' - Documentation on team collaboration using organizations. Covers creating, joining, and switching between organizations, as well as managing members and join settings.
+     - 'glossary' - A glossary of key terms and concepts used throughout the WorkflowAI documentation. Provides definitions for important terminology.
+     - 'ask-ai' - Documentation for the 'Ask AI' assistant. Explains how to ask questions, use commands, and get guidance on using the platform.
+     - 'changelog' - A chronological record of updates, improvements, and new model integrations to the WorkflowAI platform.
+     - 'compliance' - Information on security and compliance. Covers SOC2 compliance, data handling policies, and provides answers to frequently asked questions about data privacy.
 
      **Use Cases:**
-     - 'use-cases/chatbot.mdx' - Use case guide for building a conversational AI chatbot. Covers basic setup, conversation management, streaming, error handling, and deployment.
-     - 'use-cases/new_agent.mdx' - Comprehensive framework for building AI agents from scratch. Covers requirements analysis, agent types, model selection, prompt design, evaluation methods, and best practices.
-     - 'use-cases/migrating_existing_agent.mdx' - Step-by-step guide for migrating existing AI agents to the WorkflowAI platform. Covers understanding your current agent, data requirements, and migration best practices.
-     - 'use-cases/improving_and_debugging_existing_agent.mdx' - Guide for troubleshooting and optimizing existing AI agents. Covers common errors like max_tokens_exceeded, debugging with metadata, and performance optimization strategies.
-     - 'use-cases/classifier.mdx' - Use case guide for building AI classifiers. Covers techniques for text categorization, sentiment analysis, and more, from basic to advanced implementations.
-     - 'use-cases/image-input.mdx' - Use case guide for using images as input for AI agents. Covers processing and analyzing images to extract information, answer questions, and perform vision-based tasks.
-     - 'use-cases/pdf-input.mdx' - Use case guide for processing and extracting information from PDF documents. Covers techniques for using PDF files as input for summarization, data extraction, and question-answering tasks.
-     - 'use-cases/image-generation.mdx' - Use case guide for generating and editing images. Covers best practices for prompting, customizing image outputs, and using the WorkflowAI SDK for image generation tasks.
-     - 'use-cases/mcp.mdx' - A collection of use-case scenarios for AI agents that interact with the WorkflowAI platform. Outlines the required capabilities for agents to perform tasks like optimization, debugging, and deployment.
+     - 'use-cases/chatbot' - Use case guide for building a conversational AI chatbot. Covers basic setup, conversation management, streaming, error handling, and deployment.
+     - 'use-cases/new_agent' - Comprehensive framework for building AI agents from scratch. Covers requirements analysis, agent types, model selection, prompt design, evaluation methods, and best practices.
+     - 'use-cases/migrating_existing_agent' - Step-by-step guide for migrating existing AI agents to the WorkflowAI platform. Covers understanding your current agent, data requirements, and migration best practices.
+     - 'use-cases/improving_and_debugging_existing_agent' - Guide for troubleshooting and optimizing existing AI agents. Covers common errors like max_tokens_exceeded, debugging with metadata, and performance optimization strategies.
+     - 'use-cases/classifier' - Use case guide for building AI classifiers. Covers techniques for text categorization, sentiment analysis, and more, from basic to advanced implementations.
+     - 'use-cases/image-input' - Use case guide for using images as input for AI agents. Covers processing and analyzing images to extract information, answer questions, and perform vision-based tasks.
+     - 'use-cases/pdf-input' - Use case guide for processing and extracting information from PDF documents. Covers techniques for using PDF files as input for summarization, data extraction, and question-answering tasks.
+     - 'use-cases/image-generation' - Use case guide for generating and editing images. Covers best practices for prompting, customizing image outputs, and using the WorkflowAI SDK for image generation tasks.
+     - 'use-cases/mcp' - A collection of use-case scenarios for AI agents that interact with the WorkflowAI platform. Outlines the required capabilities for agents to perform tasks like optimization, debugging, and deployment.
 
      **API Reference:**
-     - 'reference/api-errors.mdx' - Reference for API error codes and meanings from chat completion endpoints and SDKs.
-     - 'reference/api-responses.mdx' - Response formats documentation (detailed content available in file)
-     - 'reference/authentication.mdx' - Explains API authentication using bearer tokens. Covers API key management, security best practices, and the authentication process.
-     - 'reference/prompt-templating.mdx' - Prompt engineering documentation (detailed content available in file)
-     - 'reference/supported-models.mdx' - Available models documentation (detailed content available in file)
-     - 'reference/supported-parameters.mdx' - API parameters documentation (detailed content available in file)
+     - 'reference/api-errors' - Reference for API error codes and meanings from chat completion endpoints and SDKs.
+     - 'reference/api-responses' - Response formats documentation (detailed content available in file)
+     - 'reference/authentication' - Explains API authentication using bearer tokens. Covers API key management, security best practices, and the authentication process.
+     - 'reference/prompt-templating' - Prompt engineering documentation (detailed content available in file)
+     - 'reference/supported-models' - Available models documentation (detailed content available in file)
+     - 'reference/supported-parameters' - API parameters documentation (detailed content available in file)
 
      **Quickstarts:**
-     - 'quickstarts.mdx' - Provides quickstart guides for getting started with WorkflowAI. Includes instructions for creating agents without code and integrating with popular SDKs.
-     - 'quickstarts/instructor-python.mdx' - Instructor Python integration guide (detailed content available in file)
-     - 'quickstarts/no-code.mdx' - No-code solutions guide (detailed content available in file)
-     - 'quickstarts/openai-agents.mdx' - OpenAI Agents integration guide (detailed content available in file)
-     - 'quickstarts/openai-javascript-typescript.mdx' - OpenAI JS/TS SDK integration guide (detailed content available in file)
-     - 'quickstarts/openai-python.mdx' - OpenAI Python SDK integration guide (detailed content available in file)
-     - 'quickstarts/pydanticai.mdx' - PydanticAI integration guide (detailed content available in file)
-     - 'quickstarts/vercelai.mdx' - Vercel AI SDK integration guide (detailed content available in file)
+     - 'quickstarts' - Provides quickstart guides for getting started with WorkflowAI. Includes instructions for creating agents without code and integrating with popular SDKs.
+     - 'quickstarts/instructor-python' - Instructor Python integration guide (detailed content available in file)
+     - 'quickstarts/no-code' - No-code solutions guide (detailed content available in file)
+     - 'quickstarts/openai-agents' - OpenAI Agents integration guide (detailed content available in file)
+     - 'quickstarts/openai-javascript-typescript' - OpenAI JS/TS SDK integration guide (detailed content available in file)
+     - 'quickstarts/openai-python' - OpenAI Python SDK integration guide (detailed content available in file)
+     - 'quickstarts/pydanticai' - PydanticAI integration guide (detailed content available in file)
+     - 'quickstarts/vercelai' - Vercel AI SDK integration guide (detailed content available in file)
 
      **Playground:**
-     - 'playground.mdx' - Overview of the WorkflowAI Playground. Lists its features for comparing models, optimizing prompts, and team collaboration.
-     - 'playground/additional-features.mdx' - Advanced playground features documentation (detailed content available in file)
-     - 'playground/ai-assistant.mdx' - AI Assistant in playground documentation (detailed content available in file)
-     - 'playground/compare-models.mdx' - Model comparison tools documentation (detailed content available in file)
-     - 'playground/data-generation.mdx' - Data generation tools documentation (detailed content available in file)
-     - 'playground/diff-mode.mdx' - Diff mode feature documentation (detailed content available in file)
-     - 'playground/price-and-latency.mdx' - Performance metrics documentation (detailed content available in file)
-     - 'playground/sharing-playgrounds.mdx' - Sharing functionality documentation (detailed content available in file)
-     - 'playground/versioning.mdx' - Version management documentation (detailed content available in file)
+     - 'playground' - Overview of the WorkflowAI Playground. Lists its features for comparing models, optimizing prompts, and team collaboration.
+     - 'playground/additional-features' - Advanced playground features documentation (detailed content available in file)
+     - 'playground/ai-assistant' - AI Assistant in playground documentation (detailed content available in file)
+     - 'playground/compare-models' - Model comparison tools documentation (detailed content available in file)
+     - 'playground/data-generation' - Data generation tools documentation (detailed content available in file)
+     - 'playground/diff-mode' - Diff mode feature documentation (detailed content available in file)
+     - 'playground/price-and-latency' - Performance metrics documentation (detailed content available in file)
+     - 'playground/sharing-playgrounds' - Sharing functionality documentation (detailed content available in file)
+     - 'playground/versioning' - Version management documentation (detailed content available in file)
 
      **Observability:**
-     - 'observability.mdx' - Overview of observability tools for AI applications. Explains how to automatically monitor, analyze, and optimize agent performance.
-     - 'observability/conversations.mdx' - Conversation tracking documentation (detailed content available in file)
-     - 'observability/costs.mdx' - Cost monitoring documentation (detailed content available in file)
-     - 'observability/insights.mdx' - Analytics insights documentation (detailed content available in file)
-     - 'observability/reports.mdx' - Reporting features documentation (detailed content available in file)
-     - 'observability/runs.mdx' - Run monitoring documentation (detailed content available in file)
-     - 'observability/search.mdx' - Search functionality documentation (detailed content available in file)
-     - 'observability/versions.mdx' - Version tracking documentation (detailed content available in file)
+     - 'observability' - Overview of observability tools for AI applications. Explains how to automatically monitor, analyze, and optimize agent performance.
+     - 'observability/conversations' - Conversation tracking documentation (detailed content available in file)
+     - 'observability/costs' - Cost monitoring documentation (detailed content available in file)
+     - 'observability/insights' - Analytics insights documentation (detailed content available in file)
+     - 'observability/reports' - Reporting features documentation (detailed content available in file)
+     - 'observability/runs' - Run monitoring documentation (detailed content available in file)
+     - 'observability/search' - Search functionality documentation (detailed content available in file)
+     - 'observability/versions' - Version tracking documentation (detailed content available in file)
 
      **Inference:**
-     - 'inference.mdx' - Overview of the WorkflowAI inference API. Lists key features, including OpenAI compatibility, multi-provider support, structured outputs, and caching.
-     - 'inference/caching.mdx' - Caching strategies documentation (detailed content available in file)
-     - 'inference/cost.mdx' - Cost optimization documentation (detailed content available in file)
-     - 'inference/models.mdx' - Model selection documentation (detailed content available in file)
-     - 'inference/reasoning.mdx' - Reasoning capabilities documentation (detailed content available in file)
-     - 'inference/reliability.mdx' - Reliability features documentation (detailed content available in file)
-     - 'inference/streaming.mdx' - Streaming responses documentation (detailed content available in file)
-     - 'inference/structured-outputs.mdx' - Structured data documentation (detailed content available in file)
+     - 'inference' - Overview of the WorkflowAI inference API. Lists key features, including OpenAI compatibility, multi-provider support, structured outputs, and caching.
+     - 'inference/caching' - Caching strategies documentation (detailed content available in file)
+     - 'inference/cost' - Cost optimization documentation (detailed content available in file)
+     - 'inference/models' - Model selection documentation (detailed content available in file)
+     - 'inference/reasoning' - Reasoning capabilities documentation (detailed content available in file)
+     - 'inference/reliability' - Reliability features documentation (detailed content available in file)
+     - 'inference/streaming' - Streaming responses documentation (detailed content available in file)
+     - 'inference/structured-outputs' - Structured data documentation (detailed content available in file)
 
      **Deployments:**
-     - 'deployments.mdx' - Documentation on using deployments to manage and update AI agents. Covers separating prompts from code, managing environments, and versioning with schemas.
+     - 'deployments' - Documentation on using deployments to manage and update AI agents. Covers separating prompts from code, managing environments, and versioning with schemas.
 
      **Evaluations:**
-     - 'evaluations.mdx' - Overview of the evaluations feature for systematic testing of AI applications. Covers prompt evaluation, model comparison, regression testing, and best practices.
-     - 'evaluations/benchmarks.mdx' - Benchmarking documentation (detailed content available in file)
-     - 'evaluations/reviews.mdx' - Review system documentation (detailed content available in file)
-     - 'evaluations/side-by-side.mdx' - Comparison tools documentation (detailed content available in file)
-     - 'evaluations/user-feedback.mdx' - Feedback collection documentation (detailed content available in file)
+     - 'evaluations' - Overview of the evaluations feature for systematic testing of AI applications. Covers prompt evaluation, model comparison, regression testing, and best practices.
+     - 'evaluations/benchmarks' - Benchmarking documentation (detailed content available in file)
+     - 'evaluations/reviews' - Review system documentation (detailed content available in file)
+     - 'evaluations/side-by-side' - Comparison tools documentation (detailed content available in file)
+     - 'evaluations/user-feedback' - Feedback collection documentation (detailed content available in file)
 
      **Agents:**
-     - 'agents.mdx' - Overview of AI agents in WorkflowAI. Covers what agents are and their purpose in the platform for automating tasks.
-     - 'agents/mcp.mdx' - Model Control Protocol for agents documentation (detailed content available in file)
-     - 'agents/memory.mdx' - Explains how to manage conversational memory using `reply_to_run_id`. This feature maintains chat history for stateful, multi-turn interactions.
-     - 'agents/tools.mdx' - Documentation for using tools with AI agents. Covers hosted tools like web search and defining custom tools for specific use cases.
+     - 'agents' - Overview of AI agents in WorkflowAI. Covers what agents are and their purpose in the platform for automating tasks.
+     - 'agents/mcp' - Model Control Protocol for agents documentation (detailed content available in file)
+     - 'agents/memory' - Explains how to manage conversational memory using `reply_to_run_id`. This feature maintains chat history for stateful, multi-turn interactions.
+     - 'agents/tools' - Documentation for using tools with AI agents. Covers hosted tools like web search and defining custom tools for specific use cases.
 
      **AI Engineer:**
-     - 'ai-engineer.mdx' - Setup guide for the AI Engineer. Walks through the necessary installation and configuration steps.
+     - 'ai-engineer' - Setup guide for the AI Engineer. Walks through the necessary installation and configuration steps.
 
      **Components:**
-     - 'components.mdx' - Overview of the reusable UI component library. Lists available components like buttons, forms, and cards.
+     - 'components' - Overview of the reusable UI component library. Lists available components like buttons, forms, and cards.
      </available_pages>
 
      <returns>

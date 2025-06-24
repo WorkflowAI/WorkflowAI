@@ -288,7 +288,6 @@ class TestMCPServiceSearchDocumentation:
         # Assert
         assert result.success is False
         assert "Page 'non-existent.mdx' not found" in result.error  # type: ignore
-        assert "..." in result.error  # type: ignore  # Should show truncation indicator
 
     @pytest.mark.asyncio
     async def test_search_documentation_both_parameters(self, mcp_service: MCPService):

@@ -48,7 +48,10 @@ class DocumentationService:
                 try:
                     with open(full_path, "r") as f:  # noqa: ASYNC230
                         doc_sections.append(
-                            DocumentationSection(title=relative_path, content=f.read()),
+                            DocumentationSection(
+                                title=relative_path.replace(".mdx", "").replace(".md", ""),
+                                content=f.read(),
+                            ),
                         )
                 except Exception as e:
                     _logger.exception(
