@@ -1,4 +1,4 @@
-THIS SHOULD BE A LINTER ERRORimport json
+import json
 import logging
 import uuid
 import time
@@ -197,23 +197,4 @@ class SessionState:
         # Save updated session state to Redis
         await self.save()
 
-    async def delete(self) -> None:
-        """Delete session from Redis"""
-        if not shared_redis_client:
-            logger.warning("Redis client not available, cannot delete session")
-            return
-            
-        try:
-            await shared_redis_client.delete(self._get_redis_key())
-            logger.debug(
-                "Session deleted from Redis",
-                extra={"session_id": self.session_id}
-            )
-        except Exception as e:
-            logger.error(
-                "Failed to delete session from Redis",
-                extra={
-                    "session_id": self.session_id,
-                    "error": str(e),
-                }
-            )
+
