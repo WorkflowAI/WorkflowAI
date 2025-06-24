@@ -192,22 +192,8 @@ def mistral_models() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             latest_model=Model.MISTRAL_SMALL_LATEST,
             fallback=ModelFallback.default("cheapest"),
         ),
-        Model.MISTRAL_SABA_2502: ModelData(
-            display_name="Mistral Saba (25-02)",
-            supports_json_mode=True,
-            supports_input_image=False,
-            supports_input_pdf=False,
-            supports_input_audio=False,
-            max_tokens_data=MaxTokensData(
-                max_tokens=32768,
-                source="https://docs.mistral.ai/getting-started/models/",
-            ),
-            icon_url="https://workflowai.blob.core.windows.net/workflowai-public/mistral.svg",
-            release_date=date(2025, 2, 17),
-            quality_data=QualityData(mmlu=52.9, gpqa=33.8),
-            provider_name=DisplayedProvider.MISTRAL_AI.value,
-            supports_tool_calling=True,
-            fallback=ModelFallback.default("cheapest"),
+        Model.MISTRAL_SABA_2502: DeprecatedModel(
+            replacement_model=Model.MISTRAL_SMALL_2503,
         ),
         Model.CODESTRAL_2501: ModelData(
             display_name="CodeStral Mamba (25-01)",
