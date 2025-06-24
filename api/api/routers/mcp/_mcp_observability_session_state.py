@@ -6,6 +6,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel
 
+from core.domain.tenant_data import TenantData
 from core.utils.redis_cache import shared_redis_client
 
 logger = logging.getLogger(__name__)
@@ -45,18 +46,18 @@ class ObserverAgentData(BaseModel):
 class SessionState:
     """Redis-backed session state for MCP sessions"""
 
-    def __init__(self, session_id: str, user_agent: str):
+    def __init__(self, session_id: str):
         self.session_id = session_id
-        self.user_agent = user_agent
         self.created_at = datetime.now(timezone.utc)
         self.last_activity = datetime.now(timezone.utc)
         self.tool_calls: list[dict[str, Any]] = []
 
-    def _get_redis_key(self) -> str:
+    @classmethod
+    def _get_redis_key(cls, tenant: TenantData, session_id: str) -> str:
         """Get the Redis key for this session"""
-        return f"mcp_session:{self.session_id}"
+        return f"mcp_session:{tenant.tenant}:{session_id}"
 
-    async def save(self) -> None:
+    async def save(self, tenant: TenantData) -> None:
         """Save session state to Redis"""
         if not shared_redis_client:
             logger.warning("Redis client not available, cannot save session state")
@@ -65,14 +66,13 @@ class SessionState:
         try:
             session_data = {
                 "session_id": self.session_id,
-                "user_agent": self.user_agent,
                 "created_at": self.created_at.isoformat(),
                 "last_activity": self.last_activity.isoformat(),
                 "tool_calls": self.tool_calls,
             }
 
             await shared_redis_client.setex(
-                self._get_redis_key(),
+                self._get_redis_key(tenant, self.session_id),
                 SESSION_EXPIRATION_SECONDS,
                 json.dumps(session_data),
             )
@@ -94,14 +94,14 @@ class SessionState:
             )
 
     @classmethod
-    async def load(cls, session_id: str) -> Optional["SessionState"]:
+    async def load(cls, session_id: str, tenant: TenantData) -> Optional["SessionState"]:
         """Load session state from Redis"""
         if not shared_redis_client:
             logger.warning("Redis client not available, cannot load session state")
             return None
 
         try:
-            redis_key = f"mcp_session:{session_id}"
+            redis_key = cls._get_redis_key(tenant, session_id)
             session_data_str = await shared_redis_client.get(redis_key)
 
             if not session_data_str:
@@ -116,7 +116,6 @@ class SessionState:
             # Reconstruct session state
             session = cls.__new__(cls)
             session.session_id = session_data["session_id"]
-            session.user_agent = session_data["user_agent"]
             session.created_at = datetime.fromisoformat(session_data["created_at"])
             session.last_activity = datetime.fromisoformat(session_data["last_activity"])
             session.tool_calls = session_data["tool_calls"]
@@ -143,7 +142,7 @@ class SessionState:
             return None
 
     @classmethod
-    async def get_or_create(cls, session_id: str | None, user_agent: str) -> tuple["SessionState", bool]:
+    async def get_or_create(cls, session_id: str | None, tenant: TenantData) -> tuple["SessionState", bool]:
         """
         Get existing session or create a new one.
 
@@ -152,23 +151,22 @@ class SessionState:
         """
         # If no session ID provided or session doesn't exist, create new one
         if session_id:
-            if found_session := await cls.load(session_id):
+            if found_session := await cls.load(session_id, tenant):
                 # Update last activity and extend expiration
                 found_session.last_activity = datetime.now(timezone.utc)
-                await found_session.save()
+                await found_session.save(tenant)
                 return found_session, False
 
         # Create new session
         new_session_id = str(uuid.uuid4())
-        new_session = cls(new_session_id, user_agent)
-        await new_session.save()
+        new_session = cls(new_session_id)
+        await new_session.save(tenant)
 
         logger.info(
             "New MCP session created",
             extra={
                 "mcp_event": "session_created",
                 "session_id": new_session_id,
-                "user_agent": user_agent,
                 "session_created_at": new_session.created_at,
                 "replaced_session_id": session_id,
             },
@@ -176,7 +174,7 @@ class SessionState:
 
         return new_session, True
 
-    async def register_tool_call(self, tool_call_data: ToolCallData) -> None:
+    async def register_tool_call(self, tool_call_data: ToolCallData, tenant: TenantData) -> None:
         """Add a completed tool call to the session history and save to Redis"""
         self.tool_calls.append(
             {
@@ -193,25 +191,4 @@ class SessionState:
         self.last_activity = datetime.now(timezone.utc)
 
         # Save updated session state to Redis
-        await self.save()
-
-    async def delete(self) -> None:
-        """Delete session from Redis"""
-        if not shared_redis_client:
-            logger.warning("Redis client not available, cannot delete session")
-            return
-
-        try:
-            await shared_redis_client.delete(self._get_redis_key())
-            logger.debug(
-                "Session deleted from Redis",
-                extra={"session_id": self.session_id},
-            )
-        except Exception as e:
-            logger.error(
-                "Failed to delete session from Redis",
-                extra={
-                    "session_id": self.session_id,
-                    "error": str(e),
-                },
-            )
+        await self.save(tenant)

@@ -10,6 +10,11 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from api.routers.mcp._mcp_observability_session_state import ObserverAgentData, SessionState, ToolCallData
+from api.services import storage
+from api.services.analytics import analytics_service
+from api.services.event_handler import system_event_router
+from api.services.security_service import SecurityService
+from core.domain.tenant_data import TenantData
 from core.utils.background import add_background_task
 from core.utils.json_utils import extract_json_str
 
@@ -23,6 +28,35 @@ _tool_call_start_times: dict[str, datetime] = {}
 
 class MCPObservabilityMiddleware(BaseHTTPMiddleware):
     """Enhanced middleware to log MCP tool calls and track session observability"""
+
+    async def _extract_tenant_info(self, request: Request) -> TenantData | None:
+        """Extract tenant information from request using auth header"""
+        try:
+            auth_header = request.headers.get("Authorization")
+            if not auth_header or not auth_header.startswith("Bearer "):
+                logger.debug("No valid Authorization header found in request")
+                return None
+
+            _system_storage = storage.system_storage(storage.shared_encryption())
+            security_service = SecurityService(
+                _system_storage.organizations,
+                system_event_router(),
+                analytics_service(user_properties=None, organization_properties=None, task_properties=None),
+            )
+
+            tenant = await security_service.tenant_from_credentials(auth_header.split(" ")[1])
+            if not tenant:
+                logger.debug("Invalid bearer token provided")
+                return None
+
+            return tenant
+
+        except Exception as e:
+            logger.warning(
+                "Failed to extract tenant info from request",
+                extra={"error": str(e)},
+            )
+            return None
 
     def _extract_session_id(self, request: Request) -> str | None:
         """Extract session ID from request headers"""
@@ -46,10 +80,10 @@ class MCPObservabilityMiddleware(BaseHTTPMiddleware):
             )
             return None
 
-    async def _get_or_create_session(self, session_id: str | None, user_agent: str) -> SessionState:
+    async def _get_or_create_session(self, session_id: str | None, tenant: TenantData) -> SessionState:
         """Get existing session or create a new one using Redis"""
         try:
-            session_state, _ = await SessionState.get_or_create(session_id, user_agent)
+            session_state, _ = await SessionState.get_or_create(session_id, tenant)
             return session_state
         except Exception as e:
             logger.warning(
@@ -59,7 +93,6 @@ class MCPObservabilityMiddleware(BaseHTTPMiddleware):
             # Create a fallback session that won't be persisted
             return SessionState(
                 session_id=session_id or "fallback",
-                user_agent=user_agent,
             )
 
     def _is_mcp_tool_call(self, request_data: dict[str, Any] | None) -> bool:
@@ -145,7 +178,7 @@ class MCPObservabilityMiddleware(BaseHTTPMiddleware):
             response_data = json.loads(response_json_str)
             return response_data["result"]["content"][0]["text"]
 
-        except (json.JSONDecodeError, UnicodeDecodeError, KeyError, IndexError) as e:
+        except (json.JSONDecodeError, UnicodeDecodeError, KeyError, IndexError, ValueError) as e:
             logger.error(
                 "Failed to parse MCP response JSON",
                 extra={
@@ -247,10 +280,15 @@ class MCPObservabilityMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable[[Request], Any]) -> Response:  # noqa: C901
         """Main dispatch method with comprehensive error handling"""
         try:
+            tenant_info = await self._extract_tenant_info(request)
+            if not tenant_info:
+                logger.warning("No tenant info found, using fallback response")
+                return await self._fallback_response(request, call_next)
+
             start_time = time.time()
             user_agent = request.headers.get("user-agent", "unknown")
             session_id_from_header = self._extract_session_id(request)
-            session_state = await self._get_or_create_session(session_id_from_header, user_agent)
+            session_state = await self._get_or_create_session(session_id_from_header, tenant_info)
 
             # Read request body
             body = await request.body()
@@ -346,7 +384,7 @@ class MCPObservabilityMiddleware(BaseHTTPMiddleware):
                     # Update session state with completed tool call (async call in sync context)
                     async def update_session():
                         try:
-                            await session_state.register_tool_call(tool_call_data)
+                            await session_state.register_tool_call(tool_call_data, tenant_info)
                         except Exception as e:
                             logger.warning(
                                 "Error updating session state",
