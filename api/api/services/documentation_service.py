@@ -203,3 +203,45 @@ class DocumentationService:
         return [
             document_section for document_section in all_doc_sections if document_section.title in relevant_doc_sections
         ]
+
+    def _extract_summary_from_content(self, content: str) -> str:
+        """Extract a summary from markdown content."""
+        lines = content.split("\n")
+
+        # Look for frontmatter summary
+        if lines and lines[0].strip() == "---":
+            for i in range(1, min(20, len(lines))):  # Check first 20 lines for frontmatter
+                line = lines[i].strip()
+                if line == "---":
+                    break
+                if line.startswith("summary:"):
+                    return line.split("summary:", 1)[1].strip().strip("\"'")
+
+        # Fallback when no summary is found
+        return ""
+
+    async def get_available_pages_descriptions(self, mode: DocModeEnum = DEFAULT_DOC_MODE) -> str:
+        """Generate formatted descriptions of all available documentation pages for MCP tool docstring.
+
+        TODO: Add caching (e.g., @redis_cached) to avoid repeated file system scans - good performance optimization.
+        """
+        try:
+            all_sections = await self.get_all_doc_sections(mode)
+
+            if not all_sections:
+                return "No documentation pages found."
+
+            # Build simple list of pages with descriptions
+            result_lines = []
+
+            for section in sorted(all_sections, key=lambda s: s.title):
+                page_path = section.title
+                summary = self._extract_summary_from_content(section.content)
+                result_lines.append(f"     - '{page_path}' - {summary}")
+
+            return "\n".join(result_lines)
+
+        except Exception as e:
+            _logger.exception("Error generating available pages descriptions", exc_info=e)
+            # Fallback to empty list when there's an error
+            return ""

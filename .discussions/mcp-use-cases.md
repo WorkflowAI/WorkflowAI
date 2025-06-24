@@ -19,7 +19,7 @@ flow (from the MCP client):
 - fetch existing deployments for a given agent_id. Requires https://linear.app/workflowai/issue/WOR-5045/add-deployment-information-to-get-agent-mcp-tool to be implemented.
 - if there is no deployment, create a new one. creating a new deployment currently requires a `version_id` in the `deploy_agent_version` tool.
 
-- [ ] The documentation from `deployments/index` needs to be updated to be "read" by a MCP client.
+- [ ] TODO: The documentation from `deployments/index` needs to be updated to be "read" by a MCP client.
 
 ---
 

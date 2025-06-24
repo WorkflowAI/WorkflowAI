@@ -168,11 +168,11 @@ async def test_get_all_doc_sections_local_excludes_private_files(documentation_s
         hidden_file = os.path.join(temp_dir, ".hidden.mdx")
 
         # Write content to files
-        with open(public_file, "w") as f:
+        with open(public_file, "w") as f:  # noqa: ASYNC230
             f.write("# Public content")
-        with open(private_file, "w") as f:
+        with open(private_file, "w") as f:  # noqa: ASYNC230
             f.write("# Private content")
-        with open(hidden_file, "w") as f:
+        with open(hidden_file, "w") as f:  # noqa: ASYNC230
             f.write("# Hidden content")
 
         # Patch the LOCAL_DOCS_DIR to use our temp directory
@@ -396,3 +396,63 @@ async def test_get_documentation_by_path_mode_selection(documentation_service: D
             # Test local mode
             result_local = await documentation_service.get_documentation_by_path(paths, mode="local")
             assert result_local == mock_local_sections
+
+
+# Tests for new dynamic page description functionality
+
+
+def test_extract_summary_from_content_with_frontmatter(documentation_service: DocumentationService):
+    """Test extracting summary from markdown frontmatter summary field."""
+    content = """---
+title: Getting Started
+summary: Learn how to get started with WorkflowAI platform
+---
+
+# Getting Started
+
+Some content here."""
+
+    result = documentation_service._extract_summary_from_content(content)
+    assert result == "Learn how to get started with WorkflowAI platform"
+
+
+def test_extract_summary_from_content_no_frontmatter(documentation_service: DocumentationService):
+    """Test that function returns empty string when no frontmatter summary is found."""
+    content = """# Authentication Guide
+
+This guide covers API authentication using bearer tokens and best practices for security.
+
+More detailed content follows..."""
+
+    result = documentation_service._extract_summary_from_content(content)
+    assert result == ""
+
+
+@pytest.mark.asyncio
+async def test_get_available_pages_descriptions_success(documentation_service: DocumentationService):
+    """Test successful generation of available pages descriptions."""
+    # NOTE: DocumentationSection.title is misleadingly named - it's actually the page path/identifier,
+    # not the human-readable title. The human-readable title is in the frontmatter "title:" field.
+    mock_sections = [
+        DocumentationSection(
+            title="index",  # This is the page path, not the display title
+            content="---\nsummary: Getting started guide\n---\n\n# Welcome",
+        ),
+        DocumentationSection(
+            title="reference/auth",
+            content="---\nsummary: API authentication docs\n---\n\n# Auth",
+        ),
+        DocumentationSection(
+            title="use-cases/chatbot",
+            content="---\nsummary: Chatbot building guide\n---\n\n# Chatbot",
+        ),
+    ]
+
+    with patch.object(documentation_service, "get_all_doc_sections", return_value=mock_sections):
+        result = await documentation_service.get_available_pages_descriptions()
+
+        expected = """     - 'index' - Getting started guide
+     - 'reference/auth' - API authentication docs
+     - 'use-cases/chatbot' - Chatbot building guide"""
+
+        assert result == expected
