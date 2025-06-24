@@ -99,14 +99,15 @@ class ConciseModelResponse(BaseModel):
 
 
 class AgentListItem(BaseModel):
-    agent_id: str
-    is_public: bool
+    agent_id: str = Field(description="The ID of the agent")
+    is_public: bool = Field(description="Whether the agent is public")
 
     class AgentSchema(BaseModel):
-        agent_schema_id: int
-        created_at: str | None = None
-        is_hidden: bool | None = None
-        last_active_at: str | None
+        agent_schema_id: int = Field(description="The unique ID of this agent schema version")
+        created_at: str | None = Field(default=None, description="")
+        # TODO: check the name of this `is_hidden` field, maybe more "is_archived" works best
+        is_hidden: bool | None = Field(default=None, description="Whether this schema version is hidden from the UI")
+        last_active_at: str | None = Field(description="The last time a run was executed using this schema version")
 
         @classmethod
         def from_domain(cls, v: SerializableTask.PartialTaskVersion):
@@ -117,10 +118,10 @@ class AgentListItem(BaseModel):
                 last_active_at=v.last_active_at.isoformat() if v.last_active_at else None,
             )
 
-    schemas: list[AgentSchema]
+    schemas: list[AgentSchema] = Field(description="List of schema versions for this agent")
 
-    run_count: int
-    total_cost_usd: float
+    run_count: int = Field(description="Total number of times this agent has been executed")
+    total_cost_usd: float = Field(description="Total cost in USD for all runs of this agent")
 
     @classmethod
     def from_domain(cls, agent: SerializableTask, stats: TaskRunStorage.AgentRunCount | None):
