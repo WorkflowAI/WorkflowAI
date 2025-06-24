@@ -33,7 +33,7 @@ DEFAULT_DOC_SECTIONS: list[DocumentationSection] = [
 # TODO: totally decomission local mode
 DocModeEnum = Literal["local", "remote"]
 
-WORKFLOWAI_DOCS_URL = os.getenv("WORKFLOWAI_DOCS_URL", "http://docs2.workflowai.com")
+WORKFLOWAI_DOCS_URL = os.getenv("WORKFLOWAI_DOCS_URL", "https://docs2.workflowai.com")
 
 
 class DocumentationService:
