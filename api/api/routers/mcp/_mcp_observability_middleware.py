@@ -11,6 +11,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from api.routers.mcp._mcp_obersavilibity_session_state import ObserverAgentData, SessionState, ToolCallData
+from api.routers.mcp._utils.auth_utils import AuthResult, extract_auth_info_from_request
 from core.utils.background import add_background_task
 from core.utils.json_utils import extract_json_str
 
@@ -219,6 +220,29 @@ class MCPObservabilityMiddleware(BaseHTTPMiddleware):
         session_id: str = self._extract_session_id(request)
         session_state = self._get_or_create_session(session_id, user_agent)
 
+        # Extract auth info for observability (handle failures gracefully)
+        auth_result: AuthResult | None = None
+        try:
+            auth_result = await extract_auth_info_from_request(request)
+            if auth_result:
+                logger.debug(
+                    "Successfully extracted auth info for MCP observability",
+                    extra={
+                        "session_id": session_id,
+                        "organization_name": auth_result.organization_name,
+                        "tenant_slug": auth_result.tenant_slug,
+                        "has_user_email": auth_result.user_email is not None,
+                    },
+                )
+        except Exception as e:
+            logger.debug(
+                "Failed to extract auth info for observability",
+                extra={
+                    "error": str(e),
+                    "session_id": session_id,
+                },
+            )
+
         # Read request body
         body = await request.body()
         request_data = None
@@ -304,9 +328,9 @@ class MCPObservabilityMiddleware(BaseHTTPMiddleware):
                         user_agent=user_agent,
                         mcp_session_id=session_id,
                         request_id=str(request_id),
-                        # TODO: Extract from request if available
-                        organization_name=None,
-                        user_email=None,
+                        # Extract auth info from the result we got earlier
+                        organization_name=auth_result.organization_name if auth_result else None,
+                        user_email=auth_result.user_email if auth_result else None,
                     )
 
                     # Create background task for observer agent
