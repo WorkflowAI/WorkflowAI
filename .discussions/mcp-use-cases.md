@@ -4,7 +4,7 @@
 
 Cursor made some mistakes:
 
-- [ ] used playground.workflowai.dev --- because the playground URL was not explicitly mentioned?
+- [ ] used playground.workflowai.dev --- because the playground URL was not explicitly mentioned? I need to check more.
 - [ ] also, generated the following code:
 
 ```python
@@ -43,11 +43,11 @@ But the MCP client using `model="agent-id/2.1"` is also not completely stupid.
 
 If we want to update `model`, `messages` and other parameters in the code, we might need to introduce a `get_code` tool in the MCP to clarify.
 
-Using the following prompt:
+Using the following prompt, which is more explicit:
 
 > can you use the version 2.1 model and prompt?
 
-the MCP client updated the `model` and `messages` parameters in the code.
+Indeed, the MCP client updated the `model` and `messages` parameters in the code, this time.
 
 ## search runs for a given enviroment
 
