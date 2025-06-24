@@ -412,7 +412,7 @@ async def search_runs(
     **Model & Version:**
     - "model": Model used (operators: is, is not, contains, does not contain | string values)
     - "schema": Schema ID (operators: is, is not | numeric values)
-    - "version": Version ID (operators: is, is not | string values)
+    - "version": Version ID (e.g., "2.1") or deployment environment (e.g., "dev", "staging", "production") (operators: is, is not | string values)
     - "temperature": Temperature setting (operators: is, is not, greater than, less than, etc. | numeric values)
     - "source": Source of the run (operators: is, is not | string values)
 
