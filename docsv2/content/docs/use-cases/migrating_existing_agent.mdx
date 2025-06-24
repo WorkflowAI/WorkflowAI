@@ -3,7 +3,22 @@ title: Migrating an existing agent with WorkflowAI
 summary: Step-by-step guide for migrating existing AI agents to the WorkflowAI platform. Covers understanding your current agent, data requirements, and migration best practices.
 ---
 
+import { Callout } from 'fumadocs-ui/components/callout';
+
 ## Overview
+
+<Callout type="warning">
+**Important: Endpoint Compatibility**
+
+WorkflowAI only supports the OpenAI `/v1/chat/completions` endpoint. If your existing agent uses other OpenAI endpoints, you'll need to maintain separate clients:
+
+- **Supported**: `/v1/chat/completions` - Migrate this to WorkflowAI
+- **Not Supported**: `/v1/embeddings`, `/v1/responses`, `/v1/audio/*`, `/v1/images/*`, and other OpenAI endpoints
+
+**Migration Strategy**: Only change the client configuration for your chat/completions requests. Keep using the standard OpenAI client for all other endpoints (embeddings, responses API, audio transcriptions, image generation, etc.).
+</Callout>
+
+When migrating an existing agent to WorkflowAI, you'll get immediate access to 100+ models, observability features, and improved reliability while maintaining full compatibility with your existing chat completion code.
 
 ## Step 1: Understand the agent
 
