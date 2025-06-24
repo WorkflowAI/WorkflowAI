@@ -2,19 +2,20 @@ from collections.abc import Iterator
 from datetime import datetime, timedelta
 from typing import Any
 
+from api.routers.mcp._mcp_errors import MCPError
 from api.routers.mcp._mcp_models import (
     AgentListItem,
     AgentResponse,
     AgentSortField,
-    AIEngineerReponseWithUsefulLinks,
     ConciseLatestModelResponse,
     ConciseModelResponse,
-    LegacyMCPToolReturn,
+    DeployAgentResponse,
     MajorVersion,
     MCPRun,
     MCPToolReturn,
     ModelSortField,
     PaginatedMCPToolReturn,
+    SearchResponse,
     SortOrder,
     UsefulLinks,
 )
@@ -22,7 +23,7 @@ from api.routers.mcp._utils.agent_sorting import sort_agents
 from api.routers.mcp._utils.model_sorting import sort_models
 from api.services import tasks
 from api.services.documentation_service import DocumentationService
-from api.services.internal_tasks.ai_engineer_service import AIEngineerChatMessage, AIEngineerReponse, AIEngineerService
+from api.services.internal_tasks.ai_engineer_service import AIEngineerService
 from api.services.models import ModelsService
 from api.services.runs.runs_service import RunsService
 from api.services.runs_search import RunsSearchService
@@ -452,73 +453,17 @@ class MCPService:
                 error=f"Failed to list agent versions: {str(e)}",
             )
 
-    async def _get_agent_or_failed_tool_result(
-        self,
-        agent_id: str,
-    ) -> tuple[TaskInfo | None, LegacyMCPToolReturn | None]:
+    async def _get_agent_or_failed_tool_result(self, agent_id: str) -> TaskInfo | None:
         try:
             agent_info = await self.storage.tasks.get_task_info(agent_id)
         except ObjectNotFoundException:
             list_agent_tool_answer = await self.list_agents(page=1, sort_by="last_active_at", order="desc")
-
-            return None, LegacyMCPToolReturn(
-                success=False,
-                error=f"Agent {agent_id} not found, please provide a valid agent id. Agent id can be found in either the model=... paramater (usually composed of '<agent_name>/<model_name>' or '<agent_name>/<agent_schema_id>/<deployment_environment>') or in the metadata of the agent run request. See 'data' for a list of existing agents for the user.",
+            raise MCPError(
+                f"Agent {agent_id} not found, please provide a valid agent id. Agent id can be found in either the model=... paramater (usually composed of '<agent_name>/<model_name>' or '<agent_name>/<agent_schema_id>/<deployment_environment>') or in the metadata of the agent run request. See 'data' for a list of existing agents for the user.",
                 data={"user_agents": list_agent_tool_answer.items},
             )
 
-        return agent_info, None
-
-    async def ask_ai_engineer(
-        self,
-        agent_schema_id: int | None,
-        agent_id: str | None,
-        message: str,
-        user_programming_language: str,
-        user_code_extract: str,
-    ) -> MCPToolReturn[AIEngineerReponseWithUsefulLinks] | LegacyMCPToolReturn:
-        """Ask the AI Engineer a question (legacy endpoint)."""
-
-        user_message = message
-
-        agent_info: TaskInfo | None = None
-        if agent_id:
-            agent_info, error_tool_result = await self._get_agent_or_failed_tool_result(agent_id)
-            if error_tool_result:
-                return error_tool_result
-            if agent_info:
-                agent_schema_id = agent_schema_id or agent_info.latest_schema_id or 1
-
-        # TODO: switch to a streamable MCP tool
-        last_chunk: AIEngineerReponse | None = None
-        async for chunk in self.ai_engineer_service.stream_ai_engineer_agent_response(
-            task_tuple=agent_info.id_tuple if agent_info else None,
-            agent_schema_id=agent_schema_id,
-            user_email=self.user_email,
-            messages=[AIEngineerChatMessage(role="USER", content=user_message)],
-            user_programming_language=user_programming_language,
-            user_code_extract=user_code_extract,
-        ):
-            last_chunk = chunk
-
-        if last_chunk is None:
-            return MCPToolReturn(
-                success=False,
-                error="No response from AI Engineer",
-            )
-
-        useful_links = self._get_useful_links(agent_id, agent_schema_id)
-        return_value = AIEngineerReponseWithUsefulLinks.model_validate(
-            {
-                **last_chunk.model_dump(exclude_none=True),
-                "useful_links": useful_links,
-            },
-        )
-
-        return MCPToolReturn(
-            success=True,
-            data=return_value,
-        )
+        return agent_info
 
     async def deploy_agent_version(
         self,
@@ -526,96 +471,81 @@ class MCPService:
         version_id: str,
         environment: str,
         deployed_by: UserIdentifier,
-    ) -> LegacyMCPToolReturn:
+    ) -> DeployAgentResponse:
         """Deploy a specific version of an agent to an environment."""
+
         try:
-            try:
-                env = VersionEnvironment(environment.lower())
-            except ValueError:
-                return LegacyMCPToolReturn(
-                    success=False,
-                    error=f"Invalid environment '{environment}'. Must be one of: dev, staging, production",
-                )
+            env = VersionEnvironment(environment.lower())
+        except ValueError:
+            raise MCPError(f"Invalid environment '{environment}'. Must be one of: dev, staging, production")
 
-            deployment = await self.task_deployments_service.deploy_version(
-                task_id=task_tuple,
-                task_schema_id=None,
-                version_id=version_id,
-                environment=env,
-                deployed_by=deployed_by,
-            )
+        deployment = await self.task_deployments_service.deploy_version(
+            task_id=task_tuple,
+            task_schema_id=None,
+            version_id=version_id,
+            environment=env,
+            deployed_by=deployed_by,
+        )
 
-            # Build the model parameter for the migration guide
-            model_param = f"{task_tuple[0]}/#{deployment.schema_id}/{environment}"
+        # Build the model parameter for the migration guide
+        model_param = f"{task_tuple[0]}/#{deployment.schema_id}/{environment}"
 
-            # Create migration guide based on deployment documentation
-            migration_guide: dict[str, Any] = {
-                "model_parameter": model_param,
-                "migration_instructions": {
-                    "overview": "Update your code to point to the deployed version instead of hardcoded prompts",
-                    "with_input_variables": {
-                        "description": "If your prompt uses input variables (double curly braces)",
-                        "before": {
-                            "model": f"{task_tuple[0]}/your-model-name",
-                            "messages": [{"role": "user", "content": "Your prompt with..."}],
-                            "extra_body": {"input": {"variable": "value"}},
-                        },
-                        "after": {
-                            "model": model_param,
-                            "messages": [],  # Empty because prompt is stored in WorkflowAI
-                            "extra_body": {"input": {"variable": "value"}},
-                        },
+        # Create migration guide based on deployment documentation
+        migration_guide: dict[str, Any] = {
+            "model_parameter": model_param,
+            "migration_instructions": {
+                "overview": "Update your code to point to the deployed version instead of hardcoded prompts",
+                "with_input_variables": {
+                    "description": "If your prompt uses input variables (double curly braces)",
+                    "before": {
+                        "model": f"{task_tuple[0]}/your-model-name",
+                        "messages": [{"role": "user", "content": "Your prompt with..."}],
+                        "extra_body": {"input": {"variable": "value"}},
                     },
-                    "without_input_variables": {
-                        "description": "If your prompt doesn't use input variables (e.g., chatbots with system messages)",
-                        "before": {
-                            "model": f"{task_tuple[0]}/your-model-name",
-                            "messages": [
-                                {"role": "system", "content": "Your system instructions"},
-                                {"role": "user", "content": "user_message"},
-                            ],
-                        },
-                        "after": {
-                            "model": model_param,
-                            "messages": [
-                                {"role": "user", "content": "user_message"},
-                            ],  # System message now comes from the deployment
-                        },
+                    "after": {
+                        "model": model_param,
+                        "messages": [],  # Empty because prompt is stored in WorkflowAI
+                        "extra_body": {"input": {"variable": "value"}},
                     },
-                    "important_notes": [
-                        "The messages parameter is always required, even if empty",
-                        "Schema number defines the input/output contract",
-                        f"This deployment uses schema #{deployment.schema_id}",
-                        "Test thoroughly before deploying to production",
-                    ],
                 },
-            }
-
-            return LegacyMCPToolReturn(
-                success=True,
-                messages=[
-                    f"Successfully deployed version {version_id} to {environment} environment",
+                "without_input_variables": {
+                    "description": "If your prompt doesn't use input variables (e.g., chatbots with system messages)",
+                    "before": {
+                        "model": f"{task_tuple[0]}/your-model-name",
+                        "messages": [
+                            {"role": "system", "content": "Your system instructions"},
+                            {"role": "user", "content": "user_message"},
+                        ],
+                    },
+                    "after": {
+                        "model": model_param,
+                        "messages": [
+                            {"role": "user", "content": "user_message"},
+                        ],  # System message now comes from the deployment
+                    },
+                },
+                "important_notes": [
+                    "The messages parameter is always required, even if empty",
+                    "Schema number defines the input/output contract",
+                    f"This deployment uses schema #{deployment.schema_id}",
+                    "Test thoroughly before deploying to production",
                 ],
-                data={
-                    "version_id": deployment.version_id,
-                    "agent_schema_id": deployment.schema_id,
-                    "environment": str(deployment.environment.value),
-                    "deployed_at": deployment.deployed_at.isoformat() if deployment.deployed_at else "",
-                    "migration_guide": migration_guide,
-                },
-            )
+            },
+        }
 
-        except Exception as e:
-            return LegacyMCPToolReturn(
-                success=False,
-                error=f"Failed to deploy version: {str(e)}",
-            )
+        return DeployAgentResponse(
+            version_id=deployment.version_id,
+            agent_schema_id=deployment.schema_id,
+            environment=deployment.environment,
+            deployed_at=deployment.deployed_at.isoformat() if deployment.deployed_at else "",
+            migration_guide=migration_guide,
+        )
 
     async def search_documentation(
         self,
         query: str | None = None,
         page: str | None = None,
-    ) -> LegacyMCPToolReturn:
+    ) -> MCPToolReturn[SearchResponse]:
         """Search WorkflowAI documentation OR fetch a specific documentation page.
 
         Args:
@@ -626,13 +556,13 @@ class MCPService:
             LegacyMCPToolReturn with either search results or page content
         """
         if query and page:
-            return LegacyMCPToolReturn(
+            return MCPToolReturn(
                 success=False,
                 error="Use either 'query' OR 'page' parameter, not both",
             )
 
         if not query and not page:
-            return LegacyMCPToolReturn(
+            return MCPToolReturn(
                 success=False,
                 error="Provide either 'query' or 'page' parameter",
             )
@@ -644,78 +574,64 @@ class MCPService:
             return await self._get_documentation_page(page)
 
         # This should never be reached due to the parameter validation above
-        return LegacyMCPToolReturn(
+        return MCPToolReturn(
             success=False,
             error="Invalid parameters provided",
         )
 
-    async def _search_documentation_by_query(self, query: str) -> LegacyMCPToolReturn:
+    async def _search_documentation_by_query(self, query: str) -> MCPToolReturn[SearchResponse]:
         """Search documentation using query and return snippets."""
-        try:
-            documentation_service = DocumentationService()
-            relevant_sections = await documentation_service.get_relevant_doc_sections(
-                chat_messages=[ChatMessage(role="USER", content=query)],
-                agent_instructions="",
+
+        documentation_service = DocumentationService()
+        relevant_sections = await documentation_service.get_relevant_doc_sections(
+            chat_messages=[ChatMessage(role="USER", content=query)],
+            agent_instructions="",
+        )
+
+        # Convert to SearchResult format with content snippets
+        query_results = [
+            SearchResponse.QueryResult(
+                content_snippet=section.content,
+                source_page=section.title.replace("content/", ""),
             )
+            for section in relevant_sections
+        ]
 
-            # Convert to SearchResult format with content snippets
-            search_results: list[dict[str, str]] = [
-                {
-                    "content_snippet": section.content,
-                    "source_page": section.title.replace("content/", ""),
-                }
-                for section in relevant_sections
-            ]
-
-            if len(search_results) == 0:
-                return LegacyMCPToolReturn(
-                    success=True,
-                    messages=[f"No relevant documentation sections found for query: {query}"],
-                )
-
-            return LegacyMCPToolReturn(
+        if len(query_results) == 0:
+            return MCPToolReturn(
                 success=True,
-                data={"search_results": search_results},
-                messages=[
-                    f"Successfully found relevant documentation sections: {[section.title for section in relevant_sections]}",
-                ],
+                message=f"No relevant documentation sections found for query: {query}",
             )
 
-        except Exception as e:
-            return LegacyMCPToolReturn(
-                success=False,
-                error=f"Search failed: {str(e)}",
-            )
+        return MCPToolReturn(
+            success=True,
+            data=SearchResponse(query_results=query_results),
+            message=f"Successfully found relevant documentation sections: {[section.title for section in relevant_sections]}",
+        )
 
-    async def _get_documentation_page(self, page: str) -> LegacyMCPToolReturn:
+    async def _get_documentation_page(self, page: str) -> MCPToolReturn[SearchResponse]:
         """Get specific documentation page content."""
-        try:
-            documentation_service = DocumentationService()
 
-            sections = await documentation_service.get_documentation_by_path([page])
+        documentation_service = DocumentationService()
 
-            # Find the requested page
-            if sections:
-                return LegacyMCPToolReturn(
-                    success=True,
-                    data={"page_content": sections[0].content},
-                    messages=[f"Retrieved content for page: {page}"],
-                )
+        sections = await documentation_service.get_documentation_by_path([page])
 
-            # Page not found - list available pages for user reference
-            all_sections = await documentation_service.get_all_doc_sections()
-            available_pages = [section.title for section in all_sections]
-
-            return LegacyMCPToolReturn(
-                success=False,
-                error=f"Page '{page}' not found. Available pages: {', '.join(available_pages)}",
+        # Find the requested page
+        if sections:
+            return MCPToolReturn(
+                success=True,
+                data=SearchResponse(page_content=sections[0].content),
+                message=f"Retrieved content for page: {page}",
             )
 
-        except Exception as e:
-            return LegacyMCPToolReturn(
-                success=False,
-                error=f"Failed to retrieve page: {str(e)}",
-            )
+        # Page not found - list available pages for user reference
+        all_sections = await documentation_service.get_all_doc_sections()
+        available_pages = [section.title for section in all_sections]
+
+        return MCPToolReturn(
+            success=False,
+            error=f"Page '{page}' not found. Available pages: {', '.join(available_pages)}",
+        )
 
     async def _map_runs(self, task_tuple: tuple[str, int], runs: list[AgentRun]) -> list[MCPRun]:
         version_ids = {run.group.id for run in runs}

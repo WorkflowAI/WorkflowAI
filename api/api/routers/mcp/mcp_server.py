@@ -7,18 +7,20 @@ from pydantic import BaseModel, Field
 from starlette.exceptions import HTTPException
 
 from api.dependencies.task_info import TaskTuple
+from api.routers.mcp._mcp_errors import MCPError, mcp_wrap
 from api.routers.mcp._mcp_models import (
     AgentListItem,
     AgentResponse,
     AgentSortField,
     ConciseLatestModelResponse,
     ConciseModelResponse,
-    LegacyMCPToolReturn,
+    DeployAgentResponse,
     MajorVersion,
     MCPRun,
     MCPToolReturn,
     ModelSortField,
     PaginatedMCPToolReturn,
+    SearchResponse,
     SortOrder,
 )
 from api.routers.mcp._mcp_service import MCPService
@@ -603,7 +605,7 @@ async def deploy_agent_version(
         Literal["dev", "staging", "production"],
         Field(description="The deployment environment. Must be one of: 'dev', 'staging', or 'production'"),
     ],
-) -> LegacyMCPToolReturn:
+) -> MCPToolReturn[DeployAgentResponse]:
     """<when_to_use>
     When the user wants to deploy a specific version of their WorkflowAI agent to an environment (dev, staging, or production).
 
@@ -632,16 +634,23 @@ async def deploy_agent_version(
     # Since we already validated the token in get_mcp_service, we can create a basic user identifier
     user_identifier = UserIdentifier(user_id=None, user_email=None)  # System user for MCP deployments
 
-    return await service.deploy_agent_version(
-        task_tuple=task_tuple,
-        version_id=version_id,
-        environment=environment,
-        deployed_by=user_identifier,
+    return await mcp_wrap(
+        service.deploy_agent_version(
+            task_tuple=task_tuple,
+            version_id=version_id,
+            environment=environment,
+            deployed_by=user_identifier,
+        ),
+        message=lambda x: f"Successfully deployed version {x.version_id} to {x.environment} environment",
     )
 
 
+class CreateApiKeyResponse(BaseModel):
+    api_key: str
+
+
 @_mcp.tool()
-async def create_api_key() -> LegacyMCPToolReturn:
+async def create_api_key() -> MCPToolReturn[CreateApiKeyResponse]:
     """<when_to_use>
     When the user wants to get their API key for WorkflowAI. This is a temporary tool that returns the API key that was used to authenticate the current request.
     </when_to_use>
@@ -652,7 +661,7 @@ async def create_api_key() -> LegacyMCPToolReturn:
 
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
-        return LegacyMCPToolReturn(
+        return MCPToolReturn(
             success=False,
             error="No Authorization header found or invalid format",
         )
@@ -660,10 +669,10 @@ async def create_api_key() -> LegacyMCPToolReturn:
     # Extract the API key from "Bearer <key>"
     api_key = auth_header.split(" ")[1]
 
-    return LegacyMCPToolReturn(
+    return MCPToolReturn(
         success=True,
-        data={"api_key": api_key},
-        messages=["API key retrieved successfully"],
+        data=CreateApiKeyResponse(api_key=api_key),
+        message="API key retrieved successfully",
     )
 
 
@@ -712,7 +721,7 @@ async def search_documentation(
         default=None,
         description="Direct access to specific documentation page. Available pages are dynamically determined from the docsv2 directory structure.",
     ),
-) -> LegacyMCPToolReturn:
+) -> MCPToolReturn[SearchResponse]:
     """Search WorkflowAI documentation OR fetch a specific documentation page.
 
      <when_to_use>
@@ -825,7 +834,13 @@ async def search_documentation(
      </returns>"""
 
     service = await get_mcp_service()
-    return await service.search_documentation(query=query, page=page)
+    try:
+        return await service.search_documentation(query=query, page=page)
+    except MCPError as e:
+        return MCPToolReturn(
+            success=False,
+            error=str(e),
+        )
 
 
 def mcp_http_app():

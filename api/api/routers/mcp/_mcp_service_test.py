@@ -162,7 +162,6 @@ class TestMCPServiceSearchDocumentation:
             tenant_slug=None,
         )
 
-    @pytest.mark.asyncio
     @patch("api.routers.mcp._mcp_service.DocumentationService")
     async def test_search_documentation_query_mode_success(
         self,
@@ -192,16 +191,16 @@ class TestMCPServiceSearchDocumentation:
         # Assert
         assert result.success is True
         assert result.data is not None
-        assert "search_results" in result.data
-        search_results = result.data["search_results"]
+        assert result.data.query_results is not None
+        search_results = result.data.query_results
         assert len(search_results) == 2
-        assert search_results[0]["source_page"] == "getting-started.mdx"
-        assert "get started with WorkflowAI" in search_results[0]["content_snippet"]
-        assert search_results[1]["source_page"] == "api-auth.mdx"
-        assert "Authentication is required" in search_results[1]["content_snippet"]
-        assert "Successfully found relevant documentation sections" in result.messages[0]  # type: ignore
+        # TODO: should likely be getting-started without the .mdx extension ?
+        assert search_results[0].source_page == "getting-started.mdx"
+        assert "get started with WorkflowAI" in search_results[0].content_snippet
+        assert search_results[1].source_page == "api-auth.mdx"
+        assert "Authentication is required" in search_results[1].content_snippet
+        assert result.message and "Successfully found relevant documentation sections" in result.message
 
-    @pytest.mark.asyncio
     @patch("api.routers.mcp._mcp_service.DocumentationService")
     async def test_search_documentation_page_mode_success(
         self,
@@ -227,13 +226,9 @@ class TestMCPServiceSearchDocumentation:
         # Assert
         assert result.success is True
         assert result.data is not None
-        assert "page_content" in result.data
-        assert (
-            result.data["page_content"] == "Complete getting started guide content here with detailed instructions..."
-        )
-        assert result.messages == ["Retrieved content for page: getting-started.mdx"]
+        assert result.data.page_content == "Complete getting started guide content here with detailed instructions..."
+        assert result.message == "Retrieved content for page: getting-started.mdx"
 
-    @pytest.mark.asyncio
     @patch("api.routers.mcp._mcp_service.DocumentationService")
     async def test_search_documentation_page_mode_not_found(
         self,
@@ -263,7 +258,6 @@ class TestMCPServiceSearchDocumentation:
         assert "Page 'non-existent.mdx' not found" in result.error  # type: ignore
         assert "Available pages: existing1.mdx, existing2.mdx" in result.error  # type: ignore
 
-    @pytest.mark.asyncio
     @patch("api.routers.mcp._mcp_service.DocumentationService")
     async def test_search_documentation_page_mode_many_available_pages(
         self,
@@ -289,7 +283,6 @@ class TestMCPServiceSearchDocumentation:
         assert result.success is False
         assert "Page 'non-existent.mdx' not found" in result.error  # type: ignore
 
-    @pytest.mark.asyncio
     async def test_search_documentation_both_parameters(self, mcp_service: MCPService):
         """Test search_documentation with both parameters (should fail)."""
         # Act
@@ -299,7 +292,6 @@ class TestMCPServiceSearchDocumentation:
         assert result.success is False
         assert "Use either 'query' OR 'page' parameter, not both" in result.error  # type: ignore
 
-    @pytest.mark.asyncio
     async def test_search_documentation_no_parameters(self, mcp_service: MCPService):
         """Test search_documentation with no parameters (should fail)."""
         # Act
@@ -309,7 +301,6 @@ class TestMCPServiceSearchDocumentation:
         assert result.success is False
         assert "Provide either 'query' or 'page' parameter" in result.error  # type: ignore
 
-    @pytest.mark.asyncio
     @patch("api.routers.mcp._mcp_service.DocumentationService")
     async def test_search_documentation_query_mode_exception(
         self,
@@ -323,13 +314,9 @@ class TestMCPServiceSearchDocumentation:
         mock_service.get_relevant_doc_sections = AsyncMock(side_effect=Exception("LLM service unavailable"))
 
         # Act
-        result = await mcp_service.search_documentation(query="test")
+        with pytest.raises(Exception):
+            await mcp_service.search_documentation(query="test")
 
-        # Assert
-        assert result.success is False
-        assert "Search failed: LLM service unavailable" in result.error  # type: ignore
-
-    @pytest.mark.asyncio
     @patch("api.routers.mcp._mcp_service.DocumentationService")
     async def test_search_documentation_page_mode_exception(
         self,
@@ -343,8 +330,5 @@ class TestMCPServiceSearchDocumentation:
         mock_service.get_documentation_by_path = AsyncMock(side_effect=Exception("File system error"))
 
         # Act
-        result = await mcp_service.search_documentation(page="test.mdx")
-
-        # Assert
-        assert result.success is False
-        assert "Failed to retrieve page: File system error" in result.error  # type: ignore
+        with pytest.raises(Exception):
+            await mcp_service.search_documentation(page="test.mdx")

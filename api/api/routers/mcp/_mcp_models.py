@@ -29,13 +29,6 @@ ModelSortField: TypeAlias = Literal["release_date", "quality_index", "cost"]
 SortOrder: TypeAlias = Literal["asc", "desc"]
 
 
-class SearchResult(BaseModel):
-    """A search result containing a content snippet and source page reference"""
-
-    content_snippet: str = Field(description="A snippet of the content that matches the search query")
-    source_page: str = Field(description="The page/file path where this content was found")
-
-
 class UsefulLinks(BaseModel):
     class Link(BaseModel):
         title: str
@@ -191,19 +184,11 @@ class PaginationInfo(BaseModel):
     max_tokens_limit: int | None = Field(default=None, description="Maximum tokens limit used for pagination")
 
 
-# TODO: delete this class when all tools are migrated to the new MCPToolReturn or PaginatedMCPToolReturn
-class LegacyMCPToolReturn(BaseModel):
-    success: bool
-    messages: list[str] | None = None
-    data: dict[str, Any] | None = None
-    error: str | None = None
-
-
 class MCPToolReturn(BaseModel, Generic[T]):
     """Generic standardized return format for MCP tools with typed data"""
 
     success: bool
-    messages: list[str] | None = None
+    message: str | None = None
     data: T | None = None
     error: str | None = None
 
@@ -653,3 +638,29 @@ class MCPRun(BaseModel):
             response_json_schema=output_schema,
             error=Error.from_domain(run.error) if run.error else None,
         )
+
+
+class SearchResponse(BaseModel):
+    page_content: str | None = Field(
+        default=None,
+        description="The content of the requested page, only present when a specific page is requested",
+    )
+
+    class QueryResult(BaseModel):
+        content_snippet: str
+        source_page: str
+
+    query_results: list[QueryResult] | None = Field(
+        default=None,
+        description="Query results, only present when a query is provided",
+    )
+
+
+class DeployAgentResponse(BaseModel):
+    version_id: str
+    agent_schema_id: int
+    environment: VersionEnvironment
+    deployed_at: str
+
+    # TODO: switch to a proper model
+    migration_guide: dict[str, Any]
