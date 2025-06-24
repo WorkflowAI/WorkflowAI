@@ -724,7 +724,6 @@ async def search_documentation(
      <available_pages>
      The following documentation pages are available for direct access:
 
-     **Getting Started:**
      - 'index' - Introduction to the WorkflowAI documentation. Provides information on what WorkflowAI is and how to get started with building, deploying, and improving AI agents.
      - 'why-workflowai' - An explanation of the WorkflowAI platform. Covers its commitment to open standards, provider flexibility, and developer and agent experience.
      - 'self-hosting' - Guide for deploying and managing WorkflowAI in your own environment. Provides step-by-step instructions for self-hosting to have control over data and infrastructure.
@@ -735,7 +734,6 @@ async def search_documentation(
      - 'changelog' - A chronological record of updates, improvements, and new model integrations to the WorkflowAI platform.
      - 'compliance' - Information on security and compliance. Covers SOC2 compliance, data handling policies, and provides answers to frequently asked questions about data privacy.
 
-     **Use Cases:**
      - 'use-cases/chatbot' - Use case guide for building a conversational AI chatbot. Covers basic setup, conversation management, streaming, error handling, and deployment.
      - 'use-cases/new_agent' - Comprehensive framework for building AI agents from scratch. Covers requirements analysis, agent types, model selection, prompt design, evaluation methods, and best practices.
      - 'use-cases/migrating_existing_agent' - Step-by-step guide for migrating existing AI agents to the WorkflowAI platform. Covers understanding your current agent, data requirements, and migration best practices.
@@ -746,7 +744,6 @@ async def search_documentation(
      - 'use-cases/image-generation' - Use case guide for generating and editing images. Covers best practices for prompting, customizing image outputs, and using the WorkflowAI SDK for image generation tasks.
      - 'use-cases/mcp' - A collection of use-case scenarios for AI agents that interact with the WorkflowAI platform. Outlines the required capabilities for agents to perform tasks like optimization, debugging, and deployment.
 
-     **API Reference:**
      - 'reference/api-errors' - Reference for API error codes and meanings from chat completion endpoints and SDKs.
      - 'reference/api-responses' - Response formats documentation (detailed content available in file)
      - 'reference/authentication' - Explains API authentication using bearer tokens. Covers API key management, security best practices, and the authentication process.
@@ -754,7 +751,6 @@ async def search_documentation(
      - 'reference/supported-models' - Available models documentation (detailed content available in file)
      - 'reference/supported-parameters' - API parameters documentation (detailed content available in file)
 
-     **Quickstarts:**
      - 'quickstarts' - Provides quickstart guides for getting started with WorkflowAI. Includes instructions for creating agents without code and integrating with popular SDKs.
      - 'quickstarts/instructor-python' - Instructor Python integration guide (detailed content available in file)
      - 'quickstarts/no-code' - No-code solutions guide (detailed content available in file)
@@ -775,7 +771,6 @@ async def search_documentation(
      - 'playground/sharing-playgrounds' - Sharing functionality documentation (detailed content available in file)
      - 'playground/versioning' - Version management documentation (detailed content available in file)
 
-     **Observability:**
      - 'observability' - Overview of observability tools for AI applications. Explains how to automatically monitor, analyze, and optimize agent performance.
      - 'observability/conversations' - Conversation tracking documentation (detailed content available in file)
      - 'observability/costs' - Cost monitoring documentation (detailed content available in file)
@@ -785,7 +780,6 @@ async def search_documentation(
      - 'observability/search' - Search functionality documentation (detailed content available in file)
      - 'observability/versions' - Version tracking documentation (detailed content available in file)
 
-     **Inference:**
      - 'inference' - Overview of the WorkflowAI inference API. Lists key features, including OpenAI compatibility, multi-provider support, structured outputs, and caching.
      - 'inference/caching' - Caching strategies documentation (detailed content available in file)
      - 'inference/cost' - Cost optimization documentation (detailed content available in file)
@@ -795,26 +789,21 @@ async def search_documentation(
      - 'inference/streaming' - Streaming responses documentation (detailed content available in file)
      - 'inference/structured-outputs' - Structured data documentation (detailed content available in file)
 
-     **Deployments:**
      - 'deployments' - Documentation on using deployments to manage and update AI agents. Covers separating prompts from code, managing environments, and versioning with schemas.
 
-     **Evaluations:**
      - 'evaluations' - Overview of the evaluations feature for systematic testing of AI applications. Covers prompt evaluation, model comparison, regression testing, and best practices.
      - 'evaluations/benchmarks' - Benchmarking documentation (detailed content available in file)
      - 'evaluations/reviews' - Review system documentation (detailed content available in file)
      - 'evaluations/side-by-side' - Comparison tools documentation (detailed content available in file)
      - 'evaluations/user-feedback' - Feedback collection documentation (detailed content available in file)
 
-     **Agents:**
      - 'agents' - Overview of AI agents in WorkflowAI. Covers what agents are and their purpose in the platform for automating tasks.
      - 'agents/mcp' - Model Control Protocol for agents documentation (detailed content available in file)
      - 'agents/memory' - Explains how to manage conversational memory using `reply_to_run_id`. This feature maintains chat history for stateful, multi-turn interactions.
      - 'agents/tools' - Documentation for using tools with AI agents. Covers hosted tools like web search and defining custom tools for specific use cases.
 
-     **AI Engineer:**
      - 'ai-engineer' - Setup guide for the AI Engineer. Walks through the necessary installation and configuration steps.
 
-     **Components:**
      - 'components' - Overview of the reusable UI component library. Lists available components like buttons, forms, and cards.
      </available_pages>
 
