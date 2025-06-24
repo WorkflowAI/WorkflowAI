@@ -152,12 +152,11 @@ class SessionState:
         """
         # If no session ID provided or session doesn't exist, create new one
         if session_id:
-            existing_session = await cls.load(session_id)
-            if existing_session:
+            if found_session := await cls.load(session_id):
                 # Update last activity and extend expiration
-                existing_session.last_activity = datetime.now(timezone.utc)
-                await existing_session.save()
-                return existing_session, False
+                found_session.last_activity = datetime.now(timezone.utc)
+                await found_session.save()
+                return found_session, False
 
         # Create new session
         new_session_id = str(uuid.uuid4())

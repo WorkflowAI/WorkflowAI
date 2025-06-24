@@ -9,7 +9,7 @@ from starlette.middleware.base import BaseHTTPMiddleware, _StreamingResponse  # 
 from starlette.requests import Request
 from starlette.responses import Response
 
-from api.routers.mcp._mcp_obersavilibity_session_state import ObserverAgentData, SessionState, ToolCallData
+from api.routers.mcp._mcp_observability_session_state import ObserverAgentData, SessionState, ToolCallData
 from core.utils.background import add_background_task
 from core.utils.json_utils import extract_json_str
 
@@ -26,37 +26,69 @@ class MCPObservabilityMiddleware(BaseHTTPMiddleware):
 
     def _extract_session_id(self, request: Request) -> str | None:
         """Extract session ID from request headers"""
-        # Check for MCP session ID header
-        session_id = request.headers.get("mcp-session-id")
-        if session_id:
-            return session_id
+        try:
+            # Check for MCP session ID header
+            session_id = request.headers.get("mcp-session-id")
+            if session_id:
+                return session_id
 
-        # Check for X-Session-ID header (custom header)
-        session_id = request.headers.get("x-session-id")
-        if session_id:
-            return session_id
+            # Check for X-Session-ID header (custom header)
+            session_id = request.headers.get("x-session-id")
+            if session_id:
+                return session_id
 
-        # Return None if no session ID found
-        return None
+            # Return None if no session ID found
+            return None
+        except Exception as e:
+            logger.warning(
+                "Error extracting session ID from request headers",
+                extra={"error": str(e)},
+            )
+            return None
 
     async def _get_or_create_session(self, session_id: str | None, user_agent: str) -> SessionState:
         """Get existing session or create a new one using Redis"""
-        session_state, is_new = await SessionState.get_or_create(session_id, user_agent)
-        return session_state
+        try:
+            session_state, _ = await SessionState.get_or_create(session_id, user_agent)
+            return session_state
+        except Exception as e:
+            logger.warning(
+                "Error getting or creating session state, creating fallback session",
+                extra={"error": str(e), "session_id": session_id},
+            )
+            # Create a fallback session that won't be persisted
+            return SessionState(
+                session_id=session_id or "fallback",
+                user_agent=user_agent,
+            )
 
     def _is_mcp_tool_call(self, request_data: dict[str, Any] | None) -> bool:
         """Check if this is an MCP tool call request"""
-        if not request_data:
+        try:
+            if not request_data:
+                return False
+            return request_data.get("method") == "tools/call"
+        except Exception as e:
+            logger.warning(
+                "Error checking if request is MCP tool call",
+                extra={"error": str(e)},
+            )
             return False
-        return request_data.get("method") == "tools/call"
 
     def _extract_tool_call_info(self, request_data: dict[str, Any]) -> tuple[str, dict[str, Any], str]:
         """Extract tool call information from request data"""
-        params = request_data.get("params", {})
-        tool_name = params.get("name", "unknown")
-        tool_arguments = params.get("arguments", {})
-        request_id = request_data.get("id", "unknown")
-        return tool_name, tool_arguments, request_id
+        try:
+            params = request_data.get("params", {})
+            tool_name = params.get("name", "unknown")
+            tool_arguments = params.get("arguments", {})
+            request_id = request_data.get("id", "unknown")
+            return tool_name, tool_arguments, request_id
+        except Exception as e:
+            logger.warning(
+                "Error extracting tool call information",
+                extra={"error": str(e)},
+            )
+            return "unknown", {}, "unknown"
 
     def _create_observing_streaming_response(
         self,
@@ -134,35 +166,41 @@ class MCPObservabilityMiddleware(BaseHTTPMiddleware):
         error_info: dict[str, Any] | None,
     ):
         """Log tool call completion with session context"""
-        log_extra = {
-            "mcp_event": "tool_call_complete",
-            "session_id": session_id,
-            "duration_seconds": tool_call_data.duration,
-            "status_code": response.status_code,
-            "user_agent": user_agent,
-            "tool_name": tool_call_data.tool_name,
-            "request_id": tool_call_data.request_id,
-            "has_result": tool_call_data.result is not None,
-            "has_error": error_info is not None,
-        }
+        try:
+            log_extra = {
+                "mcp_event": "tool_call_complete",
+                "session_id": session_id,
+                "duration_seconds": tool_call_data.duration,
+                "status_code": response.status_code,
+                "user_agent": user_agent,
+                "tool_name": tool_call_data.tool_name,
+                "request_id": tool_call_data.request_id,
+                "has_result": tool_call_data.result is not None,
+                "has_error": error_info is not None,
+            }
 
-        # Include the actual tool result for debugging (truncated if too long)
-        if tool_call_data.result is not None:
-            try:
-                result_str = json.dumps(tool_call_data.result)
-                if len(result_str) > 1000:  # Truncate very long results
-                    log_extra["tool_result_preview"] = result_str[:1000] + "... (truncated)"
-                else:
-                    log_extra["tool_result"] = tool_call_data.result
-            except (TypeError, ValueError):
-                log_extra["tool_result"] = str(tool_call_data.result)[:500]
+            # Include the actual tool result for debugging (truncated if too long)
+            if tool_call_data.result is not None:
+                try:
+                    result_str = json.dumps(tool_call_data.result)
+                    if len(result_str) > 1000:  # Truncate very long results
+                        log_extra["tool_result_preview"] = result_str[:1000] + "... (truncated)"
+                    else:
+                        log_extra["tool_result"] = tool_call_data.result
+                except (TypeError, ValueError):
+                    log_extra["tool_result"] = str(tool_call_data.result)[:500]
 
-        # Include error details if present (but limit size)
-        if error_info:
-            log_extra["error_code"] = error_info.get("code", "unknown")
-            log_extra["error_message"] = str(error_info.get("message", ""))[:200]
+            # Include error details if present (but limit size)
+            if error_info:
+                log_extra["error_code"] = error_info.get("code", "unknown")
+                log_extra["error_message"] = str(error_info.get("message", ""))[:200]
 
-        logger.info("MCP tool call completed", extra=log_extra)
+            logger.info("MCP tool call completed", extra=log_extra)
+        except Exception as e:
+            logger.warning(
+                "Error logging tool call completion",
+                extra={"error": str(e)},
+            )
 
     async def _run_observer_agent_background(self, observer_data: ObserverAgentData):
         """Run observer agent in background for analysis"""
@@ -195,160 +233,230 @@ class MCPObservabilityMiddleware(BaseHTTPMiddleware):
                 exc_info=e,
             )
 
-    async def dispatch(self, request: Request, call_next: Callable[[Request], Any]) -> Response:  # noqa: C901
-        start_time = time.time()
-        user_agent = request.headers.get("user-agent", "unknown")
-        session_id_from_header = self._extract_session_id(request)
-        session_state = await self._get_or_create_session(session_id_from_header, user_agent)
-
-        # Read request body
-        body = await request.body()
-        request_data = None
-
-        # Parse request body
+    async def _fallback_response(self, request: Request, call_next: Callable[[Request], Any]) -> Response:
+        """Fallback response when middleware fails - just pass through the request normally"""
         try:
-            if body:
-                request_data = json.loads(body)
-        except json.JSONDecodeError:
+            return await call_next(request)
+        except Exception as e:
             logger.error(
-                "Failed to parse MCP request body",
-                extra={
-                    "body": body.decode(),
-                    "user_agent": user_agent,
-                    "session_id": session_state.session_id,
-                },
+                "Error in fallback response",
+                extra={"error": str(e)},
             )
+            raise  # Re-raise since this is the final fallback
 
-        # Check if this is an MCP tool call - if not, just pass through
-        if not self._is_mcp_tool_call(request_data):
-            logger.debug(
-                "Non-MCP tool call request, passing through",
-                extra={
-                    "method": request_data.get("method") if request_data else None,
-                    "session_id": session_state.session_id,
-                },
-            )
-            response = await call_next(request)
-            response.headers["mcp-session-id"] = session_state.session_id
-            response.headers["x-session-id"] = session_state.session_id
-            return response
+    async def dispatch(self, request: Request, call_next: Callable[[Request], Any]) -> Response:  # noqa: C901
+        """Main dispatch method with comprehensive error handling"""
+        try:
+            start_time = time.time()
+            user_agent = request.headers.get("user-agent", "unknown")
+            session_id_from_header = self._extract_session_id(request)
+            session_state = await self._get_or_create_session(session_id_from_header, user_agent)
 
-        # At this point, request_data is guaranteed to be a dict with method="tools/call"
-        if request_data is None:  # type narrowing for the type checker
-            logger.error("Request data is None", extra={"request": request.headers})
-            raise ValueError("Request data is None")
+            # Read request body
+            body = await request.body()
+            request_data = None
 
-        # Extract tool call information
-        tool_name, tool_arguments, request_id = self._extract_tool_call_info(request_data)
-
-        # Track start time for this tool call
-        tool_call_start_time = datetime.now(timezone.utc)
-        _tool_call_start_times[request_id] = tool_call_start_time
-
-        # Execute the request
-        original_response = await call_next(request)
-
-        # Create callback to process response after streaming completes
-        def on_streaming_complete(response_body: bytes) -> None:
-            """Process the complete response body after streaming is done"""
+            # Parse request body
             try:
-                # Process tool call response
-                duration = time.time() - start_time
-                completed_at = datetime.now(timezone.utc)
-                tool_result = self._parse_tool_call_response(response_body, request_id)
+                if body:
+                    request_data = json.loads(body)
+            except json.JSONDecodeError:
+                logger.error(
+                    "Failed to parse MCP request body, proceeding with normal request",
+                    extra={
+                        "body": body.decode() if body else "",
+                        "user_agent": user_agent,
+                        "session_id": session_state.session_id,
+                    },
+                )
+                # If we can't parse the request body, just pass through
+                return await self._fallback_response(request, call_next)
 
-                # Create tool call data
-                tool_call_data = ToolCallData(
-                    tool_name=tool_name,
-                    tool_arguments=tool_arguments,
-                    request_id=str(request_id),
-                    duration=duration,
-                    result=tool_result,
-                    started_at=_tool_call_start_times.get(request_id, tool_call_start_time),
-                    completed_at=completed_at,
-                    user_agent=user_agent,
+            # Check if this is an MCP tool call - if not, just pass through
+            if not self._is_mcp_tool_call(request_data):
+                logger.debug(
+                    "Non-MCP tool call request, passing through",
+                    extra={
+                        "method": request_data.get("method") if request_data else None,
+                        "session_id": session_state.session_id,
+                    },
+                )
+                response = await call_next(request)
+                try:
+                    response.headers["mcp-session-id"] = session_state.session_id
+                    response.headers["x-session-id"] = session_state.session_id
+                except Exception as e:
+                    logger.warning(
+                        "Error setting session headers on response",
+                        extra={"error": str(e)},
+                    )
+                return response
+
+            # At this point, request_data is guaranteed to be a dict with method="tools/call"
+            if request_data is None:  # type narrowing for the type checker
+                logger.error("Request data is None, using fallback response")
+                return await self._fallback_response(request, call_next)
+
+            # Extract tool call information
+            tool_name, tool_arguments, request_id = self._extract_tool_call_info(request_data)
+
+            # Track start time for this tool call
+            tool_call_start_time = datetime.now(timezone.utc)
+            try:
+                _tool_call_start_times[request_id] = tool_call_start_time
+            except Exception as e:
+                logger.warning(
+                    "Error tracking tool call start time",
+                    extra={"error": str(e), "request_id": request_id},
                 )
 
-                # Update session state with completed tool call (async call in sync context)
-                async def update_session():
-                    await session_state.register_tool_call(tool_call_data)
-
-                # Clean up start time tracking
+            # Execute the request
+            try:
+                original_response = await call_next(request)
+            except Exception as e:
+                # Clean up start time tracking on error
                 _tool_call_start_times.pop(request_id, None)
+                logger.error(
+                    "Error executing original request",
+                    extra={"error": str(e), "request_id": request_id},
+                )
+                raise  # Re-raise since this is the actual request processing
 
-                # Run observer agent in background
-                if response_body:
-                    observer_data = ObserverAgentData(
+            # Create callback to process response after streaming completes
+            def on_streaming_complete(response_body: bytes) -> None:
+                """Process the complete response body after streaming is done"""
+                try:
+                    # Process tool call response
+                    duration = time.time() - start_time
+                    completed_at = datetime.now(timezone.utc)
+                    tool_result = self._parse_tool_call_response(response_body, request_id)
+
+                    # Create tool call data
+                    tool_call_data = ToolCallData(
                         tool_name=tool_name,
-                        previous_tool_calls=session_state.tool_calls[:-1] if len(session_state.tool_calls) > 1 else [],
                         tool_arguments=tool_arguments,
-                        tool_result=tool_result,
-                        duration_seconds=duration,
-                        user_agent=user_agent,
-                        mcp_session_id=session_state.session_id,
                         request_id=str(request_id),
-                        # TODO: Extract from request if available
-                        organization_name=None,
-                        user_email=None,
+                        duration=duration,
+                        result=tool_result,
+                        started_at=_tool_call_start_times.get(request_id, tool_call_start_time),
+                        completed_at=completed_at,
+                        user_agent=user_agent,
                     )
 
-                    # Create background task for observer agent
-                    async def run_observer_background():
-                        # Update session first, then run observer
-                        await update_session()
-                        await self._run_observer_agent_background(observer_data)
+                    # Update session state with completed tool call (async call in sync context)
+                    async def update_session():
+                        try:
+                            await session_state.register_tool_call(tool_call_data)
+                        except Exception as e:
+                            logger.warning(
+                                "Error updating session state",
+                                extra={"error": str(e), "session_id": session_state.session_id},
+                            )
 
-                    add_background_task(run_observer_background())
-                else:
-                    # Just update session if no response body
-                    add_background_task(update_session())
+                    # Clean up start time tracking
+                    _tool_call_start_times.pop(request_id, None)
+
+                    # Run observer agent in background
+                    if response_body:
+                        try:
+                            observer_data = ObserverAgentData(
+                                tool_name=tool_name,
+                                previous_tool_calls=session_state.tool_calls[:-1]
+                                if len(session_state.tool_calls) > 1
+                                else [],
+                                tool_arguments=tool_arguments,
+                                tool_result=tool_result,
+                                duration_seconds=duration,
+                                user_agent=user_agent,
+                                mcp_session_id=session_state.session_id,
+                                request_id=str(request_id),
+                                # TODO: Extract from request if available
+                                organization_name=None,
+                                user_email=None,
+                            )
+
+                            # Create background task for observer agent
+                            async def run_observer_background():
+                                # Update session first, then run observer
+                                await update_session()
+                                await self._run_observer_agent_background(observer_data)
+
+                            add_background_task(run_observer_background())
+                        except Exception as e:
+                            logger.warning(
+                                "Error setting up observer agent background task",
+                                extra={"error": str(e), "session_id": session_state.session_id},
+                            )
+                            # Still try to update session even if observer fails
+                            add_background_task(update_session())
+                    else:
+                        # Just update session if no response body
+                        add_background_task(update_session())
+                        logger.warning(
+                            "No response body received, skipping observer agent",
+                            extra={
+                                "session_id": session_state.session_id,
+                                "request_id": request_id,
+                            },
+                        )
+
+                    # Log completion
+                    self._log_tool_call_completion(
+                        tool_call_data,
+                        session_state.session_id,
+                        original_response,
+                        user_agent,
+                        session_state,
+                        None,  # error_info - we could parse this from response if needed
+                    )
+
+                except Exception as e:
                     logger.error(
-                        "No response body received, skipping observer agent",
+                        "Error processing streaming response completion",
                         extra={
+                            "error": str(e),
                             "session_id": session_state.session_id,
                             "request_id": request_id,
                         },
                     )
 
-                # Log completion
-                self._log_tool_call_completion(
-                    tool_call_data,
-                    session_state.session_id,
-                    original_response,
-                    user_agent,
-                    session_state,
-                    None,  # error_info - we could parse this from response if needed
-                )
-
+            # Create observing streaming response (only supports _StreamingResponse)
+            try:
+                if isinstance(original_response, _StreamingResponse):
+                    response = self._create_observing_streaming_response(original_response, on_streaming_complete)
+                else:
+                    logger.warning(
+                        "Non-streaming response type, cannot observe - using original response",
+                        extra={
+                            "response_type": type(original_response).__name__,
+                            "session_id": session_state.session_id,
+                            "request_id": request_id,
+                        },
+                    )
+                    response = original_response
             except Exception as e:
                 logger.error(
-                    "Error processing streaming response completion",
-                    extra={
-                        "error": str(e),
-                        "session_id": session_state.session_id,
-                        "request_id": request_id,
-                    },
-                )
-
-        # Create observing streaming response (only supports _StreamingResponse)
-        try:
-            if isinstance(original_response, _StreamingResponse):
-                response = self._create_observing_streaming_response(original_response, on_streaming_complete)
-            else:
-                logger.error(
-                    "Non-streaming response type, cannot observe",
-                    extra={
-                        "response_type": type(original_response).__name__,
-                        "session_id": session_state.session_id,
-                        "request_id": request_id,
-                    },
+                    "Error creating observing response, using original response",
+                    extra={"error": str(e), "session_id": session_state.session_id},
                 )
                 response = original_response
-        except Exception as e:
-            logger.exception("Error creating observing response", exc_info=e)
-            response = original_response
 
-        # Add session ID to response headers
-        response.headers["mcp-session-id"] = session_state.session_id
-        response.headers["x-session-id"] = session_state.session_id
-        return response
+            # Add session ID to response headers
+            try:
+                response.headers["mcp-session-id"] = session_state.session_id
+                response.headers["x-session-id"] = session_state.session_id
+            except Exception as e:
+                logger.warning(
+                    "Error setting session headers on final response",
+                    extra={"error": str(e)},
+                )
+
+            return response
+
+        except Exception as e:
+            # If anything goes wrong in the middleware, log the error and fall back to normal request processing
+            logger.error(
+                "Unexpected error in MCP observability middleware, falling back to normal request processing",
+                extra={"error": str(e)},
+            )
+            return await self._fallback_response(request, call_next)
