@@ -150,7 +150,15 @@ async def list_agents(
     )
 
 
-@_mcp.tool()
+@_mcp.tool(
+    description=f"""<when_to_use>
+    To retrieve detailed information about a specific WorkflowAI agent, including full input/output schemas, versions, name, description, and statistics.
+    </when_to_use>
+    <returns>
+    Return a single agent with the following structure:
+    {format_schema_as_yaml_description(AgentResponse)}
+    </returns>""",
+)
 async def get_agent(
     agent_id: Annotated[
         str,
@@ -165,17 +173,6 @@ async def get_agent(
         ),
     ] = None,
 ) -> MCPToolReturn[AgentResponse]:
-    """<when_to_use>
-    To retrieve detailed information about a specific WorkflowAI agent, including full input/output schemas, versions, name, description, and statistics.
-    </when_to_use>
-    <returns>
-    Returns detailed information for a specific agent including:
-    - Full input and output JSON schemas for each schema version
-    - Agent name and description
-    - Complete schema information (created_at, is_hidden, last_active_at)
-    - Run statistics (run count and total cost)
-    - Agent metadata (is_public status)
-    </returns>"""
     service = await get_mcp_service()
     return await service.get_agent(
         agent_id=agent_id,
