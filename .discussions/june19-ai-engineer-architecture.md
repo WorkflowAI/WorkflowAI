@@ -72,7 +72,7 @@ June 20:
 
 June 22:
 
-- [ ] Pierre suggested a new `search_documentation` tool: https://linear.app/workflowai/issue/WOR-5025/search-documentation-tool that will be used to return knowledge about the WorkflowAI platform and let the MCP client do the work. In that path, we will not implement the `ask_ai_engineer` tool.
+- [x] Pierre suggested a new `search_documentation` tool: https://linear.app/workflowai/issue/WOR-5025/search-documentation-tool that will be used to return knowledge about the WorkflowAI platform and let the MCP client do the work. In that path, we will not implement the `ask_ai_engineer` tool.
 
 ## Guides
 
@@ -85,7 +85,7 @@ June 22:
 - [x] Expose "guides" publicly, in the `guides` section of the docs.
 - [x] Add `metadata` in the `new_agent` guide.
 - [ ] write all guides for the AI Engineer agent.
-- [ ] add a guide about "deployments".
+- [x] add a guide about "deployments". (we have `deployments/index.mdx` already)
 - [ ] UX: how to connect the web app and the AI Engineer agent?
 - [ ] (maybe) write a guide about "when a new model comes out, how to test it?"
 - [ ] prototype how to support multiple programming languages.

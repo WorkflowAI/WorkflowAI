@@ -8,7 +8,7 @@ import OpenAI from 'openai';
 // setup WorkflowAI client
 const client = new OpenAI({
   baseURL: 'https://run.workflowai.com/v1', // [!code highlight]
-  apiKey: 'wai-***', // workflowai.com/keys // [!code highlight]
+  apiKey: 'wai-***', // workflowai.com/keys or create_api_key MCP tool // [!code highlight]
 });
 
 client.chat.completions.create({

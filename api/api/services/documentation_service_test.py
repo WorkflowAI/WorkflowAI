@@ -1,7 +1,9 @@
 # Removed the test for the private function _extract_doc_title as it's no longer used.
 # pyright: reportPrivateUsage=false
+# pyright: reportMissingTypeStubs=false
 import logging
 import os
+import tempfile
 from typing import NamedTuple
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -48,7 +50,6 @@ def documentation_service() -> DocumentationService:
     return DocumentationService()
 
 
-@pytest.mark.asyncio
 @patch("api.services.documentation_service.pick_relevant_documentation_sections", new_callable=AsyncMock)
 @patch.object(DocumentationService, "get_all_doc_sections")
 async def test_get_relevant_doc_sections_success(
@@ -89,7 +90,6 @@ async def test_get_relevant_doc_sections_success(
     # You could add more specific assertions on the input to mock_pick_relevant if needed
 
 
-@pytest.mark.asyncio
 @patch("api.services.documentation_service.pick_relevant_documentation_sections", new_callable=AsyncMock)
 @patch.object(DocumentationService, "get_all_doc_sections")
 async def test_get_relevant_doc_sections_pick_error(
@@ -153,10 +153,44 @@ async def test_get_documentation_by_path_with_missing_paths_logs_error(
         assert "Documentation not found for paths: c.md" in caplog.text
 
 
+@pytest.mark.asyncio
+async def test_get_all_doc_sections_local_excludes_private_files(documentation_service: DocumentationService):
+    """Tests that _get_all_doc_sections_local excludes files with .private in their name."""
+    # Create a temporary directory structure for testing
+    import os
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Create test files
+        public_file = os.path.join(temp_dir, "public.mdx")
+        private_file = os.path.join(temp_dir, "page.private.mdx")
+        hidden_file = os.path.join(temp_dir, ".hidden.mdx")
+
+        # Write content to files
+        with open(public_file, "w") as f:  # noqa: ASYNC230
+            f.write("# Public content")
+        with open(private_file, "w") as f:  # noqa: ASYNC230
+            f.write("# Private content")
+        with open(hidden_file, "w") as f:  # noqa: ASYNC230
+            f.write("# Hidden content")
+
+        # Patch the LOCAL_DOCS_DIR to use our temp directory
+        with patch.object(DocumentationService, "_LOCAL_DOCS_DIR", temp_dir):
+            result = documentation_service._get_all_doc_sections_local()
+
+            # Should only include the public file
+            assert len(result) == 1
+            assert result[0].title == "public"
+            assert result[0].content == "# Public content"
+
+            # Private and hidden files should be excluded
+            titles = [section.title for section in result]
+            assert "page.private" not in titles
+            assert ".hidden" not in titles
+
+
 # Remote functionality tests
 
 
-@pytest.mark.asyncio
 async def test_get_all_doc_sections_remote_success(documentation_service: DocumentationService):
     """Tests successful fetching of all documentation sections from remote."""
     # Mock API response
@@ -190,7 +224,6 @@ async def test_get_all_doc_sections_remote_success(documentation_service: Docume
             assert result[1].content == "# API Reference\nThis is the API reference content."
 
 
-@pytest.mark.asyncio
 async def test_get_all_doc_sections_remote_api_error(
     documentation_service: DocumentationService,
     caplog: pytest.LogCaptureFixture,
@@ -210,7 +243,6 @@ async def test_get_all_doc_sections_remote_api_error(
         assert "Failed to fetch documentation page list" in caplog.text
 
 
-@pytest.mark.asyncio
 async def test_fetch_page_content_success(documentation_service: DocumentationService):
     """Tests successful fetching of page content."""
     page_path = "getting-started/index"
@@ -230,7 +262,6 @@ async def test_fetch_page_content_success(documentation_service: DocumentationSe
         )
 
 
-@pytest.mark.asyncio
 async def test_fetch_page_content_404_error(
     documentation_service: DocumentationService,
     caplog: pytest.LogCaptureFixture,
@@ -251,7 +282,6 @@ async def test_fetch_page_content_404_error(
         assert "Documentation page not found" in caplog.text
 
 
-@pytest.mark.asyncio
 async def test_fetch_page_content_server_error(
     documentation_service: DocumentationService,
     caplog: pytest.LogCaptureFixture,
@@ -271,7 +301,6 @@ async def test_fetch_page_content_server_error(
             await documentation_service._fetch_page_content(page_path)
 
 
-@pytest.mark.asyncio
 async def test_fetch_page_content_general_error(
     documentation_service: DocumentationService,
     caplog: pytest.LogCaptureFixture,
@@ -289,7 +318,6 @@ async def test_fetch_page_content_general_error(
         assert "Error fetching page content" in caplog.text
 
 
-@pytest.mark.asyncio
 async def test_get_documentation_by_path_remote_success(documentation_service: DocumentationService):
     """Tests successful fetching of documentation by path from remote."""
     paths = ["getting-started/index", "reference/api"]
@@ -308,7 +336,6 @@ async def test_get_documentation_by_path_remote_success(documentation_service: D
         assert result[1].content == expected_contents[1]
 
 
-@pytest.mark.asyncio
 async def test_get_documentation_by_path_remote_with_errors(
     documentation_service: DocumentationService,
     caplog: pytest.LogCaptureFixture,
@@ -334,7 +361,6 @@ async def test_get_documentation_by_path_remote_with_errors(
         assert "Failed to fetch documentation by path" in caplog.text
 
 
-@pytest.mark.asyncio
 async def test_get_all_doc_sections_mode_selection(documentation_service: DocumentationService):
     """Tests that get_all_doc_sections correctly selects local vs remote mode."""
     mock_local_sections = [DocumentationSection(title="local.md", content="Local content")]
@@ -347,7 +373,6 @@ async def test_get_all_doc_sections_mode_selection(documentation_service: Docume
             assert result_local == mock_local_sections
 
 
-@pytest.mark.asyncio
 async def test_get_documentation_by_path_mode_selection(documentation_service: DocumentationService):
     """Tests that get_documentation_by_path correctly selects local vs remote mode."""
     paths = ["test-path"]
@@ -359,3 +384,68 @@ async def test_get_documentation_by_path_mode_selection(documentation_service: D
             # Test local mode
             result_local = await documentation_service.get_documentation_by_path(paths, mode="local")
             assert result_local == mock_local_sections
+
+
+# Tests for new dynamic page description functionality
+
+
+def test_extract_summary_from_content_with_frontmatter(documentation_service: DocumentationService):
+    """Test extracting summary from markdown frontmatter summary field."""
+    content = """---
+title: Getting Started
+summary: Learn how to get started with WorkflowAI platform
+---
+
+# Getting Started
+
+Some content here."""
+
+    result = documentation_service._extract_summary_from_content(content)
+    assert result == "Learn how to get started with WorkflowAI platform"
+
+
+def test_extract_summary_from_content_no_frontmatter(documentation_service: DocumentationService):
+    """Test that function returns empty string when no frontmatter summary is found."""
+    content = """# Authentication Guide
+
+This guide covers API authentication using bearer tokens and best practices for security.
+
+More detailed content follows..."""
+
+    result = documentation_service._extract_summary_from_content(content)
+    assert result == ""
+
+
+def test_get_available_pages_descriptions_success(documentation_service: DocumentationService):
+    """Test successful generation of available pages descriptions."""
+    # NOTE: DocumentationSection.title is misleadingly named - it's actually the page path/identifier,
+    # not the human-readable title. The human-readable title is in the frontmatter "title:" field.
+    mock_sections = [
+        DocumentationSection(
+            title="index",  # This is the page path, not the display title
+            content="---\nsummary: Getting started guide\n---\n\n# Welcome",
+        ),
+        DocumentationSection(
+            title="reference/auth",
+            content="---\nsummary: API authentication docs\n---\n\n# Auth",
+        ),
+        DocumentationSection(
+            title="use-cases/chatbot",
+            content="---\nsummary: Chatbot building guide\n---\n\n# Chatbot",
+        ),
+    ]
+
+    with patch.object(documentation_service, "_get_all_doc_sections_local", return_value=mock_sections):
+        result = documentation_service.get_available_pages_descriptions()
+
+        expected = """     - 'index' - Getting started guide
+     - 'reference/auth' - API authentication docs
+     - 'use-cases/chatbot' - Chatbot building guide"""
+
+        assert result == expected
+
+
+class TestGetAllSectionsLocal:
+    async def test_not_empty(self, documentation_service: DocumentationService):
+        sections = documentation_service._get_all_doc_sections_local()
+        assert len(sections) > 0
