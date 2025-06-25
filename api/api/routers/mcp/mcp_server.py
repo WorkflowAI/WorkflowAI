@@ -752,9 +752,19 @@ async def create_completion(
         "parameters in the original completion request",
     ),
 ) -> MCPToolReturn[OpenAIProxyChatCompletionResponse]:
-    request.check_supported_fields()
-    service = await get_mcp_service()
+    """Create a completion for an agent.
 
+    <when_to_use>
+    When the user wants to create a completion for an agent.
+    It is possible to either create a brand new completion or to retry an existing run by overriding certain parameters.
+    When retrying a run, the model must be provided in the request. All other parameters are optional.
+    </when_to_use>
+
+    <returns>
+    Returns a completion response from the agent.
+    </returns>"""
+
+    service = await get_mcp_service()
     return await mcp_wrap(service.create_completion(agent_id, original_run_id, request))
 
 

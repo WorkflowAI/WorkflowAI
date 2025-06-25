@@ -4,8 +4,10 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from api.routers.mcp._mcp_service import MCPService
+from api.routers.mcp._mcp_service import MCPService, _merge_inputs, _merge_properties
 from core.domain.documentation_section import DocumentationSection
+from core.domain.message import Message, Messages
+from core.domain.task_group_properties import TaskGroupProperties
 from core.domain.tenant_data import PublicOrganizationData
 
 
@@ -20,6 +22,8 @@ def mcp_service():
         models_service=Mock(),
         task_deployments_service=Mock(),
         user_email=None,
+        event_router=Mock(),
+        analytics_service=Mock(),
         tenant=PublicOrganizationData(slug="test-tenant"),
     )
 
@@ -195,3 +199,46 @@ class TestMCPServiceSearchDocumentation:
         # Act
         with pytest.raises(Exception):
             await mcp_service.search_documentation(page="test.mdx")
+
+
+class TestMergeInputs:
+    def test_messages_in_original(self):
+        original_input = {
+            "workflowai.messages": [
+                {
+                    "role": "user",
+                    "content": "Hello, how are you?",
+                },
+            ],
+            "name": {
+                "content_type": "image/gif",
+                "url": "http://127.0.0.1:10000/devstoreaccount1/workflowai-task-runs/orguid_3798905106/autopilot-openai-text/be00aa22dc0fba76e5ea94ef3519796e602bbe55402ad0a4d65df60d53bf5b65.gif",
+                "storage_url": "http://127.0.0.1:10000/devstoreaccount1/workflowai-task-runs/orguid_3798905106/autopilot-openai-text/be00aa22dc0fba76e5ea94ef3519796e602bbe55402ad0a4d65df60d53bf5b65.gif",
+            },
+        }
+        new_input = Messages.with_messages()
+        merged = _merge_inputs(original_input, new_input)
+        assert merged == original_input
+
+
+class TestMergeProperties:
+    def test_merge_properties(self):
+        run_properties = TaskGroupProperties(
+            model="gpt-4o-latest",
+            temperature=0.5,
+            messages=[Message.with_text("Hello, how are you?")],
+        )
+        prepared_properties = TaskGroupProperties(
+            model="gpt-4o-mini",
+        )
+        merged = _merge_properties(prepared_properties, run_properties)
+        assert merged.model_dump(exclude_none=True) == {
+            "model": "gpt-4o-mini",
+            "temperature": 0.5,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [{"text": "Hello, how are you?"}],
+                },
+            ],
+        }

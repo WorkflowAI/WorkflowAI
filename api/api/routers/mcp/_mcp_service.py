@@ -49,6 +49,7 @@ from core.domain.models.model_datas_mapping import MODEL_DATAS
 from core.domain.models.models import Model
 from core.domain.search_query import FieldQuery, SearchOperator
 from core.domain.task_group import TaskGroup, TaskGroupQuery
+from core.domain.task_group_properties import TaskGroupProperties
 from core.domain.task_info import TaskInfo
 from core.domain.task_variant import SerializableTaskVariant
 from core.domain.tenant_data import PublicOrganizationData
@@ -714,17 +715,22 @@ class MCPService:
         prepared = await handler.prepare_run(request, self.tenant)
         if run_data:
             # We make sure we provide defaults for fields present in the run
-            merged_properties = run_data.version.properties.model_copy(update=prepared.properties.model_dump())
+            merged_properties = _merge_properties(
+                prepared_properties=prepared.properties,
+                run_properties=run_data.version.properties,
+            )
 
             # TODO: we should likely raise if there is a difference in schema here
             # Not possible right now because prepared.variant will always be set
             # So we can't really detect "default variants"
             merged_variant = run_data.variant or prepared.variant
 
+            merged_input = _merge_inputs(original_input=run_data.run.task_input, new_input=prepared.final_input)
+
             prepared = handler.PreparedRun(
                 properties=merged_properties,
                 variant=merged_variant,
-                final_input=_merge_inputs(original_input=run_data.run.task_input, new_input=prepared.final_input),
+                final_input=merged_input,
             )
 
         res = await handler.handle_prepared_run(prepared, request, None, 0, self.tenant)
@@ -732,6 +738,13 @@ class MCPService:
             # That should never happen since we are not streaming
             raise ValueError("Unexpected response type")
         return res
+
+
+def _merge_properties(
+    prepared_properties: TaskGroupProperties,
+    run_properties: TaskGroupProperties,
+) -> TaskGroupProperties:
+    return run_properties.model_copy(update=prepared_properties.model_dump(exclude_unset=True))
 
 
 def _merge_inputs(
@@ -749,7 +762,10 @@ def _merge_inputs(
     if isinstance(new_input, Messages):
         merged = {}
         # TODO: remove, Same hack as in OpenAIProxyHandler
-        new_input_messages = new_input.model_dump(mode="json", exclude_none=True)[INPUT_KEY_MESSAGES]
+        if not new_input.messages:
+            new_input_messages = None
+        else:
+            new_input_messages = new_input.model_dump(mode="json", exclude_none=True)[INPUT_KEY_MESSAGES]
     else:
         merged = {k: v for k, v in new_input.items() if k != INPUT_KEY_MESSAGES}
         new_input_messages = new_input.get(INPUT_KEY_MESSAGES)

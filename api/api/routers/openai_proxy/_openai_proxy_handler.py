@@ -156,6 +156,12 @@ class OpenAIProxyHandler:
         variant: SerializableTaskVariant
         final_input: dict[str, Any] | Messages
 
+        @property
+        def has_input_variables(self) -> bool:
+            return not isinstance(self.final_input, Messages) and any(
+                k != INPUT_KEY_MESSAGES for k in self.final_input.keys()
+            )
+
     def _check_for_duplicate_messages(self, property_messages: list[Message] | None, input_messages: Messages):
         """We try to check if the entirety of property messages are passed in the input messages.
         This is to avoid a user remove the messages from the openai sdk after switching to a deployment
@@ -233,7 +239,11 @@ class OpenAIProxyHandler:
                     INPUT_KEY_MESSAGES: messages.model_dump(mode="json", exclude_none=True)[INPUT_KEY_MESSAGES],
                 }
 
-        return self.PreparedRun(properties=properties, variant=variant, final_input=final_input)
+        return self.PreparedRun(
+            properties=properties,
+            variant=variant,
+            final_input=final_input,
+        )
 
     async def _prepare_for_variant_id(
         self,
@@ -252,7 +262,11 @@ class OpenAIProxyHandler:
         properties.task_variant_id = variant.id
         self._update_task_properties(tenant_data, variant)
         # Here the input is exactly what we expect in run.task_input
-        return self.PreparedRun(properties=properties, variant=variant, final_input=input or {})
+        return self.PreparedRun(
+            properties=properties,
+            variant=variant,
+            final_input=input or {},
+        )
 
     async def _prepare_for_model(
         self,
@@ -306,16 +320,19 @@ class OpenAIProxyHandler:
         else:
             final_input = messages
 
-        return self.PreparedRun(properties=properties, variant=variant, final_input=final_input)
+        return self.PreparedRun(
+            properties=properties,
+            variant=variant,
+            final_input=final_input,
+        )
 
     def _check_final_input(
         self,
         prepared_run: PreparedRun,
         tenant_data: PublicOrganizationData,
-        request_input_was_empty: bool,
     ):
         variant = prepared_run.variant
-        if isinstance(prepared_run.final_input, Messages) or request_input_was_empty:
+        if isinstance(prepared_run.final_input, Messages) or not prepared_run.has_input_variables:
             # That can happen if the user passed a None input
             if variant.input_schema.uses_raw_messages:
                 # Everything is ok here, we received messages with no input and expected no input
@@ -332,7 +349,7 @@ class OpenAIProxyHandler:
                 else BadRequestError("It seems that your messages expect templated variables but you did not send any.")
             )
 
-        if variant.input_schema.uses_raw_messages and not request_input_was_empty:
+        if variant.input_schema.uses_raw_messages and prepared_run.has_input_variables:
             raise (
                 BadRequestError(
                     f"You passed input variables to a deployment on schema #{variant.task_schema_id} but schema "
@@ -413,14 +430,9 @@ class OpenAIProxyHandler:
         start_time: float,
         tenant_data: PublicOrganizationData,
     ):
-        body.check_supported_fields()
-
-        prepared_run = await self.prepare_run(body, tenant_data)
-
         self._check_final_input(
             prepared_run,
             tenant_data,
-            request_input_was_empty=not body.input,
         )
 
         try:
