@@ -403,6 +403,7 @@ class _MinorVersion(BaseModel):
 
     deployments: list[_VersionDeploymentMetadata] | None
 
+    # TODO: clarify the unit of the cost_estimate_usd:
     cost_estimate_usd: float | None
 
     last_active_at: datetime | None
