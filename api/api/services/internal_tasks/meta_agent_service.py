@@ -80,8 +80,8 @@ from core.domain.integration.integration_mapping import (
     safe_get_integration_by_kind,
 )
 from core.domain.models.model_data import LatestModel
-from core.domain.models.model_datas_mapping import MODEL_DATAS
-from core.domain.models.model_provider_datas_mapping import AZURE_PROVIDER_DATA, OPENAI_PROVIDER_DATA
+from core.domain.models.model_data_mapping import MODEL_DATAS
+from core.domain.models.model_provider_data_mapping import AZURE_PROVIDER_DATA, OPENAI_PROVIDER_DATA
 from core.domain.models.models import Model
 from core.domain.page import Page
 from core.domain.task_variant import SerializableTaskVariant

@@ -7,8 +7,8 @@ from pydantic import BaseModel, Field
 
 from core.domain.models import Model as ModelID
 from core.domain.models.model_data import FinalModelData, LatestModel, MaxTokensData
+from core.domain.models.model_data_mapping import MODEL_DATAS
 from core.domain.models.model_data_supports import ModelDataSupports
-from core.domain.models.model_datas_mapping import MODEL_DATAS
 from core.domain.models.model_provider_data import ModelProviderData
 
 router = APIRouter(prefix="/v1/models")

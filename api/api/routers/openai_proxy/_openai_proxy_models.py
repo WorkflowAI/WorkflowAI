@@ -20,7 +20,7 @@ from core.domain.message import (
     MessageContent,
     MessageRole,
 )
-from core.domain.models.model_datas_mapping import MODEL_ALIASES
+from core.domain.models.model_data_mapping import MODEL_ALIASES
 from core.domain.models.models import Model
 from core.domain.models.providers import Provider
 from core.domain.run_output import RunOutput

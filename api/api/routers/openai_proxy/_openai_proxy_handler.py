@@ -16,7 +16,7 @@ from core.domain.consts import INPUT_KEY_MESSAGES, METADATA_KEY_DEPLOYMENT_ENVIR
 from core.domain.errors import BadRequestError
 from core.domain.events import EventRouter, ProxyAgentCreatedEvent
 from core.domain.message import Message, Messages
-from core.domain.models.model_datas_mapping import MODEL_COUNT
+from core.domain.models.model_data_mapping import MODEL_COUNT
 from core.domain.task_group_properties import TaskGroupProperties
 from core.domain.task_io import RawJSONMessageSchema, RawMessagesSchema, RawStringMessageSchema, SerializableTaskIO
 from core.domain.task_variant import SerializableTaskVariant

@@ -48,7 +48,7 @@ from core.domain.events import EventRouter
 from core.domain.fields.chat_message import ChatMessage
 from core.domain.message import Messages
 from core.domain.models.model_data import FinalModelData, LatestModel
-from core.domain.models.model_datas_mapping import MODEL_DATAS
+from core.domain.models.model_data_mapping import MODEL_DATAS
 from core.domain.models.models import Model
 from core.domain.search_query import FieldQuery, SearchOperator
 from core.domain.task_group import TaskGroup, TaskGroupQuery

@@ -9,7 +9,7 @@ from .model_provider_data import (
     ModelProviderData,
     TextPricePerToken,
 )
-from .model_provider_datas_mapping import (
+from .model_provider_data_mapping import (
     MODEL_PROVIDER_DATAS,
     ProviderDataByModel,
     ProviderModelDataMapping,

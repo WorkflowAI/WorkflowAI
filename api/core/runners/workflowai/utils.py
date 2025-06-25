@@ -19,7 +19,7 @@ from core.domain.fields.file import File, FileWithKeyPath
 from core.domain.fields.internal_reasoning_steps import InternalReasoningStep
 from core.domain.models import Model, Provider
 from core.domain.models.model_data import DeprecatedModel
-from core.domain.models.model_datas_mapping import MODEL_DATAS
+from core.domain.models.model_data_mapping import MODEL_DATAS
 from core.domain.tool import Tool
 from core.domain.types import AgentOutput
 from core.runners.workflowai.internal_tool import InternalTool
