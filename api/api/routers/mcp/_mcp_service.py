@@ -673,6 +673,7 @@ class MCPService:
         agent_id: str,
         original_run_id: str | None,
         request: OpenAIProxyChatCompletionRequest,
+        start_time: float,
     ) -> OpenAIProxyChatCompletionResponse:
         if original_run_id:
             run_data = await self._fetch_run_version_variant(agent_id, original_run_id)
@@ -711,7 +712,7 @@ class MCPService:
                 final_input=merged_input,
             )
 
-        res = await handler.handle_prepared_run(prepared, request, None, 0, self.tenant)
+        res = await handler.handle_prepared_run(prepared, request, None, start_time, self.tenant)
         if not isinstance(res, OpenAIProxyChatCompletionResponse):
             # That should never happen since we are not streaming
             raise ValueError("Unexpected response type")

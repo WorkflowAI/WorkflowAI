@@ -1,4 +1,5 @@
 import datetime
+import time
 from typing import Annotated, Any, Literal
 
 from fastmcp import FastMCP
@@ -764,8 +765,10 @@ async def create_completion(
     Returns a completion response from the agent.
     </returns>"""
 
+    start_time = time.time()
+
     service = await get_mcp_service()
-    return await mcp_wrap(service.create_completion(agent_id, original_run_id, request))
+    return await mcp_wrap(service.create_completion(agent_id, original_run_id, request, start_time=start_time))
 
 
 def mcp_http_app():
