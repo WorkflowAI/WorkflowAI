@@ -86,7 +86,7 @@ async def list_models(
     ] = 1,
 ) -> PaginatedMCPToolReturn[None, ConciseModelResponse | ConciseLatestModelResponse]:
     """<when_to_use>
-    When you need to pick a model for the user's WorkflowAI agent, or any model-related goal.
+    To select a model for a WorkflowAI agent or explore available models.
     </when_to_use>
     <returns>
     Returns a list of all available AI models from WorkflowAI.
@@ -108,7 +108,7 @@ def description_for_list_agents() -> str:
     agent_item_description = format_schema_as_yaml_description(AgentListItem)
 
     return f"""<when_to_use>
-When the user wants to see all agents they have created, along with their basic statistics (run counts and costs).
+To list all WorkflowAI agents along with their basic statistics (run counts and costs).
 </when_to_use>
 <returns>
 Returns a list of agents with the following structure:
@@ -160,7 +160,7 @@ async def get_agent(
     ] = None,
 ) -> MCPToolReturn[AgentResponse]:
     """<when_to_use>
-    When the user wants to get detailed information about a specific agent, including full input/output schemas, versions, name, description, and statistics.
+    To retrieve detailed information about a specific WorkflowAI agent, including full input/output schemas, versions, name, description, and statistics.
     </when_to_use>
     <returns>
     Returns detailed information for a specific agent including:
@@ -195,7 +195,7 @@ async def fetch_run_details(
     ] = None,
 ) -> MCPToolReturn[MCPRun]:
     """<when_to_use>
-    When the user wants to investigate a specific run of a WorkflowAI agent, for debugging, improving the agent, fixing a problem on a specific use case, or any other reason. This is particularly useful for:
+    To investigate a specific run of a WorkflowAI agent for debugging, improvement, or troubleshooting. This is particularly useful for:
     - Debugging failed runs by examining error details and input/output data
     - Analyzing successful runs to understand agent behavior and performance
     - Reviewing cost and duration metrics for optimization
@@ -252,7 +252,7 @@ async def get_agent_versions(
     ] = 1,
 ) -> PaginatedMCPToolReturn[None, MajorVersion]:
     """<when_to_use>
-    When the user wants to retrieve details of versions of a WorkflowAI agent, or when they want to compare a specific version of an agent.
+    To retrieve version details of a WorkflowAI agent or compare specific agent versions.
 
     Example:
     - when debugging a failed run, you can use this tool to get the parameters of the agent that was used.
@@ -298,7 +298,7 @@ async def search_runs(
     ] = 1,
 ) -> PaginatedMCPToolReturn[None, MCPRun]:
     """<when_to_use>
-    When the user wants to search agent runs based on various criteria including metadata values, run properties (status, time, cost, latency), model parameters, input/output content, and reviews.
+    To search agent runs based on various criteria including metadata values, run properties (status, time, cost, latency), model parameters, input/output content, and reviews.
     </when_to_use>
 
     <searchable_fields>
@@ -502,10 +502,10 @@ async def deploy_agent_version(
     ],
 ) -> MCPToolReturn[DeployAgentResponse]:
     """<when_to_use>
-    When the user wants to deploy a specific version of their WorkflowAI agent to an environment (dev, staging, or production).
+    To deploy a specific version of a WorkflowAI agent to an environment (dev, staging, or production).
 
     The version ID can be obtained by:
-    1. Asking the user which version they want to deploy
+    1. Requesting the desired version to deploy
     2. Using the get_agent_versions tool to list available versions
     3. Checking the response payload from a chat completion endpoint which contains version_id metadata
     </when_to_use>
@@ -547,7 +547,7 @@ class CreateApiKeyResponse(BaseModel):
 @_mcp.tool()
 async def create_api_key() -> MCPToolReturn[CreateApiKeyResponse]:
     """<when_to_use>
-    When the user wants to get their API key for WorkflowAI. This is a temporary tool that returns the API key that was used to authenticate the current request.
+    To retrieve the API key for WorkflowAI. This is a temporary tool that returns the API key that was used to authenticate the current request.
     </when_to_use>
     <returns>
     Returns the API key that was used to authenticate the current MCP request.
@@ -593,7 +593,7 @@ async def list_hosted_tools() -> PaginatedMCPToolReturn[None, HostedToolItem]:
     Read the documentation about hosted tools using the `search_documentation` tool.
 
     <when_to_use>
-    When there is a need to see all available hosted tools in WorkflowAI, including web search, browser tools, and other built-in capabilities.
+    To view all available hosted tools in WorkflowAI, including web search, browser tools, and other built-in capabilities.
     </when_to_use>
 
     <returns>
@@ -676,7 +676,7 @@ async def create_completion(
     """Create a completion for an agent.
 
     <when_to_use>
-    When the user wants to:
+    Use this to:
     - Test or compare different AI models without local setup
     - Create a completion for a WorkflowAI agent (new or existing)
     - Quickly prototype prompts, structured outputs, or templates
