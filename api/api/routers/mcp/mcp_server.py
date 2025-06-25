@@ -676,22 +676,23 @@ async def create_completion(
     """Create a completion for an agent.
 
     <when_to_use>
-    Use this to:
+    Use create_completion to:
     - Test or compare different AI models without local setup
     - Create a completion for a WorkflowAI agent (new or existing)
     - Quickly prototype prompts, structured outputs, or templates
     - Debug agent behavior by testing specific inputs
     - Compare model performance (speed, cost, quality)
-    - Retry an existing run with different parameters
+    - Retry an existing run with different parameters (requires 'original_run_id' to be provided)
 
     Supports all OpenAI API features including structured outputs (Pydantic models),
     prompt templates with Jinja2, input variables, and tool calling.
 
-    When retrying a run, the model must be provided in the request. All other parameters are optional.
+    When retrying a run, the model must be provided in the request. All other parameters are optional. The request
+    parameter is identical to the OpenAI completion request.
     </when_to_use>
 
     <returns>
-    Returns a completion response from the agent, including:
+    Returns a completion response from the agent. The object is identical to the OpenAI completion response, including:
     - The AI model's response (text or structured output)
     - Usage statistics (tokens, cost, duration)
     - Run metadata (run ID, URL, feedback token)

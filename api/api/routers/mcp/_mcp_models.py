@@ -403,8 +403,7 @@ class _MinorVersion(BaseModel):
 
     deployments: list[_VersionDeploymentMetadata] | None
 
-    # TODO: clarify the unit of the cost_estimate_usd:
-    cost_estimate_usd: float | None
+    cost_estimate_per_run_usd: float | None
 
     last_active_at: datetime | None
 
@@ -434,7 +433,7 @@ class _MinorVersion(BaseModel):
             deployments=[_VersionDeploymentMetadata.from_domain(d) for d in minor.deployments]
             if minor.deployments
             else None,
-            cost_estimate_usd=minor.cost_estimate_usd,
+            cost_estimate_per_run_usd=minor.cost_estimate_usd,
             last_active_at=minor.last_active_at,
             is_favorite=minor.is_favorite,
             notes=minor.notes,
@@ -456,7 +455,7 @@ class _MinorVersion(BaseModel):
             minor=version.semver.minor if version.semver else 0,
             model=version.properties.model or "",
             deployments=[_VersionDeploymentMetadata.from_domain(d) for d in deployments] if deployments else None,
-            cost_estimate_usd=cost_estimate_usd,
+            cost_estimate_per_run_usd=cost_estimate_usd,
             last_active_at=version.last_active_at,
             is_favorite=version.is_favorite,
             notes=version.notes,
