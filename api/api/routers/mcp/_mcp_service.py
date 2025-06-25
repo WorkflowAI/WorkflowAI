@@ -683,7 +683,7 @@ class MCPService:
 
         if original_run_data.version.properties.model == model and not any([messages, response_format, temperature]):
             raise MCPError(
-                f"Modes {model} are the same, and neither messages, response_format, nor temperature are provided. Please retry this tool call with the parameters that differ from the original run.",
+                f"Model {model} is already used in the original run, and neither messages, response_format, nor temperature are provided. Please retry this tool call with the parameters that differ from the original run.",
             )
 
         return await self.create_completion(
