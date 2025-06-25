@@ -715,11 +715,11 @@ class ClickhouseRun(BaseModel):
             case SearchField.EVAL_HASH:
                 return W("eval_hash", operator="=", value=query.operation.value, type="String")
             case SearchField.METADATA:
-                # Making sure the keypath resembles a keypath
-                # to avoid any weird injection
-                query.validate_keypath()
+                # Replace any single quote in the key
+                # this allows single quotes as well as protects against injection
+                escaped_key = query.key_path.replace("'", "''")
                 return clickhouse_query(
-                    f"metadata['{query.key_path}']",
+                    f"metadata['{escaped_key}']",
                     op=query.operation,
                     type="String",
                 )
