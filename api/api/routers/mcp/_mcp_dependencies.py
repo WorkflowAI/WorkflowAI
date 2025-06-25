@@ -22,7 +22,7 @@ from core.domain.analytics_events.analytics_events import OrganizationProperties
 from core.domain.users import UserIdentifier
 
 
-async def _get_tenant_from_context(request: Request):
+async def get_tenant_from_context(request: Request):
     _system_storage = storage.system_storage(storage.shared_encryption())
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
@@ -42,7 +42,7 @@ async def _get_tenant_from_context(request: Request):
 
 async def get_mcp_service() -> MCPService:
     request = get_http_request()
-    tenant = await _get_tenant_from_context(request)
+    tenant = await get_tenant_from_context(request)
 
     org_properties = OrganizationProperties.build(tenant)
     # TODO: user analytics

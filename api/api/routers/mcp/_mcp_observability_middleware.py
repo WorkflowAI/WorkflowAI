@@ -9,7 +9,7 @@ from starlette.middleware.base import BaseHTTPMiddleware, _StreamingResponse  # 
 from starlette.requests import Request
 from starlette.responses import Response
 
-from api.routers.mcp._mcp_dependencies import _get_tenant_from_context
+from api.routers.mcp._mcp_dependencies import get_tenant_from_context
 from api.routers.mcp._mcp_observability_session_state import ObserverAgentData, SessionState, ToolCallData
 from core.domain.tenant_data import TenantData
 from core.utils.background import add_background_task
@@ -162,7 +162,7 @@ class MCPObservabilityMiddleware(BaseHTTPMiddleware):
     ) -> tuple[TenantData, SessionState, dict[str, Any] | None] | None:
         """Setup session and validate request. Returns None if should use fallback."""
         try:
-            tenant_info = await _get_tenant_from_context(request)
+            tenant_info = await get_tenant_from_context(request)
         except Exception as e:
             logger.warning("No tenant info found, using fallback response", extra={"error": str(e)})
             return None
