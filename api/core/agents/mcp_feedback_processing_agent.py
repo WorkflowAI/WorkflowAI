@@ -40,7 +40,7 @@ async def mcp_feedback_processing_agent(
 
 Feedback: {{feedback}}
 {% if context %}Context: {{context}}{% endif %}
-{% if user_agent %}User Agent: {{mcp_client_user_agent}}{% endif %}
+{% if mcp_client_user_agent %}User Agent: {{mcp_client_user_agent}}{% endif %}
 
 Analyze this feedback and provide a structured response with summary, sentiment classification, key themes, and confidence score."""
 
