@@ -30,7 +30,7 @@ class DocumentationService:
     _LOCAL_DOCS_DIR: str = "docsv2/content/docs"
     _LOCAL_FILE_EXTENSIONS: list[str] = [".mdx", ".md"]
 
-    async def _get_all_doc_sections_local(self) -> list[DocumentationSection]:
+    def _get_all_doc_sections_local(self) -> list[DocumentationSection]:
         doc_sections: list[DocumentationSection] = []
         base_dir: str = self._LOCAL_DOCS_DIR
         if not os.path.isdir(base_dir):
@@ -46,7 +46,7 @@ class DocumentationService:
                 full_path: str = os.path.join(root, file)
                 relative_path: str = os.path.relpath(full_path, base_dir)
                 try:
-                    with open(full_path, "r") as f:  # noqa: ASYNC230
+                    with open(full_path, "r") as f:
                         doc_sections.append(
                             DocumentationSection(
                                 title=relative_path.replace(".mdx", "").replace(".md", ""),
@@ -122,12 +122,12 @@ class DocumentationService:
         """Get all documentation sections based on the configured mode"""
         match mode:
             case "local":
-                return await self._get_all_doc_sections_local()
+                return self._get_all_doc_sections_local()
             case "remote":
                 return await self._get_all_doc_sections_remote()
 
     async def _get_documentation_by_path_local(self, pathes: list[str]) -> list[DocumentationSection]:
-        all_doc_sections: list[DocumentationSection] = await self._get_all_doc_sections_local()
+        all_doc_sections: list[DocumentationSection] = self._get_all_doc_sections_local()
         found_sections = [doc_section for doc_section in all_doc_sections if doc_section.title in pathes]
 
         # Check if any paths were not found
@@ -220,19 +220,21 @@ class DocumentationService:
         # Fallback when no summary is found
         return ""
 
-    async def get_available_pages_descriptions(self, mode: DocModeEnum = DEFAULT_DOC_MODE) -> str:
+    # For now, this function cannot be async meaning we can only use the local files
+    # It is called from mcp_server.py which resolves the tool description
+    def get_available_pages_descriptions(self) -> str:
         """Generate formatted descriptions of all available documentation pages for MCP tool docstring.
 
         TODO: Add caching (e.g., @redis_cached) to avoid repeated file system scans - good performance optimization.
         """
         try:
-            all_sections = await self.get_all_doc_sections(mode)
+            all_sections = self._get_all_doc_sections_local()
 
             if not all_sections:
                 return "No documentation pages found."
 
             # Build simple list of pages with descriptions
-            result_lines = []
+            result_lines: list[str] = []
 
             for section in sorted(all_sections, key=lambda s: s.title):
                 page_path = section.title

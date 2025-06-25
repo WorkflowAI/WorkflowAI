@@ -1,4 +1,3 @@
-import asyncio
 import datetime
 import time
 from typing import Annotated, Any, Literal
@@ -607,10 +606,11 @@ async def list_hosted_tools() -> PaginatedMCPToolReturn[None, HostedToolItem]:
     )
 
 
-def get_description_search_documentation_tool() -> str:
+def _get_description_search_documentation_tool() -> str:
     """Generate dynamic description for search_documentation tool."""
     documentation_service = DocumentationService()
-    available_pages = asyncio.run(documentation_service.get_available_pages_descriptions())
+
+    available_pages = documentation_service.get_available_pages_descriptions()
 
     return f"""Search WorkflowAI documentation OR fetch a specific documentation page.
 
@@ -635,7 +635,8 @@ def get_description_search_documentation_tool() -> str:
      </returns>"""
 
 
-@_mcp.tool(description=get_description_search_documentation_tool())
+# TODO: generate the tool description dynamically
+@_mcp.tool(description=_get_description_search_documentation_tool())
 async def search_documentation(
     query: str | None = Field(
         default=None,
