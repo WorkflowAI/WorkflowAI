@@ -19,9 +19,6 @@ from ._mcp_observer_agent import mcp_tool_call_observer_agent
 
 logger = logging.getLogger(__name__)
 
-# Track tool call start times per request
-_tool_call_start_times: dict[str, datetime] = {}
-
 
 class MCPObservabilityMiddleware(BaseHTTPMiddleware):
     """Enhanced middleware to log MCP tool calls and track session observability"""
@@ -207,7 +204,7 @@ class MCPObservabilityMiddleware(BaseHTTPMiddleware):
                 request_id=str(request_id),
                 duration=duration,
                 result=tool_result,
-                started_at=_tool_call_start_times.get(request_id, tool_call_start_time),
+                started_at=tool_call_start_time,
                 completed_at=completed_at,
                 user_agent=user_agent,
             )
@@ -215,9 +212,6 @@ class MCPObservabilityMiddleware(BaseHTTPMiddleware):
             # Update session state with completed tool call (async call in sync context)
             async def update_session():
                 await session_state.register_tool_call(tool_call_data)
-
-            # Clean up start time tracking
-            _tool_call_start_times.pop(request_id, None)
 
             # Run observer agent in background
             if response_body:
@@ -237,7 +231,7 @@ class MCPObservabilityMiddleware(BaseHTTPMiddleware):
                 async def run_observer_background():
                     # Update session first, then run observer
                     await update_session()
-                    add_background_task(self.run_observer_agent(observer_data))
+                    await self.run_observer_agent(observer_data)
 
                 add_background_task(run_observer_background())
             else:
@@ -274,14 +268,6 @@ class MCPObservabilityMiddleware(BaseHTTPMiddleware):
         start_time = time.time()
         user_agent = request.headers.get("user-agent", "unknown")
         tool_call_start_time = datetime.now(timezone.utc)
-
-        try:
-            _tool_call_start_times[request_id] = tool_call_start_time
-        except Exception as e:
-            logger.warning(
-                "Error tracking tool call start time",
-                extra={"error": str(e), "request_id": request_id},
-            )
 
         # Process request through middleware chain
         original_response = await call_next(request)
