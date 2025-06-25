@@ -27,6 +27,7 @@ from api.routers.openai_proxy._openai_proxy_handler import OpenAIProxyHandler
 from api.routers.openai_proxy._openai_proxy_models import (
     OpenAIProxyChatCompletionRequest,
     OpenAIProxyChatCompletionResponse,
+    OpenAIProxyMessage,
 )
 from api.services import tasks
 from api.services.documentation_service import DocumentationService
@@ -665,6 +666,34 @@ class MCPService:
             success=True,
             items=await self._map_runs(task_tuple, page_result.items),
         ).paginate(max_tokens=MAX_TOOL_RETURN_TOKENS, page=page)
+
+    async def retry_run(
+        self,
+        agent_id: str,
+        original_run_id: str,
+        model: str,
+        messages: list[OpenAIProxyMessage] | None,
+        response_format: str | None,
+        temperature: float | None,
+        start_time: float,
+    ) -> OpenAIProxyChatCompletionResponse:
+        original_run_data = await self._fetch_run_version_variant(agent_id, original_run_id)
+        if not original_run_data:
+            raise MCPError(f"Run {original_run_id} not found")
+
+        if original_run_data.version.properties.model == model and not any([messages, response_format, temperature]):
+            raise MCPError(
+                f"Modes {model} are the same, and neither messages, response_format, nor temperature are provided. Please retry this tool call with the parameters that differ from the original run.",
+            )
+
+        return await self.create_completion(
+            agent_id,
+            original_run_id,
+            OpenAIProxyChatCompletionRequest(
+                model=model,
+            ),
+            start_time,
+        )
 
     async def create_completion(
         self,

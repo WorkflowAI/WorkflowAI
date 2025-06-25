@@ -32,6 +32,7 @@ from api.routers.mcp._mcp_serializer import tool_serializer
 from api.routers.openai_proxy._openai_proxy_models import (
     OpenAIProxyChatCompletionRequest,
     OpenAIProxyChatCompletionResponse,
+    OpenAIProxyMessage,
 )
 from api.services.documentation_service import DocumentationService
 from api.services.tools_service import ToolsService
@@ -708,6 +709,71 @@ async def create_completion(
 
     service = await get_mcp_service()
     return await mcp_wrap(service.create_completion(agent_id, original_run_id, request, start_time=start_time))
+
+
+@_mcp.tool()
+async def retry_run(
+    # TODO: we should not need the agent id here
+    agent_id: str = Field(
+        description="The id of the user's agent. Example: 'agent_id': 'email-filtering-agent' in metadata, or 'email-filtering-agent' in 'model=email-filtering-agent/gpt-4o-latest'.",
+    ),
+    original_run_id: str = Field(
+        description="The id of the run to retry.",
+    ),
+    model: str = Field(
+        description="The model to use for the retry. Even if the same model is used/",
+    ),
+    messages: list[OpenAIProxyMessage] | None = Field(
+        description="The messages to use for the retry. In case the messages are not the same as the original run.",
+        default=None,
+    ),
+    response_format: str | None = Field(
+        description="The response format (JSON schema) also know as 'output_json_schema' to use for the retry. In case the response format (including field description and examples) is not the same as the original run.",
+        default=None,
+    ),
+    temperature: float | None = Field(
+        description="The temperature to use for the retry. In case the temperature is not the same as the original run.",
+        default=None,
+    ),
+) -> MCPToolReturn[OpenAIProxyChatCompletionResponse]:
+    """Retry a run. Prefer to use this tool over creating a new run, especially when the input and messages are long.
+
+    <when_to_use>
+    When the user wants to retry a run for example after fixing a bug in their agent (in this case the 'original_run_id' is likely a run that failed and that they want to retry after updating their agent).
+    Make sure to pass the parameters that differs from the original run.
+
+    For examples, if the output json schema / response_format is not the same as the original run, pass the new response_format.
+    </when_to_use>
+
+    <returns>
+    Returns a completion response from the agent.
+    </returns>
+    """
+
+    start_time = time.time()
+
+    request_data: dict[str, Any] = {
+        "model": model,
+    }
+    if messages:
+        request_data["messages"] = messages
+    if response_format:
+        request_data["output_json_schema"] = response_format
+    if temperature:
+        request_data["temperature"] = temperature
+
+    service = await get_mcp_service()
+    return await mcp_wrap(
+        service.retry_run(
+            agent_id=agent_id,
+            original_run_id=original_run_id,
+            model=model,
+            messages=messages,
+            response_format=response_format,
+            temperature=temperature,
+            start_time=start_time,
+        ),
+    )
 
 
 def mcp_http_app():
