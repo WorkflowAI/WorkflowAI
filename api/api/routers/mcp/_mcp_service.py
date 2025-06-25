@@ -601,15 +601,20 @@ class MCPService:
             async for v in self.storage.task_variants.variants_iterator(task_tuple[0], variant_ids)
         }
 
-        return [
-            MCPRun.from_domain(
-                run,
-                versions.get(run.group.id),
-                schema_by_id.get(run.task_schema_id),
-                url=self.tenant.app_run_url(task_tuple[0], run.id),
+        mcp_runs: list[MCPRun] = []
+        for run in runs:
+            # TODO: not great here, but until we store the messages directly in the run
+            # We need to make sure the completions are standardized
+            run = self.runs_service._sanitize_run(run)  # pyright: ignore[reportPrivateUsage]
+            mcp_runs.append(
+                MCPRun.from_domain(
+                    run,
+                    versions.get(run.group.id),
+                    schema_by_id.get(run.task_schema_id),
+                    url=self.tenant.app_run_url(task_tuple[0], run.id),
+                ),
             )
-            for run in runs
-        ]
+        return mcp_runs
 
     @classmethod
     def _process_run_fields(cls, field_queries: list[dict[str, Any]]) -> list[FieldQuery]:
@@ -682,9 +687,11 @@ class MCPService:
             exclude_fields={"tool_calls"},
         )
 
+        mcp_runs = await self._map_runs(task_tuple, page_result.items)
+
         return PaginatedMCPToolReturn[None, MCPRun](
             success=True,
-            items=await self._map_runs(task_tuple, page_result.items),
+            items=mcp_runs,
         ).paginate(max_tokens=MAX_TOOL_RETURN_TOKENS, page=page)
 
     async def create_completion(
