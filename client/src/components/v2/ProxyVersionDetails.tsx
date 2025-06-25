@@ -180,6 +180,7 @@ export function ProxyVersionDetails(props: TaskMetadataProps) {
       )}
       {model && (
         <TaskMetadataSection title='model'>
+          {/* Reasoning is hardcoded for now becasue we are wating for the information to be added on the backend side */}
           <TaskModelBadge model={model} providerId={provider} reasoning={'medium'} allowTooltips={false} />
         </TaskMetadataSection>
       )}

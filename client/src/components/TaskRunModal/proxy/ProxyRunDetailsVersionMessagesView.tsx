@@ -117,6 +117,7 @@ export function ProxyRunDetailsVersionMessagesView(props: Props) {
                   model={version.properties.model_name}
                   providerId={version.properties.provider}
                   modelIcon={version.properties.model_icon}
+                  // Reasoning is hardcoded for now becasue we are wating for the information to be added on the backend side
                   reasoning={'medium'}
                 />
               </div>

@@ -287,7 +287,10 @@ export function addAdvencedSettingsToProperties(
   }
 
   if (stream_options_include_usage !== undefined) {
-    result.stream_options_include_usage = stream_options_include_usage === 'true';
+    if (!result.stream_options || typeof result.stream_options !== 'object') {
+      result.stream_options = {};
+    }
+    (result.stream_options as { include_usage?: boolean }).include_usage = stream_options_include_usage === 'true';
   }
 
   if (stop !== undefined) {

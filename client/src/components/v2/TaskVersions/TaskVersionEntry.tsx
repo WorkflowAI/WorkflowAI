@@ -89,6 +89,7 @@ export function TaskVersionEntry(props: TaskVersionEntryProps) {
             {!!version.model && (
               <div className='flex flex-row items-center gap-1 overflow-hidden'>
                 <div className='truncate text-gray-700 text-[13px] font-normal'>{version.model}</div>
+                {/* Reasoning is hardcoded for now becasue we are wating for the information to be added on the backend side */}
                 <ResoningBadge reasoning={'medium'} allowTooltips={true} />
               </div>
             )}
