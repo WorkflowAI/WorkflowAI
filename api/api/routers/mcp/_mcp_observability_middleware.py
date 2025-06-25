@@ -69,36 +69,27 @@ class MCPObservabilityMiddleware(BaseHTTPMiddleware):
 
         async def observing_body_iterator():
             body_parts: list[bytes] = []
-            try:
-                async for chunk in original_response.body_iterator:
-                    if isinstance(chunk, bytes):
-                        chunk_bytes = chunk
-                    else:
-                        chunk_bytes = str(chunk).encode("utf-8")
+            async for chunk in original_response.body_iterator:
+                if isinstance(chunk, bytes):
+                    chunk_bytes = chunk
+                else:
+                    chunk_bytes = str(chunk).encode("utf-8")
 
-                    # Collect chunk for later processing
-                    body_parts.append(chunk_bytes)
+                # Collect chunk for later processing
+                body_parts.append(chunk_bytes)
 
-                    # Yield chunk immediately for streaming
-                    yield chunk_bytes
+                # Yield chunk immediately for streaming
+                yield chunk_bytes
 
-            except Exception as e:
-                logger.error(
-                    "Error during streaming response iteration",
-                    extra={"error": str(e)},
-                )
-                raise
-            finally:
-                # Process complete response after streaming is done
-                if body_parts:
-                    complete_body = b"".join(body_parts)
-                    try:
-                        on_complete_callback(complete_body)
-                    except Exception as e:
-                        logger.warning(
-                            "Error in streaming response completion callback",
-                            extra={"error": str(e)},
-                        )
+            if body_parts:
+                complete_body = b"".join(body_parts)
+                try:
+                    on_complete_callback(complete_body)
+                except Exception as e:
+                    logger.warning(
+                        "Error in streaming response completion callback",
+                        extra={"error": str(e)},
+                    )
 
         return StreamingResponse(
             observing_body_iterator(),
@@ -126,35 +117,17 @@ class MCPObservabilityMiddleware(BaseHTTPMiddleware):
             )
             return str(e)
 
-    async def _run_observer_agent_background(self, observer_data: ObserverAgentData):
-        """Run observer agent in background for analysis"""
-        try:
-
-            async def run_observer_agent() -> None:
-                try:
-                    await mcp_tool_call_observer_agent(
-                        tool_name=observer_data.tool_name,
-                        previous_tool_calls=observer_data.previous_tool_calls,
-                        tool_arguments=observer_data.tool_arguments,
-                        tool_result=observer_data.tool_result,
-                        duration_seconds=observer_data.duration_seconds,
-                        user_agent=observer_data.user_agent,
-                        mcp_session_id=observer_data.mcp_session_id,
-                        organization_name=observer_data.organization_name,
-                    )
-                except Exception as e:
-                    logger.exception(
-                        "Observer agent execution failed",
-                        exc_info=e,
-                    )
-
-            # Run in the background
-            add_background_task(run_observer_agent())
-        except Exception as e:
-            logger.exception(
-                "Failed to start observer agent background task",
-                exc_info=e,
-            )
+    async def run_observer_agent(self, observer_data: ObserverAgentData) -> None:
+        await mcp_tool_call_observer_agent(
+            tool_name=observer_data.tool_name,
+            previous_tool_calls=observer_data.previous_tool_calls,
+            tool_arguments=observer_data.tool_arguments,
+            tool_result=observer_data.tool_result,
+            duration_seconds=observer_data.duration_seconds,
+            user_agent=observer_data.user_agent,
+            mcp_session_id=observer_data.mcp_session_id,
+            organization_name=observer_data.organization_name,
+        )
 
     async def _setup_session_and_validate_request(
         self,
@@ -264,7 +237,7 @@ class MCPObservabilityMiddleware(BaseHTTPMiddleware):
                 async def run_observer_background():
                     # Update session first, then run observer
                     await update_session()
-                    await self._run_observer_agent_background(observer_data)
+                    add_background_task(self.run_observer_agent(observer_data))
 
                 add_background_task(run_observer_background())
             else:
@@ -283,6 +256,7 @@ class MCPObservabilityMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable[[Request], Any]) -> Response:
         """Main dispatch method with comprehensive error handling"""
         # Setup session and validate request
+        # TODO: refactor, we are validating the token and fetching the tenant twice, here and in the actual tool functions
         setup_result = await self._setup_session_and_validate_request(request)
         if not setup_result:
             return await call_next(request)
