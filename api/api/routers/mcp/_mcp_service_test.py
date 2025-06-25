@@ -279,15 +279,16 @@ class TestMCPServiceSendFeedback:
 
     async def test_send_feedback_exception_handling(self, mcp_service: MCPService):
         """Test exception handling in send_feedback"""
-        with patch("api.routers.mcp._mcp_service.add_background_task", side_effect=Exception("Background task failed")):
+        with patch(
+            "api.routers.mcp._mcp_service.MCPService._process_feedback",
+            side_effect=Exception("Whatever"),
+        ):
             feedback = "Test feedback"
             user_agent = "test-user-agent"
 
             result = await mcp_service.send_feedback(feedback, user_agent, None)
 
-            assert result.success is False
-            assert result.error is not None
-            assert "Failed to send MCP client feedback for processing" in result.error
+            assert result.success is True
 
 
 class TestMCPServiceProcessFeedback:
@@ -307,7 +308,7 @@ class TestMCPServiceProcessFeedback:
             "api.routers.mcp._mcp_service.mcp_feedback_processing_agent",
             return_value=mock_response,
         ) as mock_agent:
-            with patch("api.routers.mcp._mcp_service.logger") as mock_logger:
+            with patch("api.routers.mcp._mcp_service._logger") as mock_logger:
                 feedback = "Great MCP server performance"
                 context = "Testing context"
 
@@ -345,7 +346,7 @@ class TestMCPServiceProcessFeedback:
         """Test handling when feedback processing agent returns None"""
 
         with patch("api.routers.mcp._mcp_service.mcp_feedback_processing_agent", return_value=None) as mock_agent:
-            with patch("api.routers.mcp._mcp_service.logger") as mock_logger:
+            with patch("api.routers.mcp._mcp_service._logger") as mock_logger:
                 feedback = "Test feedback"
                 context = None
 
@@ -385,7 +386,7 @@ class TestMCPServiceProcessFeedback:
             "api.routers.mcp._mcp_service.mcp_feedback_processing_agent",
             side_effect=Exception("Agent failed"),
         ) as mock_agent:
-            with patch("api.routers.mcp._mcp_service.logger") as mock_logger:
+            with patch("api.routers.mcp._mcp_service._logger") as mock_logger:
                 feedback = "Test feedback"
                 context = "Test context"
 
@@ -422,7 +423,7 @@ class TestMCPServiceProcessFeedback:
             "api.routers.mcp._mcp_service.mcp_feedback_processing_agent",
             return_value=mock_response,
         ) as mock_agent:
-            with patch("api.routers.mcp._mcp_service.logger") as mock_logger:
+            with patch("api.routers.mcp._mcp_service._logger") as mock_logger:
                 feedback = "Minimal feedback"
 
                 await mcp_service._process_feedback(  # pyright: ignore[reportPrivateUsage]
