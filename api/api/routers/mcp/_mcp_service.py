@@ -29,9 +29,7 @@ from api.routers.openai_proxy._openai_proxy_models import (
     OpenAIProxyChatCompletionResponse,
 )
 from api.services import tasks
-from api.services.analytics._analytics_service import AnalyticsService
 from api.services.documentation_service import DocumentationService
-from api.services.groups import GroupService
 from api.services.internal_tasks.ai_engineer_service import AIEngineerService
 from api.services.models import ModelsService
 from api.services.run import RunService
@@ -70,13 +68,13 @@ class MCPService:
         storage: BackendStorage,
         ai_engineer_service: AIEngineerService,
         runs_service: RunsService,
+        run_service: RunService,
         versions_service: VersionsService,
         models_service: ModelsService,
         task_deployments_service: TaskDeploymentsService,
         user_email: str | None,
-        event_router: EventRouter,
-        analytics_service: AnalyticsService,
         tenant: PublicOrganizationData,
+        event_router: EventRouter,
     ):
         self.storage = storage
         self.ai_engineer_service = ai_engineer_service
@@ -86,25 +84,8 @@ class MCPService:
         self.task_deployments_service = task_deployments_service
         self.user_email = user_email
         self.tenant = tenant
+        self.run_service = run_service
         self.event_router = event_router
-        self.analytics_service = analytics_service
-
-    def group_service(self):
-        return GroupService(
-            storage=self.storage,
-            event_router=self.event_router,
-            analytics_service=self.analytics_service,
-            user=None,  # TODO: ?
-        )
-
-    def run_service(self, group_service: GroupService):
-        return RunService(
-            storage=self.storage,
-            event_router=self.event_router,
-            analytics_service=self.analytics_service,
-            group_service=group_service,
-            user=None,  # TODO: ?
-        )
 
     def _get_useful_links(self, agent_id: str | None, agent_schema_id: int | None) -> UsefulLinks:
         if agent_id is None:
@@ -702,13 +683,10 @@ class MCPService:
         request.stream_options = None
         request.stream = False
 
-        group_service = self.group_service()
-        run_service = self.run_service(group_service)
-
         handler = OpenAIProxyHandler(
-            group_service=group_service,
+            group_service=self.run_service.group_service,
             storage=self.storage,
-            run_service=run_service,
+            run_service=self.run_service,
             event_router=self.event_router,
             feedback_generator=_feedback_token_generator,
         )

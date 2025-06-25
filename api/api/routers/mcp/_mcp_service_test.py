@@ -23,7 +23,7 @@ def mcp_service():
         task_deployments_service=Mock(),
         user_email=None,
         event_router=Mock(),
-        analytics_service=Mock(),
+        run_service=Mock(),
         tenant=PublicOrganizationData(slug="test-tenant"),
     )
 

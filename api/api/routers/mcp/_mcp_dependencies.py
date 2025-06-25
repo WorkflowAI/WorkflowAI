@@ -21,7 +21,7 @@ from core.domain.analytics_events.analytics_events import OrganizationProperties
 from core.domain.users import UserIdentifier
 
 
-async def get_mcp_service() -> MCPService:
+async def _get_tenant_from_context():
     request = get_http_request()
 
     _system_storage = storage.system_storage(storage.shared_encryption())
@@ -37,9 +37,21 @@ async def get_mcp_service() -> MCPService:
     tenant = await security_service.tenant_from_credentials(auth_header.split(" ")[1])
     if not tenant:
         raise HTTPException(status_code=401, detail="Invalid bearer token")
+
+    return tenant
+
+
+async def get_mcp_service() -> MCPService:
+    tenant = await _get_tenant_from_context()
+
     org_properties = OrganizationProperties.build(tenant)
     # TODO: user analytics
-    user_properties: UserProperties | None = None
+    user_properties = UserProperties(
+        user_id=None,
+        client_source=SourceType.MCP,
+        client_version=None,
+        client_language=None,
+    )
     event_router = tenant_event_router(tenant.tenant, tenant.uid, user_properties, org_properties, None)
     _storage = storage.storage_for_tenant(tenant.tenant, tenant.uid, event_router, storage.shared_encryption())
     analytics = analytics_service(
@@ -96,23 +108,6 @@ async def get_mcp_service() -> MCPService:
         reviews_service=reviews_service,
     )
 
-    user_properties = UserProperties(
-        user_id=None,
-        client_source=SourceType.MCP,
-        client_version=None,
-        client_language=None,
-    )
-
-    organization_properties = OrganizationProperties.build(tenant)
-
-    event_router = tenant_event_router(
-        tenant=tenant.slug,
-        tenant_uid=tenant.uid,
-        user_properties=user_properties,
-        organization_properties=organization_properties,
-        task_properties=None,
-    )
-
     return MCPService(
         storage=_storage,
         ai_engineer_service=ai_engineer_service,
@@ -123,5 +118,5 @@ async def get_mcp_service() -> MCPService:
         user_email=user_identifier.user_email,
         tenant=tenant,
         event_router=event_router,
-        analytics_service=analytics,
+        run_service=run_service,
     )

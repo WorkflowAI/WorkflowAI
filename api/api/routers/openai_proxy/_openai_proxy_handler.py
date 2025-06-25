@@ -332,6 +332,8 @@ class OpenAIProxyHandler:
         tenant_data: PublicOrganizationData,
     ):
         variant = prepared_run.variant
+        # If the variant.task_schema_id is None or 0, the variant will be created when the run is stored
+        targets_existing_variant = bool(variant.task_schema_id)
         if isinstance(prepared_run.final_input, Messages) or not prepared_run.has_input_variables:
             # That can happen if the user passed a None input
             if variant.input_schema.uses_raw_messages:
@@ -345,7 +347,7 @@ class OpenAIProxyHandler:
                     f"Your deployment on schema #{variant.task_schema_id} expects input variables but you did not send any."
                     f"Please check your schema at {tenant_data.app_schema_url(variant.task_id, variant.task_schema_id)}",
                 )
-                if variant.task_schema_id
+                if targets_existing_variant
                 else BadRequestError("It seems that your messages expect templated variables but you did not send any.")
             )
 
@@ -357,7 +359,7 @@ class OpenAIProxyHandler:
                     "You likely have a typo in your schema number."
                     f"Please check your schema at {tenant_data.app_schema_url(variant.task_id, variant.task_schema_id)}",
                 )
-                if variant.task_schema_id
+                if targets_existing_variant
                 else BadRequestError(
                     "It looks like you sent input variables but there are no input variables in your messages.",
                 )
