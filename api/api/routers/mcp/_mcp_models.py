@@ -61,17 +61,21 @@ class ConciseModelResponse(BaseModel):
             "supports_input_audio",
             "supports_audio_only",
             "supports_tool_calling",
+            "supports_reasoning",
         }
 
         provider_data = model.providers[0][1]
+
+        # TODO: @guillaume - Implement reasoning support detection from FinalModelData
+        # The supports_reasoning field should be checked from model.supports_reasoning when available
+        supports_list = [
+            k.removeprefix("supports_") for k, v in model.model_dump().items() if v is True and k in SUPPORTS_WHITELIST
+        ]
+
         return cls(
             id=id,
             display_name=model.display_name,
-            supports=[
-                k.removeprefix("supports_")
-                for k, v in model.model_dump().items()
-                if v is True and k in SUPPORTS_WHITELIST
-            ],
+            supports=supports_list,
             quality_index=model.quality_index,
             cost_per_input_token_usd=provider_data.text_price.prompt_cost_per_token,
             cost_per_output_token_usd=provider_data.text_price.completion_cost_per_token,
@@ -80,6 +84,8 @@ class ConciseModelResponse(BaseModel):
 
     @classmethod
     def from_model_for_task(cls, model: ModelForTask):
+        # TODO: @guillaume - Implement reasoning support detection from ModelForTask
+        # The reasoning capability should be added to model.modes when the model supports reasoning
         return cls(
             id=model.id,
             display_name=model.name,

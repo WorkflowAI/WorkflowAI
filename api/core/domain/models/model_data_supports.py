@@ -40,3 +40,7 @@ class ModelDataSupports(ModelDataIOSupports):
     supports_tool_calling: bool = Field(
         description="Whether the model supports tool calling",
     )
+    supports_reasoning: bool = Field(
+        default=False,
+        description="Whether the model supports reasoning mode with step-by-step reasoning content",
+    )

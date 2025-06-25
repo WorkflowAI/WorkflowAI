@@ -94,7 +94,13 @@ async def list_models(
     To select a model for a WorkflowAI agent or explore available models.
     </when_to_use>
     <returns>
-    Returns a list of all available AI models from WorkflowAI.
+    Returns a list of all available AI models from WorkflowAI, including:
+    - Model capabilities in the `supports` array (tool_calling, input_image, input_pdf, input_audio, audio_only, reasoning)
+    - Quality index, cost information, and release dates for comparison
+    - Filtering options based on agent requirements
+
+    Models that support reasoning mode will have "reasoning" included in their `supports` array.
+    Use these models for complex problem-solving tasks that benefit from step-by-step reasoning content.
     </returns>"""
     service = await get_mcp_service()
     return await service.list_models(
