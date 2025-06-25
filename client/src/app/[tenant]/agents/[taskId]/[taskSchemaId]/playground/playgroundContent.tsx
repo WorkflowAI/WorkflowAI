@@ -165,7 +165,7 @@ export function PlaygroundContent(props: PlaygroundContentBodyProps) {
 
   const redirectWithParams = useRedirectWithParams();
   const {
-    taskRunId,
+    [TASK_RUN_ID_PARAM]: taskRunId,
     taskRunId1,
     taskRunId2,
     taskRunId3,
@@ -777,7 +777,7 @@ export function PlaygroundContent(props: PlaygroundContentBodyProps) {
 
   const onClose = useCallback(() => {
     redirectWithParams({
-      params: { taskRunId: undefined },
+      params: { [TASK_RUN_ID_PARAM]: undefined },
       scroll: false,
     });
   }, [redirectWithParams]);

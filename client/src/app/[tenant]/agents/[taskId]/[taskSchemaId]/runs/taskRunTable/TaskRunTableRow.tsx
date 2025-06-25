@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { TaskVersionBadgeContainer } from '@/components/TaskIterationBadge/TaskVersionBadgeContainer';
 import { SimpleTooltip } from '@/components/ui/Tooltip';
+import { TASK_RUN_ID_PARAM } from '@/lib/constants';
 import { formatDateTime, formatRelativeTime } from '@/lib/formatters/timeFormatter';
 import { useRedirectWithParams } from '@/lib/queryString';
 import { environmentsForVersion } from '@/lib/versionUtils';
@@ -27,7 +28,7 @@ export function TaskRunTableRow(props: TaskRunTableRowProps) {
       className='flex flex-row w-full border-b last:border-b-0 border-gray-200/60 text-[13px] text-gray-700 items-center cursor-pointer'
       onClick={() => {
         redirectWithParams({
-          params: { taskRunId: runItem.id },
+          params: { [TASK_RUN_ID_PARAM]: runItem.id },
         });
       }}
     >
