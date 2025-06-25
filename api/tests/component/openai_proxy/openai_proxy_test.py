@@ -1001,3 +1001,28 @@ async def test_url_safe_but_non_slug_agent_id(test_client: IntegrationTestClient
     )
     task_id, _ = res.id.split("/")
     assert task_id == "my_agent"
+
+
+async def test_different_types_in_input(test_client: IntegrationTestClient, openai_client: AsyncOpenAI):
+    """Check that passing all json types floats, booleans, etc. works"""
+    test_client.mock_openai_call(raw_content="Hello, world!")
+    res = await openai_client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {
+                "role": "user",
+                "content": "{{ a_number }} {{ a_boolean }} {{ a_array }} {{ a_object }} {{ a_null }} {{ a_string }}",
+            },
+        ],
+        extra_body={
+            "input": {
+                "a_number": 1.0,
+                "a_boolean": True,
+                "a_array": [1, 2, 3],
+                "a_object": {"a": 1, "b": 2},
+                "a_null": None,
+                "a_string": "hello",
+            },
+        },
+    )
+    assert res.choices[0].message.content
