@@ -1,134 +1,41 @@
+import datetime
 from typing import Annotated, Any, Literal
 
 from fastmcp import FastMCP
 from fastmcp.server.dependencies import get_http_request
-from pydantic import Field
+from pydantic import BaseModel, Field
 from starlette.exceptions import HTTPException
 
 from api.dependencies.task_info import TaskTuple
+from api.routers.mcp._mcp_dependencies import get_mcp_service
+from api.routers.mcp._mcp_errors import MCPError, mcp_wrap
 from api.routers.mcp._mcp_models import (
+    AgentListItem,
     AgentResponse,
     AgentSortField,
-    AIEngineerReponseWithUsefulLinks,
     ConciseLatestModelResponse,
     ConciseModelResponse,
-    LegacyMCPToolReturn,
+    DeployAgentResponse,
     MajorVersion,
     MCPRun,
     MCPToolReturn,
     ModelSortField,
     PaginatedMCPToolReturn,
+    SearchResponse,
     SortOrder,
 )
-from api.routers.mcp._mcp_service import MCPService
-from api.services import file_storage, storage
-from api.services.analytics import analytics_service
-from api.services.event_handler import system_event_router, tenant_event_router
-from api.services.feedback_svc import FeedbackService
-from api.services.groups import GroupService
-from api.services.internal_tasks.ai_engineer_service import AIEngineerService
-from api.services.internal_tasks.internal_tasks_service import InternalTasksService
-from api.services.models import ModelsService
-from api.services.providers_service import shared_provider_factory
-from api.services.reviews import ReviewsService
-from api.services.run import RunService
-from api.services.runs.runs_service import RunsService
-from api.services.security_service import SecurityService
-from api.services.task_deployments import TaskDeploymentsService
-from api.services.versions import VersionsService
-from core.domain.analytics_events.analytics_events import OrganizationProperties, UserProperties
+from api.routers.mcp._mcp_serializer import tool_serializer
+from api.routers.openai_proxy._openai_proxy_models import (
+    OpenAIProxyChatCompletionRequest,
+    OpenAIProxyChatCompletionResponse,
+)
+from api.services.tools_service import ToolsService
+from core.domain.tool import Tool
 from core.domain.users import UserIdentifier
 from core.storage.backend_storage import BackendStorage
+from core.utils.schema_formatter import format_schema_as_yaml_description
 
-_mcp = FastMCP("WorkflowAI 🚀", stateless_http=True)  # pyright: ignore [reportUnknownVariableType]
-
-
-# TODO: test auth
-async def get_mcp_service() -> MCPService:
-    request = get_http_request()
-
-    _system_storage = storage.system_storage(storage.shared_encryption())
-    auth_header = request.headers.get("Authorization")
-    if not auth_header or not auth_header.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Missing bearer token")
-
-    security_service = SecurityService(
-        _system_storage.organizations,
-        system_event_router(),
-        analytics_service(user_properties=None, organization_properties=None, task_properties=None),
-    )
-    tenant = await security_service.tenant_from_credentials(auth_header.split(" ")[1])
-    if not tenant:
-        raise HTTPException(status_code=401, detail="Invalid bearer token")
-    org_properties = OrganizationProperties.build(tenant)
-    # TODO: user analytics
-    user_properties: UserProperties | None = None
-    event_router = tenant_event_router(tenant.tenant, tenant.uid, user_properties, org_properties, None)
-    _storage = storage.storage_for_tenant(tenant.tenant, tenant.uid, event_router, storage.shared_encryption())
-    analytics = analytics_service(
-        user_properties=user_properties,
-        organization_properties=org_properties,
-        task_properties=None,
-    )
-    models_service = ModelsService(storage=_storage)
-    runs_service = RunsService(
-        storage=_storage,
-        provider_factory=shared_provider_factory(),
-        event_router=event_router,
-        analytics_service=analytics,
-        file_storage=file_storage.shared_file_storage,
-    )
-    feedback_service = FeedbackService(storage=_storage.feedback)
-    versions_service = VersionsService(storage=_storage, event_router=event_router)
-    internal_tasks = InternalTasksService(event_router=event_router, storage=_storage)
-    reviews_service = ReviewsService(
-        backend_storage=_storage,
-        internal_tasks=internal_tasks,
-        event_router=event_router,
-    )
-
-    # Create GroupService and RunService for TaskDeploymentsService
-    user_identifier = UserIdentifier(user_id=None, user_email=None)  # System user for MCP operations
-    group_service = GroupService(
-        storage=_storage,
-        event_router=event_router,
-        analytics_service=analytics,
-        user=user_identifier,
-    )
-    run_service = RunService(
-        storage=_storage,
-        event_router=event_router,
-        analytics_service=analytics,
-        group_service=group_service,
-        user=user_identifier,
-    )
-    task_deployments_service = TaskDeploymentsService(
-        storage=_storage,
-        run_service=run_service,
-        group_service=group_service,
-        analytics_service=analytics,
-    )
-
-    ai_engineer_service = AIEngineerService(
-        storage=_storage,
-        event_router=event_router,
-        runs_service=runs_service,
-        models_service=models_service,
-        feedback_service=feedback_service,
-        versions_service=versions_service,
-        reviews_service=reviews_service,
-    )
-
-    return MCPService(
-        storage=_storage,
-        ai_engineer_service=ai_engineer_service,
-        runs_service=runs_service,
-        versions_service=versions_service,
-        models_service=models_service,
-        task_deployments_service=task_deployments_service,
-        user_email=user_identifier.user_email,
-        tenant_slug=tenant.slug,
-    )
+_mcp = FastMCP("WorkflowAI 🚀", tool_serializer=tool_serializer)  # pyright: ignore [reportUnknownVariableType]
 
 
 async def get_task_tuple_from_task_id(storage: BackendStorage, agent_id: str) -> TaskTuple:
@@ -140,7 +47,7 @@ async def get_task_tuple_from_task_id(storage: BackendStorage, agent_id: str) ->
 
 
 @_mcp.tool()
-async def list_available_models(
+async def list_models(
     agent_id: Annotated[
         str | None,
         Field(
@@ -183,7 +90,7 @@ async def list_available_models(
     Returns a list of all available AI models from WorkflowAI.
     </returns>"""
     service = await get_mcp_service()
-    return await service.list_available_models(
+    return await service.list_models(
         page=page,
         agent_id=agent_id,
         agent_schema_id=agent_schema_id,
@@ -193,26 +100,23 @@ async def list_available_models(
     )
 
 
-@_mcp.tool()
+def description_for_list_agents() -> str:
+    """Generate dynamic description for list_agents tool based on Pydantic models"""
+    # Get the YAML-like description for AgentListItem
+    agent_item_description = format_schema_as_yaml_description(AgentListItem)
+
+    return f"""<when_to_use>
+When the user wants to see all agents they have created, along with their basic statistics (run counts and costs).
+</when_to_use>
+<returns>
+Returns a list of agents with the following structure:
+
+{agent_item_description}
+</returns>"""
+
+
+@_mcp.tool(description=description_for_list_agents())
 async def list_agents(
-    agent_id: Annotated[
-        str | None,
-        Field(
-            description="Filter on specific agent id. If omitted, all user's agents are returned. Example: 'agent_id': 'email-filtering-agent' in metadata, or 'email-filtering-agent' in 'model=email-filtering-agent/gpt-4o-latest'.",
-        ),
-    ] = None,
-    with_schemas: Annotated[
-        bool,
-        Field(
-            description="If true, the response will include the input and output schemas of the different schema ids of the agent. Useful to find on which schema id you are working on.",
-        ),
-    ] = False,
-    stats_from_date: Annotated[
-        str,
-        Field(
-            description="ISO date string to filter usage (runs and costs) stats from (e.g., '2024-01-01T00:00:00Z'). Defaults to 7 days ago if not provided.",
-        ),
-    ] = "",
     sort_by: Annotated[
         AgentSortField,
         Field(
@@ -229,21 +133,45 @@ async def list_agents(
         int,
         Field(description="The page number to return. Defaults to 1."),
     ] = 1,
-) -> PaginatedMCPToolReturn[None, AgentResponse]:
-    """<when_to_use>
-    When the user wants to see all agents they have created, along with their statistics (run counts and costs on the last 7 days).
-    </when_to_use>
-    <returns>
-    Returns a list of all agents for the user along with their statistics (run counts and costs).
-    </returns>"""
+) -> PaginatedMCPToolReturn[None, AgentListItem]:
     service = await get_mcp_service()
     return await service.list_agents(
-        agent_id=agent_id,
-        stats_from_date=stats_from_date,
-        with_schemas=with_schemas,
         page=page,
         sort_by=sort_by,
         order=order,
+    )
+
+
+@_mcp.tool()
+async def get_agent(
+    agent_id: Annotated[
+        str,
+        Field(
+            description="The id of the user's agent. Example: 'agent_id': 'email-filtering-agent' in metadata, or 'email-filtering-agent' in 'model=email-filtering-agent/gpt-4o-latest'.",
+        ),
+    ],
+    stats_from_date: Annotated[
+        datetime.datetime | None,
+        Field(
+            description="ISO date string to filter usage (runs and costs) stats from (e.g., '2024-01-01T00:00:00Z'). Defaults to 7 days ago if not provided.",
+        ),
+    ] = None,
+) -> MCPToolReturn[AgentResponse]:
+    """<when_to_use>
+    When the user wants to get detailed information about a specific agent, including full input/output schemas, versions, name, description, and statistics.
+    </when_to_use>
+    <returns>
+    Returns detailed information for a specific agent including:
+    - Full input and output JSON schemas for each schema version
+    - Agent name and description
+    - Complete schema information (created_at, is_hidden, last_active_at)
+    - Run statistics (run count and total cost)
+    - Agent metadata (is_public status)
+    </returns>"""
+    service = await get_mcp_service()
+    return await service.get_agent(
+        agent_id=agent_id,
+        stats_from_date=stats_from_date,
     )
 
 
@@ -283,10 +211,8 @@ async def fetch_run_details(
     - agent_schema_id: The schema/version ID of the agent used for this run
     - status: Current status of the run (e.g., "completed", "failed", "running")
     - conversation_id: Links this run to a broader conversation context if applicable
-
-    **Input/Output Data:**
-    - agent_input: Complete input data provided to the agent for this run
-    - agent_output: Complete output/response generated by the agent
+    - agent_input: Input data if any that was provided to the agent (only when using input variables)
+    - messages: The exchanged messages, including the returned assistant message
 
     **Performance Metrics:**
     - duration_seconds: Execution time in seconds
@@ -303,7 +229,7 @@ async def fetch_run_details(
     This data structure provides everything needed for debugging, performance analysis, cost tracking, and understanding the complete execution context of your WorkflowAI agent.
     </returns>"""
     service = await get_mcp_service()
-    return await service.fetch_run_details(agent_id, run_id, run_url)
+    return await mcp_wrap(service.fetch_run_details(agent_id, run_id, run_url))
 
 
 @_mcp.tool()
@@ -541,73 +467,16 @@ async def search_runs(
     Returns a paginated list of agent runs that match the search criteria, including run details.
     </returns>"""
 
-    try:
-        service = await get_mcp_service()
-
-        task_tuple = await get_task_tuple_from_task_id(service.storage, agent_id)
-
-        return await service.search_runs(
-            task_tuple=task_tuple,
-            field_queries=field_queries,
-            limit=limit,
-            offset=offset,
-            page=page,
-        )
-    except Exception as e:
-        return PaginatedMCPToolReturn(
-            success=False,
-            error=f"Failed to search runs: {e}",
-        )
-
-
-@_mcp.tool()
-async def ask_ai_engineer(
-    agent_id: Annotated[
-        str,
-        Field(
-            description="The id of the user's agent, MUST be passed when the user is asking a question in the context of a specific agent. Example: 'agent_id': 'email-filtering-agent' in metadata, or 'email-filtering-agent' in 'model=email-filtering-agent/gpt-4o-latest'. Pass 'NEW_AGENT' when the user wants to create a new agent.",
-        ),
-    ],
-    message: Annotated[
-        str,
-        Field(description="Your message to the AI engineer about what help you need"),
-    ],
-    user_programming_language: Annotated[
-        str,
-        Field(
-            description="The programming language and integration (if known) used by the user, e.g, Typescript, Python with OpenAI SDK, etc.",
-        ),
-    ],
-    user_code_extract: Annotated[
-        str,
-        Field(
-            description="The code you are working on to improve the user's agent, if any. Please DO NOT include API keys or other sensitive information.",
-        ),
-    ],
-    agent_schema_id: Annotated[
-        int | None,
-        Field(
-            description="The schema ID of the user's agent version, if known from model=<agent_id>/#<agent_schema_id>/<deployment_environment> or model=#<agent_schema_id>/<deployment_environment> when the workflowAI agent is already deployed",
-        ),
-    ] = None,
-) -> MCPToolReturn[AIEngineerReponseWithUsefulLinks] | LegacyMCPToolReturn:
-    """
-    <when_to_use>
-    Most user request about WorkflowAI must be processed by starting a conversation with the AI engineer agent to get insight about the WorkflowAI platform and the user's agents.
-    </when_to_use>
-
-    <returns>
-    Returns a response from WorkflowAI's AI engineer (meta agent) to help improve your agent.
-    </returns>
-    Get a response from WorkflowAI's AI engineer (meta agent) to help improve your agent.
-    """
     service = await get_mcp_service()
-    return await service.ask_ai_engineer(
-        agent_schema_id=agent_schema_id,
-        agent_id=agent_id,
-        message=message,
-        user_programming_language=user_programming_language,
-        user_code_extract=user_code_extract,
+
+    task_tuple = await get_task_tuple_from_task_id(service.storage, agent_id)
+
+    return await service.search_runs(
+        task_tuple=task_tuple,
+        field_queries=field_queries,
+        limit=limit,
+        offset=offset,
+        page=page,
     )
 
 
@@ -629,7 +498,7 @@ async def deploy_agent_version(
         Literal["dev", "staging", "production"],
         Field(description="The deployment environment. Must be one of: 'dev', 'staging', or 'production'"),
     ],
-) -> LegacyMCPToolReturn:
+) -> MCPToolReturn[DeployAgentResponse]:
     """<when_to_use>
     When the user wants to deploy a specific version of their WorkflowAI agent to an environment (dev, staging, or production).
 
@@ -658,16 +527,23 @@ async def deploy_agent_version(
     # Since we already validated the token in get_mcp_service, we can create a basic user identifier
     user_identifier = UserIdentifier(user_id=None, user_email=None)  # System user for MCP deployments
 
-    return await service.deploy_agent_version(
-        task_tuple=task_tuple,
-        version_id=version_id,
-        environment=environment,
-        deployed_by=user_identifier,
+    return await mcp_wrap(
+        service.deploy_agent_version(
+            task_tuple=task_tuple,
+            version_id=version_id,
+            environment=environment,
+            deployed_by=user_identifier,
+        ),
+        message=lambda x: f"Successfully deployed version {x.version_id} to {x.environment} environment",
     )
 
 
+class CreateApiKeyResponse(BaseModel):
+    api_key: str
+
+
 @_mcp.tool()
-async def create_api_key() -> LegacyMCPToolReturn:
+async def create_api_key() -> MCPToolReturn[CreateApiKeyResponse]:
     """<when_to_use>
     When the user wants to get their API key for WorkflowAI. This is a temporary tool that returns the API key that was used to authenticate the current request.
     </when_to_use>
@@ -678,7 +554,7 @@ async def create_api_key() -> LegacyMCPToolReturn:
 
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
-        return LegacyMCPToolReturn(
+        return MCPToolReturn(
             success=False,
             error="No Authorization header found or invalid format",
         )
@@ -686,12 +562,211 @@ async def create_api_key() -> LegacyMCPToolReturn:
     # Extract the API key from "Bearer <key>"
     api_key = auth_header.split(" ")[1]
 
-    return LegacyMCPToolReturn(
+    return MCPToolReturn(
         success=True,
-        data={"api_key": api_key},
-        messages=["API key retrieved successfully"],
+        data=CreateApiKeyResponse(api_key=api_key),
+        message="API key retrieved successfully",
     )
 
 
+class HostedToolItem(BaseModel):
+    """A tool hosted by WorkflowAI.
+    To use a WorkflowAI hosted tool:
+    - either refer to the tool name (e.g., '@search-google') in the first system message of
+    the completion request
+    - pass a tool with a corresponding name and no arguments in the `tools` argument of the completion request
+    """
+
+    name: str = Field(description="The tool handle/name (e.g., '@search-google')")
+    description: str = Field(description="Description of what the tool does")
+
+    @classmethod
+    def from_tool(cls, tool: Tool):
+        return cls(name=tool.name, description=tool.description or "")
+
+
+@_mcp.tool()
+async def list_hosted_tools() -> PaginatedMCPToolReturn[None, HostedToolItem]:
+    """
+    Read the documentation about hosted tools using the `search_documentation` tool.
+
+    <when_to_use>
+    When there is a need to see all available hosted tools in WorkflowAI, including web search, browser tools, and other built-in capabilities.
+    </when_to_use>
+
+    <returns>
+    Returns a list of all hosted tools available in WorkflowAI, including their names, descriptions.
+    </returns>"""
+
+    return PaginatedMCPToolReturn(
+        success=True,
+        items=[HostedToolItem.from_tool(tool) for tool in ToolsService.hosted_tools()],
+    )
+
+
+@_mcp.tool()
+async def search_documentation(
+    query: str | None = Field(
+        default=None,
+        description="Search across all WorkflowAI documentation. Use this when you need to find specific information across multiple pages.",
+    ),
+    page: str | None = Field(
+        default=None,
+        description="Direct access to specific documentation page. Available pages are dynamically determined from the docsv2 directory structure.",
+    ),
+) -> MCPToolReturn[SearchResponse]:
+    """Search WorkflowAI documentation OR fetch a specific documentation page.
+
+     <when_to_use>
+     Enable MCP clients to explore WorkflowAI documentation without web access through a dual-mode search tool:
+     1. Search mode ('query' parameter): Search across all documentation to find relevant documentation sections. Use search mode when you need to find information but don't know which specific page contains it.
+     2. Direct navigation mode ('page' parameter): Fetch the complete content of a specific documentation page (see <available_pages> below for available pages). Use direct navigation mode when you want to read the full content of a specific page. Example: 'page': 'reference/authentication'
+    </when_to_use>
+
+     <available_pages>
+     The following documentation pages are available for direct access:
+
+     **Getting Started:**
+     - 'index' - Introduction to the WorkflowAI documentation. Provides information on what WorkflowAI is and how to get started with building, deploying, and improving AI agents.
+     - 'why-workflowai' - An explanation of the WorkflowAI platform. Covers its commitment to open standards, provider flexibility, and developer and agent experience.
+     - 'self-hosting' - Guide for deploying and managing WorkflowAI in your own environment. Provides step-by-step instructions for self-hosting to have control over data and infrastructure.
+     - 'pricing' - Documentation on the pay-as-you-go pricing model. Explains the price-match guarantee, what you pay for, and answers common questions about billing and costs.
+     - 'organizations' - Documentation on team collaboration using organizations. Covers creating, joining, and switching between organizations, as well as managing members and join settings.
+     - 'glossary' - A glossary of key terms and concepts used throughout the WorkflowAI documentation. Provides definitions for important terminology.
+     - 'ask-ai' - Documentation for the 'Ask AI' assistant. Explains how to ask questions, use commands, and get guidance on using the platform.
+     - 'changelog' - A chronological record of updates, improvements, and new model integrations to the WorkflowAI platform.
+     - 'compliance' - Information on security and compliance. Covers SOC2 compliance, data handling policies, and provides answers to frequently asked questions about data privacy.
+
+     **Use Cases:**
+     - 'use-cases/chatbot' - Use case guide for building a conversational AI chatbot. Covers basic setup, conversation management, streaming, error handling, and deployment.
+     - 'use-cases/new_agent' - Comprehensive framework for building AI agents from scratch. Covers requirements analysis, agent types, model selection, prompt design, evaluation methods, and best practices.
+     - 'use-cases/migrating_existing_agent' - Step-by-step guide for migrating existing AI agents to the WorkflowAI platform. Covers understanding your current agent, data requirements, and migration best practices.
+     - 'use-cases/improving_and_debugging_existing_agent' - Guide for troubleshooting and optimizing existing AI agents. Covers common errors like max_tokens_exceeded, debugging with metadata, and performance optimization strategies.
+     - 'use-cases/classifier' - Use case guide for building AI classifiers. Covers techniques for text categorization, sentiment analysis, and more, from basic to advanced implementations.
+     - 'use-cases/image-input' - Use case guide for using images as input for AI agents. Covers processing and analyzing images to extract information, answer questions, and perform vision-based tasks.
+     - 'use-cases/pdf-input' - Use case guide for processing and extracting information from PDF documents. Covers techniques for using PDF files as input for summarization, data extraction, and question-answering tasks.
+     - 'use-cases/image-generation' - Use case guide for generating and editing images. Covers best practices for prompting, customizing image outputs, and using the WorkflowAI SDK for image generation tasks.
+     - 'use-cases/mcp' - A collection of use-case scenarios for AI agents that interact with the WorkflowAI platform. Outlines the required capabilities for agents to perform tasks like optimization, debugging, and deployment.
+
+     **API Reference:**
+     - 'reference/api-errors' - Reference for API error codes and meanings from chat completion endpoints and SDKs.
+     - 'reference/api-responses' - Response formats documentation (detailed content available in file)
+     - 'reference/authentication' - Explains API authentication using bearer tokens. Covers API key management, security best practices, and the authentication process.
+     - 'reference/prompt-templating' - Prompt engineering documentation (detailed content available in file)
+     - 'reference/supported-models' - Available models documentation (detailed content available in file)
+     - 'reference/supported-parameters' - API parameters documentation (detailed content available in file)
+
+     **Quickstarts:**
+     - 'quickstarts' - Provides quickstart guides for getting started with WorkflowAI. Includes instructions for creating agents without code and integrating with popular SDKs.
+     - 'quickstarts/instructor-python' - Instructor Python integration guide (detailed content available in file)
+     - 'quickstarts/no-code' - No-code solutions guide (detailed content available in file)
+     - 'quickstarts/openai-agents' - OpenAI Agents integration guide (detailed content available in file)
+     - 'quickstarts/openai-javascript-typescript' - OpenAI JS/TS SDK integration guide (detailed content available in file)
+     - 'quickstarts/openai-python' - OpenAI Python SDK integration guide (detailed content available in file)
+     - 'quickstarts/pydanticai' - PydanticAI integration guide (detailed content available in file)
+     - 'quickstarts/vercelai' - Vercel AI SDK integration guide (detailed content available in file)
+
+     **Playground:**
+     - 'playground' - Overview of the WorkflowAI Playground. Lists its features for comparing models, optimizing prompts, and team collaboration.
+     - 'playground/additional-features' - Advanced playground features documentation (detailed content available in file)
+     - 'playground/ai-assistant' - AI Assistant in playground documentation (detailed content available in file)
+     - 'playground/compare-models' - Model comparison tools documentation (detailed content available in file)
+     - 'playground/data-generation' - Data generation tools documentation (detailed content available in file)
+     - 'playground/diff-mode' - Diff mode feature documentation (detailed content available in file)
+     - 'playground/price-and-latency' - Performance metrics documentation (detailed content available in file)
+     - 'playground/sharing-playgrounds' - Sharing functionality documentation (detailed content available in file)
+     - 'playground/versioning' - Version management documentation (detailed content available in file)
+
+     **Observability:**
+     - 'observability' - Overview of observability tools for AI applications. Explains how to automatically monitor, analyze, and optimize agent performance.
+     - 'observability/conversations' - Conversation tracking documentation (detailed content available in file)
+     - 'observability/costs' - Cost monitoring documentation (detailed content available in file)
+     - 'observability/insights' - Analytics insights documentation (detailed content available in file)
+     - 'observability/reports' - Reporting features documentation (detailed content available in file)
+     - 'observability/runs' - Run monitoring documentation (detailed content available in file)
+     - 'observability/search' - Search functionality documentation (detailed content available in file)
+     - 'observability/versions' - Version tracking documentation (detailed content available in file)
+
+     **Inference:**
+     - 'inference' - Overview of the WorkflowAI inference API. Lists key features, including OpenAI compatibility, multi-provider support, structured outputs, and caching.
+     - 'inference/caching' - Caching strategies documentation (detailed content available in file)
+     - 'inference/cost' - Cost optimization documentation (detailed content available in file)
+     - 'inference/models' - Model selection documentation (detailed content available in file)
+     - 'inference/reasoning' - Reasoning capabilities documentation (detailed content available in file)
+     - 'inference/reliability' - Reliability features documentation (detailed content available in file)
+     - 'inference/streaming' - Streaming responses documentation (detailed content available in file)
+     - 'inference/structured-outputs' - Structured data documentation (detailed content available in file)
+
+     **Deployments:**
+     - 'deployments' - Documentation on using deployments to manage and update AI agents. Covers separating prompts from code, managing environments, and versioning with schemas.
+
+     **Evaluations:**
+     - 'evaluations' - Overview of the evaluations feature for systematic testing of AI applications. Covers prompt evaluation, model comparison, regression testing, and best practices.
+     - 'evaluations/benchmarks' - Benchmarking documentation (detailed content available in file)
+     - 'evaluations/reviews' - Review system documentation (detailed content available in file)
+     - 'evaluations/side-by-side' - Comparison tools documentation (detailed content available in file)
+     - 'evaluations/user-feedback' - Feedback collection documentation (detailed content available in file)
+
+     **Agents:**
+     - 'agents' - Overview of AI agents in WorkflowAI. Covers what agents are and their purpose in the platform for automating tasks.
+     - 'agents/mcp' - Model Control Protocol for agents documentation (detailed content available in file)
+     - 'agents/memory' - Explains how to manage conversational memory using `reply_to_run_id`. This feature maintains chat history for stateful, multi-turn interactions.
+     - 'agents/tools' - Documentation for using tools with AI agents. Covers hosted tools like web search and defining custom tools for specific use cases.
+
+     **AI Engineer:**
+     - 'ai-engineer' - Setup guide for the AI Engineer. Walks through the necessary installation and configuration steps.
+
+     **Components:**
+     - 'components' - Overview of the reusable UI component library. Lists available components like buttons, forms, and cards.
+     </available_pages>
+
+     <returns>
+     - If using query: Returns a list of SearchResult objects with relevant documentation sections and source page references
+     - If using page: Returns the complete content of the specified documentation page as a string
+     - Error message if both or neither parameters are provided, or if the requested page is not found
+     </returns>"""
+
+    service = await get_mcp_service()
+    try:
+        return await service.search_documentation(query=query, page=page)
+    except MCPError as e:
+        return MCPToolReturn(
+            success=False,
+            error=str(e),
+        )
+
+
+@_mcp.tool()
+async def create_completion(
+    # TODO: we should not need the agent id here
+    agent_id: str = Field(
+        description="The id of the user's agent. Example: 'agent_id': 'email-filtering-agent' in metadata, or 'email-filtering-agent' in 'model=email-filtering-agent/gpt-4o-latest'.",
+    ),
+    # TODO: we should likely split the completion request object
+    request: OpenAIProxyChatCompletionRequest = Field(
+        description="A partial completion request. The model is always required. If original_run_id is not provided, messages is required",
+    ),
+    original_run_id: str | None = Field(
+        default=None,
+        description="A run ID to repeat. Parameters provided in the request will override the "
+        "parameters in the original completion request",
+    ),
+) -> MCPToolReturn[OpenAIProxyChatCompletionResponse]:
+    """Create a completion for an agent.
+
+    <when_to_use>
+    When the user wants to create a completion for an agent.
+    It is possible to either create a brand new completion or to retry an existing run by overriding certain parameters.
+    When retrying a run, the model must be provided in the request. All other parameters are optional.
+    </when_to_use>
+
+    <returns>
+    Returns a completion response from the agent.
+    </returns>"""
+
+    service = await get_mcp_service()
+    return await mcp_wrap(service.create_completion(agent_id, original_run_id, request))
+
+
 def mcp_http_app():
-    return _mcp.http_app(path="/")
+    return _mcp.http_app(path="/", stateless_http=True)

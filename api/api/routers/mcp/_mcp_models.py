@@ -13,11 +13,13 @@ from core.domain.error_response import ErrorResponse
 from core.domain.message import Message
 from core.domain.models.model_data import FinalModelData
 from core.domain.models.model_data_supports import ModelDataSupports
+from core.domain.task import SerializableTask
 from core.domain.task_group import TaskGroup
 from core.domain.task_group_properties import TaskGroupProperties
 from core.domain.task_variant import SerializableTaskVariant
 from core.domain.version_environment import VersionEnvironment
 from core.domain.version_major import VersionDeploymentMetadata, VersionMajor
+from core.storage.task_run_storage import TaskRunStorage
 from core.utils.fields import datetime_zero
 from core.utils.token_utils import tokens_from_string
 
@@ -89,26 +91,84 @@ class ConciseModelResponse(BaseModel):
         )
 
 
+class AgentListItem(BaseModel):
+    agent_id: str = Field(description="The ID of the agent")
+    is_public: bool = Field(description="Whether the agent is public")
+
+    class AgentSchema(BaseModel):
+        agent_schema_id: int = Field(description="The unique ID of this agent schema version")
+        created_at: str | None = Field(default=None, description="")
+        # TODO: check the name of this `is_hidden` field, maybe more "is_archived" works best
+        is_hidden: bool | None = Field(default=None, description="Whether this schema version is hidden from the UI")
+        last_active_at: str | None = Field(description="The last time a run was executed using this schema version")
+
+        @classmethod
+        def from_domain(cls, v: SerializableTask.PartialTaskVersion):
+            return cls(
+                agent_schema_id=v.schema_id,
+                created_at=v.created_at.isoformat() if v.created_at else None,
+                is_hidden=v.is_hidden or False,
+                last_active_at=v.last_active_at.isoformat() if v.last_active_at else None,
+            )
+
+    schemas: list[AgentSchema] = Field(description="List of schema versions for this agent")
+
+    run_count: int = Field(description="Total number of times this agent has been executed")
+    total_cost_usd: float = Field(description="Total cost in USD for all runs of this agent")
+
+    @classmethod
+    def from_domain(cls, agent: SerializableTask, stats: TaskRunStorage.AgentRunCount | None):
+        return cls(
+            agent_id=agent.id,
+            is_public=agent.is_public or False,
+            schemas=[cls.AgentSchema.from_domain(v) for v in agent.versions],
+            run_count=stats.run_count if stats else 0,
+            total_cost_usd=stats.total_cost_usd if stats else 0,
+        )
+
+
 class AgentResponse(BaseModel):
+    """Detailed agent response with full schema information - used when fetching a single agent"""
+
     agent_id: str
     is_public: bool
 
-    class AgentSchema(BaseModel):
+    class DetailedAgentSchema(BaseModel):
         agent_schema_id: int
         created_at: str | None = None
-        input_json_schema: dict[str, Any] | None = None
-        output_json_schema: dict[str, Any] | None = None
-        is_hidden: bool | None = None
+        input_json_schema: dict[str, Any] | None
+        output_json_schema: dict[str, Any] | None
+        is_hidden: bool | None
         last_active_at: str | None
 
-    schemas: list[AgentSchema]
+        @classmethod
+        def from_domain(cls, v: SerializableTask.PartialTaskVersion):
+            return cls(
+                agent_schema_id=v.schema_id,
+                created_at=v.created_at.isoformat() if v.created_at else None,
+                input_json_schema=v.input_schema,
+                output_json_schema=v.output_schema,
+                is_hidden=v.is_hidden or False,
+                last_active_at=v.last_active_at.isoformat() if v.last_active_at else None,
+            )
+
+    schemas: list[DetailedAgentSchema]
 
     run_count: int
     total_cost_usd: float
 
+    name: str | None
 
-class AgentResponseList(BaseModel):
-    agents: list[AgentResponse]
+    @classmethod
+    def from_domain(cls, agent: SerializableTask, stats: TaskRunStorage.AgentRunCount | None):
+        return cls(
+            agent_id=agent.id,
+            is_public=agent.is_public or False,
+            schemas=[cls.DetailedAgentSchema.from_domain(v) for v in agent.versions],
+            run_count=stats.run_count if stats else 0,
+            total_cost_usd=stats.total_cost_usd if stats else 0,
+            name=agent.name,
+        )
 
 
 T = TypeVar("T", bound=BaseModel)
@@ -124,19 +184,11 @@ class PaginationInfo(BaseModel):
     max_tokens_limit: int | None = Field(default=None, description="Maximum tokens limit used for pagination")
 
 
-# TODO: delete this class when all tools are migrated to the new MCPToolReturn or PaginatedMCPToolReturn
-class LegacyMCPToolReturn(BaseModel):
-    success: bool
-    messages: list[str] | None = None
-    data: dict[str, Any] | None = None
-    error: str | None = None
-
-
 class MCPToolReturn(BaseModel, Generic[T]):
     """Generic standardized return format for MCP tools with typed data"""
 
     success: bool
-    messages: list[str] | None = None
+    message: str | None = None
     data: T | None = None
     error: str | None = None
 
@@ -545,10 +597,8 @@ class MCPRun(BaseModel):
     status: Literal[
         "success",
         "error",
-    ]  # not sure about the exact list of statuses, but you get the idea (we should use Pydantic every-where!)
+    ]
     agent_input: dict[str, Any] | None
-    # TODO: until https://linear.app/workflowai/issue/WOR-4914/expose-the-full-list-of-computed-messages-and-store-as-is
-    # the list of messages will not include messages from the version
     messages: list[Message] = Field(description="The exchanged messages, including the returned assistant message")
     duration_seconds: float | None
     cost_usd: float | None
@@ -559,12 +609,15 @@ class MCPRun(BaseModel):
     )
     error: Error | None = Field(description="An error returned by the model")
 
+    url: str
+
     @classmethod
     def from_domain(
         cls,
         run: AgentRun,
         version: TaskGroup | None,
         output_schema: dict[str, Any] | None,
+        url: str,
     ):
         return cls(
             id=run.id,
@@ -585,4 +638,31 @@ class MCPRun(BaseModel):
             metadata=run.metadata,
             response_json_schema=output_schema,
             error=Error.from_domain(run.error) if run.error else None,
+            url=url,
         )
+
+
+class SearchResponse(BaseModel):
+    page_content: str | None = Field(
+        default=None,
+        description="The content of the requested page, only present when a specific page is requested",
+    )
+
+    class QueryResult(BaseModel):
+        content_snippet: str
+        source_page: str
+
+    query_results: list[QueryResult] | None = Field(
+        default=None,
+        description="Query results, only present when a query is provided",
+    )
+
+
+class DeployAgentResponse(BaseModel):
+    version_id: str
+    agent_schema_id: int
+    environment: VersionEnvironment
+    deployed_at: str
+
+    # TODO: switch to a proper model
+    migration_guide: dict[str, Any]

@@ -1,5 +1,6 @@
 ---
 title: Improving and debugging an existing agent
+summary: Guide for troubleshooting and optimizing existing AI agents. Covers common errors like max_tokens_exceeded, debugging with metadata, and performance optimization strategies.
 ---
 
 ## Error: `max_tokens_exceeded`
@@ -32,7 +33,7 @@ If increasing `max_tokens` doesn't solve the issue, you may be hitting the model
 
 **Use MCP tools to find models with larger context windows:**
 
-- Use `list_available_models` with `sort_by="max_tokens"` and `order="desc"` to see models with the highest context windows first
+- Use `list_models` with `sort_by="max_tokens"` and `order="desc"` to see models with the highest context windows first
 - Alternatively, use the v1/models API endpoint to get current context window information
 - Compare your current model's limits with available alternatives
 

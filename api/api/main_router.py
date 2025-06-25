@@ -11,6 +11,7 @@ from api.routers import (
     stripe_webhooks,
 )
 from api.routers.agents import meta_agent, new_tool_agent
+from api.routers.tools_v1 import tools_v1_router
 from api.tags import RouteTags
 from core.domain.tenant_data import PublicOrganizationData
 
@@ -20,6 +21,7 @@ main_router.include_router(stripe_webhooks.router)
 main_router.include_router(feedback_v1.feedback_router)
 main_router.include_router(slack_webhooks.router)
 main_router.include_router(helpscout_webhooks.router)
+main_router.include_router(tools_v1_router.router)
 
 
 # Route for public organization data

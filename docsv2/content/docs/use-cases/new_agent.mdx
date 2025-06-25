@@ -1,6 +1,9 @@
 ---
 title: Building a new agent with WorkflowAI
+summary: Comprehensive framework for building AI agents from scratch. Covers requirements analysis, agent types, model selection, prompt design, evaluation methods, and best practices.
 ---
+
+import { Callout } from 'fumadocs-ui/components/callout';
 
 **IMPORTANT: The following is a guide with recommended steps and general guidelines for building the first pass of an agent. You should deviate from this guide when you receive specific instructions from the user (e.g., using a particular dataset, following a specific script, or implementing a different evaluation approach). Always prioritize explicit user instructions over these general guidelines.**
 
@@ -71,6 +74,10 @@ There are two main types of AI agents, each requiring different approaches:
 Note that **prompts and models are interconnected** - you may need to adjust prompts for specific models or try different model-prompt combinations. This initial framework focuses on getting a solid first pass, but expect to iterate on both prompts and model selection as you gather more data and refine your approach.
 
 WorkflowAI exposes an API endpoint that is 100% compatible with the OpenAI API `/v1/chat/completions`.
+
+<Callout type="warning">
+**Supported Endpoints**: WorkflowAI only supports the `/v1/chat/completions` endpoint. Other OpenAI endpoints like embeddings (`/v1/embeddings`), responses API (`/v1/responses`), audio transcriptions, and image generation are not supported. If you need these features, continue using the standard OpenAI client for those specific endpoints.
+</Callout>
 
 So, in order to build a new agent, you can use the OpenAI SDK, for example:
 

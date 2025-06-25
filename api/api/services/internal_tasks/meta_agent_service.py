@@ -1604,7 +1604,7 @@ class MetaAgentService:
         integration = await self._resolve_integration_for_agent(current_agent, agent_runs, task_tuple, agent_schema_id)
 
         # Fill the agent input with the right documentations
-        proxy_meta_agent_input.integration_documentation = DocumentationService().get_documentation_by_path(
+        proxy_meta_agent_input.integration_documentation = await DocumentationService().get_documentation_by_path(
             integration.documentation_filepaths,
         )
         proxy_meta_agent_input.current_agent.used_integration = integration
