@@ -83,7 +83,7 @@ class TestPrepareRun:
         mock_storage.task_version_resource_by_id.return_value = test_models.task_variant(
             input_io=RawMessagesSchema,
         )
-        result = await proxy_handler._prepare_run(completion_request, PublicOrganizationData())
+        result = await proxy_handler.prepare_run(completion_request, PublicOrganizationData())
         assert result.properties.enabled_tools == [
             Tool(name="my_function", input_schema={}, output_schema={}, strict=True),
         ]
@@ -112,7 +112,7 @@ class TestPrepareRun:
             input_io=RawMessagesSchema,
         )
         with pytest.raises(BadRequestError) as e:
-            await proxy_handler._prepare_run(completion_request, PublicOrganizationData())
+            await proxy_handler.prepare_run(completion_request, PublicOrganizationData())
         assert "You send input variables but the deployment you are trying to use does not expect any" in str(e.value)
 
     @pytest.mark.skip(reason="Fix the error message")
@@ -139,7 +139,7 @@ class TestPrepareRun:
         )
 
         with pytest.raises(BadRequestError) as e:
-            await proxy_handler._prepare_run(completion_request, PublicOrganizationData())
+            await proxy_handler.prepare_run(completion_request, PublicOrganizationData())
         assert "Your deployment on schema #1 expects input variables" in str(e.value)
 
     async def test_with_deployment_and_non_slug_agent_id(
@@ -162,7 +162,7 @@ class TestPrepareRun:
             ),
         )
         mock_storage.task_version_resource_by_id.return_value = test_models.task_variant(input_io=RawMessagesSchema)
-        await proxy_handler._prepare_run(completion_request, PublicOrganizationData())
+        await proxy_handler.prepare_run(completion_request, PublicOrganizationData())
 
         mock_storage.task_deployments.get_task_deployment.assert_called_once_with(
             "my-agent",
@@ -188,7 +188,7 @@ class TestPrepareRun:
         completion_request.input = None
         mock_storage.store_task_resource.side_effect = lambda x: (x, True)  # type: ignore
 
-        prepared = await proxy_handler._prepare_run(completion_request, PublicOrganizationData())
+        prepared = await proxy_handler.prepare_run(completion_request, PublicOrganizationData())
         assert prepared.variant.task_id == "my-agent"
         assert prepared.variant.name == "my agent"
 
@@ -221,7 +221,7 @@ class TestPrepareRun:
         )
         mock_storage.task_version_resource_by_id.return_value = mock_variant
 
-        result = await proxy_handler._prepare_run(completion_request, PublicOrganizationData())
+        result = await proxy_handler.prepare_run(completion_request, PublicOrganizationData())
 
         # Verify that it called _prepare_for_variant_id correctly
         mock_storage.task_version_resource_by_id.assert_called_once_with(
