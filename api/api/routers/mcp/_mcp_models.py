@@ -128,13 +128,15 @@ class AgentListItem(BaseModel):
 
 
 class AgentResponse(BaseModel):
-    """Detailed agent response with full schema information - used when fetching a single agent"""
+    """Details about a single agent"""
 
-    agent_id: str
-    is_public: bool
+    agent_id: str = Field(description="The ID of the agent")
+    is_public: bool = Field(description="Whether the agent is public, meaning that it can be accessed by anyone")
 
     class DetailedAgentSchema(BaseModel):
-        agent_schema_id: int
+        """An AgentSchema, i-e a pair of input and output JSON schemas"""
+
+        agent_schema_id: int = Field(description="The unique ID of this agent schema version")
         created_at: str | None = None
         input_json_schema: dict[str, Any] | None
         output_json_schema: dict[str, Any] | None
@@ -154,13 +156,58 @@ class AgentResponse(BaseModel):
 
     schemas: list[DetailedAgentSchema]
 
-    run_count: int
-    total_cost_usd: float
+    class Deployment(BaseModel):
+        """A deployment of an agent schema version"""
 
-    name: str | None
+        schema_id: int = Field(description="The schema ID of the agent schema version that is deployed")
+        version_id: str = Field(description="The version ID of the agent schema version that is deployed")
+        deployed_at: datetime = Field(description="The date and time when the agent schema version was deployed")
+        deployed_by: UserIdentifier | None = Field(description="The user who deployed the agent schema version")
+        environment: VersionEnvironment = Field(
+            description="The environment in which the agent schema version is deployed",
+        )
+        model: str = Field(description="The model that is used by that deployment")
+        run_count: int | None = Field(description="The number of times the agent schema version has been run")
+        last_active_at: datetime | None = Field(
+            description="The date and time when the agent schema version was last run",
+        )
+
+        @classmethod
+        def from_domain(cls, major: VersionMajor, minor: VersionMajor.Minor, deployment: VersionDeploymentMetadata):
+            return cls(
+                schema_id=major.schema_id,
+                version_id=f"{major.major}.{minor.minor}",
+                deployed_at=deployment.deployed_at,
+                deployed_by=UserIdentifier.from_domain(deployment.deployed_by),
+                environment=deployment.environment,
+                model=minor.properties.model or "",
+                run_count=minor.run_count,
+                last_active_at=minor.last_active_at,
+            )
+
+    deployments: list[Deployment] = Field(description="List of deployments of this agent")
+
+    run_count: int = Field(description="Total number of times this agent has been executed in the selected time range")
+    total_cost_usd: float = Field(description="Total cost in USD for all runs of this agent in the selected time range")
+
+    name: str | None = Field(description="The name of the agent")
 
     @classmethod
-    def from_domain(cls, agent: SerializableTask, stats: TaskRunStorage.AgentRunCount | None):
+    def _deployment_iterator(cls, versions: list[VersionMajor]):
+        for major in versions:
+            for minor in major.minors:
+                if not minor.deployments:
+                    continue
+                for deployment in minor.deployments:
+                    yield major, minor, deployment
+
+    @classmethod
+    def from_domain(
+        cls,
+        agent: SerializableTask,
+        stats: TaskRunStorage.AgentRunCount | None,
+        versions: list[VersionMajor],
+    ):
         return cls(
             agent_id=agent.id,
             is_public=agent.is_public or False,
@@ -168,6 +215,7 @@ class AgentResponse(BaseModel):
             run_count=stats.run_count if stats else 0,
             total_cost_usd=stats.total_cost_usd if stats else 0,
             name=agent.name,
+            deployments=[cls.Deployment.from_domain(*d) for d in cls._deployment_iterator(versions)],
         )
 
 

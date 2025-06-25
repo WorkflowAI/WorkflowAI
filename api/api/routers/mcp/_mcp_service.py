@@ -60,7 +60,9 @@ from core.domain.users import UserIdentifier
 from core.domain.version_environment import VersionEnvironment
 from core.storage import ObjectNotFoundException
 from core.storage.backend_storage import BackendStorage
+from core.storage.task_run_storage import TaskRunStorage
 from core.utils.background import add_background_task
+from core.utils.coroutines import capture_errors
 from core.utils.schemas import FieldType
 
 _logger = logging.getLogger(__name__)
@@ -275,6 +277,22 @@ class MCPService:
             self.tenant.app_run_url(agent_id, run_id),
         )
 
+    async def _get_agent_stats(
+        self,
+        from_date: datetime,
+        agent_uids: set[int] | None,
+    ) -> dict[int, TaskRunStorage.AgentRunCount]:
+        with capture_errors(_logger, "Failed to get agent stats"):
+            return {
+                stat.agent_uid: stat
+                async for stat in self.storage.task_runs.run_count_by_agent_uid(
+                    from_date=from_date,
+                    agent_uids=agent_uids,
+                )
+            }
+        # Return is still needed here since capture_errors supresses exceptions
+        return {}
+
     async def list_agents(
         self,
         page: int,
@@ -315,26 +333,20 @@ class MCPService:
         try:
             # Get single agent with detailed information
             agent = await tasks.get_task_by_id(self.storage, agent_id, with_schemas=True)
-            stats = {
-                stat.agent_uid: stat
-                async for stat in self.storage.task_runs.run_count_by_agent_uid(
-                    from_date=parsed_from_date,
-                    agent_uids={agent.uid},
-                )
-            }
-
-            detailed_response = AgentResponse.from_domain(agent, stats.get(agent.uid))
-
-            return MCPToolReturn[AgentResponse](
-                success=True,
-                data=detailed_response,
-            )
-
         except ObjectNotFoundException:
             return MCPToolReturn[AgentResponse](
                 success=False,
                 error=f"Agent {agent_id} not found",
             )
+        stats = await self._get_agent_stats(parsed_from_date, {agent.uid})
+        versions = await self.versions_service.list_version_majors((agent.id, agent.uid), None, self.models_service)
+
+        detailed_response = AgentResponse.from_domain(agent, stats.get(agent.uid), versions)
+
+        return MCPToolReturn[AgentResponse](
+            success=True,
+            data=detailed_response,
+        )
 
     async def get_agent_version(
         self,
