@@ -23,6 +23,19 @@ flow (from the MCP client perspective):
 
 ---
 
+## Deployments (2)
+
+> can you update to use the production enviroment from workflowai?
+
+Cursor struggled to update to the production environment code:
+
+- first did not put any schema "#n" in the `model` parameter (but managed to fix this error itself)
+- but did not manage to update the `messages` parameter to `[]` empty.
+
+One solution would be to have a `get_code(version)` tool in the MCP to clarify how to update the code. Maybe `get_code` return pseudo-code that are applicable to all programing languages.
+
+---
+
 ## Update the code to a new version 2.1
 
 I noticed, while using this prompt:
