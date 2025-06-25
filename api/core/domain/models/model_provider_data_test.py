@@ -31,9 +31,9 @@ class TestModelDataSupportsOverride:
             supports_input_pdf=True,
             supports_input_audio=True,
             supports_audio_only=True,
-            support_system_messages=True,
+            supports_system_messages=True,
             supports_structured_output=True,
-            support_input_schema=True,
+            supports_input_schema=True,
             display_name="test",
             icon_url="test",
             max_tokens_data=MaxTokensData(
@@ -54,9 +54,9 @@ class TestModelDataSupportsOverride:
             supports_input_pdf=True,
             supports_input_audio=True,
             supports_audio_only=True,
-            support_system_messages=True,
+            supports_system_messages=True,
             supports_structured_output=True,
-            support_input_schema=True,
+            supports_input_schema=True,
             display_name="test",
             icon_url="test",
             max_tokens_data=MaxTokensData(

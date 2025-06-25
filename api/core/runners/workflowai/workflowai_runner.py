@@ -386,7 +386,7 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
             # not show the output schema
             is_structured_generation_enabled=is_structured_generation_enabled
             and not self._prepared_output_schema.no_schema,
-            supports_input_schema=data.support_input_schema,
+            supports_input_schema=data.supports_input_schema,
         )
         return provider.sanitize_template(sanitized)
 
@@ -1191,7 +1191,7 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
                 template_name=properties.template_name,
                 is_tool_use_enabled=len(properties.enabled_tools or []) > 0,
                 is_structured_generation_enabled=is_structured_generation_enabled or False,
-                supports_input_schema=get_model_data(model).support_input_schema,
+                supports_input_schema=get_model_data(model).supports_input_schema,
             )
         else:
             template_name = None

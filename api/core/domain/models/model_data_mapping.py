@@ -236,7 +236,7 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             supports_json_mode=True,
             supports_input_image=False,
             supports_input_pdf=False,
-            support_input_schema=False,
+            supports_input_schema=False,
             supports_input_audio=True,
             supports_audio_only=True,
             max_tokens_data=MaxTokensData(
@@ -264,7 +264,7 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             supports_json_mode=True,
             supports_input_image=False,
             supports_input_pdf=False,
-            support_input_schema=False,
+            supports_input_schema=False,
             supports_input_audio=True,
             supports_audio_only=True,
             max_tokens_data=MaxTokensData(
@@ -837,7 +837,7 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             supports_input_audio=True,
             supports_output_image=True,
             supports_structured_output=False,
-            support_system_messages=False,
+            supports_system_messages=False,
             max_tokens_data=MaxTokensData(
                 max_tokens=1_048_576 + 8_192,
                 max_output_tokens=8_192,

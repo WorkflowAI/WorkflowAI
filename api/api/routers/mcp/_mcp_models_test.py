@@ -47,7 +47,7 @@ def mock_final_model_data(mock_provider_data: ModelProviderData) -> Any:
         "supports_audio_only": False,  # False value should be ignored
         "supports_json_mode": True,  # Not in whitelist, should be ignored
         "supports_structured_output": True,  # Not in whitelist, should be ignored
-        "support_system_messages": True,  # Not in whitelist, should be ignored
+        "supports_system_messages": True,  # Not in whitelist, should be ignored
         "supports_parallel_tool_calls": True,  # Not in whitelist, should be ignored
         "other_field": "value",  # Should be ignored
     }
