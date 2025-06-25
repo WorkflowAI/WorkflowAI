@@ -47,7 +47,7 @@ class GroupService:
         storage: BackendStorage,
         event_router: EventRouter,
         analytics_service: AnalyticsService,
-        user: UserIdentifier,
+        user: UserIdentifier | None,
     ):
         self.storage = storage
         self.event_router = event_router
