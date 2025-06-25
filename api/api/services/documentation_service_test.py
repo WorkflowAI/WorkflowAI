@@ -50,7 +50,6 @@ def documentation_service() -> DocumentationService:
     return DocumentationService()
 
 
-@pytest.mark.asyncio
 @patch("api.services.documentation_service.pick_relevant_documentation_sections", new_callable=AsyncMock)
 @patch.object(DocumentationService, "get_all_doc_sections")
 async def test_get_relevant_doc_sections_success(
@@ -91,7 +90,6 @@ async def test_get_relevant_doc_sections_success(
     # You could add more specific assertions on the input to mock_pick_relevant if needed
 
 
-@pytest.mark.asyncio
 @patch("api.services.documentation_service.pick_relevant_documentation_sections", new_callable=AsyncMock)
 @patch.object(DocumentationService, "get_all_doc_sections")
 async def test_get_relevant_doc_sections_pick_error(
@@ -177,7 +175,7 @@ async def test_get_all_doc_sections_local_excludes_private_files(documentation_s
 
         # Patch the LOCAL_DOCS_DIR to use our temp directory
         with patch.object(DocumentationService, "_LOCAL_DOCS_DIR", temp_dir):
-            result = await documentation_service._get_all_doc_sections_local()
+            result = documentation_service._get_all_doc_sections_local()
 
             # Should only include the public file
             assert len(result) == 1
@@ -193,7 +191,6 @@ async def test_get_all_doc_sections_local_excludes_private_files(documentation_s
 # Remote functionality tests
 
 
-@pytest.mark.asyncio
 async def test_get_all_doc_sections_remote_success(documentation_service: DocumentationService):
     """Tests successful fetching of all documentation sections from remote."""
     # Mock API response
@@ -227,7 +224,6 @@ async def test_get_all_doc_sections_remote_success(documentation_service: Docume
             assert result[1].content == "# API Reference\nThis is the API reference content."
 
 
-@pytest.mark.asyncio
 async def test_get_all_doc_sections_remote_api_error(
     documentation_service: DocumentationService,
     caplog: pytest.LogCaptureFixture,
@@ -247,7 +243,6 @@ async def test_get_all_doc_sections_remote_api_error(
         assert "Failed to fetch documentation page list" in caplog.text
 
 
-@pytest.mark.asyncio
 async def test_fetch_page_content_success(documentation_service: DocumentationService):
     """Tests successful fetching of page content."""
     page_path = "getting-started/index"
@@ -267,7 +262,6 @@ async def test_fetch_page_content_success(documentation_service: DocumentationSe
         )
 
 
-@pytest.mark.asyncio
 async def test_fetch_page_content_404_error(
     documentation_service: DocumentationService,
     caplog: pytest.LogCaptureFixture,
@@ -288,7 +282,6 @@ async def test_fetch_page_content_404_error(
         assert "Documentation page not found" in caplog.text
 
 
-@pytest.mark.asyncio
 async def test_fetch_page_content_server_error(
     documentation_service: DocumentationService,
     caplog: pytest.LogCaptureFixture,
@@ -308,7 +301,6 @@ async def test_fetch_page_content_server_error(
             await documentation_service._fetch_page_content(page_path)
 
 
-@pytest.mark.asyncio
 async def test_fetch_page_content_general_error(
     documentation_service: DocumentationService,
     caplog: pytest.LogCaptureFixture,
@@ -326,7 +318,6 @@ async def test_fetch_page_content_general_error(
         assert "Error fetching page content" in caplog.text
 
 
-@pytest.mark.asyncio
 async def test_get_documentation_by_path_remote_success(documentation_service: DocumentationService):
     """Tests successful fetching of documentation by path from remote."""
     paths = ["getting-started/index", "reference/api"]
@@ -345,7 +336,6 @@ async def test_get_documentation_by_path_remote_success(documentation_service: D
         assert result[1].content == expected_contents[1]
 
 
-@pytest.mark.asyncio
 async def test_get_documentation_by_path_remote_with_errors(
     documentation_service: DocumentationService,
     caplog: pytest.LogCaptureFixture,
@@ -371,7 +361,6 @@ async def test_get_documentation_by_path_remote_with_errors(
         assert "Failed to fetch documentation by path" in caplog.text
 
 
-@pytest.mark.asyncio
 async def test_get_all_doc_sections_mode_selection(documentation_service: DocumentationService):
     """Tests that get_all_doc_sections correctly selects local vs remote mode."""
     mock_local_sections = [DocumentationSection(title="local.md", content="Local content")]
@@ -384,7 +373,6 @@ async def test_get_all_doc_sections_mode_selection(documentation_service: Docume
             assert result_local == mock_local_sections
 
 
-@pytest.mark.asyncio
 async def test_get_documentation_by_path_mode_selection(documentation_service: DocumentationService):
     """Tests that get_documentation_by_path correctly selects local vs remote mode."""
     paths = ["test-path"]
@@ -428,8 +416,7 @@ More detailed content follows..."""
     assert result == ""
 
 
-@pytest.mark.asyncio
-async def test_get_available_pages_descriptions_success(documentation_service: DocumentationService):
+def test_get_available_pages_descriptions_success(documentation_service: DocumentationService):
     """Test successful generation of available pages descriptions."""
     # NOTE: DocumentationSection.title is misleadingly named - it's actually the page path/identifier,
     # not the human-readable title. The human-readable title is in the frontmatter "title:" field.
@@ -448,11 +435,17 @@ async def test_get_available_pages_descriptions_success(documentation_service: D
         ),
     ]
 
-    with patch.object(documentation_service, "get_all_doc_sections", return_value=mock_sections):
-        result = await documentation_service.get_available_pages_descriptions()
+    with patch.object(documentation_service, "_get_all_doc_sections_local", return_value=mock_sections):
+        result = documentation_service.get_available_pages_descriptions()
 
         expected = """     - 'index' - Getting started guide
      - 'reference/auth' - API authentication docs
      - 'use-cases/chatbot' - Chatbot building guide"""
 
         assert result == expected
+
+
+class TestGetAllSectionsLocal:
+    async def test_not_empty(self, documentation_service: DocumentationService):
+        sections = documentation_service._get_all_doc_sections_local()
+        assert len(sections) > 0
