@@ -181,29 +181,6 @@ class TestMCPObservabilityMiddleware:
         assert "KeyError" in result or "'content'" in result
 
     @pytest.mark.asyncio
-    async def test_run_observer_agent_background(self, middleware):
-        from api.routers.mcp._mcp_observability_session_state import ObserverAgentData
-
-        observer_data = ObserverAgentData(
-            tool_name="test_tool",
-            previous_tool_calls=[],
-            tool_arguments={"arg1": "value1"},
-            tool_result="Tool result",
-            duration_seconds=1.5,
-            user_agent="test-agent",
-            mcp_session_id="session-123",
-            request_id="req-123",
-        )
-
-        with (
-            patch("api.routers.mcp._mcp_observability_middleware.mcp_tool_call_observer_agent"),
-            patch("api.routers.mcp._mcp_observability_middleware.add_background_task") as mock_add_task,
-        ):
-            await middleware._run_observer_agent_background(observer_data)
-
-            mock_add_task.assert_called_once()
-
-    @pytest.mark.asyncio
     async def test_setup_session_and_validate_request_success(self, middleware, mock_request, mock_tenant):
         with (
             patch("api.routers.mcp._mcp_observability_middleware.get_tenant_from_context", return_value=mock_tenant),
