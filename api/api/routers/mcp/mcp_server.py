@@ -28,21 +28,6 @@ from api.routers.mcp._mcp_models import (
     SortOrder,
 )
 from api.routers.mcp._mcp_observability_middleware import MCPObservabilityMiddleware
-from api.routers.mcp._mcp_service import MCPService
-from api.services import file_storage, storage
-from api.services.analytics import analytics_service
-from api.services.event_handler import system_event_router, tenant_event_router
-from api.services.feedback_svc import FeedbackService
-from api.services.groups import GroupService
-from api.services.internal_tasks.ai_engineer_service import AIEngineerService
-from api.services.internal_tasks.internal_tasks_service import InternalTasksService
-from api.services.models import ModelsService
-from api.services.providers_service import shared_provider_factory
-from api.services.reviews import ReviewsService
-from api.services.run import RunService
-from api.services.runs.runs_service import RunsService
-from api.services.security_service import SecurityService
-from api.services.task_deployments import TaskDeploymentsService
 from api.routers.mcp._mcp_serializer import tool_serializer
 from api.routers.openai_proxy._openai_proxy_models import (
     OpenAIProxyChatCompletionRequest,
@@ -58,7 +43,6 @@ from core.utils.schema_formatter import format_schema_as_yaml_description
 logger = logging.getLogger(__name__)
 
 _mcp = FastMCP("WorkflowAI 🚀", tool_serializer=tool_serializer)  # pyright: ignore [reportUnknownVariableType]
-
 
 
 async def get_task_tuple_from_task_id(storage: BackendStorage, agent_id: str) -> TaskTuple:
@@ -717,4 +701,3 @@ def mcp_http_app():
         Middleware(MCPObservabilityMiddleware),
     ]
     return _mcp.http_app(path="/", middleware=custom_middleware)
-
