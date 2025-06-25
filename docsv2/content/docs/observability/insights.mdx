@@ -53,7 +53,7 @@ This data-driven approach helps you make informed decisions about product improv
 **Coming Soon**: Deep integration between Insights and Reports features to enable natural language analysis of your insights data.
 </Callout>
 
-Once you've collected insights data from your agent interactions, you can use the [Reports](/docs/observability/reports) feature to ask natural language questions about patterns in your insights. This creates a powerful workflow:
+Once you've collected insights data from your agent interactions, you can use the [Reports](/observability/reports) feature to ask natural language questions about patterns in your insights. This creates a powerful workflow:
 
 1. **Collect Insights**: Configure dimensions like sentiment, question_type, is_frustrated, etc.
 2. **Ask Report Questions**: Use natural language to analyze your insights data
@@ -73,7 +73,7 @@ This integration transforms raw insights data into strategic business intelligen
 
 ### Key Concept: 1 Conversation = 1 Insight Analysis
 
-When you have a multi-turn conversation, WorkflowAI automatically groups related runs together (see [Conversations](/docs/observability/conversations)). Insights are then computed **once per conversation** after the conversation ends, not after each individual turn.
+When you have a multi-turn conversation, WorkflowAI automatically groups related runs together (see [Conversations](/observability/conversations)). Insights are then computed **once per conversation** after the conversation ends, not after each individual turn.
 
 **How it works:**
 
@@ -109,7 +109,7 @@ Instead of pre-configuring insights at the agent level, we can embed insights co
 The OpenAI-compatible completion API accepts an optional `insights` field alongside the standard parameters.
 
 <Callout type="info">
-**Important**: Insights can only be attached to runs that include an `agent_id` in the metadata. This is required because insights are computed at the conversation level, and conversations must be grouped by agent. See [Observability Setup](/docs/observability#identify-your-agent) for more details.
+**Important**: Insights can only be attached to runs that include an `agent_id` in the metadata. This is required because insights are computed at the conversation level, and conversations must be grouped by agent. See [Observability Setup](/observability#identify-your-agent) for more details.
 </Callout>
 
 **Naming Convention:**
