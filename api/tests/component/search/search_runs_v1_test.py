@@ -284,10 +284,12 @@ async def test_search_fields_suggestions(test_client: IntegrationTestClient, sea
     m_field_names = [field["field_name"] for field in metadata_fields]
 
     assert m_field_names == [
+        "metadata.a key with a space",
         "metadata.completion_tokens",
         "metadata.model_release_quarter",
         "metadata.prompt_tokens",
         "metadata.provider",
+        "metadata.user-agent",
     ]
 
     # field = next((field for field in result["fields"] if field["field_name"] == field_name), None)
