@@ -5,6 +5,7 @@ import { useCallback, useMemo } from 'react';
 import { InitInputFromSchemaMode, initInputFromSchema } from '@/lib/schemaUtils';
 import { ObjectKeyType } from '@/lib/schemaUtils';
 import { JsonValueSchema, WithPartial, joinKeyPath } from '@/types';
+import { CopyButtonWrapper } from '../buttons/CopyTextButton';
 import { Button } from '../ui/Button';
 import { FieldViewer, FieldViewerProps } from './FieldViewer';
 import { ListItemSideline } from './ListItemSideline';
@@ -85,6 +86,10 @@ export function ObjectViewer(props: ObjectViewerProps) {
     return Array.isArray(rawValue);
   }, [rawIsArray, rawValue]);
 
+  const isRawValueNoKey = useMemo(() => {
+    return typeof rawValue === 'string' && keyPath === '';
+  }, [rawValue, keyPath]);
+
   const value = useMemo(() => {
     if (typeof rawValue === 'string') {
       return { content: rawValue };
@@ -152,6 +157,23 @@ export function ObjectViewer(props: ObjectViewerProps) {
 
   const isRoot = keyPath === '';
 
+  if (isRoot && isRawValueNoKey) {
+    return (
+      <div
+        className={cx(className, 'flex-1 w-full h-full flex-col', {
+          'overflow-auto': !noOverflow,
+        })}
+      >
+        {prefixSlot}
+        <div className='flex flex-col min-w-fit'>
+          <CopyButtonWrapper text={rawValue}>
+            <div className='flex-1 whitespace-pre-wrap text-gray-700 text-[13px] px-3 py-2'>{rawValue}</div>
+          </CopyButtonWrapper>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className={cx(className, 'flex-1 w-full h-full flex-col', {
@@ -159,7 +181,7 @@ export function ObjectViewer(props: ObjectViewerProps) {
       })}
     >
       {prefixSlot}
-      <div className={cx('flex flex-col min-w-fit', { 'px-1': isRoot })}>
+      <div className={cx('flex flex-col min-w-fit', { 'px-1': isRoot && !isRawValueNoKey })}>
         {keys?.map((key, index) => (
           <ObjectViewerContent
             key={key}
