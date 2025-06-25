@@ -1730,7 +1730,7 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
 def _build_model_datas() -> ModelDataMapping:
     models = _raw_model_data()
 
-    from .model_provider_datas_mapping import MODEL_PROVIDER_DATAS
+    from .model_provider_data_mapping import MODEL_PROVIDER_DATAS
 
     def _map_model_data(model: Model, model_data: ModelData | LatestModel | DeprecatedModel):
         if isinstance(model_data, LatestModel):

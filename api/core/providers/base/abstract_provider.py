@@ -28,7 +28,7 @@ from core.domain.models.model_provider_data import (
     ModelProviderData,
     TextPricePerToken,
 )
-from core.domain.models.model_provider_datas_mapping import MODEL_PROVIDER_DATAS
+from core.domain.models.model_provider_data_mapping import MODEL_PROVIDER_DATAS
 from core.domain.models.utils import get_model_data, get_model_provider_data, get_provider_data_by_model
 from core.domain.structured_output import StructuredOutput
 from core.domain.tool import Tool

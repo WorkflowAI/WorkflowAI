@@ -12,7 +12,7 @@ from core.domain.consts import WORKFLOWAI_RUN_URL
 from core.domain.errors import ProviderDoesNotSupportModelError
 from core.domain.models import Model, Provider
 from core.domain.models.model_data import DeprecatedModel, LatestModel, ModelData
-from core.domain.models.model_datas_mapping import MODEL_DATAS
+from core.domain.models.model_data_mapping import MODEL_DATAS
 from core.domain.models.model_provider_data import ModelProviderData
 from core.domain.models.utils import get_model_provider_data
 from core.domain.task_typology import TaskTypology

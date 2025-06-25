@@ -19,7 +19,7 @@ from core.domain.task_typology import SchemaTypology, TaskTypology
 
 @pytest.fixture(scope="session")
 def model_data_mapping() -> ModelDataMapping:
-    from core.domain.models.model_datas_mapping import MODEL_DATAS
+    from core.domain.models.model_data_mapping import MODEL_DATAS
 
     return MODEL_DATAS
 
@@ -164,7 +164,7 @@ class TestModelDataRequestMaxOutputTokens:
             # assert m.max_tokens_data.max_output_tokens > 0
 
     def test_all_anthropic_models_have_max_output_tokens(self, model_data_mapping: ModelDataMapping):
-        from core.domain.models.model_provider_datas_mapping import ANTHROPIC_PROVIDER_DATA
+        from core.domain.models.model_provider_data_mapping import ANTHROPIC_PROVIDER_DATA
 
         for model in ANTHROPIC_PROVIDER_DATA.keys():
             model_data = model_data_mapping[model]

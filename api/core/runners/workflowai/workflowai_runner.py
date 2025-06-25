@@ -27,7 +27,7 @@ from core.domain.fields.image_options import ImageOptions
 from core.domain.message import Message, MessageContent, MessageDeprecated, Messages
 from core.domain.metrics import send_gauge
 from core.domain.models.model_data import FinalModelData, ModelData
-from core.domain.models.model_datas_mapping import MODEL_DATAS
+from core.domain.models.model_data_mapping import MODEL_DATAS
 from core.domain.models.models import Model
 from core.domain.models.utils import get_model_data, get_model_provider_data
 from core.domain.reasoning_step import INTERNAL_REASONING_STEPS_SCHEMA_KEY
