@@ -1,5 +1,6 @@
 ---
 title: Tools
+summary: Documentation for using tools with AI agents. Covers hosted tools like web search and defining custom tools for specific use cases.
 ---
 
 import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
@@ -107,6 +108,21 @@ messages = [
         "content": "Use @browser-text to extract the company name, number of employees, and email address from {{company_url}}."
     }
 ]
+```
+
+### All tools
+
+TODO: make a table with all the tools using the `/v1/tools/hosted` endpoint
+
+### List hosted tools programmatically
+
+You can list all the hosted tools programmatically:
+- by calling the `list_hosted_tools` tool from the MCP server
+- by calling the `/v1/tools/hosted` endpoint (no authentication required)
+
+```bash
+curl -X GET "https://api.workflowai.com/v1/tools/hosted" \
+-H "accept: application/json" \
 ```
 
 <Callout type="info">

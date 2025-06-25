@@ -18,6 +18,7 @@ class SourceType(StrEnum):
     WEB = "web"
     API = "api"
     PROXY = "proxy"
+    MCP = "mcp"
 
     @property
     def is_active(self) -> bool:

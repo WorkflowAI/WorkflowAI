@@ -1,7 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import { useState } from 'react';
 import { ProxyModelCombobox } from '@/components/ProxyModelsCombobox/ProxyModelCombobox';
-import { useRedirectWithParams } from '@/lib/queryString';
 import { JsonSchema } from '@/types';
 import { TenantID } from '@/types/aliases';
 import { TaskSchemaID } from '@/types/aliases';
@@ -36,6 +35,7 @@ type Props = {
   hideModelColumn: () => void;
   updateInputAndRun: (input: TaskInputDict) => Promise<void>;
   setVersionIdForCode: (versionId: string | undefined) => void;
+  setRunIdForModal: (runId: string | undefined) => void;
 };
 
 export function ProxyModelOutput(props: Props) {
@@ -59,18 +59,15 @@ export function ProxyModelOutput(props: Props) {
     hideModelColumn,
     updateInputAndRun,
     setVersionIdForCode,
+    setRunIdForModal,
   } = props;
 
   const taskRun = taskRunner.data;
   const taskRunId = taskRun?.id;
 
-  const redirectWithParams = useRedirectWithParams();
   const onOpenTaskRun = useCallback(() => {
-    redirectWithParams({
-      params: { taskRunId },
-      scroll: false,
-    });
-  }, [taskRunId, redirectWithParams]);
+    setRunIdForModal(taskRunId);
+  }, [taskRunId, setRunIdForModal]);
 
   const { model: currentModel, reasoning: currentReasoning } = getModelAndReasoning(index, models);
   const currentAIModel = useMemo(

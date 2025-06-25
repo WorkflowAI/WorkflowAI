@@ -13,7 +13,7 @@ from core.domain.models.models import Model
 from core.domain.models.providers import Provider
 from core.storage.mongo.mongo_types import AsyncCollection
 from tests.component.common import IntegrationTestClient
-from tests.component.openai_proxy.common import save_version_from_completion
+from tests.component.openai_proxy.common import fetch_run_from_completion, save_version_from_completion
 from tests.pausable_memory_broker import PausableInMemoryBroker
 from tests.utils import approx
 
@@ -31,6 +31,7 @@ async def test_raw_string_output(test_client: IntegrationTestClient, openai_clie
     assert res.choices[0].cost_usd > 0  # type: ignore
     assert res.choices[0].duration_seconds  # type: ignore
     assert res.choices[0].feedback_token  # type: ignore
+    assert res.choices[0].url  # type: ignore
 
     await test_client.wait_for_completed_tasks()
 
@@ -800,6 +801,52 @@ async def test_with_cache(test_client: IntegrationTestClient, openai_client: Asy
     assert chunks[0].choices[0].delta.content == "Hello, world!"
 
 
+async def test_with_cache_streaming_worflowai_internal(test_client: IntegrationTestClient, openai_client: AsyncOpenAI):
+    test_client.mock_openai_stream(deltas=["hello", " world"])
+
+    agent = await test_client.create_agent_v1(
+        input_schema={"type": "object", "format": "messages"},
+        output_schema={"type": "string", "format": "message"},
+    )
+    extra_body = {
+        "workflowai_internal": {
+            "variant_id": agent["variant_id"],
+            "version_messages": [
+                {"role": "system", "content": [{"text": "Hello"}]},
+            ],
+        },
+        "agent_id": "greet",
+        "use_cache": "always",
+    }
+
+    # Create a first completion
+    res = await openai_client.chat.completions.create(
+        model="gpt-4o-latest",
+        messages=[],
+        stream=True,
+        extra_body=extra_body,
+    )
+    deltas = [c.choices[0].delta.content async for c in res if c.choices[0].delta.content]
+    joined = "".join(deltas)
+    assert joined == "hello world"
+
+    await test_client.wait_for_completed_tasks()
+
+    # Now create a second completion with the same input and use the cache
+    res = await openai_client.chat.completions.create(
+        model="gpt-4o-latest",
+        messages=[],
+        extra_body=extra_body,
+        stream=True,
+    )
+    chunks = [c async for c in res]
+    assert len(chunks) == 1
+    assert chunks[0].choices[0].delta.content == "hello world"
+
+    # Check that we did not make any new calls
+    assert len(test_client.httpx_mock.get_requests(url="https://api.openai.com/v1/chat/completions")) == 1
+
+
 async def test_none_content(test_client: IntegrationTestClient, openai_client: AsyncOpenAI):
     # Check that we return None content when there is no text content
     test_client.mock_openai_call(
@@ -875,3 +922,47 @@ async def test_with_files_in_variables(test_client: IntegrationTestClient, opena
     assert req
     body = json.loads(req.content)
     assert body["messages"][0]["content"][1]["image_url"]["url"] == "http://blabla"
+
+
+async def test_hosted_tools_in_version_messages(test_client: IntegrationTestClient, openai_client: AsyncOpenAI):
+    test_client.mock_openai_call(
+        tool_calls_content=[
+            {
+                "id": "1",
+                "type": "function",
+                "function": {"name": "@perplexity-sonar", "arguments": '{"query": "What is the capital of France?"}'},
+            },
+        ],
+        raw_content=None,
+        is_reusable=False,
+    )
+    test_client.mock_openai_call(raw_content="The capital of France is Paris.")
+    test_client.httpx_mock.add_response(
+        url="https://api.perplexity.ai/chat/completions",
+        json={"choices": [{"message": {"content": "Perplexity: The capital of France is Paris."}}]},
+    )
+
+    agent = await test_client.create_agent_v1(
+        input_schema={"type": "object", "format": "messages"},
+        output_schema={"type": "string", "format": "message"},
+    )
+
+    res = await openai_client.chat.completions.create(
+        model="gpt-4.1-latest",
+        messages=[],
+        extra_body={
+            "workflowai_internal": {
+                "variant_id": agent["variant_id"],
+                "version_messages": [
+                    {"role": "system", "content": [{"text": "Use @perplexity-sonar to find information"}]},
+                ],
+            },
+            "agent_id": "greet",
+        },
+    )
+    assert res.choices[0].message.content == "The capital of France is Paris."
+
+    await test_client.wait_for_completed_tasks()
+
+    run = await fetch_run_from_completion(test_client, res)
+    assert run

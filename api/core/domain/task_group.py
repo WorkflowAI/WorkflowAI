@@ -97,6 +97,13 @@ class TaskGroup(BaseModel):
             self.similarity_hash = self.properties.similarity_hash
         return self
 
+    @property
+    def displayed_id(self) -> str:
+        """The semver ID if it exists, otherwise the id"""
+        if self.semver:
+            return f"{self.semver.major}.{self.semver.minor}"
+        return self.id
+
     model_config = ConfigDict(
         json_schema_extra=add_required_fields("id", "iteration", "tags", "properties", "similarity_hash"),
     )
@@ -115,6 +122,7 @@ class TaskGroupQuery(BaseModel):
     is_saved: bool | None | None = None
     semvers: set[MajorMinor] | None = None
     limit: int | None = None
+    ids: set[str] | None = None
 
 
 class TaskGroupWithCost(TaskGroup):

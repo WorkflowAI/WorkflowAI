@@ -9,7 +9,6 @@ import { useProxyInputStructure } from './hooks/useProxyInputStructure';
 import { AdvancedSettings } from './hooks/useProxyPlaygroundSearchParams';
 import { ProxyInput } from './input-section/ProxyInput';
 import { ProxyParameters } from './parameters-section/ProxyParameters';
-import { createEmptyMessage } from './proxy-messages/utils';
 import { removeInputEntriesNotMatchingSchema } from './utils';
 
 interface Props {
@@ -73,13 +72,6 @@ export function ProxySection(props: Props) {
     maxTokens,
   } = props;
 
-  const messagesWithDefaultSystemMessage = useMemo(() => {
-    if (!proxyMessages || proxyMessages?.length === 0) {
-      return [createEmptyMessage('system')];
-    }
-    return proxyMessages;
-  }, [proxyMessages]);
-
   const onMoveToVersion = useCallback(
     (message: ProxyMessage) => {
       if (
@@ -138,7 +130,7 @@ export function ProxySection(props: Props) {
       </div>
       <div className='w-1/2'>
         <ProxyParameters
-          messages={messagesWithDefaultSystemMessage}
+          messages={proxyMessages}
           setMessages={setProxyMessages}
           advancedSettings={advancedSettings}
           toolCalls={toolCalls}

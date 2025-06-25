@@ -1,5 +1,5 @@
 import { Add16Regular } from '@fluentui/react-icons';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 import { ProxyMessage } from '@/types/workflowAI';
@@ -45,8 +45,6 @@ export function ProxyMessagesView(props: Props) {
     supportOpeningInPlayground,
     scrollToLastMessage = false,
   } = props;
-
-  const [isHovering, setIsHovering] = useState(false);
 
   const readonly = !setMessages;
 
@@ -100,11 +98,20 @@ export function ProxyMessagesView(props: Props) {
       }
 
       const lastIndex = !!cleanedMessages && cleanedMessages.length > 0 ? cleanedMessages.length - 1 : 0;
-      const previouseIndex = Math.max(0, index ?? lastIndex);
+      const previouseIndex = Math.max(0, index !== undefined ? index - 1 : lastIndex);
       const previouseMessage = cleanedMessages?.[previouseIndex];
 
       const allMessages = cleanedMessages ?? [];
-      const newMessage = createEmptyMessage(defaultType, previouseMessage);
+
+      let newMessageType = defaultType;
+      if (defaultType === 'system' && index !== undefined && index >= 1) {
+        const previouseMessageType = cleanedMessages?.[index - 1]?.role;
+        if (previouseMessageType === 'user') {
+          newMessageType = 'user';
+        }
+      }
+
+      const newMessage = createEmptyMessage(newMessageType, previouseMessage);
 
       if (index === undefined || index >= allMessages.length) {
         setMessages([...allMessages, newMessage]);
@@ -131,14 +138,10 @@ export function ProxyMessagesView(props: Props) {
   );
 
   const thereAreNoMessages = cleanedMessages?.length === 0 || !cleanedMessages;
-  const showAddMessageButton = (isHovering || thereAreNoMessages) && !readonly;
+  const showAddMessageButton = thereAreNoMessages && !readonly;
 
   return (
-    <div
-      className={cn('flex flex-col gap-2 h-max w-full flex-shrink-0', className)}
-      onMouseEnter={() => setIsHovering(true)}
-      onMouseLeave={() => setIsHovering(false)}
-    >
+    <div className={cn('flex flex-col gap-2 h-max w-full flex-shrink-0', className)}>
       {cleanedMessages?.map((message, index) => (
         <ProxyMessageView
           id={elementIdForMessage(cleanedMessages, index)}
@@ -160,7 +163,12 @@ export function ProxyMessagesView(props: Props) {
       ))}
       {showAddMessageButton && (
         <div className='flex flex-row gap-2 py-2'>
-          <Button variant='newDesign' size='sm' icon={<Add16Regular />} onClick={() => addMessage()}>
+          <Button
+            variant='newDesign'
+            size='sm'
+            icon={<Add16Regular />}
+            onClick={() => addMessage(cleanedMessages?.length ?? 0)}
+          >
             Add Message
           </Button>
         </div>

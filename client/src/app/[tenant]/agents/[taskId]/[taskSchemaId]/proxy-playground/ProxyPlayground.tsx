@@ -481,6 +481,7 @@ export function ProxyPlayground(props: Props) {
                   hiddenModelColumns={hiddenModelColumns}
                   updateInputAndRun={updateInputAndRun}
                   setVersionIdForCode={setVersionIdForCode}
+                  setRunIdForModal={setRunIdForModal}
                 />
               </div>
             </div>

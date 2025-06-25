@@ -67,6 +67,7 @@ def authenticated_routes(  # noqa: C901
         "/webhooks/helpscout",
         "/webhooks/helpscout/",
         "/v1/chat/completions",  # raises a 422 and not a 403
+        "/v1/tools/hosted",
     }
 
     method_predicate = _include_methods(methods, exc_methods)

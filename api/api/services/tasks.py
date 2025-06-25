@@ -42,10 +42,11 @@ async def list_tasks(
     storage: BackendStorage,
     include_internal: bool = False,
     limit: int | None = None,
+    with_schemas: bool = False,
 ) -> list[SerializableTask]:
     out: list[SerializableTask] = []
 
-    async for a in storage.fetch_tasks(limit=limit):
+    async for a in storage.fetch_tasks(limit=limit, with_schemas=with_schemas):
         if not include_internal:
             if a.id in INTERNAL_TASK_IDS:
                 continue
@@ -59,6 +60,17 @@ async def list_tasks(
         out.append(_remove_variants(a))
 
     return out
+
+
+async def get_task_by_id(storage: BackendStorage, task_id: str, with_schemas: bool = False) -> SerializableTask:
+    task = await storage.get_task(task_id, with_schemas)
+    if task.versions:
+        try:
+            task_info = await storage.tasks.get_task_info(task.id)
+            task.enrich(task_info)
+        except Exception:
+            pass
+    return _remove_variants(task)
 
 
 class AgentSummary(NamedTuple):

@@ -93,7 +93,7 @@ For production:
 The MCP server exposes 5 tools for working with WorkflowAI agents:
 
 1. **`ask_ai_engineer`** - Get help from WorkflowAI's AI engineer
-2. **`list_available_models`** - List all available AI models
+2. **`list_models`** - List all available AI models
 3. **`fetch_run_details`** - Get detailed information about a specific agent run
 4. **`list_agents_with_stats`** - List all agents with performance statistics
 5. **`get_agent_versions`** - Retrieve version information for a specific agent

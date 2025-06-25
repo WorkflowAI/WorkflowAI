@@ -1,6 +1,7 @@
 import { useRouter } from 'next/navigation';
 import { usePathname } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { TASK_RUN_ID_PARAM } from '@/lib/constants';
 import { QueryParam, stringifyQueryParams, useParsedSearchParams, useRedirectWithParams } from '@/lib/queryString';
 import { replaceTaskSchemaId } from '@/lib/routeFormatter';
 import { TaskID, TaskSchemaID, TenantID } from '@/types/aliases';
@@ -52,7 +53,7 @@ export function useProxyPlaygroundSearchParams(
 ) {
   const {
     versionId: versionIdFromParams,
-    taskRunId: runIdForModal,
+    [TASK_RUN_ID_PARAM]: runIdForModal,
     taskRunId1: taskRunId1FromParams,
     taskRunId2: taskRunId2FromParams,
     taskRunId3: taskRunId3FromParams,
@@ -79,7 +80,7 @@ export function useProxyPlaygroundSearchParams(
     tool_choice: toolChoiceFromParams,
   } = useParsedSearchParams(
     'versionId',
-    'taskRunId',
+    TASK_RUN_ID_PARAM,
     'taskRunId1',
     'taskRunId2',
     'taskRunId3',
@@ -213,7 +214,7 @@ export function useProxyPlaygroundSearchParams(
     (taskRunId: string | undefined) => {
       redirectWithParams({
         params: {
-          taskRunId: taskRunId,
+          [TASK_RUN_ID_PARAM]: taskRunId,
         },
         scroll: false,
       });

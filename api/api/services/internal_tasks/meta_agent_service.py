@@ -94,7 +94,7 @@ from core.utils.hash import compute_obj_hash
 from core.utils.tool_utils.tool_utils import get_tools_description_openai_format_str
 from core.utils.url_utils import extract_and_fetch_urls
 
-FIRST_MESSAGE_CONTENT = "Hi, I'm WorkflowAI's agent. How can I help you?"
+FIRST_MESSAGE_CONTENT = "Hi, I'm WorkflowAI's AI Engineer. How can I help you?"
 
 
 def _reverse_optional_bool(value: bool | None) -> bool | None:
@@ -1604,7 +1604,7 @@ class MetaAgentService:
         integration = await self._resolve_integration_for_agent(current_agent, agent_runs, task_tuple, agent_schema_id)
 
         # Fill the agent input with the right documentations
-        proxy_meta_agent_input.integration_documentation = DocumentationService().get_documentation_by_path(
+        proxy_meta_agent_input.integration_documentation = await DocumentationService().get_documentation_by_path(
             integration.documentation_filepaths,
         )
         proxy_meta_agent_input.current_agent.used_integration = integration

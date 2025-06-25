@@ -166,6 +166,9 @@ if WORKFLOWAI_ALLOWED_ORIGINS:
         allow_headers=["*"],
     )
 
+# Routers added to all FastAPI container
+# Routes will be included in the high availability setup
+# Keep these routes as limited as possible
 app.include_router(probes.router)
 app.include_router(run.router)
 app.include_router(openai_proxy_router.router)

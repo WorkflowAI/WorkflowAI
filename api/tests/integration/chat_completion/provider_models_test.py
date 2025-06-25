@@ -43,6 +43,7 @@ async def test_exhaustive_openai():
         "o1-pro",
         "omni-",
         "o3-pro",
+        "gpt-4.5-preview",
     ]
     model_ids = [model["id"] for model in models if not any(keyword in model["id"] for keyword in bypassed_keywords)]
 

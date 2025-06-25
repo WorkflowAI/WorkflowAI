@@ -210,10 +210,10 @@ class TestListTaskGroups:
     @pytest.fixture(scope="function", autouse=True)
     async def inserted_groups(self, task_groups_storage: MongoTaskGroupStorage, task_run_group_col: AsyncCollection):
         groups = [
-            _task_group(iteration=2, aliases={"bla"}),
-            _task_group(iteration=3),
-            _task_group(iteration=4, task_id="t_other"),
-            _task_group(iteration=4, benchmark_for_datasets=["ds1", "ds2"]),
+            _task_group(iteration=2, aliases={"bla"}, hash="1"),
+            _task_group(iteration=3, hash="2"),
+            _task_group(iteration=4, task_id="t_other", hash="3"),
+            _task_group(iteration=4, benchmark_for_datasets=["ds1", "ds2"], hash="4"),
         ]
         await task_run_group_col.insert_many([dump_model(g) for g in groups])
 
@@ -379,6 +379,129 @@ class TestListTaskGroups:
         ]
         its = {g.iteration for g in res}
         assert its == {5, 6}
+
+    async def test_filter_by_single_id(
+        self,
+        task_groups_storage: MongoTaskGroupStorage,
+        task_run_group_col: AsyncCollection,
+    ):
+        """Test filtering task groups by a single id."""
+        res = [
+            g
+            async for g in task_groups_storage.list_task_groups(
+                TaskGroupQuery(task_id=TASK_ID, ids={"1"}),
+            )
+        ]
+        assert len(res) == 1
+        assert res[0].id == "1"
+        assert res[0].iteration == 2
+
+    async def test_filter_by_multiple_ids(
+        self,
+        task_groups_storage: MongoTaskGroupStorage,
+        task_run_group_col: AsyncCollection,
+    ):
+        """Test filtering task groups by multiple ids."""
+        res = [
+            g
+            async for g in task_groups_storage.list_task_groups(
+                TaskGroupQuery(task_id=TASK_ID, ids={"1", "2"}),
+            )
+        ]
+        assert len(res) == 2
+        ids_found = {g.id for g in res}
+        assert ids_found == {"1", "2"}
+        iterations_found = {g.iteration for g in res}
+        assert iterations_found == {2, 3}
+
+    async def test_filter_by_nonexistent_id(
+        self,
+        task_groups_storage: MongoTaskGroupStorage,
+        task_run_group_col: AsyncCollection,
+    ):
+        """Test filtering task groups by non-existent id."""
+        res = [
+            g
+            async for g in task_groups_storage.list_task_groups(
+                TaskGroupQuery(task_id=TASK_ID, ids={"nonexistent"}),
+            )
+        ]
+        assert len(res) == 0
+
+    async def test_filter_by_empty_ids_set(
+        self,
+        task_groups_storage: MongoTaskGroupStorage,
+        task_run_group_col: AsyncCollection,
+    ):
+        """Test filtering task groups by empty ids set."""
+        res = [
+            g
+            async for g in task_groups_storage.list_task_groups(
+                TaskGroupQuery(task_id=TASK_ID, ids=set()),
+            )
+        ]
+        # When ids is an empty set, the condition is falsy so no filter is applied
+        assert len(res) == 3  # All groups from fixture for TASK_ID
+
+    async def test_filter_by_ids_none(
+        self,
+        task_groups_storage: MongoTaskGroupStorage,
+        task_run_group_col: AsyncCollection,
+    ):
+        """Test filtering task groups when ids is None."""
+        res = [
+            g
+            async for g in task_groups_storage.list_task_groups(
+                TaskGroupQuery(task_id=TASK_ID, ids=None),
+            )
+        ]
+        # Should return all groups for the task
+        assert len(res) == 3  # All groups from fixture for TASK_ID
+
+    async def test_filter_by_ids_combined_with_other_filters(
+        self,
+        task_groups_storage: MongoTaskGroupStorage,
+        task_run_group_col: AsyncCollection,
+    ):
+        """Test combining ids filter with other filters."""
+        res = [
+            g
+            async for g in task_groups_storage.list_task_groups(
+                TaskGroupQuery(task_id=TASK_ID, task_schema_id=1, ids={"1", "4"}),
+            )
+        ]
+        assert len(res) == 2
+        ids_found = {g.id for g in res}
+        assert ids_found == {"1", "4"}
+        # Both should have task_schema_id=1
+        for group in res:
+            assert group.schema_id == 1
+
+    async def test_filter_by_ids_cross_task(
+        self,
+        task_groups_storage: MongoTaskGroupStorage,
+        task_run_group_col: AsyncCollection,
+    ):
+        """Test that ids filter respects task_id boundaries."""
+        # Try to get hash "3" which belongs to "t_other" task, not TASK_ID
+        res = [
+            g
+            async for g in task_groups_storage.list_task_groups(
+                TaskGroupQuery(task_id=TASK_ID, ids={"3"}),
+            )
+        ]
+        # Should return empty since hash "3" belongs to a different task_id
+        assert len(res) == 0
+
+        # Verify it exists for the correct task_id
+        res = [
+            g
+            async for g in task_groups_storage.list_task_groups(
+                TaskGroupQuery(task_id="t_other", ids={"3"}),
+            )
+        ]
+        assert len(res) == 1
+        assert res[0].id == "3"
 
 
 class TestSimilarityHash:

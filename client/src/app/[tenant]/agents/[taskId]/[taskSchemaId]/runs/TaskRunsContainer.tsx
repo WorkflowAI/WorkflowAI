@@ -135,7 +135,7 @@ export function TaskRunsContainer() {
     return result;
   }, [searchFields]);
 
-  const { taskRunId } = useParsedSearchParams(TASK_RUN_ID_PARAM);
+  const { [TASK_RUN_ID_PARAM]: runId } = useParsedSearchParams(TASK_RUN_ID_PARAM);
 
   const { versions } = useOrFetchVersions(tenant, taskId);
 
@@ -143,7 +143,7 @@ export function TaskRunsContainer() {
 
   const onClose = useCallback(() => {
     redirectWithParams({
-      params: { taskRunId: undefined },
+      params: { [TASK_RUN_ID_PARAM]: undefined },
     });
     searchTaskRuns({
       tenant,
@@ -240,11 +240,11 @@ export function TaskRunsContainer() {
 
         <TaskRunModal
           onClose={onClose}
-          open={!!taskRunId}
+          open={!!runId}
           showPlaygroundButton
           tenant={tenant}
           taskId={taskId}
-          taskRunId={taskRunId ?? ''}
+          taskRunId={runId ?? ''}
           taskRunIds={taskRunIds}
           taskSchemaIdFromParams={taskSchemaIdFromParams}
         />

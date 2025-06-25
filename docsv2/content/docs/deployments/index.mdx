@@ -1,5 +1,6 @@
 ---
 title: Overview
+summary: Documentation on using deployments to manage and update AI agents. Covers separating prompts from code, managing environments, and versioning with schemas.
 description: This guide walks you through using deployments to update an agent's prompt or model without changing any code. Deployments allow you to separate your code from your AI configuration, enabling faster iteration and non-technical team members to make changes.
 ---
 
@@ -34,7 +35,7 @@ Teams typically use deployments when they want:
 
 Let's walk through two common scenarios for setting up deployments.
 
-### Scenario 1: Data Extraction Agent (with input variables)
+### Scenario 1: Data extraction agent (with input variables)
 
 This example shows an agent that extracts event details from emails using input variables.
 
@@ -43,7 +44,7 @@ This example shows an agent that extracts event details from emails using input 
 Here's our initial agent with a hardcoded prompt:
 
 <Callout type="info">
-This agent is using Structured Outputs. Learn more about [Structured Outputs](/docs/inference/structured-outputs).
+This agent is using Structured Outputs. Learn more about [Structured Outputs](/inference/structured-outputs).
 </Callout>
 
 ```python
@@ -93,7 +94,13 @@ completion = client.beta.chat.completions.parse(
 )
 ```
 
-**Why input variables?** Input variables help WorkflowAI understand which parts of your prompt are dynamic (change with each request) versus static (part of the prompt template). This separation allows prompt engineers to modify the static template without affecting the dynamic data your code provides.
+<Callout type="info">
+**Why input variables?**
+
+Input variables help WorkflowAI understand which parts of your prompt are dynamic (change with each request) versus static (part of the prompt template). This separation allows anyone to modify the static template without affecting the dynamic data your code provides.
+
+Learn more about input variables, including template syntax and examples, in the [Input Variables documentation](/observability/input-variables).
+</Callout>
 
 #### Step 3: Deploy the version and update code
 
@@ -116,7 +123,7 @@ completion = client.beta.chat.completions.parse(
 )
 ```
 
-### Scenario 2: Chatbot Agent (no input variables needed)
+### Scenario 2: Chatbot agent (no input variables needed)
 
 This example shows a chatbot where all instructions are stored as the system message in WorkflowAI.
 
@@ -199,7 +206,7 @@ For both scenarios, the deployment process is the same:
 
 The deployment will be associated with a schema number that defines:
 - **Input variables** your code must provide (if any)
-- **Output format** (`response_format`) your code expects (when using [Structured Outputs](/docs/inference/structured-outputs))
+- **Output format** (`response_format`) your code expects (when using [Structured Outputs](/inference/structured-outputs))
 
 You can view all schemas in the **Schemas** section of the WorkflowAI dashboard.
 
@@ -264,7 +271,7 @@ When there's a mismatch between your code and the deployed schema (missing input
 
 ## Important notes
 
-- **Agent-specific**: Deployments work with named agents only, not the `default` agent. Learn how to [identify your agent](/docs/inference/models#identifying-your-agent).
+- **Agent-specific**: Deployments work with named agents only, not the `default` agent. Learn how to [identify your agent](/inference/models#identifying-your-agent).
 - **Environment isolation**: Each environment (development/staging/production) has independent deployments.
 - **Schema independence**: You can have different deployments for each schema without affecting each other.
 - **Input variables optional**: Not all agents need input variables: simple chatbots can store all instructions in the deployed prompt.
