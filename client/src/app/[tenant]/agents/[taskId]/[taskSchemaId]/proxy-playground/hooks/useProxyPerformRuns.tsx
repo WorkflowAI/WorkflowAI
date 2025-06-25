@@ -264,7 +264,7 @@ export function useProxyPerformRuns(props: Props) {
 
             setStreamedChunk(index, {
               id: runId,
-              task_output: cleanedChunkOutput,
+              task_output: cleanedChunkOutput as Record<string, unknown>,
               tool_call_requests: null,
               reasoning_steps: null,
               tool_calls: null,
