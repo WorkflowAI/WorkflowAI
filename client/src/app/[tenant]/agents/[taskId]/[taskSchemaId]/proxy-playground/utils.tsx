@@ -435,16 +435,19 @@ export function generatePromptForToolsUpdate(oldTools: ToolKind[], newTools: Too
   }
 
   promptParts.push(
-    'DO NOT use markdown formatting (**, *, #, etc.), unless markdown is already present in the massages'
+    'DO NOT use markdown formatting (**, *, #, etc.), unless markdown is already present in the messages'
   );
 
   return `${promptParts.join('. ')}.`;
 }
 
-export function cleanChunkOutput(output: Record<string, unknown>) {
+export function cleanChunkOutput(output: Record<string, unknown> | null | undefined) {
+  if (!output || typeof output !== 'object') {
+    return output;
+  }
   const keys = Object.keys(output);
-  if (keys.length === 1 && keys[0] === 'content' && typeof output.content === 'string') {
-    return output.content;
+  if (keys.length === 1 && keys[0] === 'content' && typeof (output as { content?: unknown }).content === 'string') {
+    return (output as { content: string }).content;
   }
   return output;
 }

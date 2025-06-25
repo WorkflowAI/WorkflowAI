@@ -6,7 +6,7 @@ import { VersionV1 } from '@/types/workflowAI';
 import { useProxyOutputModels } from './useProxyOutputModels';
 import { useProxyPlaygroundSearchParams } from './useProxyPlaygroundSearchParams';
 
-function useSetPropertyFromVersionIfNeeded(
+function useSetPropertyFromVersionIfNotSetYet(
   version: VersionV1 | undefined,
   key: string,
   property: string | undefined,
@@ -31,7 +31,8 @@ function useSetPropertyFromVersionIfNeeded(
     const property = propertyRef.current;
     const key = keyRef.current;
 
-    if (property !== undefined || !version || !version.properties[key]) {
+    // If the property is already set or the version is undefined or the property in version is not set yet, do nothing
+    if (property !== undefined || version === undefined || !version.properties[key]) {
       return;
     }
 
@@ -133,41 +134,46 @@ export function useProxyPlaygroundStates(tenant: TenantID | undefined, taskId: T
     }
   }, [versionId, baseRun, setVersionId, run1, run2, run3, baseRunId, setTaskRunId1]);
 
-  useSetPropertyFromVersionIfNeeded(
+  useSetPropertyFromVersionIfNotSetYet(
     version,
     'temperature',
     advancedSettings.temperature,
     advancedSettings.setTemperature
   );
-  useSetPropertyFromVersionIfNeeded(version, 'top_p', advancedSettings.top_p, advancedSettings.setTopP);
-  useSetPropertyFromVersionIfNeeded(version, 'max_tokens', advancedSettings.max_tokens, advancedSettings.setMaxTokens);
-  useSetPropertyFromVersionIfNeeded(version, 'stream', advancedSettings.stream, advancedSettings.setStream);
-  useSetPropertyFromVersionIfNeeded(
+  useSetPropertyFromVersionIfNotSetYet(version, 'top_p', advancedSettings.top_p, advancedSettings.setTopP);
+  useSetPropertyFromVersionIfNotSetYet(
+    version,
+    'max_tokens',
+    advancedSettings.max_tokens,
+    advancedSettings.setMaxTokens
+  );
+  useSetPropertyFromVersionIfNotSetYet(version, 'stream', advancedSettings.stream, advancedSettings.setStream);
+  useSetPropertyFromVersionIfNotSetYet(
     version,
     'stream_options_include_usage',
     advancedSettings.stream_options_include_usage,
     advancedSettings.setStreamOptionsIncludeUsage
   );
-  useSetPropertyFromVersionIfNeeded(version, 'stop', advancedSettings.stop, advancedSettings.setStop);
-  useSetPropertyFromVersionIfNeeded(
+  useSetPropertyFromVersionIfNotSetYet(version, 'stop', advancedSettings.stop, advancedSettings.setStop);
+  useSetPropertyFromVersionIfNotSetYet(
     version,
     'presence_penalty',
     advancedSettings.presence_penalty,
     advancedSettings.setPresencePenalty
   );
-  useSetPropertyFromVersionIfNeeded(
+  useSetPropertyFromVersionIfNotSetYet(
     version,
     'frequency_penalty',
     advancedSettings.frequency_penalty,
     advancedSettings.setFrequencyPenalty
   );
-  useSetPropertyFromVersionIfNeeded(
+  useSetPropertyFromVersionIfNotSetYet(
     version,
     'tool_choice',
     advancedSettings.tool_choice,
     advancedSettings.setToolChoice
   );
-  useSetPropertyFromVersionIfNeeded(version, 'use_cache', advancedSettings.cache, advancedSettings.setCache);
+  useSetPropertyFromVersionIfNotSetYet(version, 'use_cache', advancedSettings.cache, advancedSettings.setCache);
 
   // Setters and Getters with Sync
 
