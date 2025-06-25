@@ -35,7 +35,7 @@ from core.storage.clickhouse.clickhouse_client import (
 from core.storage.clickhouse.models.runs import ClickhouseRun
 from core.storage.mongo.models.task_run_document import TaskRunDocument
 from core.storage.task_run_storage import RunAggregate, WeeklyRunAggregate
-from core.utils.fields import datetime_factory
+from core.utils.fields import datetime_factory, datetime_zero
 from core.utils.schemas import FieldType
 from core.utils.uuid import uuid7
 from tests.models import task_group, task_run_ser
@@ -489,6 +489,65 @@ class TestSearchTaskRun:
             [SearchQuerySimple(SearchField.STATUS, operation=SearchOperationSingle(SearchOperator.IS, "success"))],
         )
         assert r == [str(_uuid7(1))]
+
+    @pytest.mark.parametrize(
+        ("dangerous_key",),
+        [
+            ("key'; DROP TABLE runs; --",),
+            ("user'; DELETE FROM runs WHERE 1=1; --",),
+            ("test'; UPDATE runs SET metadata='{}'; --",),
+            ("normal_key'; SELECT * FROM runs; --",),
+        ],
+    )
+    async def test_search_metadata_sql_injection_protection(
+        self,
+        clickhouse_client: ClickhouseClient,
+        dangerous_key: str,
+    ):
+        """Test that SQL injection attempts in metadata keys are properly escaped."""
+        # Test that our SQL injection protection works by directly inserting runs with dangerous metadata keys
+        # and verifying the table isn't compromised
+
+        inserted_runs: list[ClickhouseRun] = []
+
+        # Create a run with dangerous metadata key
+        run = task_run_ser(
+            task_uid=1,
+            metadata={dangerous_key: "safe_value"},
+        )
+
+        # Convert to ClickhouseRun and insert directly
+        ch_run = ClickhouseRun.from_domain(1, run)
+        ch_run.run_uuid = _uuid7(1)
+        ch_run.created_at_date = datetime_zero()
+        inserted_runs.append(ch_run)
+
+        # Insert the runs with dangerous metadata keys
+        await clickhouse_client.insert_models("runs", inserted_runs, {"async_insert": 0, "wait_for_async_insert": 0})
+
+        # Check insertion is OK
+        assert await clickhouse_client.count_filtered_task_runs(("", 1), []) == 1
+
+        # Check search is OK
+
+        # Verify we can still query the runs table normally
+        all_runs = await self._search(
+            clickhouse_client,
+            [
+                SearchQueryNested(
+                    SearchField.METADATA,
+                    operation=SearchOperationSingle(SearchOperator.IS, "safe_value"),
+                    key_path=dangerous_key,
+                    field_type="string",
+                ),
+            ],
+        )
+        assert len(all_runs) == 1
+        # Retrieving the run should be OK
+        fetched_run = await clickhouse_client.fetch_task_run_resource(("", 1), all_runs[0])
+        assert fetched_run is not None
+        assert fetched_run.metadata is not None
+        assert fetched_run.metadata[dangerous_key] == "safe_value"
 
     @pytest.mark.parametrize(
         ("operation", "expected_indices"),
