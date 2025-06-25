@@ -27,7 +27,7 @@ from core.providers.base.provider_error import MissingModelError
 from core.storage import ObjectNotFoundException
 from core.storage.backend_storage import BackendStorage
 from core.utils.schemas import schema_from_data
-from core.utils.strings import slugify, to_pascal_case
+from core.utils.strings import is_url_safe, slugify, to_pascal_case
 from core.utils.templates import InvalidTemplateError
 
 from ._openai_proxy_models import (
@@ -139,7 +139,7 @@ class OpenAIProxyHandler:
         if not agent_slug:
             agent_slug = "default"
 
-        slugified_agent_slug = slugify(agent_slug)
+        slugified_agent_slug = _sanitize_agent_id(agent_slug)
 
         return SerializableTaskVariant(
             id="",
@@ -188,7 +188,7 @@ class OpenAIProxyHandler:
         input: dict[str, Any] | None,
         response_format: OpenAIProxyResponseFormat | None,
     ) -> PreparedRun:
-        agent_id = slugify(agent_ref.agent_id)
+        agent_id = _sanitize_agent_id(agent_ref.agent_id)
         try:
             deployment = await self._storage.task_deployments.get_task_deployment(
                 agent_id,
@@ -562,3 +562,9 @@ To list all models programmatically: {_curl_command}""",
         if suggested := await ModelsService.suggest_model(model):
             components.insert(1, f"Did you mean {suggested}?")
         return BadRequestError("\n".join(components))
+
+
+def _sanitize_agent_id(agent_id: str) -> str:
+    if not is_url_safe(agent_id):
+        return slugify(agent_id)
+    return agent_id
