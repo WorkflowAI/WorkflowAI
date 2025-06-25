@@ -206,7 +206,7 @@ class TestMCPObservabilityMiddleware:
     @pytest.mark.asyncio
     async def test_setup_session_and_validate_request_success(self, middleware, mock_request, mock_tenant):
         with (
-            patch("api.routers.mcp._mcp_observability_middleware._get_tenant_from_context", return_value=mock_tenant),
+            patch("api.routers.mcp._mcp_observability_middleware.get_tenant_from_context", return_value=mock_tenant),
             patch.object(middleware, "_get_or_create_session") as mock_get_session,
         ):
             mock_session = Mock()
@@ -230,7 +230,7 @@ class TestMCPObservabilityMiddleware:
         from starlette.exceptions import HTTPException
 
         with patch(
-            "api.routers.mcp._mcp_observability_middleware._get_tenant_from_context",
+            "api.routers.mcp._mcp_observability_middleware.get_tenant_from_context",
             side_effect=HTTPException(status_code=401, detail="Invalid bearer token"),
         ):
             result = await middleware._setup_session_and_validate_request(mock_request)
@@ -262,7 +262,7 @@ class TestMCPObservabilityMiddleware:
     async def test_dispatch_no_tenant_info(self, middleware, mock_request):
         mock_call_next = AsyncMock(return_value=Response())
 
-        with patch("api.routers.mcp._mcp_observability_middleware._get_tenant_from_context", return_value=None):
+        with patch("api.routers.mcp._mcp_observability_middleware.get_tenant_from_context", return_value=None):
             response = await middleware.dispatch(mock_request, mock_call_next)
 
             assert isinstance(response, Response)
@@ -274,7 +274,7 @@ class TestMCPObservabilityMiddleware:
         mock_call_next = AsyncMock(return_value=Response())
 
         with (
-            patch("api.routers.mcp._mcp_observability_middleware._get_tenant_from_context", return_value=mock_tenant),
+            patch("api.routers.mcp._mcp_observability_middleware.get_tenant_from_context", return_value=mock_tenant),
             patch.object(middleware, "_get_or_create_session") as mock_get_session,
         ):
             mock_session = Mock()
@@ -303,7 +303,7 @@ class TestMCPObservabilityMiddleware:
         mock_call_next = AsyncMock(return_value=mock_streaming_response)
 
         with (
-            patch("api.routers.mcp._mcp_observability_middleware._get_tenant_from_context", return_value=mock_tenant),
+            patch("api.routers.mcp._mcp_observability_middleware.get_tenant_from_context", return_value=mock_tenant),
             patch.object(middleware, "_get_or_create_session") as mock_get_session,
             patch("api.routers.mcp._mcp_observability_middleware.add_background_task") as mock_add_task,
         ):
@@ -328,7 +328,7 @@ class TestMCPObservabilityMiddleware:
         mock_request.body = AsyncMock(return_value=b"invalid json")
         mock_call_next = AsyncMock(return_value=Response())
 
-        with patch("api.routers.mcp._mcp_observability_middleware._get_tenant_from_context", return_value=mock_tenant):
+        with patch("api.routers.mcp._mcp_observability_middleware.get_tenant_from_context", return_value=mock_tenant):
             response = await middleware.dispatch(mock_request, mock_call_next)
 
             assert isinstance(response, Response)
@@ -340,7 +340,7 @@ class TestMCPObservabilityMiddleware:
         mock_call_next = AsyncMock(side_effect=Exception("Request processing failed"))
 
         with (
-            patch("api.routers.mcp._mcp_observability_middleware._get_tenant_from_context", return_value=mock_tenant),
+            patch("api.routers.mcp._mcp_observability_middleware.get_tenant_from_context", return_value=mock_tenant),
             patch.object(middleware, "_get_or_create_session") as mock_get_session,
         ):
             mock_session = Mock()
@@ -356,7 +356,7 @@ class TestMCPObservabilityMiddleware:
         mock_call_next = AsyncMock(return_value=Response(content="regular response"))
 
         with (
-            patch("api.routers.mcp._mcp_observability_middleware._get_tenant_from_context", return_value=mock_tenant),
+            patch("api.routers.mcp._mcp_observability_middleware.get_tenant_from_context", return_value=mock_tenant),
             patch.object(middleware, "_get_or_create_session") as mock_get_session,
         ):
             mock_session = Mock()
