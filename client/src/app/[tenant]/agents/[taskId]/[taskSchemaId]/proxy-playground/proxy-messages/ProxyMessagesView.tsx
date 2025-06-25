@@ -1,5 +1,5 @@
 import { Add16Regular } from '@fluentui/react-icons';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 import { ProxyMessage } from '@/types/workflowAI';
@@ -45,8 +45,6 @@ export function ProxyMessagesView(props: Props) {
     supportOpeningInPlayground,
     scrollToLastMessage = false,
   } = props;
-
-  const [isHovering, setIsHovering] = useState(false);
 
   const readonly = !setMessages;
 
@@ -140,14 +138,10 @@ export function ProxyMessagesView(props: Props) {
   );
 
   const thereAreNoMessages = cleanedMessages?.length === 0 || !cleanedMessages;
-  const showAddMessageButton = (isHovering || thereAreNoMessages) && !readonly;
+  const showAddMessageButton = thereAreNoMessages && !readonly;
 
   return (
-    <div
-      className={cn('flex flex-col gap-2 h-max w-full flex-shrink-0', className)}
-      onMouseEnter={() => setIsHovering(true)}
-      onMouseLeave={() => setIsHovering(false)}
-    >
+    <div className={cn('flex flex-col gap-2 h-max w-full flex-shrink-0', className)}>
       {cleanedMessages?.map((message, index) => (
         <ProxyMessageView
           id={elementIdForMessage(cleanedMessages, index)}
