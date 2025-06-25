@@ -1,14 +1,13 @@
 import { useMemo } from 'react';
 import { ProxyTools } from '@/app/[tenant]/agents/[taskId]/[taskSchemaId]/proxy-playground/parameters-section/ProxyTools';
 import { ProxyMessagesView } from '@/app/[tenant]/agents/[taskId]/[taskSchemaId]/proxy-playground/proxy-messages/ProxyMessagesView';
-import { advencedSettingsVersionPropertiesKeys } from '@/app/[tenant]/agents/[taskId]/[taskSchemaId]/proxy-playground/utils';
-import { advencedSettingNameFromKey } from '@/app/[tenant]/agents/[taskId]/[taskSchemaId]/proxy-playground/utils';
 import { TaskVersionBadgeContainer } from '@/components/TaskIterationBadge/TaskVersionBadgeContainer';
 import { TaskModelBadge } from '@/components/v2/TaskModelBadge';
 import { TaskTemperatureBadge } from '@/components/v2/TaskTemperatureBadge';
 import { TaskID, TenantID } from '@/types/aliases';
 import { ProxyMessage, RunV1, VersionV1 } from '@/types/workflowAI';
 import { FeedbackBoxContainer } from '../FeedbackBox';
+import { AdvencedSettingsDetails } from './AdvencedSettingsDetails';
 import { ProxyRunDetailsParameterEntry } from './ProxyRunDetailsParameterEntry';
 
 type Props = {
@@ -50,25 +49,9 @@ export function ProxyRunDetailsVersionMessagesView(props: Props) {
                 reasoning={'medium'}
               />
             </div>
-
-            {advencedSettingsVersionPropertiesKeys.map((key) => {
-              const value = version.properties[key];
-              if (value === undefined) {
-                return null;
-              }
-              return (
-                <ProxyRunDetailsParameterEntry
-                  key={key}
-                  title={advencedSettingNameFromKey(key)}
-                  className='border-b border-gray-100'
-                >
-                  <div className='text-[13px] text-gray-700 px-2 py-0.5 border border-gray-200 rounded-[2px]'>
-                    {`${value}`}
-                  </div>
-                </ProxyRunDetailsParameterEntry>
-              );
-            })}
           </div>
+
+          <AdvencedSettingsDetails version={version} style='table' />
 
           {!!messages && messages.length > 0 && (
             <div className='flex flex-col w-full overflow-y-auto border-b border-gray-100'>
