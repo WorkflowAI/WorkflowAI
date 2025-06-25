@@ -966,3 +966,38 @@ async def test_hosted_tools_in_version_messages(test_client: IntegrationTestClie
 
     run = await fetch_run_from_completion(test_client, res)
     assert run
+
+
+async def test_url_safe_but_non_slug_agent_id(test_client: IntegrationTestClient, openai_client: AsyncOpenAI):
+    """Make sure that we support a URL safe but non slug agent id"""
+    # First run
+    test_client.mock_openai_call(raw_content="Hello, world!")
+    res = await openai_client.chat.completions.create(
+        model="my_agent/gpt-4.1",
+        messages=[{"role": "user", "content": "Hello, world!"}],
+    )
+    assert res.choices[0].message.content == "Hello, world!"
+
+    task_id, _ = res.id.split("/")
+    assert task_id == "my_agent"
+
+    await test_client.wait_for_completed_tasks()
+
+    run = await fetch_run_from_completion(test_client, res)
+    assert run
+    assert run["task_id"] == "my_agent"
+
+    # Try again with a deployment
+    version = await save_version_from_completion(test_client, res)
+    await test_client.post(
+        f"/v1/_/agents/{task_id}/versions/{version['id']}/deploy",
+        json={"environment": "production"},
+    )
+
+    test_client.mock_openai_call(raw_content="Hello, world!")
+    res = await openai_client.chat.completions.create(
+        model="my_agent/#1/production",
+        messages=[{"role": "user", "content": "Hello, world!"}],
+    )
+    task_id, _ = res.id.split("/")
+    assert task_id == "my_agent"
