@@ -30,7 +30,7 @@ class DocumentationService:
     _LOCAL_DOCS_DIR: str = "docsv2/content/docs"
     _LOCAL_FILE_EXTENSIONS: list[str] = [".mdx", ".md"]
 
-    async def _get_all_doc_sections_local(self) -> list[DocumentationSection]:
+    def _get_all_doc_sections_local(self) -> list[DocumentationSection]:
         doc_sections: list[DocumentationSection] = []
         base_dir: str = self._LOCAL_DOCS_DIR
         if not os.path.isdir(base_dir):
@@ -41,12 +41,12 @@ class DocumentationService:
             for file in files:
                 if not file.endswith(tuple(self._LOCAL_FILE_EXTENSIONS)):
                     continue
-                if file.startswith("."):  # Ignore hidden files like .DS_Store
+                if file.startswith(".") or ".private" in file:  # Ignore hidden files and private pages
                     continue
                 full_path: str = os.path.join(root, file)
                 relative_path: str = os.path.relpath(full_path, base_dir)
                 try:
-                    with open(full_path, "r") as f:  # noqa: ASYNC230
+                    with open(full_path, "r") as f:
                         doc_sections.append(
                             DocumentationSection(
                                 title=relative_path.replace(".mdx", "").replace(".md", ""),
@@ -122,12 +122,12 @@ class DocumentationService:
         """Get all documentation sections based on the configured mode"""
         match mode:
             case "local":
-                return await self._get_all_doc_sections_local()
+                return self._get_all_doc_sections_local()
             case "remote":
                 return await self._get_all_doc_sections_remote()
 
     async def _get_documentation_by_path_local(self, pathes: list[str]) -> list[DocumentationSection]:
-        all_doc_sections: list[DocumentationSection] = await self._get_all_doc_sections_local()
+        all_doc_sections: list[DocumentationSection] = self._get_all_doc_sections_local()
         found_sections = [doc_section for doc_section in all_doc_sections if doc_section.title in pathes]
 
         # Check if any paths were not found
@@ -203,3 +203,47 @@ class DocumentationService:
         return [
             document_section for document_section in all_doc_sections if document_section.title in relevant_doc_sections
         ]
+
+    def _extract_summary_from_content(self, content: str) -> str:
+        """Extract a summary from markdown content."""
+        lines = content.split("\n")
+
+        # Look for frontmatter summary
+        if lines and lines[0].strip() == "---":
+            for i in range(1, min(20, len(lines))):  # Check first 20 lines for frontmatter
+                line = lines[i].strip()
+                if line == "---":
+                    break
+                if line.startswith("summary:"):
+                    return line.split("summary:", 1)[1].strip().strip("\"'")
+
+        # Fallback when no summary is found
+        return ""
+
+    # For now, this function cannot be async meaning we can only use the local files
+    # It is called from mcp_server.py which resolves the tool description
+    def get_available_pages_descriptions(self) -> str:
+        """Generate formatted descriptions of all available documentation pages for MCP tool docstring.
+
+        TODO: Add caching (e.g., @redis_cached) to avoid repeated file system scans - good performance optimization.
+        """
+        try:
+            all_sections = self._get_all_doc_sections_local()
+
+            if not all_sections:
+                return "No documentation pages found."
+
+            # Build simple list of pages with descriptions
+            result_lines: list[str] = []
+
+            for section in sorted(all_sections, key=lambda s: s.title):
+                page_path = section.title
+                summary = self._extract_summary_from_content(section.content)
+                result_lines.append(f"     - '{page_path}' - {summary}")
+
+            return "\n".join(result_lines)
+
+        except Exception as e:
+            _logger.exception("Error generating available pages descriptions", exc_info=e)
+            # Fallback to empty list when there's an error
+            return ""
