@@ -31,9 +31,9 @@ class TestSearchTaskRunsRequestQuery:
 
 
 class TestLatestRun:
-    # Making sure the mock happens after the test_api_client is created
-    @pytest.fixture(autouse=True)
-    def returned_run(self, test_api_client: AsyncClient, mock_storage: Mock):
+    # test_api_client is in the arg to be sure the mock happens after the test_api_client is created
+    @pytest.fixture()
+    def returned_run(test_api_client: Any, mock_storage: Mock):
         run = task_run_ser(id=str(uuid7()), task_uid=1, task_schema_id=1, status="success")
         mock_storage.task_runs.fetch_task_run_resources.return_value = mock_aiter(run)
         mock_storage.tasks.get_task_info.return_value = TaskInfo(task_id="bla", uid=2)
@@ -48,6 +48,7 @@ class TestLatestRun:
         response = await test_api_client.get("/v1/_/agents/bla/runs/latest")
         assert response.status_code == 200
         assert response.json()["id"] == returned_run.id
+        assert response.json()["url"]
 
         mock_storage.task_runs.fetch_task_run_resources.assert_called_once_with(
             task_uid=2,
@@ -96,4 +97,77 @@ class TestLatestRun:
                 exclude_fields={"llm_completions"},
                 limit=1,
             ),
+        )
+
+    async def test_latest_run_includes_metadata(
+        self,
+        test_api_client: AsyncClient,
+        returned_run: AgentRun,
+    ):
+        """Test that metadata is included in the RunV1 response"""
+        returned_run.metadata = {"environment": "test", "user_id": "123", "custom_field": "value"}
+
+        response = await test_api_client.get("/v1/_/agents/bla/runs/latest")
+        assert response.status_code == 200
+
+        response_data = response.json()
+        assert response_data["id"] == returned_run.id
+        assert response_data["metadata"] == {
+            "environment": "test",
+            "user_id": "123",
+            "custom_field": "value",
+        }
+
+    async def test_latest_run_with_null_metadata(
+        self,
+        test_api_client: AsyncClient,
+        returned_run: AgentRun,
+    ):
+        """Test that null metadata is handled correctly"""
+        returned_run.metadata = None
+
+        response = await test_api_client.get("/v1/_/agents/bla/runs/latest")
+        assert response.status_code == 200
+
+        response_data = response.json()
+        assert response_data["id"] == returned_run.id
+        # metadata should not be present in response when it's None (due to response_model_exclude_none=True)
+        assert "metadata" not in response_data
+
+
+class TestGetRunByID:
+    # test_api_client is in the arg to be sure the mock happens after the test_api_client is created
+    @pytest.fixture()
+    def returned_run(test_api_client: Any, mock_storage: Mock):
+        run = task_run_ser(id=str(uuid7()), task_uid=1, task_schema_id=1, status="success")
+        mock_storage.task_runs.fetch_task_run_resource.return_value = run
+        mock_storage.tasks.get_task_info.return_value = TaskInfo(task_id="bla", uid=2)
+        return run
+
+    async def test_get_run_includes_metadata(
+        self,
+        test_api_client: AsyncClient,
+        returned_run: AgentRun,
+        mock_storage: Mock,
+    ):
+        """Test that metadata is included in the get_run response"""
+        returned_run.metadata = {"environment": "production", "user_id": "456", "custom_data": "test_value"}
+
+        response = await test_api_client.get(f"/v1/_/agents/test_task/runs/{returned_run.id}")
+        assert response.status_code == 200
+
+        response_data = response.json()
+        assert response_data["id"] == returned_run.id
+        assert response_data["metadata"] == {
+            "environment": "production",
+            "user_id": "456",
+            "custom_data": "test_value",
+        }
+        assert response_data["url"]
+
+        mock_storage.task_runs.fetch_task_run_resource.assert_called_once_with(
+            ("bla", 2),
+            returned_run.id,
+            exclude={"llm_completions"},
+            include=None,
         )

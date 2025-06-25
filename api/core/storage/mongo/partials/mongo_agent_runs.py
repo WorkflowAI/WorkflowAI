@@ -201,7 +201,9 @@ class MongoTaskRunStorage(PartialStorage[TaskRunDocument], TaskRunStorage):
         limit: int,
         offset: int,
         timeout_ms: int = 60_000,
-    ) -> AsyncIterator[AgentRunBase]:
+        include: set[SerializableTaskRunField] | None = None,
+        exclude: set[SerializableTaskRunField] | None = None,
+    ) -> AsyncIterator[AgentRun]:
         filter = TaskRunDocument.build_search_filter(self._tenant, task_uid[0], search_fields)
         project = projection(self._search_run_include())
 
@@ -215,7 +217,7 @@ class MongoTaskRunStorage(PartialStorage[TaskRunDocument], TaskRunStorage):
                 timeout_ms=timeout_ms,
             )
             async for doc in cursor:
-                yield doc.to_base()
+                yield doc.to_resource()
         except ExecutionTimeout as e:
             raise OperationTimeout() from e
 
@@ -507,6 +509,7 @@ class MongoTaskRunStorage(PartialStorage[TaskRunDocument], TaskRunStorage):
         from_date: datetime,
         to_date: datetime | None = None,
         is_active: bool | None = None,
+        agent_uids: set[int] | None = None,
     ) -> AsyncIterator[TaskRunStorage.AgentRunCount]:
         raise NotImplementedError()
 

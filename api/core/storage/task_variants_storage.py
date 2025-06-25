@@ -1,3 +1,4 @@
+from collections.abc import AsyncIterator
 from typing import Protocol
 
 from core.domain.integration.integration_domain import IntegrationKind
@@ -20,3 +21,5 @@ class TaskVariantsStorage(Protocol):
     ) -> SerializableTaskVariant | None: ...
 
     async def get_task_variant_by_uid(self, task_uid: int) -> SerializableTaskVariant: ...
+
+    def variants_iterator(self, agent_id: str, variant_ids: set[str]) -> AsyncIterator[SerializableTaskVariant]: ...

@@ -218,6 +218,7 @@ async def generate_task_preview(
     return StreamingResponse(_stream(), media_type="text/event-stream")
 
 
+# TODO: we should return a proper object here
 @router.get("")
 async def list_tasks(storage: StorageDep) -> Page[SerializableTask]:
     items = await tasks.list_tasks(storage)

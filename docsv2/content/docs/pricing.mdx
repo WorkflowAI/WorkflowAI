@@ -1,5 +1,6 @@
 ---
 title: Pricing
+summary: Documentation on the pay-as-you-go pricing model. Explains the price-match guarantee, what you pay for, and answers common questions about billing and costs.
 ---
 
 import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
@@ -30,7 +31,7 @@ mistral-7b-instruct | $75 | $75
 | **Paid** | **Free** |
 |----------|----------|
 | Tokens used by your agents | Data storage |
-| [Tools](/docs/agents/tools) used by your agents | Number of agents |
+| [Tools](/agents/tools) used by your agents | Number of agents |
 | | Users in your organization |
 | | Bandwidth or CPU usage |
 
@@ -54,11 +55,11 @@ We monitor provider pricing in real-time and automatically match their per-token
 <Accordion title="Can I use my existing provider credits with WorkflowAI?">
 Yes, you can connect your own API keys from OpenAI, Anthropic, Google, and other providers to use your existing credits while still benefiting from WorkflowAI's tools and infrastructure.
 
-When using your own API keys, WorkflowAI doesn't charge for inference tokens - you pay your provider directly. We only charge for [built-in tools](/docs/agents/tools) that your agents use (like web search, browser, etc.).
+When using your own API keys, WorkflowAI doesn't charge for inference tokens - you pay your provider directly. We only charge for [built-in tools](/agents/tools) that your agents use (like web search, browser, etc.).
 </Accordion>
 
 <Accordion title="How is usage tracked and billed?">
-You're only charged for tokens actually consumed by your agents and any tools they use. We provide detailed [usage analytics](/docs/observability/costs) so you can see exactly what you're paying for. Billing is monthly with no minimums.
+You're only charged for tokens actually consumed by your agents and any tools they use. We provide detailed [usage analytics](/observability/costs) so you can see exactly what you're paying for. Billing is monthly with no minimums.
 </Accordion>
 
 <Accordion title="What happens if my usage is very high or very low?">

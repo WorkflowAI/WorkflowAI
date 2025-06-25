@@ -1,3 +1,4 @@
+# pyright: reportPrivateUsage=false
 from datetime import datetime, timedelta
 
 import pytest
@@ -94,3 +95,67 @@ class TestGetLatestSchemaTaskVariant:
         # Test when there are no variants for the given task_id
         result = await task_variants_storage.get_latest_task_variant("non_existent_task_id")
         assert result is None
+
+
+class TestVariantsIterator:
+    @pytest.fixture(scope="function")
+    async def variants_for_iterator(self, task_variants_col: AsyncCollection):
+        """Create test variants with specific versions and agent IDs for testing variants_iterator"""
+        variants = [
+            # Variants for agent_1 with different versions
+            _task_variant(task_id="agent_1", version="v1.0"),
+            _task_variant(task_id="agent_1", version="v1.1"),
+            _task_variant(task_id="agent_1", version="v2.0"),
+            # Variants for agent_2 with different versions
+            _task_variant(task_id="agent_2", version="v1.0"),
+            _task_variant(task_id="agent_2", version="v3.0"),
+            # Variant for different tenant (should not be returned)
+            _task_variant(task_id="agent_1", version="v1.0", tenant="other_tenant"),
+        ]
+
+        await task_variants_col.insert_many([dump_model(variant) for variant in variants])
+        return variants
+
+    async def test_variants_iterator_basic(
+        self,
+        task_variants_storage: MongoTaskVariantsStorage,
+        variants_for_iterator: list[TaskVariantDocument],
+    ):
+        """Test basic functionality of variants_iterator"""
+        # Request specific versions for agent_1
+        variant_ids = {"v1.0", "v2.0"}
+
+        results = [v async for v in task_variants_storage.variants_iterator("agent_1", variant_ids)]
+
+        # Should return 2 variants (v1.0 and v2.0 for agent_1)
+        assert len(results) == 2
+
+        # All should be for agent_1
+        for variant in results:
+            assert variant.task_id == "agent_1"
+
+    async def test_variants_iterator_no_matching_agent(
+        self,
+        task_variants_storage: MongoTaskVariantsStorage,
+        variants_for_iterator: list[TaskVariantDocument],
+    ):
+        """Test requesting versions for a non-existent agent"""
+        variant_ids = {"v1.0", "v2.0"}
+
+        results = [v async for v in task_variants_storage.variants_iterator("non_existent_agent", variant_ids)]
+
+        # Should return no variants
+        assert len(results) == 0
+
+    async def test_variants_iterator_no_matching_versions(
+        self,
+        task_variants_storage: MongoTaskVariantsStorage,
+        variants_for_iterator: list[TaskVariantDocument],
+    ):
+        """Test requesting versions that don't exist for an existing agent"""
+        variant_ids = {"v99.0", "v88.0"}
+
+        results = [v async for v in task_variants_storage.variants_iterator("agent_1", variant_ids)]
+
+        # Should return no variants
+        assert len(results) == 0
