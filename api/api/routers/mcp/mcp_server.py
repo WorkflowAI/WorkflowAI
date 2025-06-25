@@ -1,4 +1,5 @@
 import datetime
+import logging
 import time
 from typing import Annotated, Any, Literal
 
@@ -6,6 +7,7 @@ from fastmcp import FastMCP
 from fastmcp.server.dependencies import get_http_request
 from pydantic import BaseModel, Field
 from starlette.exceptions import HTTPException
+from starlette.middleware import Middleware
 
 from api.dependencies.task_info import TaskTuple
 from api.routers.mcp._mcp_dependencies import get_mcp_service
@@ -25,6 +27,7 @@ from api.routers.mcp._mcp_models import (
     SearchResponse,
     SortOrder,
 )
+from api.routers.mcp._mcp_observability_middleware import MCPObservabilityMiddleware
 from api.routers.mcp._mcp_serializer import tool_serializer
 from api.routers.openai_proxy._openai_proxy_models import (
     OpenAIProxyChatCompletionRequest,
@@ -36,6 +39,8 @@ from core.domain.tool import Tool
 from core.domain.users import UserIdentifier
 from core.storage.backend_storage import BackendStorage
 from core.utils.schema_formatter import format_schema_as_yaml_description
+
+logger = logging.getLogger(__name__)
 
 _mcp = FastMCP("WorkflowAI 🚀", tool_serializer=tool_serializer)  # pyright: ignore [reportUnknownVariableType]
 
@@ -692,4 +697,7 @@ async def create_completion(
 
 
 def mcp_http_app():
-    return _mcp.http_app(path="/", stateless_http=True)
+    custom_middleware = [
+        Middleware(MCPObservabilityMiddleware),
+    ]
+    return _mcp.http_app(path="/", stateless_http=True, middleware=custom_middleware)
