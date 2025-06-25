@@ -437,3 +437,11 @@ export function generatePromptForToolsUpdate(oldTools: ToolKind[], newTools: Too
 
   return `${promptParts.join('. ')}.`;
 }
+
+export function cleanChunkOutput(output: Record<string, unknown>) {
+  const keys = Object.keys(output);
+  if (keys.length === 1 && keys[0] === 'content' && typeof output.content === 'string') {
+    return output.content;
+  }
+  return output;
+}

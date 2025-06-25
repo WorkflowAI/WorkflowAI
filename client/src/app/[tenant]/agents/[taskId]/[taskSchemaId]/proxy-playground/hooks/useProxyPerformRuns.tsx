@@ -16,6 +16,7 @@ import { ProxyMessage, ToolKind, Tool_Output } from '@/types/workflowAI';
 import { useFetchTaskRunUntilCreated } from '../../playground/hooks/useFetchTaskRunUntilCreated';
 import {
   ProxyPlaygroundModels,
+  cleanChunkOutput,
   getModelAndReasoning,
   removeInputEntriesNotMatchingSchemaAndKeepMessages,
 } from '../utils';
@@ -263,9 +264,12 @@ export function useProxyPerformRuns(props: Props) {
               clean();
               return;
             }
+
+            const cleanedChunkOutput = cleanChunkOutput(output);
+
             setStreamedChunk(index, {
               id: runId,
-              task_output: output,
+              task_output: cleanedChunkOutput as Record<string, unknown>,
               tool_call_requests: null,
               reasoning_steps: null,
               tool_calls: null,

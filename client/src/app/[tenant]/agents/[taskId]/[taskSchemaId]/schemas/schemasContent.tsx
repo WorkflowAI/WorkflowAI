@@ -9,6 +9,7 @@ import { TaskSchemaBadgeContainer } from '@/components/TaskSchemaBadge/TaskSchem
 import { Loader } from '@/components/ui/Loader';
 import { CircleCheckbox } from '@/components/v2/Checkbox';
 import { TaskSchemaID } from '@/types/aliases';
+import { JsonSchema } from '@/types/json_schema';
 import { TaskSchemaResponseWithSchema } from '@/types/task';
 import { checkSchemaForProxy } from '../proxy-playground/utils';
 import { SchemasSelector } from './schemasSelector';
@@ -61,12 +62,32 @@ type SchemasContentProps = {
 export function SchemasContent(props: SchemasContentProps) {
   const { taskSchema, isInitialized, visibleSchemaIds, hiddenSchemaIds, activeSchemaIds, currentSchemaId, onSelect } =
     props;
+
   const isProxy = useMemo(() => {
     if (!taskSchema) {
       return false;
     }
     return checkSchemaForProxy(taskSchema);
   }, [taskSchema]);
+
+  const inputSchema: JsonSchema | undefined = useMemo(() => {
+    const result = taskSchema?.input_schema.json_schema;
+    if (result && 'format' in result && result.format === 'messages' && !('properties' in result) && isProxy) {
+      return {
+        format: 'messages',
+        type: 'object',
+        properties: {
+          messages: {
+            type: 'array',
+            items: { type: 'string' },
+          },
+        },
+        $defs: {},
+      };
+    }
+    return result;
+  }, [taskSchema, isProxy]);
+
   return (
     <div className='flex flex-row w-full h-full border-r border-gray-200'>
       <SchemasSelector
@@ -90,8 +111,8 @@ export function SchemasContent(props: SchemasContentProps) {
             <ObjectViewer
               textColor='text-gray-500'
               value={undefined}
-              schema={taskSchema.input_schema.json_schema}
-              defs={taskSchema.input_schema.json_schema?.$defs}
+              schema={inputSchema}
+              defs={inputSchema?.$defs}
               showDescriptionExamples={undefined}
               showTypes={true}
               showDescriptionPopover={false}
