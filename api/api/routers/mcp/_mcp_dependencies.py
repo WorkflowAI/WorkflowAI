@@ -1,5 +1,6 @@
 from fastmcp.server.dependencies import get_http_request
 from starlette.exceptions import HTTPException
+from starlette.requests import Request
 
 from api.routers.mcp._mcp_service import MCPService
 from api.services import file_storage, storage
@@ -21,9 +22,7 @@ from core.domain.analytics_events.analytics_events import OrganizationProperties
 from core.domain.users import UserIdentifier
 
 
-async def _get_tenant_from_context():
-    request = get_http_request()
-
+async def _get_tenant_from_context(request: Request):
     _system_storage = storage.system_storage(storage.shared_encryption())
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
@@ -42,7 +41,8 @@ async def _get_tenant_from_context():
 
 
 async def get_mcp_service() -> MCPService:
-    tenant = await _get_tenant_from_context()
+    request = get_http_request()
+    tenant = await _get_tenant_from_context(request)
 
     org_properties = OrganizationProperties.build(tenant)
     # TODO: user analytics

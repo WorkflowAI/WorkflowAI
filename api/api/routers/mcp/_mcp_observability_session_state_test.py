@@ -118,8 +118,8 @@ class TestObserverAgentData:
 
 
 class TestSessionState:
-    def test_session_state_creation(self):
-        session = SessionState("test-session-id")
+    def test_session_state_creation(self, mock_tenant):
+        session = SessionState("test-session-id", mock_tenant)
 
         assert session.session_id == "test-session-id"
         assert isinstance(session.created_at, datetime)
@@ -133,13 +133,13 @@ class TestSessionState:
 
     @pytest.mark.asyncio
     async def test_save_success(self, mock_tenant):
-        session = SessionState("test-session")
+        session = SessionState("test-session", mock_tenant)
         session.tool_calls = [{"tool_name": "test", "duration": 1.0}]
 
         with patch("api.routers.mcp._mcp_observability_session_state.shared_redis_client") as mock_redis:
             mock_redis.setex = AsyncMock()
 
-            await session.save(mock_tenant)
+            await session.save()
 
             mock_redis.setex.assert_called_once()
             args = mock_redis.setex.call_args[0]
@@ -155,15 +155,15 @@ class TestSessionState:
 
     @pytest.mark.asyncio
     async def test_save_no_redis_client(self, mock_tenant):
-        session = SessionState("test-session")
+        session = SessionState("test-session", mock_tenant)
 
         with patch("api.routers.mcp._mcp_observability_session_state.shared_redis_client", None):
             # Should not raise an exception
-            await session.save(mock_tenant)
+            await session.save()
 
     @pytest.mark.asyncio
     async def test_save_redis_error(self, mock_tenant):
-        session = SessionState("test-session")
+        session = SessionState("test-session", mock_tenant)
 
         with (
             patch("api.routers.mcp._mcp_observability_session_state.shared_redis_client") as mock_redis,
@@ -172,7 +172,7 @@ class TestSessionState:
             mock_redis.setex = AsyncMock(side_effect=Exception("Redis connection failed"))
 
             # Should not raise an exception, but should log error
-            await session.save(mock_tenant)
+            await session.save()
 
             mock_logger.error.assert_called_once()
 
@@ -247,7 +247,7 @@ class TestSessionState:
 
     @pytest.mark.asyncio
     async def test_get_or_create_existing_session(self, mock_tenant):
-        existing_session = SessionState("existing-session")
+        existing_session = SessionState("existing-session", mock_tenant)
 
         with (
             patch.object(SessionState, "load", return_value=existing_session) as mock_load,
@@ -258,7 +258,7 @@ class TestSessionState:
             assert result_session == existing_session
             assert is_new is False
             mock_load.assert_called_once_with("existing-session", mock_tenant)
-            mock_save.assert_called_once_with(mock_tenant)  # Should update last_activity
+            mock_save.assert_called_once()  # Should update last_activity
 
     @pytest.mark.asyncio
     async def test_get_or_create_new_session_with_id(self, mock_tenant):
@@ -269,9 +269,9 @@ class TestSessionState:
         ):
             result_session, is_new = await SessionState.get_or_create("nonexistent-session", mock_tenant)
 
-            assert result_session.session_id == "new-uuid-session"
+            assert result_session.session_id == "nonexistent-session"
             assert is_new is True
-            mock_save.assert_called_once_with(mock_tenant)
+            mock_save.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_get_or_create_new_session_no_id(self, mock_tenant):
@@ -283,14 +283,14 @@ class TestSessionState:
 
             assert result_session.session_id == "new-uuid-session"
             assert is_new is True
-            mock_save.assert_called_once_with(mock_tenant)
+            mock_save.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_register_tool_call(self, mock_tenant, sample_tool_call_data):
-        session = SessionState("test-session")
+        session = SessionState("test-session", mock_tenant)
 
         with patch.object(session, "save") as mock_save:
-            await session.register_tool_call(sample_tool_call_data, mock_tenant)
+            await session.register_tool_call(sample_tool_call_data)
 
             assert len(session.tool_calls) == 1
 
@@ -307,13 +307,25 @@ class TestSessionState:
             assert "completed_at" in registered_call
 
             # Verify save was called to persist the updated session
-            mock_save.assert_called_once_with(mock_tenant)
+            mock_save.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_register_multiple_tool_calls(self, mock_tenant, sample_tool_call_data):
-        session = SessionState("test-session")
+    async def test_register_multiple_tool_calls(self, mock_tenant):
+        session = SessionState("test-session", mock_tenant)
 
-        # Create another tool call
+        # Create first tool call
+        first_tool_call = ToolCallData(
+            tool_name="first_tool",
+            tool_arguments={"arg1": "value1"},
+            request_id="req-123",
+            duration=1.5,
+            result="First result",
+            started_at=datetime.now(timezone.utc),
+            completed_at=datetime.now(timezone.utc),
+            user_agent="test-agent",
+        )
+
+        # Create second tool call
         second_tool_call = ToolCallData(
             tool_name="second_tool",
             tool_arguments={"arg": "value"},
@@ -326,16 +338,16 @@ class TestSessionState:
         )
 
         with patch.object(session, "save"):
-            await session.register_tool_call(sample_tool_call_data, mock_tenant)
-            await session.register_tool_call(second_tool_call, mock_tenant)
+            await session.register_tool_call(first_tool_call)
+            await session.register_tool_call(second_tool_call)
 
             assert len(session.tool_calls) == 2
-            assert session.tool_calls[0]["tool_name"] == "test_tool"
+            assert session.tool_calls[0]["tool_name"] == "first_tool"
             assert session.tool_calls[1]["tool_name"] == "second_tool"
 
     @pytest.mark.asyncio
     async def test_register_tool_call_updates_last_activity(self, mock_tenant, sample_tool_call_data):
-        session = SessionState("test-session")
+        session = SessionState("test-session", mock_tenant)
         original_last_activity = session.last_activity
 
         # Wait a bit to ensure time difference
@@ -344,13 +356,13 @@ class TestSessionState:
         await asyncio.sleep(0.01)
 
         with patch.object(session, "save"):
-            await session.register_tool_call(sample_tool_call_data, mock_tenant)
+            await session.register_tool_call(sample_tool_call_data)
 
             assert session.last_activity > original_last_activity
 
     def test_session_data_serialization_roundtrip(self, mock_tenant):
         """Test that session data can be serialized and deserialized correctly"""
-        original_session = SessionState("test-session")
+        original_session = SessionState("test-session", mock_tenant)
         original_session.tool_calls = [
             {
                 "tool_name": "test_tool",

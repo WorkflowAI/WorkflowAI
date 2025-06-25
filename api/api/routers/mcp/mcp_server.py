@@ -700,4 +700,4 @@ def mcp_http_app():
     custom_middleware = [
         Middleware(MCPObservabilityMiddleware),
     ]
-    return _mcp.http_app(path="/", middleware=custom_middleware)
+    return _mcp.http_app(path="/", stateless_http=True, middleware=custom_middleware)

@@ -45,18 +45,26 @@ class ObserverAgentData(BaseModel):
 class SessionState:
     """Redis-backed session state for MCP sessions"""
 
-    def __init__(self, session_id: str):
+    def __init__(
+        self,
+        session_id: str,
+        tenant: TenantData,
+        created_at: datetime = datetime.now(timezone.utc),
+        last_activity: datetime = datetime.now(timezone.utc),
+        tool_calls: list[dict[str, Any]] | None = None,
+    ):
         self.session_id = session_id
-        self.created_at = datetime.now(timezone.utc)
-        self.last_activity = datetime.now(timezone.utc)
-        self.tool_calls: list[dict[str, Any]] = []
+        self.tenant: TenantData = tenant
+        self.created_at = created_at
+        self.last_activity = last_activity
+        self.tool_calls: list[dict[str, Any]] = tool_calls if tool_calls is not None else []
 
     @classmethod
     def _get_redis_key(cls, tenant: TenantData, session_id: str) -> str:
         """Get the Redis key for this session"""
         return f"mcp_session:{tenant.tenant}:{session_id}"
 
-    async def save(self, tenant: TenantData) -> None:
+    async def save(self) -> None:
         """Save session state to Redis"""
         if not shared_redis_client:
             logger.warning("Redis client not available, cannot save session state")
@@ -71,7 +79,7 @@ class SessionState:
             }
 
             await shared_redis_client.setex(
-                self._get_redis_key(tenant, self.session_id),
+                self._get_redis_key(self.tenant, self.session_id),
                 SESSION_EXPIRATION_SECONDS,
                 json.dumps(session_data),
             )
@@ -113,11 +121,15 @@ class SessionState:
             session_data = json.loads(session_data_str.decode())
 
             # Reconstruct session state
-            session = cls.__new__(cls)
-            session.session_id = session_data["session_id"]
-            session.created_at = datetime.fromisoformat(session_data["created_at"])
-            session.last_activity = datetime.fromisoformat(session_data["last_activity"])
-            session.tool_calls = session_data["tool_calls"]
+            session_data["created_at"] = datetime.fromisoformat(session_data["created_at"])
+            session_data["last_activity"] = datetime.fromisoformat(session_data["last_activity"])
+            session = SessionState(
+                session_id=session_data["session_id"],
+                tenant=tenant,
+                created_at=session_data["created_at"],
+                last_activity=session_data["last_activity"],
+                tool_calls=session_data["tool_calls"],
+            )
 
             logger.debug(
                 "Session loaded from Redis",
@@ -153,13 +165,17 @@ class SessionState:
             if found_session := await cls.load(session_id, tenant):
                 # Update last activity and extend expiration
                 found_session.last_activity = datetime.now(timezone.utc)
-                await found_session.save(tenant)
+                await found_session.save()
                 return found_session, False
+
+            new_session = cls(session_id, tenant)
+            await new_session.save()
+            return new_session, True
 
         # Create new session
         new_session_id = str(uuid.uuid4())
-        new_session = cls(new_session_id)
-        await new_session.save(tenant)
+        new_session = cls(new_session_id, tenant)
+        await new_session.save()
 
         logger.info(
             "New MCP session created",
@@ -173,7 +189,7 @@ class SessionState:
 
         return new_session, True
 
-    async def register_tool_call(self, tool_call_data: ToolCallData, tenant: TenantData) -> None:
+    async def register_tool_call(self, tool_call_data: ToolCallData) -> None:
         """Add a completed tool call to the session history and save to Redis"""
         self.tool_calls.append(
             {
@@ -190,4 +206,4 @@ class SessionState:
         self.last_activity = datetime.now(timezone.utc)
 
         # Save updated session state to Redis
-        await self.save(tenant)
+        await self.save()

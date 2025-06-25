@@ -15,7 +15,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from api.routers.mcp._mcp_observability_middleware import MCPObservabilityMiddleware
-from api.routers.mcp._mcp_observability_session_state import SessionState, ToolCallData
+from api.routers.mcp._mcp_observability_session_state import SessionState
 from core.domain.tenant_data import TenantData
 
 
@@ -71,56 +71,6 @@ def mock_non_mcp_request_data():
 
 
 class TestMCPObservabilityMiddleware:
-    @pytest.mark.asyncio
-    async def test_extract_tenant_info_success(self, middleware, mock_request):
-        with (
-            patch("api.routers.mcp._mcp_observability_middleware.storage"),
-            patch("api.routers.mcp._mcp_observability_middleware.SecurityService") as mock_security_service,
-            patch("api.routers.mcp._mcp_observability_middleware.system_event_router"),
-            patch("api.routers.mcp._mcp_observability_middleware.analytics_service"),
-        ):
-            mock_tenant = TenantData(
-                tenant="test-tenant",
-                slug="test-slug",
-                name="Test Organization",
-                org_id="test-org-id",
-                owner_id="test-owner-id",
-            )
-
-            mock_security_instance = Mock()
-            mock_security_instance.tenant_from_credentials = AsyncMock(return_value=mock_tenant)
-            mock_security_service.return_value = mock_security_instance
-
-            result = await middleware._extract_tenant_info(mock_request)
-
-            assert result == mock_tenant
-            mock_security_instance.tenant_from_credentials.assert_called_once_with("test-token")
-
-    @pytest.mark.asyncio
-    async def test_extract_tenant_info_no_auth_header(self, middleware):
-        request = Mock(spec=Request)
-        request.headers = {}
-
-        result = await middleware._extract_tenant_info(request)
-
-        assert result is None
-
-    @pytest.mark.asyncio
-    async def test_extract_tenant_info_invalid_token(self, middleware, mock_request):
-        with (
-            patch("api.routers.mcp._mcp_observability_middleware.storage"),
-            patch("api.routers.mcp._mcp_observability_middleware.SecurityService") as mock_security_service,
-            patch("api.routers.mcp._mcp_observability_middleware.system_event_router"),
-            patch("api.routers.mcp._mcp_observability_middleware.analytics_service"),
-        ):
-            mock_security_instance = Mock()
-            mock_security_instance.tenant_from_credentials = AsyncMock(return_value=None)
-            mock_security_service.return_value = mock_security_instance
-
-            result = await middleware._extract_tenant_info(mock_request)
-
-            assert result is None
-
     @pytest.mark.parametrize(
         "session_header,expected",
         [
@@ -151,14 +101,6 @@ class TestMCPObservabilityMiddleware:
 
             assert result == mock_session
             mock_get_or_create.assert_called_once_with("test-session", mock_tenant)
-
-    @pytest.mark.asyncio
-    async def test_get_or_create_session_fallback(self, middleware, mock_tenant):
-        with patch.object(SessionState, "get_or_create", side_effect=Exception("Redis error")):
-            result = await middleware._get_or_create_session("test-session", mock_tenant)
-
-            assert isinstance(result, SessionState)
-            assert result.session_id == "test-session"
 
     @pytest.mark.parametrize(
         "request_data,expected",
@@ -238,38 +180,6 @@ class TestMCPObservabilityMiddleware:
 
         assert "KeyError" in result or "'content'" in result
 
-    def test_log_tool_call_completion(self, middleware):
-        tool_call_data = ToolCallData(
-            tool_name="test_tool",
-            tool_arguments={"arg1": "value1"},
-            request_id="req-123",
-            duration=1.5,
-            result="Tool result",
-            started_at=datetime.now(timezone.utc),
-            completed_at=datetime.now(timezone.utc),
-            user_agent="test-agent",
-        )
-
-        session_state = Mock()
-        response = Mock()
-        response.status_code = 200
-
-        with patch("api.routers.mcp._mcp_observability_middleware.logger") as mock_logger:
-            middleware._log_tool_call_completion(
-                tool_call_data,
-                "session-123",
-                response,
-                "test-agent",
-                session_state,
-                None,
-            )
-
-            mock_logger.info.assert_called_once()
-            args, kwargs = mock_logger.info.call_args
-            assert "MCP tool call completed" in args[0]
-            assert kwargs["extra"]["tool_name"] == "test_tool"
-            assert kwargs["extra"]["duration_seconds"] == 1.5
-
     @pytest.mark.asyncio
     async def test_run_observer_agent_background(self, middleware):
         from api.routers.mcp._mcp_observability_session_state import ObserverAgentData
@@ -294,13 +204,69 @@ class TestMCPObservabilityMiddleware:
             mock_add_task.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_fallback_response(self, middleware, mock_request):
+    async def test_setup_session_and_validate_request_success(self, middleware, mock_request, mock_tenant):
+        with (
+            patch("api.routers.mcp._mcp_observability_middleware._get_tenant_from_context", return_value=mock_tenant),
+            patch.object(middleware, "_get_or_create_session") as mock_get_session,
+        ):
+            mock_session = Mock()
+            mock_session.session_id = "session-123"
+            mock_get_session.return_value = mock_session
+
+            result = await middleware._setup_session_and_validate_request(mock_request)
+
+            assert result is not None
+            tenant_info, session_state, request_data = result
+            assert tenant_info == mock_tenant
+            assert session_state == mock_session
+            assert request_data == {
+                "method": "tools/call",
+                "params": {"name": "test_tool", "arguments": {"arg1": "value1"}},
+                "id": "req-123",
+            }
+
+    @pytest.mark.asyncio
+    async def test_setup_session_and_validate_request_no_tenant(self, middleware, mock_request):
+        from starlette.exceptions import HTTPException
+
+        with patch(
+            "api.routers.mcp._mcp_observability_middleware._get_tenant_from_context",
+            side_effect=HTTPException(status_code=401, detail="Invalid bearer token"),
+        ):
+            result = await middleware._setup_session_and_validate_request(mock_request)
+            assert result is None
+
+    @pytest.mark.asyncio
+    async def test_validate_mcp_tool_call_success(self, middleware, mock_mcp_request_data):
+        mock_session = Mock()
+        mock_session.session_id = "session-123"
+
+        result = await middleware._validate_mcp_tool_call(mock_mcp_request_data, mock_session)
+
+        assert result is not None
+        tool_name, tool_arguments, request_id = result
+        assert tool_name == "test_tool"
+        assert tool_arguments == {"arg1": "value1"}
+        assert request_id == "req-123"
+
+    @pytest.mark.asyncio
+    async def test_validate_mcp_tool_call_not_mcp(self, middleware, mock_non_mcp_request_data):
+        mock_session = Mock()
+        mock_session.session_id = "session-123"
+
+        result = await middleware._validate_mcp_tool_call(mock_non_mcp_request_data, mock_session)
+
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_dispatch_no_tenant_info(self, middleware, mock_request):
         mock_call_next = AsyncMock(return_value=Response())
 
-        response = await middleware._fallback_response(mock_request, mock_call_next)
+        with patch("api.routers.mcp._mcp_observability_middleware._get_tenant_from_context", return_value=None):
+            response = await middleware.dispatch(mock_request, mock_call_next)
 
-        assert isinstance(response, Response)
-        mock_call_next.assert_called_once_with(mock_request)
+            assert isinstance(response, Response)
+            mock_call_next.assert_called_once_with(mock_request)
 
     @pytest.mark.asyncio
     async def test_dispatch_non_mcp_request(self, middleware, mock_request, mock_tenant):
@@ -308,7 +274,7 @@ class TestMCPObservabilityMiddleware:
         mock_call_next = AsyncMock(return_value=Response())
 
         with (
-            patch.object(middleware, "_extract_tenant_info", return_value=mock_tenant),
+            patch("api.routers.mcp._mcp_observability_middleware._get_tenant_from_context", return_value=mock_tenant),
             patch.object(middleware, "_get_or_create_session") as mock_get_session,
         ):
             mock_session = Mock()
@@ -318,7 +284,6 @@ class TestMCPObservabilityMiddleware:
             response = await middleware.dispatch(mock_request, mock_call_next)
 
             assert isinstance(response, Response)
-            assert response.headers["mcp-session-id"] == "session-123"
             mock_call_next.assert_called_once_with(mock_request)
 
     @pytest.mark.asyncio
@@ -338,7 +303,7 @@ class TestMCPObservabilityMiddleware:
         mock_call_next = AsyncMock(return_value=mock_streaming_response)
 
         with (
-            patch.object(middleware, "_extract_tenant_info", return_value=mock_tenant),
+            patch("api.routers.mcp._mcp_observability_middleware._get_tenant_from_context", return_value=mock_tenant),
             patch.object(middleware, "_get_or_create_session") as mock_get_session,
             patch("api.routers.mcp._mcp_observability_middleware.add_background_task") as mock_add_task,
         ):
@@ -351,7 +316,6 @@ class TestMCPObservabilityMiddleware:
             response = await middleware.dispatch(mock_request, mock_call_next)
 
             assert isinstance(response, StreamingResponse)
-            assert response.headers["mcp-session-id"] == "session-123"
 
             # Consume the response to trigger callbacks
             chunks = [chunk async for chunk in response.body_iterator]
@@ -360,21 +324,11 @@ class TestMCPObservabilityMiddleware:
             mock_add_task.assert_called()
 
     @pytest.mark.asyncio
-    async def test_dispatch_no_tenant_info(self, middleware, mock_request):
-        mock_call_next = AsyncMock(return_value=Response())
-
-        with patch.object(middleware, "_extract_tenant_info", return_value=None):
-            response = await middleware.dispatch(mock_request, mock_call_next)
-
-            assert isinstance(response, Response)
-            mock_call_next.assert_called_once_with(mock_request)
-
-    @pytest.mark.asyncio
     async def test_dispatch_invalid_request_body(self, middleware, mock_request, mock_tenant):
         mock_request.body = AsyncMock(return_value=b"invalid json")
         mock_call_next = AsyncMock(return_value=Response())
 
-        with patch.object(middleware, "_extract_tenant_info", return_value=mock_tenant):
+        with patch("api.routers.mcp._mcp_observability_middleware._get_tenant_from_context", return_value=mock_tenant):
             response = await middleware.dispatch(mock_request, mock_call_next)
 
             assert isinstance(response, Response)
@@ -386,7 +340,7 @@ class TestMCPObservabilityMiddleware:
         mock_call_next = AsyncMock(side_effect=Exception("Request processing failed"))
 
         with (
-            patch.object(middleware, "_extract_tenant_info", return_value=mock_tenant),
+            patch("api.routers.mcp._mcp_observability_middleware._get_tenant_from_context", return_value=mock_tenant),
             patch.object(middleware, "_get_or_create_session") as mock_get_session,
         ):
             mock_session = Mock()
@@ -402,7 +356,7 @@ class TestMCPObservabilityMiddleware:
         mock_call_next = AsyncMock(return_value=Response(content="regular response"))
 
         with (
-            patch.object(middleware, "_extract_tenant_info", return_value=mock_tenant),
+            patch("api.routers.mcp._mcp_observability_middleware._get_tenant_from_context", return_value=mock_tenant),
             patch.object(middleware, "_get_or_create_session") as mock_get_session,
         ):
             mock_session = Mock()
@@ -412,4 +366,29 @@ class TestMCPObservabilityMiddleware:
             response = await middleware.dispatch(mock_request, mock_call_next)
 
             assert isinstance(response, Response)
-            assert response.headers["mcp-session-id"] == "session-123"
+
+    def test_create_tool_call_completion_handler(self, middleware, mock_tenant):
+        from api.routers.mcp._mcp_observability_session_state import SessionState
+
+        mock_session = SessionState("test-session", mock_tenant)
+
+        handler = middleware._create_tool_call_completion_handler(
+            session_state=mock_session,
+            tenant_info=mock_tenant,
+            tool_name="test_tool",
+            tool_arguments={"arg": "value"},
+            request_id="req-123",
+            start_time=1.0,
+            tool_call_start_time=datetime.now(timezone.utc),
+            user_agent="test-agent",
+        )
+
+        # Test that handler is callable
+        assert callable(handler)
+
+        # Test calling the handler with mock data
+        with (
+            patch.object(mock_session, "register_tool_call"),
+            patch("api.routers.mcp._mcp_observability_middleware.add_background_task"),
+        ):
+            handler(b'{"result": {"content": [{"text": "Tool result"}]}}')
