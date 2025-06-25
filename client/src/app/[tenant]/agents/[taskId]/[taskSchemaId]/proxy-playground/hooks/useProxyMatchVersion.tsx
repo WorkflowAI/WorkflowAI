@@ -30,9 +30,9 @@ export function useProxyMatchVersion(props: Props) {
     const matchingVersions = majorVersions.filter((version) => {
       const candidateProxyMessagesValue = proxyMessagesValue(version.properties.messages || undefined);
       const numberTemperature = advancedSettings.temperature ? Number(advancedSettings.temperature) : undefined;
-      return (
-        version.properties.temperature === numberTemperature && candidateProxyMessagesValue === stringifiedProxyMessages
-      );
+      const isTemperatureValid = typeof numberTemperature === 'number' && !Number.isNaN(numberTemperature);
+      const temperatureMatches = isTemperatureValid ? version.properties.temperature === numberTemperature : true;
+      return temperatureMatches && candidateProxyMessagesValue === stringifiedProxyMessages;
     });
 
     const allMatchedVersions = matchingVersions.sort((a, b) => b.major - a.major);
