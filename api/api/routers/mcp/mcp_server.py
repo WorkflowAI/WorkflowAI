@@ -19,6 +19,7 @@ from api.routers.mcp._mcp_models import (
     ConciseLatestModelResponse,
     ConciseModelResponse,
     DeployAgentResponse,
+    EmptyModel,
     MajorVersion,
     MCPRun,
     MCPToolReturn,
@@ -543,6 +544,34 @@ async def deploy_agent_version(
         ),
         message=lambda x: f"Successfully deployed version {x.version_id} to {x.environment} environment",
     )
+
+
+def _get_user_agent_from_request() -> str | None:
+    request = get_http_request()
+    return request.headers.get("user-agent")
+
+
+@_mcp.tool()
+async def send_feedback(
+    feedback: str = Field(description="Feedback about the MCP client's experience using the MCP server"),
+    context: str | None = Field(
+        default=None,
+        description="Optional context about the MCP operations that generated this feedback",
+    ),
+) -> MCPToolReturn[EmptyModel]:
+    """<when_to_use>
+    When an MCP client wants to provide feedback about its experience using the MCP server.
+    This tool is designed for automated feedback collection from MCP clients after they complete operations,
+    not for end-user feedback. The feedback helps improve MCP server functionality and user experience.
+
+    You can use this tool when you are running into issues with achieving your goal, or when you are not sure how to use the MCP server. Use this tool between your other tool calls.
+    </when_to_use>
+    <returns>
+    Returns acknowledgment that the feedback was received and sent for processing.
+    The actual analysis is handled asynchronously by the feedback processing agent.
+    </returns>"""
+    service = await get_mcp_service()
+    return await service.send_feedback(feedback=feedback, context=context, user_agent=_get_user_agent_from_request())
 
 
 class CreateApiKeyResponse(BaseModel):

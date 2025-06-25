@@ -1,3 +1,4 @@
+import logging
 from collections.abc import Iterator
 from datetime import datetime, timedelta
 from typing import Any, NamedTuple
@@ -11,6 +12,7 @@ from api.routers.mcp._mcp_models import (
     ConciseLatestModelResponse,
     ConciseModelResponse,
     DeployAgentResponse,
+    EmptyModel,
     MajorVersion,
     MCPRun,
     MCPToolReturn,
@@ -37,6 +39,9 @@ from api.services.runs.runs_service import RunsService
 from api.services.runs_search import RunsSearchService
 from api.services.task_deployments import TaskDeploymentsService
 from api.services.versions import VersionsService
+from core.agents.mcp_feedback_processing_agent import (
+    mcp_feedback_processing_agent,
+)
 from core.domain.agent_run import AgentRun
 from core.domain.consts import INPUT_KEY_MESSAGES, WORKFLOWAI_APP_URL
 from core.domain.events import EventRouter
@@ -55,7 +60,11 @@ from core.domain.users import UserIdentifier
 from core.domain.version_environment import VersionEnvironment
 from core.storage import ObjectNotFoundException
 from core.storage.backend_storage import BackendStorage
+from core.utils.background import add_background_task
 from core.utils.schemas import FieldType
+
+_logger = logging.getLogger(__name__)
+
 
 # Claude Code only support 25k tokens, for example.
 # Overall it's a good practice to limit the tool return tokens to avoid overflowing the coding agents context.
@@ -711,12 +720,77 @@ class MCPService:
                 variant=merged_variant,
                 final_input=merged_input,
             )
-
         res = await handler.handle_prepared_run(prepared, request, None, start_time, self.tenant)
         if not isinstance(res, OpenAIProxyChatCompletionResponse):
             # That should never happen since we are not streaming
             raise ValueError("Unexpected response type")
         return res
+
+    async def send_feedback(
+        self,
+        feedback: str,
+        user_agent: str | None,
+        context: str | None = None,
+    ) -> MCPToolReturn[EmptyModel]:
+        """Send MCP client feedback to processing agent and return acknowledgment"""
+
+        # Fire-and-forget: start the agent processing but don't wait for results
+        add_background_task(
+            self._process_feedback(feedback, context, user_agent, self.tenant.slug, self.user_email),
+        )
+
+        return MCPToolReturn(
+            success=True,
+            message="MCP client feedback received and sent for processing",
+            data=None,
+        )
+
+    async def _process_feedback(
+        self,
+        feedback: str,
+        context: str | None,
+        user_agent: str | None,
+        organization_name: str | None,
+        user_email: str | None,
+    ):
+        """Background task to process MCP client feedback with the agent"""
+        try:
+            # Process feedback with an agent, including metadata for tracking
+            response = await mcp_feedback_processing_agent(
+                feedback=feedback,
+                context=context,
+                user_agent=user_agent,
+                organization_name=organization_name,
+                user_email=user_email,
+            )
+            # Log the analysis or store it somewhere if needed
+            # For now, just log that processing completed
+            if response:
+                _logger.info(
+                    "MCP client feedback processed",
+                    extra={
+                        "organization_name": organization_name,
+                        "sentiment": response.sentiment,
+                        "summary": response.summary,
+                        "key_themes": response.key_themes,
+                        "confidence": response.confidence,
+                        "user_agent": user_agent,
+                    },
+                )
+            else:
+                _logger.error(
+                    "MCP client feedback processing agent returned no response",
+                    extra={
+                        "organization_name": organization_name,
+                        "user_email": user_email,
+                        "feedback": feedback,
+                        "context": context,
+                        "user_agent": user_agent,
+                    },
+                )
+
+        except Exception as e:
+            _logger.exception("Error processing MCP client feedback", exc_info=e)
 
 
 def _merge_properties(

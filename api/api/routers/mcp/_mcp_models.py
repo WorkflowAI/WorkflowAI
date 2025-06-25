@@ -176,6 +176,10 @@ NullableT = TypeVar("NullableT", bound=BaseModel | None)
 ItemT = TypeVar("ItemT", bound=BaseModel)
 
 
+class EmptyModel(BaseModel):
+    """Substitute for a model that is not used in the response"""
+
+
 class PaginationInfo(BaseModel):
     """Pagination metadata for paginated responses"""
 
