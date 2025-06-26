@@ -121,7 +121,6 @@ class HTTPXProvider(HTTPXProviderBase[ProviderConfigVar, dict[str, Any]], Generi
                     "raw": raw,
                 },
                 capture=True,
-                store_task_run=True,
             ) from e
 
         # Initialize content_str with the response text so that

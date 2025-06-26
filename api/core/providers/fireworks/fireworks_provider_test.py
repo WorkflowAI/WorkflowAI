@@ -209,7 +209,7 @@ class TestSingleStream:
                 options=ProviderOptions(model=Model.LLAMA_3_3_70B, max_tokens=10, temperature=0),
             )
             [o async for o in raw_chunks]
-        assert e.value.store_task_run is False
+        assert e.value.store_task_run
 
     async def test_context_length_exceeded(self, httpx_mock: HTTPXMock, fireworks_provider: FireworksAIProvider):
         """Test the full loop when streaming that we raise an error on context_length_exceeded"""
@@ -229,7 +229,7 @@ class TestSingleStream:
                 options=ProviderOptions(model=Model.LLAMA_3_3_70B, max_tokens=10, temperature=0),
             )
             [o async for o in raw_chunks]
-        assert e.value.store_task_run is False
+        assert e.value.store_task_run
 
 
 class TestStream:
@@ -1096,7 +1096,7 @@ class TestUnknownError:
         )
         assert isinstance(e, MaxTokensExceededError)
         assert e.capture is False
-        assert not e.store_task_run
+        assert e.store_task_run
 
 
 class TestExtractAndLogRateLimits:

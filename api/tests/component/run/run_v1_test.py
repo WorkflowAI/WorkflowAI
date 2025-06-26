@@ -30,7 +30,6 @@ from tests.component.common import (
     LEGACY_TEST_JWT,
     IntegrationTestClient,
     create_task,
-    create_task_without_required_fields,
     create_version,
     extract_stream_chunks,
     fetch_run,
@@ -534,28 +533,26 @@ class TestChainOfThought:
         }
 
 
-async def test_run_with_500_error(httpx_mock: HTTPXMock, int_api_client: AsyncClient, patched_broker: InMemoryBroker):
-    await create_task_without_required_fields(int_api_client, patched_broker, httpx_mock)
+async def test_run_with_500_error(test_client: IntegrationTestClient):
+    task = await test_client.create_task()
 
     # Add an evaluator to the task
-    mock_openai_call(httpx_mock, status_code=500)
-    mock_openai_call(httpx_mock, status_code=500, provider="azure_openai")
+    test_client.mock_openai_call(status_code=500)
+    test_client.mock_openai_call(status_code=500, provider="azure_openai")
 
     # Run the task the first time
     with pytest.raises(HTTPStatusError) as e:
-        await run_task_v1(
-            int_api_client,
-            task_id="greet",
-            task_schema_id=1,
+        await test_client.run_task_v1(
+            task=task,
             task_input={"name": "John", "age": 30},
             model="gpt-4o-2024-11-20",
         )
     assert e.value.response.status_code == 424
 
-    await wait_for_completed_tasks(patched_broker)
+    await test_client.wait_for_completed_tasks()
 
-    events = await get_amplitude_events(httpx_mock)
-    assert len(events) == 1
+    events = await get_amplitude_events(test_client.httpx_mock)
+    assert len(events) == 1, "did not get amplitude event"
     assert events[0]["event_properties"]["error_code"] == "provider_internal_error"
 
 

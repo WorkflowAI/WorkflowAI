@@ -269,7 +269,6 @@ class AgentRunFailedError(ProviderError):
         return cls(
             agent_run_error_code=(agent_run_result.error and agent_run_result.error.error_code) or "",
             agent_run_error_message=(agent_run_result.error and agent_run_result.error.error_message) or "",
-            store_task_run=True,
             partial_output=partial_output,
         )
 

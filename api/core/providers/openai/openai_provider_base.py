@@ -292,7 +292,7 @@ class OpenAIProviderBase(HTTPXProvider[_OpenAIConfigVar, CompletionResponse], Ge
                     # In this case we do not want to store the task run because it is a request error that
                     # does not incur cost
                     # We still bin with max tokens exceeded since it is related
-                    return MaxTokensExceededError(msg=payload.error.message, response=response, store_task_run=False)
+                    return MaxTokensExceededError(msg=payload.error.message, response=response)
                 case "invalid_prompt":
                     if "violating our usage policy" in payload.error.message:
                         return ContentModerationError(msg=payload.error.message, response=response)
