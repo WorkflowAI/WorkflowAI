@@ -1,5 +1,5 @@
 ---
-title: Fondations
+title: Foundations
 summary: This documentation is returned at least once per session when `search_documentation` is called.
 ---
 
@@ -46,12 +46,12 @@ Deployments allow to update an agent's prompt or model without changing the code
 Building a AI agent is the process of picking the right value for each parameter of the `/v1/chat/completions` API. Let's go through each parameter one by one.
 
 ```python
-completion = client.create.completion( or # client.beta.chat.completions.parse for structured outputs
+completion = client.chat.completions.create(  # or client.beta.chat.completions.parse for structured outputs
     model="..",
     messages=[...],
     metadata={"agent_id": "...", "key": "value"},
     extra_body={
-        input: {
+        "input": {
             "variable_name": "variable_value"
         },
     },
@@ -109,7 +109,7 @@ Learn more about metadata by reading the [Metadata](/observability/metadata) sec
 `input`: (required when using [input variables](/observability/input-variables)) provides variables to the LLM.
 
 ```python
-completion = client.create.completion(
+completion = client.chat.completions.create(
     messages=[{"role": "user", "content": "Analyze this email: {{email_content}}"}],
     extra_body={ # input must be wrapped in extra_body because the OpenAI SDK doesn't recognize 'input' as a valid parameter. extra_body passes custom fields directly to the request body.
         "input": {
@@ -147,7 +147,7 @@ Learn more about structured outputs in the [Structured Outputs](/inference/struc
 WorkflowAI returns the same response format as the OpenAI API, ensuring full compatibility with existing code while adding additional fields for enhanced functionality.
 
 ```python
-completion = client.create.completion(...)
+completion = client.chat.completions.create(...)
 content = completion.choices[0].message.content
 
 # for structured outputs
