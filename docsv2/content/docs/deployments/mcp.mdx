@@ -1,0 +1,18 @@
+---
+title: How to use deployments from a MCP client
+summary: Explain the process of using deployments (that allow to update prompts without changing code) from the context of a MCP client
+---
+
+Some important notes about deployments:
+- Deployments are agent specific, so the context of the agent needs to be known or clarified with the user. In the context of this page, we will use `agent_id` to refer to the agent that the deployment is for.
+- Deploying a version to a environment must be done by the user from the web app (not from the MCP client).
+
+If the user asks:
+"How to update prompts without changing my code?"
+"Update the code to use the (prod, dev, staging) environment"
+
+You need to:
+- fetch the existing deployments for `agent_id` (TODO: add the MCP tool)
+- if not deployments are found, you suggest to the user to create a new deployment via the web app using the url `https://workflowai.com/agents/<agent_id>/deployments`
+- if deployments are found, you need to confirm with the user which deployment they want to use (prod, dev, staging), and if there are multiple schemas, you need to confirm with the user which schema they want to use.
+- then use the tool `get_agent_code` to get the template code that needs to be updated to use the selected deployment, and update the code.
