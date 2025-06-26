@@ -1,5 +1,5 @@
 from datetime import date
-from typing import Any, Literal, TypeAlias
+from typing import Any, Literal, TypeAlias, cast
 
 from pydantic import BaseModel, Field
 
@@ -160,6 +160,54 @@ class ModelFallback(BaseModel):
         )
 
 
+class ModelReasoningBudget(BaseModel):
+    """
+    A reasoning effort to reasoning budget mapping
+    If the reasoning budget in the final model data is None, it means that the corresponding reasoning
+    effort is not supported.
+    For example, reasoning openai models do not support "none" reasoning effort or grok reasoning does not support
+    "medium" reasoning effort.
+
+    If a non supported reasoning effort is requested, the provider makes the decision to throw or fallback.
+    - If a reasoning effort is provided in the version but the provider requires a reasoning budget, the corresponding
+    value is used
+    - if a reasoning budget is provided but the provider requires a reasoning effort, the highest supported
+    reasoning effort that has a budget lower or equal to the provided budget is used. For example,
+    if low = 100 and medium = 200 and the provided budget is 150, the "low" reasoning effort is used.
+
+    For example, if the model data has a "low" reasoning budget, but the provider requires a reasoning effort,
+    the "low" reasoning effort is used.
+
+    If the model data has a "medium" reasoning budget, but the provider requires a reasoning effort, the "medium"
+    reasoning effort is used.
+    """
+
+    # There is some magic happening at build time here to fill missing unset values
+    # explicitly if needed.
+    none: Literal[0] | None = Field(
+        description="If 0, the model supports reasoning effort 'none'",
+        default=None,
+    )
+    # Defaults are not validated so we can set to -1 to indicate that the reasoning effort is unset before build time
+    low: int | None = Field(gt=0, default=-1)  # Default: 20% of the max tokens
+    medium: int | None = Field(gt=0, default=-1)  # Default: 50% of the max tokens
+    high: int | None = Field(gt=0, default=-1)  # Default: 80% of the max tokens
+
+    def corresponding_effort(self, budget: int) -> Literal["none", "low", "medium", "high"] | None:
+        current_effort: Literal["none", "low", "medium", "high"] | None = None
+        for field in self.model_fields_set:
+            value = getattr(self, field, None)
+            if value is None:
+                continue
+            if value > budget:
+                return current_effort
+            current_effort = cast(Literal["none", "low", "medium", "high"], field)
+        return None
+
+    def corresponding_budget(self, effort: Literal["none", "low", "medium", "high"]) -> int | None:
+        return getattr(self, effort, None)
+
+
 class ModelData(ModelDataSupports):
     display_name: str = Field(description="The display name of the model, that will be used in the UIs, etc.")
     icon_url: str = Field(description="The icon url of the model")
@@ -186,9 +234,10 @@ class ModelData(ModelDataSupports):
         description="The name of the provider for the model",
     )
 
-    # TODO: most thinking models don't use that value yet
-    # Use none for models to deactivate reasoning on thinking models
-    reasoning_level: Literal["none", "low", "medium", "high"] | None = None
+    reasoning: ModelReasoningBudget | None = Field(
+        description="Reasoning configuration for the model. None if the model does not support reasoning.",
+        default=None,
+    )
 
     aliases: list[str] | None = None
     fallback: ModelFallback | None = Field(
@@ -278,6 +327,9 @@ class LatestModel(BaseModel):
 class DeprecatedModel(BaseModel):
     replacement_model: Model
     aliases: list[str] | None = None
+    # We used to have different model ids per reasoning levels
+    # That's no longer the case but we need to allow converting an old model id to the corresponding reasoning level
+    reasoning_level: Literal["none", "low", "medium", "high"] | None = None
 
 
 ModelDataMapping: TypeAlias = dict[Model, FinalModelData | LatestModel | DeprecatedModel]

@@ -155,12 +155,15 @@ class GoogleProviderBase(HTTPXProvider[_GoogleConfigVar, CompletionResponse], Ge
 
         # See https://ai.google.dev/gemini-api/docs/thinking
         # Thinking is enabled by default on thinking models so we just need to "turn off" thinking
+
+        budget = options.final_reasoning_budget(model_data.reasoning)
+
         thinking_config = (
-            CompletionRequest.GenerationConfig.ThinkingConfig(
-                thinkingBudget=0,
+            None
+            if budget is None
+            else CompletionRequest.GenerationConfig.ThinkingConfig(
+                thinkingBudget=budget,
             )
-            if model_data.reasoning_level == "none"
-            else None
         )
 
         generation_config = CompletionRequest.GenerationConfig(

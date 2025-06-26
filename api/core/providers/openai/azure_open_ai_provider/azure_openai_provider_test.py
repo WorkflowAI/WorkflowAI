@@ -172,7 +172,7 @@ class TestBuildRequest:
             azure_openai_provider._build_request(  # pyright: ignore [reportPrivateUsage]
                 messages=[MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello")],
                 options=ProviderOptions(
-                    model=Model.O1_2024_12_17_MEDIUM_REASONING_EFFORT,
+                    model=Model.O3_2025_04_16,
                     max_tokens=10,
                     temperature=0,
                 ),

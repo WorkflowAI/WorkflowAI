@@ -124,6 +124,10 @@ class TaskGroupProperties(BaseModel):
 
     messages: list[Message] | None = None
 
+    reasoning_effort: Literal["none", "low", "medium", "high"] | None = None
+
+    reasoning_budget: int | None = None
+
     def model_hash(self) -> str:
         # Excluding fields are compiled from other fields
         return compute_model_hash(self, exclude_none=True, exclude={"has_templated_instructions"})

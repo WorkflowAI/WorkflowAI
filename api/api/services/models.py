@@ -58,9 +58,10 @@ _logger = logging.getLogger(__name__)
 
 
 class ModelsService:
+    # TODO: dynamically exclude reasoning models
     _REASONING_MODELS_CORRECTION = {
         Model.O1_2024_12_17_LOW_REASONING_EFFORT: 0.9,
-        Model.O1_2024_12_17_MEDIUM_REASONING_EFFORT: 1.0,
+        Model.O1_2024_12_17: 1.0,
         Model.O1_2024_12_17_HIGH_REASONING_EFFORT: 1.1,
         Model.O3_MINI_2025_01_31_HIGH_REASONING_EFFORT: 1.1,
         Model.O3_MINI_2025_01_31_MEDIUM_REASONING_EFFORT: 1.0,

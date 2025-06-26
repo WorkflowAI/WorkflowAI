@@ -167,7 +167,7 @@ class TestBuildRequest:
             openai_provider._build_request(  # pyright: ignore [reportPrivateUsage]
                 messages=[MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello")],
                 options=ProviderOptions(
-                    model=Model.O1_2024_12_17_MEDIUM_REASONING_EFFORT,
+                    model=Model.O3_2025_04_16,
                     max_tokens=10,
                     temperature=0,
                 ),
@@ -315,7 +315,7 @@ class TestSingleStream:
             partial_output_factory=lambda x: StructuredOutput(x),
             raw_completion=raw,
             options=ProviderOptions(
-                model=Model.GPT_40_AUDIO_PREVIEW_2024_10_01,
+                model=Model.GPT_41_2025_04_14,
                 max_tokens=10,
                 temperature=0,
                 output_schema={},
@@ -344,7 +344,7 @@ class TestSingleStream:
                 output_factory=lambda x, _: StructuredOutput(json.loads(x)),
                 partial_output_factory=lambda x: StructuredOutput(x),
                 raw_completion=raw,
-                options=ProviderOptions(model=Model.GPT_40_AUDIO_PREVIEW_2024_10_01, max_tokens=10, temperature=0),
+                options=ProviderOptions(model=Model.GPT_41_2025_04_14, max_tokens=10, temperature=0),
             )
             [o async for o in raw_chunks]
         assert e.value.store_task_run is True
@@ -364,7 +364,7 @@ class TestSingleStream:
                 output_factory=lambda x, _: StructuredOutput(json.loads(x)),
                 partial_output_factory=lambda x: StructuredOutput(x),
                 raw_completion=raw,
-                options=ProviderOptions(model=Model.GPT_40_AUDIO_PREVIEW_2024_10_01, max_tokens=10, temperature=0),
+                options=ProviderOptions(model=Model.GPT_41_2025_04_14, max_tokens=10, temperature=0),
             )
             [o async for o in raw_chunks]
         assert e.value.store_task_run is True

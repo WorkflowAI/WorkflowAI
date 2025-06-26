@@ -251,7 +251,7 @@ class TestSingleStream:
             partial_output_factory=lambda x: StructuredOutput(x),
             raw_completion=raw,
             options=ProviderOptions(
-                model=Model.GPT_40_AUDIO_PREVIEW_2024_10_01,
+                model=Model.GROK_3_MINI_BETA,
                 max_tokens=10,
                 temperature=0,
                 output_schema={},
@@ -265,47 +265,6 @@ class TestSingleStream:
         assert parsed_chunks[1][0] == {"answer": "Oh it has 30 words!"}
 
         assert len(httpx_mock.get_requests()) == 1
-
-    @pytest.mark.skip(reason="Not sure about max message length for now")
-    async def test_max_message_length(self, httpx_mock: HTTPXMock, xai_provider: XAIProvider):
-        httpx_mock.add_response(
-            url="https://api.x.ai/v1/chat/completions",
-            status_code=400,
-            json={"error": {"code": "string_above_max_length", "message": "The string is too long"}},
-        )
-        raw = RawCompletion(usage=LLMUsage(), response="")
-
-        with pytest.raises(MaxTokensExceededError) as e:
-            raw_chunks = xai_provider._single_stream(  # pyright: ignore [reportPrivateUsage]
-                request={"messages": [{"role": "user", "content": "Hello"}]},
-                output_factory=lambda x, _: StructuredOutput(json.loads(x)),
-                partial_output_factory=lambda x: StructuredOutput(x),
-                raw_completion=raw,
-                options=ProviderOptions(model=Model.GPT_40_AUDIO_PREVIEW_2024_10_01, max_tokens=10, temperature=0),
-            )
-            [o async for o in raw_chunks]
-        assert e.value.store_task_run is False
-
-    @pytest.mark.skip(reason="Not sure about invalid json schema for now")
-    async def test_invalid_json_schema(self, httpx_mock: HTTPXMock, xai_provider: XAIProvider):
-        httpx_mock.add_response(
-            url="https://api.x.ai/v1/chat/completions",
-            status_code=400,
-            json=fixtures_json("xai", "invalid_json_schema.json"),
-        )
-
-        raw = RawCompletion(usage=LLMUsage(), response="")
-
-        with pytest.raises(StructuredGenerationError) as e:
-            raw_chunks = xai_provider._single_stream(  # pyright: ignore [reportPrivateUsage]
-                request={"messages": [{"role": "user", "content": "Hello"}]},
-                output_factory=lambda x, _: StructuredOutput(json.loads(x)),
-                partial_output_factory=lambda x: StructuredOutput(x),
-                raw_completion=raw,
-                options=ProviderOptions(model=Model.GPT_40_AUDIO_PREVIEW_2024_10_01, max_tokens=10, temperature=0),
-            )
-            [o async for o in raw_chunks]
-        assert e.value.store_task_run is False
 
     async def test_stream_reasoning(self, httpx_mock: HTTPXMock, xai_provider: XAIProvider):
         httpx_mock.add_response(

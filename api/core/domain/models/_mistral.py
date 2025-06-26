@@ -7,6 +7,7 @@ from core.domain.models.model_data import (
     MaxTokensData,
     ModelData,
     ModelFallback,
+    ModelReasoningBudget,
     QualityData,
 )
 from core.domain.models.models import Model
@@ -270,7 +271,8 @@ def mistral_models() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             ),
             provider_name=DisplayedProvider.MISTRAL_AI.value,
             supports_tool_calling=True,
-            reasoning_level="medium",  # This is a thinking model
+            # Magistral does not support configuring a reasoning budget or effort
+            reasoning=ModelReasoningBudget(none=None, low=None, medium=None, high=None),
             fallback=ModelFallback.default("cheap"),
         ),
         Model.MAGISTRAL_MEDIUM_2506: ModelData(
@@ -291,7 +293,8 @@ def mistral_models() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             ),
             provider_name=DisplayedProvider.MISTRAL_AI.value,
             supports_tool_calling=True,
-            reasoning_level="high",  # This is a thinking model
+            # Magistral does not support configuring a reasoning budget or effort
+            reasoning=ModelReasoningBudget(none=None, low=None, medium=None, high=None),
             fallback=ModelFallback.default("medium"),
         ),
     }

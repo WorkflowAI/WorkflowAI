@@ -35,7 +35,7 @@ from core.providers.google.google_provider_domain import (
 )
 from core.providers.openai._openai_utils import prepare_openai_json_schema
 from core.providers.openai.openai_domain import parse_tool_call_or_raise
-from core.providers.xai.xai_config import THINKING_MODEL_MAP, XAIConfig
+from core.providers.xai.xai_config import XAIConfig
 from core.providers.xai.xai_domain import (
     CompletionRequest,
     CompletionResponse,
@@ -81,17 +81,15 @@ class XAIProvider(HTTPXProvider[XAIConfig, CompletionResponse]):
 
         model_data = get_model_data(options.model)
 
-        model_value, reasoning_effort = THINKING_MODEL_MAP.get(options.model, (options.model.value, None))
-
         completion_request = CompletionRequest(
             messages=message,
-            model=model_value,
+            model=options.model,
             temperature=options.temperature,
             max_tokens=options.max_tokens,
             stream=stream,
             stream_options=StreamOptions(include_usage=True) if stream else None,
             response_format=self._response_format(options, model_data),
-            reasoning_effort=reasoning_effort,
+            reasoning_effort=options.final_reasoning_effort(model_data.reasoning),
             tool_choice=CompletionRequest.tool_choice_from_domain(options.tool_choice),
             top_p=options.top_p,
             presence_penalty=options.presence_penalty,
