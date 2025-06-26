@@ -20,6 +20,7 @@ class SearchDocumentationOutput(BaseModel):
 async def search_documentation_agent(
     query: str,
     available_doc_sections: list[DocumentationSection],
+    usage_context: str = "The user is trying to find relevant documentation about WorkflowAI.",
 ) -> SearchDocumentationOutput | None:
     client = AsyncOpenAI(
         api_key=os.environ["WORKFLOWAI_API_KEY"],
@@ -34,18 +35,19 @@ async def search_documentation_agent(
     messages: list[ChatCompletionMessageParam] = [
         {
             "role": "system",
-            "content": """You are an expert documentation search agent specifically designed for MCP (Model Context Protocol) clients such as Cursor IDE and other code editors.
+            "content": """You are an expert documentation search agent specifically designed for picking the most relevant documentation sections based on usage context.
 
-Your primary purpose is to help developers find the most relevant WorkflowAI documentation sections to answer their specific queries about building, deploying, and using AI agents.
-
+## Context
+The usage context is:
+{{usage_context}}
 
 ## Your Task
 Given a search query and all available documentation sections, you must:
-1. Analyze the query to understand the developer's intent and needs
-2. Select the most relevant documentation sections that will help answer their question
-3. Prioritize sections that directly address the query over tangentially related content
+1. Analyze the query to understand the user's intent and needs
+2. Select the most relevant documentation sections that will help answer the 'Search Query' below
+3. Prioritize sections that directly address the 'Search Query' below over tangentially related content
 4. Avoid selecting unnecessary sections to minimize cost and processing time
-5. Return the picked docuementationt section titl(s) in a 'relevant_doc_sections' list. You MUST ONLY return section titles that exist in the available 'Available Documentation Sections' sections.
+5. Return the picked docuementationt section title(s) in a 'relevant_doc_sections' list. You MUST ONLY return section titles that exist in the available 'Available Documentation Sections' sections.
 
 ## Available Documentation Sections:
 {{formatted_docs}}""",
@@ -64,6 +66,7 @@ Given a search query and all available documentation sections, you must:
             "input": {
                 "query": query,
                 "formatted_docs": formatted_docs,
+                "usage_context": usage_context,
             },
             "provider": "google_gemini",  # use Google Gemini to have implicit caching (https://ai.google.dev/gemini-api/docs/caching?lang=node&hl=fr#implicit-caching)
         },
