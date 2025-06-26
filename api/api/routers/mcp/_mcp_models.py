@@ -11,8 +11,10 @@ from api.services.models import ModelForTask
 from core.domain.agent_run import AgentRun
 from core.domain.error_response import ErrorResponse
 from core.domain.message import Message
-from core.domain.models.model_data import FinalModelData
+from core.domain.models.model_data import FinalModelData, ModelData
 from core.domain.models.model_data_supports import ModelDataSupports
+from core.domain.models.models import Model
+from core.domain.models.utils import get_model_data
 from core.domain.task import SerializableTask
 from core.domain.task_group import TaskGroup
 from core.domain.task_group_properties import TaskGroupProperties
@@ -44,10 +46,30 @@ class ConciseLatestModelResponse(BaseModel):
     currently_points_to: str
 
 
+class ConciseModelSupports(BaseModel):
+    input_image: bool
+    input_pdf: bool
+    input_audio: bool
+    audio_only: bool
+    tool_calling: bool
+    reasoning: bool
+
+    @classmethod
+    def from_domain(cls, model_data: ModelData):
+        return cls(
+            input_image=model_data.supports_input_image,
+            input_pdf=model_data.supports_input_pdf,
+            input_audio=model_data.supports_input_audio,
+            audio_only=model_data.supports_audio_only,
+            tool_calling=model_data.supports_tool_calling,
+            reasoning=model_data.reasoning is not None,
+        )
+
+
 class ConciseModelResponse(BaseModel):
     id: str
     display_name: str
-    supports: list[str]
+    supports: ConciseModelSupports
     quality_index: int
     cost_per_input_token_usd: float
     cost_per_output_token_usd: float
@@ -55,23 +77,11 @@ class ConciseModelResponse(BaseModel):
 
     @classmethod
     def from_model_data(cls, id: str, model: FinalModelData):
-        SUPPORTS_WHITELIST = {
-            "supports_input_image",
-            "supports_input_pdf",
-            "supports_input_audio",
-            "supports_audio_only",
-            "supports_tool_calling",
-        }
-
         provider_data = model.providers[0][1]
         return cls(
             id=id,
             display_name=model.display_name,
-            supports=[
-                k.removeprefix("supports_")
-                for k, v in model.model_dump().items()
-                if v is True and k in SUPPORTS_WHITELIST
-            ],
+            supports=ConciseModelSupports.from_domain(model),
             quality_index=model.quality_index,
             cost_per_input_token_usd=provider_data.text_price.prompt_cost_per_token,
             cost_per_output_token_usd=provider_data.text_price.completion_cost_per_token,
@@ -83,7 +93,8 @@ class ConciseModelResponse(BaseModel):
         return cls(
             id=model.id,
             display_name=model.name,
-            supports=model.modes,
+            # TODO:Not great to call get_model_data here. ModelForTask should just use ModelData
+            supports=ConciseModelSupports.from_domain(get_model_data(Model(model.id))),
             quality_index=model.quality_index,
             cost_per_input_token_usd=model.price_per_input_token_usd,
             cost_per_output_token_usd=model.price_per_output_token_usd,
