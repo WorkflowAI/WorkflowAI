@@ -18,7 +18,6 @@ from api.routers.mcp._mcp_models import (
     AgentSortField,
     ConciseLatestModelResponse,
     ConciseModelResponse,
-    DeployAgentResponse,
     EmptyModel,
     MajorVersion,
     MCPRun,
@@ -37,7 +36,6 @@ from api.routers.openai_proxy._openai_proxy_models import (
 from api.services.documentation_service import DocumentationService
 from api.services.tools_service import ToolsService
 from core.domain.tool import Tool
-from core.domain.users import UserIdentifier
 from core.storage.backend_storage import BackendStorage
 from core.utils.schema_formatter import format_schema_as_yaml_description
 
@@ -486,7 +484,7 @@ async def search_runs(
 
 
 @_mcp.tool()
-async def deploy_agent_version(
+async def get_deployment_confirmation_url(
     agent_id: Annotated[
         str,
         Field(
@@ -503,43 +501,20 @@ async def deploy_agent_version(
         Literal["dev", "staging", "production"],
         Field(description="The deployment environment. Must be one of: 'dev', 'staging', or 'production'"),
     ],
-) -> MCPToolReturn[DeployAgentResponse]:
+) -> MCPToolReturn[EmptyModel]:
     """<when_to_use>
-    To deploy a specific version of a WorkflowAI agent to an environment (dev, staging, or production).
+    When the user wants to deploy a specific version of a WorkflowAI agent to an environment (dev, staging, or production). For example: "Deploy the version 1.0 of my chat-bot agent to the production environment".
 
-    The version ID can be obtained by:
-    1. Requesting the desired version to deploy
-    2. Using the get_agent_versions tool to list available versions
-    3. Checking the response payload from a chat completion endpoint which contains version_id metadata
+    Note that the deployment is done by the user from the web app, not from the MCP client.
     </when_to_use>
-
     <returns>
-    Returns deployment confirmation with:
-    - version_id: The deployed version ID
-    - task_schema_id: The schema ID of the deployed version
-    - environment: The deployment environment
-    - deployed_at: The deployment timestamp
-    - message: Success message
-    - migration_guide: Detailed instructions on how to update your code to use the deployed version, including:
-      - model_parameter: The exact model parameter to use in your code
-      - migration_instructions: Step-by-step examples for both scenarios (with and without input variables)
-      - important_notes: Key considerations for the migration
+    Returns a link to the deployment page in WorkflowAI web app where the user needs to confirm the deployment. Once the user has confirmed the deployment, you can use the `get_agent_code` tool to get the code of the deployed version and make any changes to the code.
     </returns>"""
-    service = await get_mcp_service()
-    task_tuple = await get_task_tuple_from_task_id(service.storage, agent_id)
-
-    # Get user identifier for deployment tracking
-    # Since we already validated the token in get_mcp_service, we can create a basic user identifier
-    user_identifier = UserIdentifier(user_id=None, user_email=None)  # System user for MCP deployments
-
-    return await mcp_wrap(
-        service.deploy_agent_version(
-            task_tuple=task_tuple,
-            version_id=version_id,
-            environment=environment,
-            deployed_by=user_identifier,
-        ),
-        message=lambda x: f"Successfully deployed version {x.version_id} to {x.environment} environment",
+    # TODO: update to allow deep-link to a specific `version_id` with a specific `environment`
+    return MCPToolReturn(
+        success=True,
+        message=f"https://workflowai.com/agents/{agent_id}/deployments",
+        data=EmptyModel(),
     )
 
 

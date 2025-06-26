@@ -712,13 +712,3 @@ class SearchResponse(BaseModel):
         default=None,
         description="Query results, only present when a query is provided",
     )
-
-
-class DeployAgentResponse(BaseModel):
-    version_id: str
-    agent_schema_id: int
-    environment: VersionEnvironment
-    deployed_at: str
-
-    # TODO: switch to a proper model
-    migration_guide: dict[str, Any]
