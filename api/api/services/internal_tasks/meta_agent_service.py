@@ -1858,7 +1858,7 @@ Please double check:
                     yield [
                         MetaAgentChatMessage(
                             role="ASSISTANT",
-                            content="I can't find any deployment for your agent. Please double check https://docs.workflowai.com/features/deployments for more information.",
+                            content="I can't find any deployment for your agent. Please double check https://docs.workflowai.com/deployments for more information.",
                             sent_at=now,
                             kind="setup_deployment_assistant_proposal",
                         ),
