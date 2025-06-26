@@ -264,6 +264,10 @@ class DocumentationService:
             result = await search_documentation_agent(
                 query=query,
                 available_doc_sections=all_doc_sections,
+                usage_context="""The query is been made by an MCP (Model Context Protocol) client such as Cursor IDE and other code editors.
+
+Your primary purpose is to help developers find the most relevant WorkflowAI documentation sections to answer their specific queries about building, deploying, and using AI agents.
+""",
             )
 
             relevant_doc_sections: list[str] = (
