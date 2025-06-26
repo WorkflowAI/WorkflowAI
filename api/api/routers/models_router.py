@@ -6,7 +6,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
 from core.domain.models import Model as ModelID
-from core.domain.models.model_data import FinalModelData, LatestModel, MaxTokensData
+from core.domain.models.model_data import FinalModelData, LatestModel, MaxTokensData, ModelReasoningBudget
 from core.domain.models.model_data_mapping import MODEL_DATAS
 from core.domain.models.model_data_supports import ModelDataSupports
 from core.domain.models.model_provider_data import ModelProviderData
@@ -117,6 +117,15 @@ class ModelReasoning(BaseModel):
         description="The maximum number of tokens that can be used for reasoning at high effort for the model.",
     )
 
+    @classmethod
+    def from_domain(cls, model: ModelReasoningBudget) -> Self:
+        return cls(
+            can_be_disabled=model.none is not None,
+            low_effort_reasoning_budget=model.low or 0,
+            medium_effort_reasoning_budget=model.medium or 0,
+            high_effort_reasoning_budget=model.high or 0,
+        )
+
 
 class ModelContextWindow(BaseModel):
     """Context window and output token limits for the model."""
@@ -189,7 +198,7 @@ class Model(BaseModel):
             supports=ModelSupports.from_domain(model),
             pricing=ModelPricing.from_domain(provider_data),
             release_date=model.release_date,
-            reasoning=None,
+            reasoning=ModelReasoning.from_domain(model.reasoning) if model.reasoning is not None else None,
             context_window=ModelContextWindow.from_domain(model.max_tokens_data),
         )
 
