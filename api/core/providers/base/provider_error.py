@@ -227,7 +227,6 @@ class ProviderRateLimitError(ProviderError):
     default_status_code = 429
     default_message = "Rate limit exceeded"
     default_capture = False
-    default_store_task_run = False
     should_try_next_provider = True
 
 
@@ -236,7 +235,6 @@ class ProviderTimeoutError(ProviderError):
     default_status_code = 408
     default_message = "Provider request timed out"
     default_capture = True  # Monitor to increase request timeout if needed
-    default_store_task_run = False
     should_try_next_provider = True
 
 
@@ -281,7 +279,7 @@ class ServerOverloadedError(ProviderError):
     default_status_code = 424  # 424: Failed Dependency
     default_message = "Provider server is over capacity"
     default_capture = False
-    default_store_task_run = False
+
     should_try_next_provider = True
 
 
@@ -290,7 +288,7 @@ class ProviderUnavailableError(ProviderError):
     default_status_code = 424  # 424: Failed Dependency
     default_message = "Provider is unavailable"
     default_capture = False
-    default_store_task_run = False
+
     should_try_next_provider = True
 
 
@@ -299,7 +297,7 @@ class ProviderInternalError(ProviderError):
     default_message = "Provider returned an internal error"
     default_status_code = 424  # 424: Failed Dependency
     default_capture = False
-    default_store_task_run = False
+
     should_try_next_provider = True
 
 
@@ -350,7 +348,6 @@ class TaskBannedError(ProviderError):
     default_status_code = 400
     default_message = "Task banned, please contact support WorkflowAI (contact@workflowai.com) for more details"
     default_capture = True
-    default_store_task_run = False
 
 
 class StructuredGenerationError(ProviderError):
@@ -358,7 +355,6 @@ class StructuredGenerationError(ProviderError):
     default_status_code = 400
     default_message = "Structured generation error"
     default_capture = True
-    default_store_task_run = False
 
 
 class ProviderBadRequestError(ProviderError):
@@ -366,7 +362,6 @@ class ProviderBadRequestError(ProviderError):
     default_status_code = 400
     default_message = "Bad request"
     default_capture = False
-    default_store_task_run = False
 
     @override
     def default_fingerprint(self):
