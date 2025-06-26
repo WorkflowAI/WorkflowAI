@@ -34,8 +34,8 @@ TODO:
       metadata={"agent_id": "sentiment-analysis-agent"}
   )
 
-  cost = completion.model_extra.get('cost_usd')
-  latency = completion.model_extra.get("duration_seconds")
+  cost = getattr(completion.choices[0], 'cost_usd')
+  latency = getattr(completion.choices[0], 'duration_seconds')
   print(f"Latency (s): {latency:.2f}")
   print(f"Cost   ($): ${cost:.6f}")
   ```
@@ -59,3 +59,5 @@ TODO:
 <Callout type="info">
   You can also track costs in the [Playground](/playground) and the [Monitor](/observability) sections.
 </Callout>
+
+TODO: add a section on how to track costs via the API and MCP.
