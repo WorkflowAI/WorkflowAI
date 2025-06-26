@@ -449,3 +449,201 @@ class TestGetAllSectionsLocal:
     async def test_not_empty(self, documentation_service: DocumentationService):
         sections = documentation_service._get_all_doc_sections_local()
         assert len(sections) > 0
+
+
+# Tests for search_documentation_by_query functionality
+
+
+@patch("api.services.documentation_service.search_documentation_agent", new_callable=AsyncMock)
+@patch.object(DocumentationService, "get_all_doc_sections")
+async def test_search_documentation_by_query_success(
+    mock_get_all_sections: MagicMock,
+    mock_search_agent: AsyncMock,
+    documentation_service: DocumentationService,
+):
+    """Tests successful search with relevant sections returned."""
+    all_sections = [
+        DocumentationSection(title="getting-started/index", content="Getting started content"),
+        DocumentationSection(title="reference/api", content="API reference content"),
+        DocumentationSection(title="guides/authentication", content="Authentication guide"),
+    ]
+    mock_get_all_sections.return_value = all_sections
+
+    # Mock the search agent response
+    class MockSearchResult(NamedTuple):
+        relevant_doc_sections: list[str]
+
+    mock_search_agent.return_value = MockSearchResult(relevant_doc_sections=["reference/api", "guides/authentication"])
+
+    query = "How to authenticate with the API?"
+    result = await documentation_service.search_documentation_by_query(query)
+
+    # Should return only the relevant sections
+    expected_sections = [
+        DocumentationSection(title="reference/api", content="API reference content"),
+        DocumentationSection(title="guides/authentication", content="Authentication guide"),
+    ]
+
+    # Convert to sets of tuples for order-independent comparison
+    actual_section_tuples = {(s.title, s.content) for s in result}
+    expected_section_tuples = {(s.title, s.content) for s in expected_sections}
+
+    assert actual_section_tuples == expected_section_tuples
+    mock_get_all_sections.assert_called_once_with("local")
+    mock_search_agent.assert_called_once_with(
+        query=query,
+        available_doc_sections=all_sections,
+    )
+
+
+@patch("api.services.documentation_service.search_documentation_agent", new_callable=AsyncMock)
+@patch.object(DocumentationService, "get_all_doc_sections")
+async def test_search_documentation_by_query_empty_results(
+    mock_get_all_sections: MagicMock,
+    mock_search_agent: AsyncMock,
+    documentation_service: DocumentationService,
+):
+    """Tests search when no relevant sections are found."""
+    all_sections = [
+        DocumentationSection(title="getting-started/index", content="Getting started content"),
+        DocumentationSection(title="reference/api", content="API reference content"),
+    ]
+    mock_get_all_sections.return_value = all_sections
+
+    # Mock the search agent to return empty results
+    class MockSearchResult(NamedTuple):
+        relevant_doc_sections: list[str]
+
+    mock_search_agent.return_value = MockSearchResult(relevant_doc_sections=[])
+
+    query = "How to build a rocket ship?"
+    result = await documentation_service.search_documentation_by_query(query)
+
+    assert result == []
+    mock_get_all_sections.assert_called_once_with("local")
+    mock_search_agent.assert_called_once_with(
+        query=query,
+        available_doc_sections=all_sections,
+    )
+
+
+@patch("api.services.documentation_service.search_documentation_agent", new_callable=AsyncMock)
+@patch.object(DocumentationService, "get_all_doc_sections")
+async def test_search_documentation_by_query_none_result(
+    mock_get_all_sections: MagicMock,
+    mock_search_agent: AsyncMock,
+    documentation_service: DocumentationService,
+):
+    """Tests search when search agent returns None."""
+    all_sections = [
+        DocumentationSection(title="getting-started/index", content="Getting started content"),
+    ]
+    mock_get_all_sections.return_value = all_sections
+
+    # Mock the search agent to return None
+    mock_search_agent.return_value = None
+
+    query = "test query"
+    result = await documentation_service.search_documentation_by_query(query)
+
+    assert result == []
+    mock_get_all_sections.assert_called_once_with("local")
+    mock_search_agent.assert_called_once()
+
+
+@patch("api.services.documentation_service.search_documentation_agent", new_callable=AsyncMock)
+@patch.object(DocumentationService, "get_all_doc_sections")
+async def test_search_documentation_by_query_agent_error(
+    mock_get_all_sections: MagicMock,
+    mock_search_agent: AsyncMock,
+    documentation_service: DocumentationService,
+    caplog: pytest.LogCaptureFixture,
+):
+    """Tests search when search agent throws an exception."""
+    all_sections = [
+        DocumentationSection(title="getting-started/index", content="Getting started content"),
+        DocumentationSection(title="reference/api", content="API reference content"),
+    ]
+    mock_get_all_sections.return_value = all_sections
+
+    # Mock the search agent to throw an exception
+    mock_search_agent.side_effect = Exception("Search agent failed")
+
+    caplog.set_level(logging.ERROR, logger="api.services.documentation_service")
+    query = "How to authenticate?"
+    result = await documentation_service.search_documentation_by_query(query)
+
+    # Should return empty list when search agent fails
+    assert result == []
+    mock_get_all_sections.assert_called_once_with("local")
+    mock_search_agent.assert_called_once_with(
+        query=query,
+        available_doc_sections=all_sections,
+    )
+    assert "Error in search documentation agent" in caplog.text
+
+
+@patch("api.services.documentation_service.search_documentation_agent", new_callable=AsyncMock)
+@patch.object(DocumentationService, "get_all_doc_sections")
+async def test_search_documentation_by_query_mode_selection(
+    mock_get_all_sections: MagicMock,
+    mock_search_agent: AsyncMock,
+    documentation_service: DocumentationService,
+):
+    """Tests that search_documentation_by_query correctly passes mode to get_all_doc_sections."""
+    all_sections = [
+        DocumentationSection(title="test-section", content="Test content"),
+    ]
+    mock_get_all_sections.return_value = all_sections
+
+    class MockSearchResult(NamedTuple):
+        relevant_doc_sections: list[str]
+
+    mock_search_agent.return_value = MockSearchResult(relevant_doc_sections=["test-section"])
+
+    # Test with remote mode
+    query = "test query"
+    await documentation_service.search_documentation_by_query(query, mode="remote")
+
+    mock_get_all_sections.assert_called_with("remote")
+
+    # Test with local mode (default)
+    await documentation_service.search_documentation_by_query(query)
+    mock_get_all_sections.assert_called_with("local")
+
+
+@patch("api.services.documentation_service.search_documentation_agent", new_callable=AsyncMock)
+@patch.object(DocumentationService, "get_all_doc_sections")
+async def test_search_documentation_by_query_partial_matches(
+    mock_get_all_sections: MagicMock,
+    mock_search_agent: AsyncMock,
+    documentation_service: DocumentationService,
+):
+    """Tests search when some returned sections don't exist in all_sections."""
+    all_sections = [
+        DocumentationSection(title="existing-section", content="Existing content"),
+        DocumentationSection(title="another-section", content="Another content"),
+    ]
+    mock_get_all_sections.return_value = all_sections
+
+    # Mock the search agent to return some valid and some invalid section names
+    class MockSearchResult(NamedTuple):
+        relevant_doc_sections: list[str]
+
+    mock_search_agent.return_value = MockSearchResult(
+        relevant_doc_sections=["existing-section", "non-existent-section", "another-section"],
+    )
+
+    query = "test query"
+    result = await documentation_service.search_documentation_by_query(query)
+
+    # Should only return sections that actually exist
+    expected_sections = [
+        DocumentationSection(title="existing-section", content="Existing content"),
+        DocumentationSection(title="another-section", content="Another content"),
+    ]
+
+    actual_section_tuples = {(s.title, s.content) for s in result}
+    expected_section_tuples = {(s.title, s.content) for s in expected_sections}
+
+    assert actual_section_tuples == expected_section_tuples
