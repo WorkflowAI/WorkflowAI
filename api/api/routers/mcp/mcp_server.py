@@ -652,7 +652,7 @@ def _get_description_search_documentation_tool() -> str:
 
     We recommend combining search and direct navigation, and making multiple searches and direct navigations to get the most relevant knowledge.
 
-    You must at least always fetch the "foundations" page before starting any work with WorkflowAI, which contains the core concepts and architecture of WorkflowAI.
+    You must at least always read the "foundations" page before starting any work with WorkflowAI, which contains the core concepts and architecture of WorkflowAI.
     </how_to_use>
 
      <available_pages>
