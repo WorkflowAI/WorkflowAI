@@ -282,8 +282,6 @@ Your primary purpose is to help developers find the most relevant WorkflowAI doc
             )
 
             if result and result.missing_doc_sections_feedback:
-                # TODO: This kind of failure could be monitored with an agent "vibe check", or an automated feature that we could build in the future.
-                # But right now we are just logging warnings.
                 _logger.warning(
                     "Documentation search agent has reported a missing doc sections",
                     extra={
