@@ -50,7 +50,7 @@ class TestMCPServiceSearchDocumentation:
                 content="Authentication is required for all API calls. Use Bearer tokens with your API key to authenticate requests.",
             ),
         ]
-        mock_service.get_relevant_doc_sections = AsyncMock(return_value=mock_sections)
+        mock_service.search_documentation_by_query = AsyncMock(return_value=mock_sections)
 
         # Act
         result = await mcp_service.search_documentation(query="how to get started")
