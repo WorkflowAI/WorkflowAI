@@ -9,6 +9,9 @@ from core.agents.pick_relevant_documentation_categories import (
     PickRelevantDocumentationSectionsInput,
     pick_relevant_documentation_sections,
 )
+from core.agents.search_documentation_agent import (
+    search_documentation_agent,
+)
 from core.domain.documentation_section import DocumentationSection
 from core.domain.fields.chat_message import ChatMessage
 from core.utils.redis_cache import redis_cached
@@ -247,3 +250,29 @@ class DocumentationService:
             _logger.exception("Error generating available pages descriptions", exc_info=e)
             # Fallback to empty list when there's an error
             return ""
+
+    async def search_documentation_by_query(
+        self,
+        query: str,
+        mode: DocModeEnum = DEFAULT_DOC_MODE,
+    ) -> list[DocumentationSection]:
+        all_doc_sections: list[DocumentationSection] = await self.get_all_doc_sections(mode)
+
+        try:
+            result = await search_documentation_agent(
+                query=query,
+                available_doc_sections=all_doc_sections,
+            )
+
+            relevant_doc_sections: list[str] = (
+                result.relevant_doc_sections if result and result.relevant_doc_sections else []
+            )
+
+        except Exception as e:
+            _logger.exception("Error in search documentation agent", exc_info=e)
+            # TODO: have a static list of the most relevant docs as a fallback ?
+            relevant_doc_sections: list[str] = []
+
+        return [
+            document_section for document_section in all_doc_sections if document_section.title in relevant_doc_sections
+        ]
