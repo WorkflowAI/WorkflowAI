@@ -302,7 +302,6 @@ Your primary purpose is to help developers find the most relevant WorkflowAI doc
 
         except Exception as e:
             _logger.exception("Error in search documentation agent", exc_info=e)
-            # TODO: have a static list of the most relevant docs as a fallback ?
             return fallback_docs_sections
 
         return [
