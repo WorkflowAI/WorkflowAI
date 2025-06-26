@@ -5,8 +5,11 @@ summary: This documentation is returned at least once per session when `search_d
 
 ## What is WorkflowAI?
 
-...
 Think of WorkflowAI as a drop-in replacement for OpenAI, with primitives added to make it easier to build AI agents.
+
+### Cost 
+
+By using WorkflowAI, you won't pay more than your current inference costs. We price match the providers and make our margin through volume discounts. [Learn more about our pricing](/pricing).
 
 ## Primitives
 
@@ -63,7 +66,7 @@ each model listed by WorkflowAI includes information about its price, its intell
 
 #### messages
 
-messages: the messages to send to the model. the messages are a list of dictionaries, each dictionary containing a role and a content. the role can be "user", "assistant", or "system". the content can be a string, or a list of strings.
+`messages`: the messages to send to the model. the messages are a list of dictionaries, each dictionary containing a role and a content. the role can be "user", "assistant", or "system". the content can be a string, or a list of strings.
 
 ```json
 messages = [
@@ -99,11 +102,11 @@ Learn more about metadata by reading the [Metadata](/observability/metadata) sec
 
 #### max_tokens
 
-max_tokens: (optional) the maximum number of tokens to generate. if not provided, the model will generate as many tokens as needed. make sure that `max_tokens` is high enough to generate a complete response.
+`max_tokens`: (optional) the maximum number of tokens to generate. if not provided, the model will generate as many tokens as needed. make sure that `max_tokens` is high enough to generate a complete response.
 
 #### input
 
-input: (required when using [input variables](/observability/input-variables)) provides variables to the LLM.
+`input`: (required when using [input variables](/observability/input-variables)) provides variables to the LLM.
 
 ```python
 completion = client.create.completion(
@@ -118,7 +121,7 @@ completion = client.create.completion(
 
 #### response_format
 
-response_format: (optional) ensures AI models generate responses that perfectly match your defined JSON Schema. Instead of hoping the model follows formatting instructions, you get guaranteed compliance with your data structure. Use structured outputs when you need reliable data extraction, classification, or any scenario requiring consistent JSON format.
+`response_format`: (optional) ensures AI models generate responses that perfectly match your defined JSON Schema. Instead of hoping the model follows formatting instructions, you get guaranteed compliance with your data structure. Use structured outputs when you need reliable data extraction, classification, or any scenario requiring consistent JSON format.
 
 ```python
 from pydantic import BaseModel
@@ -152,3 +155,13 @@ completion = client.beta.chat.completions.parse(..., response_format=...)
 parsed_output = completion.choices[0].message.parsed
 ```
 
+#### cost and latency
+
+WorkflowAI adds cost and latency to the response. Learn more about cost and latency in the [Cost Metadata](/inference/cost) section.
+
+```python
+cost = completion.model_extra.get('cost_usd')
+latency = completion.model_extra.get("duration_seconds")
+print(f"Latency (s): {latency:.2f}")
+print(f"Cost   ($): ${cost:.6f}")
+```
