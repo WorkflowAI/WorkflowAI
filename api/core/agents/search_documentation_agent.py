@@ -18,6 +18,10 @@ class SearchDocumentationOutput(BaseModel):
     missing_doc_sections_feedback: str | None = Field(
         default=None,
         description="When relevant, output a feedback to explain which documentation sections are missing to fully answer the user's query and why.",
+        examples=[
+            "I could not find any documentation section regarding ...",
+            "The is no section about ...",
+        ],
     )
 
 
@@ -39,23 +43,21 @@ async def search_documentation_agent(
     messages: list[ChatCompletionMessageParam] = [
         {
             "role": "system",
-            "content": """You are an expert documentation search agent specifically designed for picking the most relevant documentation sections based on usage context.
+            "content": """You are an expert documentation search agent specifically designed for picking the most relevant documentation sections based on the provided query{% if usage_context %} and the usage context{% endif %}.
 
+{% if usage_context %}
 ## Context
 The usage context is:
-{% if usage_context %}
 {{usage_context}}
-{% else %}
-The user is trying to find relevant documentation about WorkflowAI.
 {% endif %}
+
 
 ## Your Task
 Given a search query and all available documentation sections, you must:
 1. Analyze the query to understand the user's intent and needs
 2. Select the most relevant documentation sections that will help answer the 'Search Query' below
 3. Prioritize sections that directly address the 'Search Query' below over tangentially related content
-4. Avoid selecting unnecessary sections to minimize cost and processing time
-5. Return the picked docuementationt section title(s) in a 'relevant_doc_sections' list. You MUST ONLY return section titles that exist in the available 'Available Documentation Sections' sections.
+4. Return the picked documentation section title(s) in a 'relevant_doc_sections' list and optionally a 'missing_doc_sections_feedback' if you think some documentation sections are missing to fully answer the user's query. You MUST ONLY return section titles that exist in the available 'Available Documentation Sections' sections.
 
 ## Available Documentation Sections:
 {{formatted_docs}}""",
