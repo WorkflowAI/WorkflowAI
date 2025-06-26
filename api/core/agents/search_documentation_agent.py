@@ -57,7 +57,8 @@ Given a search query and all available documentation sections, you must:
 1. Analyze the query to understand the user's intent and needs
 2. Select the most relevant documentation sections that will help answer the 'Search Query' below
 3. Prioritize sections that directly address the 'Search Query' below over tangentially related content
-4. Return the picked documentation section title(s) in a 'relevant_doc_sections' list and optionally a 'missing_doc_sections_feedback' if you think some documentation sections are missing to fully answer the user's query. You MUST ONLY return section titles that exist in the available 'Available Documentation Sections' sections.
+4. Return the picked documentation section title(s) in a 'relevant_doc_sections' list and optionally a 'missing_doc_sections_feedback' if you think some documentation sections are missing to fully answer the user's query.
+You MUST ONLY return section titles that exist in the available 'Available Documentation Sections' sections.
 
 ## Available Documentation Sections:
 {{formatted_docs}}""",
