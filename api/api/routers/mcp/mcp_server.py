@@ -677,8 +677,14 @@ async def search_documentation(
         default=None,
         description="Use page when you know which specific page contains the information you need.",
     ),
+    programming_language: str | None = Field(
+        default=None,
+        description="The programming language to generate code examples for (e.g., 'python', 'typescript', 'javascript', 'go', 'rust', 'java', 'csharp'). This can help provide more relevant documentation with language-specific examples.",
+    ),
 ) -> MCPToolReturn[SearchResponse]:
     service = await get_mcp_service()
+    # TODO: Pass programming_language to service when implementing POC
+    _ = programming_language  # Unused for now
     try:
         return await service.search_documentation(query=query, page=page)
     except MCPError as e:
