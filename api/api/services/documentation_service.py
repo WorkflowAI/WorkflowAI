@@ -62,7 +62,8 @@ class DocumentationService:
                         extra={"file_path": full_path},
                         exc_info=e,
                     )
-        return doc_sections
+        # Sort by title to ensure consistent ordering, for example to trigger LLM provider caching
+        return sorted(doc_sections, key=lambda x: x.title)
 
     async def _get_all_doc_sections_remote(self) -> list[DocumentationSection]:
         """Fetch all documentation sections from remote fumadocs instance"""
@@ -90,7 +91,8 @@ class DocumentationService:
                     exc_info=e,
                 )
 
-        return doc_sections
+        # Sort by title to ensure consistent ordering, for example to trigger LLM provider caching
+        return sorted(doc_sections, key=lambda x: x.title)
 
     @redis_cached(expiration_seconds=60 * 15)
     async def _fetch_page_content(self, page_path: str) -> str:
