@@ -260,6 +260,9 @@ class DocumentationService:
     ) -> list[DocumentationSection]:
         all_doc_sections: list[DocumentationSection] = await self.get_all_doc_sections(mode)
 
+        # TODO: have a static list of the most relevant docs as a fallback ?
+        fallback_docs_sections: list[DocumentationSection] = []
+
         try:
             result = await search_documentation_agent(
                 query=query,
@@ -275,7 +278,7 @@ Your primary purpose is to help developers find the most relevant WorkflowAI doc
                     "search_documentation_agent did not return any parsed result",
                     extra={"query": query},
                 )
-                return []
+                return fallback_docs_sections
 
             relevant_doc_sections: list[str] = (
                 result.relevant_doc_sections if result and result.relevant_doc_sections else []
@@ -300,7 +303,7 @@ Your primary purpose is to help developers find the most relevant WorkflowAI doc
         except Exception as e:
             _logger.exception("Error in search documentation agent", exc_info=e)
             # TODO: have a static list of the most relevant docs as a fallback ?
-            relevant_doc_sections: list[str] = []
+            return fallback_docs_sections
 
         return [
             document_section for document_section in all_doc_sections if document_section.title in relevant_doc_sections
