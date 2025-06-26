@@ -18,7 +18,6 @@ from tests.component.common import (
     get_amplitude_events,
     list_groups,
     mock_openai_call,
-    mock_vertex_call,
     openai_endpoint,
     result_or_raise,
     run_task,
@@ -31,17 +30,15 @@ from tests.utils import approx, fixture_bytes, request_json_body
 
 
 async def test_run_with_metadata_and_labels(
-    httpx_mock: HTTPXMock,
-    int_api_client: AsyncClient,
-    patched_broker: InMemoryBroker,
+    test_client: IntegrationTestClient,
 ):
-    await create_task(int_api_client, patched_broker, httpx_mock)
+    await test_client.create_task()
 
-    mock_vertex_call(httpx_mock, model=Model.GEMINI_1_5_PRO_002, latency=0.01)
+    test_client.mock_vertex_call(model=Model.GEMINI_1_5_PRO_002, latency=0.01)
 
     # Run the task the first time
     task_run = await run_task(
-        int_api_client,
+        test_client.int_api_client,
         task_id="greet",
         task_schema_id=1,
         task_input={"name": "John", "age": 30},
@@ -59,7 +56,7 @@ async def test_run_with_metadata_and_labels(
 
     # Fetch the task run
 
-    fetched = await int_api_client.get(f"/chiefofstaff.ai/agents/greet/runs/{task_run['id']}")
+    fetched = await test_client.int_api_client.get(f"/chiefofstaff.ai/agents/greet/runs/{task_run['id']}")
     assert fetched.status_code == 200
     fetched_task_run = fetched.json()
 
@@ -69,13 +66,13 @@ async def test_run_with_metadata_and_labels(
     assert fetched_task_run["metadata"]["workflowai.providers"] == ["google"]
     assert fetched_task_run["metadata"]["workflowai.provider"] == "google"
 
-    await wait_for_completed_tasks(patched_broker)
+    await test_client.wait_for_completed_tasks()
 
-    amplitude_events = await get_amplitude_events(httpx_mock)
+    amplitude_events = await get_amplitude_events(test_client.httpx_mock)
     assert len(amplitude_events) == 1
     event = amplitude_events[0]
 
-    org = result_or_raise(await int_api_client.get("/_/organization/settings"))
+    org = result_or_raise(await test_client.int_api_client.get("/_/organization/settings"))
     assert event["user_id"] == org["tenant"]
     assert event["event_type"] == "org.ran.task"
 
@@ -109,37 +106,35 @@ async def test_run_with_metadata_and_labels(
     }
 
 
-async def test_decrement_credits(httpx_mock: HTTPXMock, int_api_client: AsyncClient, patched_broker: InMemoryBroker):
-    await create_task(int_api_client, patched_broker, httpx_mock)
+async def test_decrement_credits(test_client: IntegrationTestClient):
+    await test_client.create_task()
 
-    org = result_or_raise(await int_api_client.get("/_/organization/settings"))
+    org = result_or_raise(await test_client.int_api_client.get("/_/organization/settings"))
     assert org["added_credits_usd"] == 10.0
     assert org["current_credits_usd"] == 10.0
 
-    mock_openai_call(httpx_mock)
+    test_client.mock_openai_call()
 
     await run_task(
-        int_api_client,
+        test_client.int_api_client,
         task_id="greet",
         task_schema_id=1,
         task_input={"name": "John", "age": 30},
         group={"properties": {"model": "gpt-4o-2024-05-13"}},
     )
 
-    await wait_for_completed_tasks(patched_broker)
+    await test_client.wait_for_completed_tasks()
 
-    org = result_or_raise(await int_api_client.get("/_/organization/settings"))
+    org = result_or_raise(await test_client.int_api_client.get("/_/organization/settings"))
     assert org["added_credits_usd"] == 10.0
     assert org["current_credits_usd"] == 9.999865
 
 
 async def test_usage_for_per_char_model(
-    int_api_client: AsyncClient,
-    httpx_mock: HTTPXMock,
-    patched_broker: InMemoryBroker,
+    test_client: IntegrationTestClient,
 ):
-    await create_task(int_api_client, patched_broker, httpx_mock)
-    mock_vertex_call(httpx_mock)
+    await test_client.create_task()
+    test_client.mock_vertex_call()
 
     def _check_run(task_run: dict[str, Any]):
         llm_completions: list[dict[str, Any]] = task_run["llm_completions"]
@@ -155,7 +150,7 @@ async def test_usage_for_per_char_model(
 
     # Run the task the first time
     task_run = await run_task(
-        int_api_client,
+        test_client.int_api_client,
         task_id="greet",
         task_schema_id=1,
         task_input={"name": "John", "age": 30},
@@ -166,7 +161,7 @@ async def test_usage_for_per_char_model(
 
     # Fetch the task run
 
-    fetched = await int_api_client.get(f"/chiefofstaff.ai/agents/greet/runs/{task_run['id']}")
+    fetched = await test_client.int_api_client.get(f"/chiefofstaff.ai/agents/greet/runs/{task_run['id']}")
     assert fetched.status_code == 200
     fetched_task_run = fetched.json()
 
@@ -217,14 +212,14 @@ async def test_usage_for_per_token_model(
     _check_run(fetched_task_run)
 
 
-async def test_openai_usage(httpx_mock: HTTPXMock, int_api_client: AsyncClient, patched_broker: InMemoryBroker):
-    task = await create_task(int_api_client, patched_broker, httpx_mock)
+async def test_openai_usage(test_client: IntegrationTestClient):
+    task = await test_client.create_task()
 
-    mock_openai_call(httpx_mock)
+    test_client.mock_openai_call()
 
     # Run the task the first time
     task_run = await run_task(
-        int_api_client,
+        test_client.int_api_client,
         task_id="greet",
         task_schema_id=1,
         task_input={"name": "John", "age": 30},
@@ -242,10 +237,10 @@ async def test_openai_usage(httpx_mock: HTTPXMock, int_api_client: AsyncClient, 
     assert usage["completion_token_count"] == 11
     assert usage["model_context_window_size"] == 128000  # from model
 
-    await wait_for_completed_tasks(patched_broker)
+    await test_client.wait_for_completed_tasks()
 
     # Check groups
-    groups = await list_groups(int_api_client, task)
+    groups = await list_groups(test_client.int_api_client, task)
     assert len(groups) == 1
     assert groups[0]["properties"]["model"] == "gpt-4o-2024-11-20"
     assert groups[0]["run_count"] == 1
@@ -345,17 +340,21 @@ async def test_openai_stream(
     assert groups[0]["run_count"] == 1
 
 
-async def test_run_with_500_error(httpx_mock: HTTPXMock, int_api_client: AsyncClient, patched_broker: InMemoryBroker):
-    await create_task_without_required_fields(int_api_client, patched_broker, httpx_mock)
+async def test_run_with_500_error(test_client: IntegrationTestClient):
+    await create_task_without_required_fields(
+        test_client.int_api_client,
+        test_client.patched_broker,
+        test_client.httpx_mock,
+    )
 
     # Add an evaluator to the task
-    mock_openai_call(httpx_mock, status_code=500)
-    mock_openai_call(httpx_mock, status_code=500, provider="azure_openai")
+    test_client.mock_openai_call(status_code=500)
+    test_client.mock_openai_call(status_code=500, provider="azure_openai")
 
     # Run the task the first time
     with pytest.raises(HTTPStatusError) as e:
         await run_task(
-            int_api_client,
+            test_client.int_api_client,
             task_id="greet",
             task_schema_id=1,
             task_input={"name": "John", "age": 30},
@@ -363,9 +362,9 @@ async def test_run_with_500_error(httpx_mock: HTTPXMock, int_api_client: AsyncCl
         )
     assert e.value.response.status_code == 424
 
-    await wait_for_completed_tasks(patched_broker)
+    await test_client.wait_for_completed_tasks()
 
-    events = await get_amplitude_events(httpx_mock)
+    events = await get_amplitude_events(test_client.httpx_mock)
     assert len(events) == 1
     assert events[0]["event_properties"]["error_code"] == "provider_internal_error"
 
@@ -507,21 +506,17 @@ async def test_run_image(
     assert res["task_input"]["image"]["content_type"] == "image/webp"
 
 
-async def test_run_invalid_file(int_api_client: AsyncClient, httpx_mock: HTTPXMock, patched_broker: InMemoryBroker):
-    task = await create_task(
-        int_api_client,
-        patched_broker,
-        httpx_mock,
+async def test_run_invalid_file(test_client: IntegrationTestClient):
+    task = await test_client.create_task(
         input_schema={"type": "object", "properties": {"image": {"$ref": "#/$defs/File", "format": "image"}}},
     )
 
-    mock_openai_call(
-        httpx_mock,
+    test_client.mock_openai_call(
         status_code=400,
         json={"error": {"message": "Image is not a valid file"}},
     )
 
-    httpx_mock.add_response(
+    test_client.httpx_mock.add_response(
         # Content type is not guessable from URL but only from the data
         url="https://bla.com/file",
         content=b"1234",
@@ -529,7 +524,7 @@ async def test_run_invalid_file(int_api_client: AsyncClient, httpx_mock: HTTPXMo
 
     with pytest.raises(HTTPStatusError) as e:
         await run_task(
-            int_api_client,
+            test_client.int_api_client,
             task["task_id"],
             task["task_schema_id"],
             task_input={"image": {"url": "https://bla.com/file"}},

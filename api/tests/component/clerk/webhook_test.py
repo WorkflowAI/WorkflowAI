@@ -1,22 +1,18 @@
 import time
 
 from freezegun import freeze_time
-from httpx import AsyncClient
-from pytest_httpx import HTTPXMock
-from taskiq import InMemoryBroker
 
 from tests.component.common import (
-    create_task,
+    IntegrationTestClient,
     get_amplitude_events,
     result_or_raise,
-    wait_for_completed_tasks,
 )
 
 
 @freeze_time("2021-02-25T00:00:00Z")
-async def test_clerk_webhook(int_api_client: AsyncClient, patched_broker: InMemoryBroker, httpx_mock: HTTPXMock):
+async def test_clerk_webhook(test_client: IntegrationTestClient):
     result_or_raise(
-        await int_api_client.post(
+        await test_client.int_api_client.post(
             "/webhooks/clerk",
             json={
                 "data": {
@@ -48,47 +44,45 @@ async def test_clerk_webhook(int_api_client: AsyncClient, patched_broker: InMemo
         ),
     )
 
-    await wait_for_completed_tasks(patched_broker)
+    await test_client.wait_for_completed_tasks()
 
-    req = await get_amplitude_events(httpx_mock)
+    req = await get_amplitude_events(test_client.httpx_mock)
     assert len(req) == 0
 
 
 async def test_clerk_webhook_with_credits(
-    int_api_client: AsyncClient,
-    patched_broker: InMemoryBroker,
-    httpx_mock: HTTPXMock,
+    test_client: IntegrationTestClient,
 ):
     # Trigger the Clerk webhook
-    await test_clerk_webhook(int_api_client, patched_broker, httpx_mock)
+    await test_clerk_webhook(test_client)
 
     # Fetch the organization settings
-    org = result_or_raise(await int_api_client.get("/_/organization/settings"))
+    org = result_or_raise(await test_client.int_api_client.get("/_/organization/settings"))
 
     # Assert the organization has 5 credits
     assert org["added_credits_usd"] == 5.0
     assert org["current_credits_usd"] == 5.0
 
     # Create a task to update credits
-    await create_task(int_api_client, patched_broker, httpx_mock)
+    await test_client.create_task()
 
     # Fetch the organization settings again
-    org = result_or_raise(await int_api_client.get("/_/organization/settings"))
+    org = result_or_raise(await test_client.int_api_client.get("/_/organization/settings"))
 
     # Assert the organization has 10 credits
     assert org["added_credits_usd"] == 10.0
     assert org["current_credits_usd"] == 10.0
 
     # Create another task
-    await create_task(int_api_client, patched_broker, httpx_mock)
+    await test_client.create_task()
 
     # Fetch the organization settings again
-    org = result_or_raise(await int_api_client.get("/_/organization/settings"))
+    org = result_or_raise(await test_client.int_api_client.get("/_/organization/settings"))
 
     # Assert the organization still has 10 credits (no additional credits added)
     assert org["added_credits_usd"] == 10.0
     assert org["current_credits_usd"] == 10.0
 
     # Fetch the tasks to ensure task count is 2
-    tasks = result_or_raise(await int_api_client.get(f"/{org['tenant']}/agents"))
+    tasks = result_or_raise(await test_client.int_api_client.get(f"/{org['tenant']}/agents"))
     assert len(tasks) == 2
