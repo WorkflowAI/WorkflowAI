@@ -19,7 +19,6 @@ from api.routers.mcp._mcp_models import (
     PaginatedMCPToolReturn,
     SearchResponse,
     SortOrder,
-    UsefulLinks,
 )
 from api.routers.mcp._mcp_utils import extract_agent_id_and_run_id
 from api.routers.mcp._utils.agent_sorting import sort_agents
@@ -42,7 +41,7 @@ from core.agents.mcp_feedback_processing_agent import (
     mcp_feedback_processing_agent,
 )
 from core.domain.agent_run import AgentRun
-from core.domain.consts import INPUT_KEY_MESSAGES, WORKFLOWAI_APP_URL
+from core.domain.consts import INPUT_KEY_MESSAGES
 from core.domain.events import EventRouter
 from core.domain.fields.chat_message import ChatMessage
 from core.domain.message import Messages
@@ -94,77 +93,6 @@ class MCPService:
         self.tenant = tenant
         self.run_service = run_service
         self.event_router = event_router
-
-    def _get_useful_links(self, agent_id: str | None, agent_schema_id: int | None) -> UsefulLinks:
-        if agent_id is None:
-            agent_id = "<example_agent_id>"
-
-        tenant_slug = self.tenant.slug
-
-        return UsefulLinks(
-            useful_links=[
-                UsefulLinks.Link(
-                    title="Agents list",
-                    url=f"{WORKFLOWAI_APP_URL}/{tenant_slug}/agents",
-                    description="View all agents in the user's organization, also allow to see the count of runs and cost of the last 7 days",
-                ),
-                UsefulLinks.Link(
-                    title="API Keys management model",
-                    url=f"{WORKFLOWAI_APP_URL}/keys",
-                    description="View and create API keys for the user's organization",
-                ),
-                UsefulLinks.Link(
-                    title="WorkflowAI playground",
-                    url=f"{WORKFLOWAI_APP_URL}/{tenant_slug}/agents/{agent_id}/{agent_schema_id or 1}",
-                    description="Main page of the WorkflowAI web app, allow to run agents on different models, update version messages, and more",
-                ),
-                UsefulLinks.Link(
-                    title="Agent runs",
-                    url=f"{WORKFLOWAI_APP_URL}/{tenant_slug}/agents/{agent_id}/{agent_schema_id or 1}/runs",
-                    description="View runs for a specific agent",
-                ),
-                UsefulLinks.Link(
-                    title="Agent versions",
-                    url=f"{WORKFLOWAI_APP_URL}/{tenant_slug}/agents/{agent_id}/{agent_schema_id or 1}/versions",
-                    description="View versions for a specific agent",
-                ),
-                UsefulLinks.Link(
-                    title="Deployments",
-                    url=f"{WORKFLOWAI_APP_URL}/{tenant_slug}/agents/{agent_id}/{agent_schema_id or 1}/deployments",
-                    description="View deployments (deployed versions) for a specific agent",
-                ),
-                UsefulLinks.Link(
-                    title="Agent side-by-side",
-                    url=f"{WORKFLOWAI_APP_URL}/{tenant_slug}/agents/{agent_id}/{agent_schema_id or 1}/side-by-side",
-                    description="View side-by-side comparison of two versions of an agent",
-                ),
-                UsefulLinks.Link(
-                    title="Agent reviews",
-                    url=f"{WORKFLOWAI_APP_URL}/{tenant_slug}/agents/{agent_id}/{agent_schema_id or 1}/reviews",
-                    description="View reviews for a specific agent created by staff members in the organization",
-                ),
-                UsefulLinks.Link(
-                    title="Agent benchmarks",
-                    url=f"{WORKFLOWAI_APP_URL}/{tenant_slug}/agents/{agent_id}/{agent_schema_id or 1}/benchmarks",
-                    description="View benchmarks for a specific agent, allow to compare different versions / models of an agent and compare their correctness, latency, and price",
-                ),
-                UsefulLinks.Link(
-                    title="Agent feedback",
-                    url=f"{WORKFLOWAI_APP_URL}/{tenant_slug}/agents/{agent_id}/{agent_schema_id or 1}/feedback",
-                    description="View feedback for a specific agent created by end users (customers)",
-                ),
-                UsefulLinks.Link(
-                    title="Agent cost",
-                    url=f"{WORKFLOWAI_APP_URL}/{tenant_slug}/agents/{agent_id}/{agent_schema_id or 1}/cost",
-                    description="View cost for a specific agent on different time frames (yesterday, last week, last month, last year, all time)",
-                ),
-                UsefulLinks.Link(
-                    title="WorkflowAI offical documentation",
-                    url="https://docs.workflowai.com",
-                    description="Official documentation for WorkflowAI, including guides, API references, and more",
-                ),
-            ],
-        )
 
     async def list_models(
         self,
