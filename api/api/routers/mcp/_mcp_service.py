@@ -11,7 +11,6 @@ from api.routers.mcp._mcp_models import (
     AgentSortField,
     ConciseLatestModelResponse,
     ConciseModelResponse,
-    DeployAgentResponse,
     EmptyModel,
     MajorVersion,
     MCPRun,
@@ -56,8 +55,6 @@ from core.domain.task_group_properties import TaskGroupProperties
 from core.domain.task_info import TaskInfo
 from core.domain.task_variant import SerializableTaskVariant
 from core.domain.tenant_data import PublicOrganizationData
-from core.domain.users import UserIdentifier
-from core.domain.version_environment import VersionEnvironment
 from core.storage import ObjectNotFoundException
 from core.storage.backend_storage import BackendStorage
 from core.storage.task_run_storage import TaskRunStorage
@@ -412,82 +409,6 @@ class MCPService:
             )
 
         return agent_info
-
-    async def deploy_agent_version(
-        self,
-        task_tuple: tuple[str, int],
-        version_id: str,
-        environment: str,
-        deployed_by: UserIdentifier,
-    ) -> DeployAgentResponse:
-        """Deploy a specific version of an agent to an environment."""
-
-        try:
-            env = VersionEnvironment(environment.lower())
-        except ValueError:
-            raise MCPError(f"Invalid environment '{environment}'. Must be one of: dev, staging, production")
-
-        deployment = await self.task_deployments_service.deploy_version(
-            task_id=task_tuple,
-            task_schema_id=None,
-            version_id=version_id,
-            environment=env,
-            deployed_by=deployed_by,
-        )
-
-        # Build the model parameter for the migration guide
-        model_param = f"{task_tuple[0]}/#{deployment.schema_id}/{environment}"
-
-        # Create migration guide based on deployment documentation
-        migration_guide: dict[str, Any] = {
-            "model_parameter": model_param,
-            "migration_instructions": {
-                "overview": "Update your code to point to the deployed version instead of hardcoded prompts",
-                "with_input_variables": {
-                    "description": "If your prompt uses input variables (double curly braces)",
-                    "before": {
-                        "model": f"{task_tuple[0]}/your-model-name",
-                        "messages": [{"role": "user", "content": "Your prompt with..."}],
-                        "extra_body": {"input": {"variable": "value"}},
-                    },
-                    "after": {
-                        "model": model_param,
-                        "messages": [],  # Empty because prompt is stored in WorkflowAI
-                        "extra_body": {"input": {"variable": "value"}},
-                    },
-                },
-                "without_input_variables": {
-                    "description": "If your prompt doesn't use input variables (e.g., chatbots with system messages)",
-                    "before": {
-                        "model": f"{task_tuple[0]}/your-model-name",
-                        "messages": [
-                            {"role": "system", "content": "Your system instructions"},
-                            {"role": "user", "content": "user_message"},
-                        ],
-                    },
-                    "after": {
-                        "model": model_param,
-                        "messages": [
-                            {"role": "user", "content": "user_message"},
-                        ],  # System message now comes from the deployment
-                    },
-                },
-                "important_notes": [
-                    "The messages parameter is always required, even if empty",
-                    "Schema number defines the input/output contract",
-                    f"This deployment uses schema #{deployment.schema_id}",
-                    "Test thoroughly before deploying to production",
-                ],
-            },
-        }
-
-        return DeployAgentResponse(
-            version_id=deployment.version_id,
-            agent_schema_id=deployment.schema_id,
-            environment=deployment.environment,
-            deployed_at=deployment.deployed_at.isoformat() if deployment.deployed_at else "",
-            migration_guide=migration_guide,
-        )
 
     async def search_documentation(
         self,
