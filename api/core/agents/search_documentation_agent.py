@@ -65,7 +65,7 @@ Given a search query and all available documentation sections, you must:
                 "query": query,
                 "formatted_docs": formatted_docs,
             },
-            "provider": "google_gemini",  # use Google Gemini to have implicit caching
+            "provider": "google_gemini",  # use Google Gemini to have implicit caching (https://ai.google.dev/gemini-api/docs/caching?lang=node&hl=fr#implicit-caching)
         },
         metadata={
             "agent_id": "search-documentation-agent",
