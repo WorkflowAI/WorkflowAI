@@ -25,7 +25,7 @@ async def search_documentation_agent(
     query: str,
     available_doc_sections: list[DocumentationSection],
     usage_context: str | None = None,
-) -> tuple[SearchDocumentationOutput | None, str]:  # return the output and the run id
+) -> SearchDocumentationOutput | None:
     client = AsyncOpenAI(
         api_key=os.environ["WORKFLOWAI_API_KEY"],
         base_url=f"{os.environ['WORKFLOWAI_API_URL']}/v1",
@@ -82,4 +82,4 @@ Given a search query and all available documentation sections, you must:
             "agent_id": "search-documentation-agent",
         },
     )
-    return completion.choices[0].message.parsed, completion.id
+    return completion.choices[0].message.parsed
