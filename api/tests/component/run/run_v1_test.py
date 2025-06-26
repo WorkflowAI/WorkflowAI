@@ -15,8 +15,8 @@ from taskiq import InMemoryBroker
 
 from core.domain.consts import METADATA_KEY_USED_MODEL
 from core.domain.models import Model, Provider
-from core.domain.models.model_datas_mapping import MODEL_DATAS
-from core.domain.models.model_provider_datas_mapping import OPENAI_PROVIDER_DATA
+from core.domain.models.model_data_mapping import MODEL_DATAS
+from core.domain.models.model_provider_data_mapping import OPENAI_PROVIDER_DATA
 from core.providers.factory.local_provider_factory import LocalProviderFactory
 from core.providers.google.google_provider_domain import (
     Candidate,

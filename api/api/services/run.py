@@ -225,7 +225,7 @@ class RunService:
         # Annoying to cast here but run_by_id will have standardized the messages
         # We can't use `llm_completions_by_id` because we need the task input and the tool calls
         try:
-            messages = previous_completion.to_messages()
+            messages = previous_completion.to_deprecated_messages()
         except Exception:
             raise InternalError("Failed to parse previous messages", extra={"run_id": to_run.id})
 

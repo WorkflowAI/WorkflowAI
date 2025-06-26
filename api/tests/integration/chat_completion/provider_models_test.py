@@ -11,7 +11,7 @@ from typing import Any
 
 import httpx
 
-from core.domain.models.model_datas_mapping import MODEL_ALIASES
+from core.domain.models.model_data_mapping import MODEL_ALIASES
 from core.domain.models.models import Model
 
 

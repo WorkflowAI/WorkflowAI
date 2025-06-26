@@ -2,7 +2,7 @@ from datetime import date
 from typing import get_args
 
 from core.domain.models.model_data import MaxTokensData, ModelData, ModelDataSupports, QualityData
-from core.domain.models.model_datas_mapping import MODEL_DATAS, DisplayedProvider
+from core.domain.models.model_data_mapping import MODEL_DATAS, DisplayedProvider
 from core.domain.models.model_provider_data import ModelDataSupportsOverride
 
 

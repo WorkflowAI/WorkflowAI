@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from core.domain.models import Model
 from core.domain.models.model_data import DeprecatedModel
-from core.domain.models.model_datas_mapping import MODEL_DATAS
+from core.domain.models.model_data_mapping import MODEL_DATAS
 from core.domain.task_group_properties import TaskGroupProperties
 
 

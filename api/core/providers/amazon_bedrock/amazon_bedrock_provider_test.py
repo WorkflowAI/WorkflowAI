@@ -19,7 +19,7 @@ from core.domain.llm_completion import LLMCompletion
 from core.domain.llm_usage import LLMUsage
 from core.domain.message import MessageDeprecated
 from core.domain.models import Model, Provider
-from core.domain.models.model_provider_datas_mapping import AMAZON_BEDROCK_PROVIDER_DATA
+from core.domain.models.model_provider_data_mapping import AMAZON_BEDROCK_PROVIDER_DATA
 from core.domain.models.utils import get_model_provider_data
 from core.domain.structured_output import StructuredOutput
 from core.domain.task_run_reply import RunReply

@@ -77,7 +77,7 @@ export default function TaskRunModal(props: TaskRunModalProps) {
     const newTaskRunId = taskRunIds[taskRunIndex - 1];
     if (newTaskRunId) {
       redirectWithParams({
-        params: { taskRunId: newTaskRunId },
+        params: { [TASK_RUN_ID_PARAM]: newTaskRunId },
       });
     }
   }, [taskRunIndex, redirectWithParams, taskRunIds]);
@@ -89,7 +89,7 @@ export default function TaskRunModal(props: TaskRunModalProps) {
     const newTaskRunId = taskRunIds[taskRunIndex + 1];
     if (newTaskRunId) {
       redirectWithParams({
-        params: { taskRunId: newTaskRunId },
+        params: { [TASK_RUN_ID_PARAM]: newTaskRunId },
       });
     }
   }, [taskRunIndex, redirectWithParams, taskRunIds, runsLength]);
@@ -177,7 +177,7 @@ export function useRunIDParam() {
   const setTaskRunId = useCallback(
     (taskRunId: string | undefined) => {
       redirectWithParams({
-        params: { taskRunId: taskRunId },
+        params: { [TASK_RUN_ID_PARAM]: taskRunId },
         scroll: false,
       });
     },
@@ -186,7 +186,7 @@ export function useRunIDParam() {
 
   const clearTaskRunId = useCallback(() => {
     redirectWithParams({
-      params: { taskRunId: undefined },
+      params: { [TASK_RUN_ID_PARAM]: undefined },
       scroll: false,
     });
   }, [redirectWithParams]);

@@ -40,6 +40,7 @@ type Props = {
   hiddenModelColumns: number[] | undefined;
   updateInputAndRun: (input: TaskInputDict) => Promise<void>;
   setVersionIdForCode: (versionId: string | undefined) => void;
+  setRunIdForModal: (runId: string | undefined) => void;
 };
 
 export function ProxyOutput(props: Props) {
@@ -63,6 +64,7 @@ export function ProxyOutput(props: Props) {
     taskSchemaId,
     tenant,
     setVersionIdForCode,
+    setRunIdForModal,
   } = props;
 
   const toggleShowDiffMode = useCallback(() => {
@@ -201,6 +203,7 @@ export function ProxyOutput(props: Props) {
               hideModelColumn={() => onHideModelColumn(index)}
               updateInputAndRun={updateInputAndRun}
               setVersionIdForCode={setVersionIdForCode}
+              setRunIdForModal={setRunIdForModal}
             />
           ))}
         </div>

@@ -1,5 +1,6 @@
 ---
 title: OpenAI Python Code
+summary: How to use the OpenAI Python SDK with WorkflowAI. WorkflowAI exposes a compatible OpenAI API endpoint. The only changes you need to make are updating the `base_url` and `api_key`.
 ---
 
 ```python
@@ -8,7 +9,7 @@ from openai import OpenAI
 # setup WorkflowAI client
 client = OpenAI(
   base_url="https://run.workflowai.com/v1", # [!code highlight]
-  api_key="wai-***", # workflowai.com/keys // [!code highlight]
+  api_key="wai-***", # use create_api_key MCP tool // [!code highlight]
 )
 
 response = client.chat.completions.create(

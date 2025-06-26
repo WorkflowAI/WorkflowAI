@@ -31,6 +31,7 @@ async def test_raw_string_output(test_client: IntegrationTestClient, openai_clie
     assert res.choices[0].cost_usd > 0  # type: ignore
     assert res.choices[0].duration_seconds  # type: ignore
     assert res.choices[0].feedback_token  # type: ignore
+    assert res.choices[0].url  # type: ignore
 
     await test_client.wait_for_completed_tasks()
 
@@ -800,6 +801,52 @@ async def test_with_cache(test_client: IntegrationTestClient, openai_client: Asy
     assert chunks[0].choices[0].delta.content == "Hello, world!"
 
 
+async def test_with_cache_streaming_worflowai_internal(test_client: IntegrationTestClient, openai_client: AsyncOpenAI):
+    test_client.mock_openai_stream(deltas=["hello", " world"])
+
+    agent = await test_client.create_agent_v1(
+        input_schema={"type": "object", "format": "messages"},
+        output_schema={"type": "string", "format": "message"},
+    )
+    extra_body = {
+        "workflowai_internal": {
+            "variant_id": agent["variant_id"],
+            "version_messages": [
+                {"role": "system", "content": [{"text": "Hello"}]},
+            ],
+        },
+        "agent_id": "greet",
+        "use_cache": "always",
+    }
+
+    # Create a first completion
+    res = await openai_client.chat.completions.create(
+        model="gpt-4o-latest",
+        messages=[],
+        stream=True,
+        extra_body=extra_body,
+    )
+    deltas = [c.choices[0].delta.content async for c in res if c.choices[0].delta.content]
+    joined = "".join(deltas)
+    assert joined == "hello world"
+
+    await test_client.wait_for_completed_tasks()
+
+    # Now create a second completion with the same input and use the cache
+    res = await openai_client.chat.completions.create(
+        model="gpt-4o-latest",
+        messages=[],
+        extra_body=extra_body,
+        stream=True,
+    )
+    chunks = [c async for c in res]
+    assert len(chunks) == 1
+    assert chunks[0].choices[0].delta.content == "hello world"
+
+    # Check that we did not make any new calls
+    assert len(test_client.httpx_mock.get_requests(url="https://api.openai.com/v1/chat/completions")) == 1
+
+
 async def test_none_content(test_client: IntegrationTestClient, openai_client: AsyncOpenAI):
     # Check that we return None content when there is no text content
     test_client.mock_openai_call(
@@ -919,3 +966,63 @@ async def test_hosted_tools_in_version_messages(test_client: IntegrationTestClie
 
     run = await fetch_run_from_completion(test_client, res)
     assert run
+
+
+async def test_url_safe_but_non_slug_agent_id(test_client: IntegrationTestClient, openai_client: AsyncOpenAI):
+    """Make sure that we support a URL safe but non slug agent id"""
+    # First run
+    test_client.mock_openai_call(raw_content="Hello, world!")
+    res = await openai_client.chat.completions.create(
+        model="my_agent/gpt-4.1",
+        messages=[{"role": "user", "content": "Hello, world!"}],
+    )
+    assert res.choices[0].message.content == "Hello, world!"
+
+    task_id, _ = res.id.split("/")
+    assert task_id == "my_agent"
+
+    await test_client.wait_for_completed_tasks()
+
+    run = await fetch_run_from_completion(test_client, res)
+    assert run
+    assert run["task_id"] == "my_agent"
+
+    # Try again with a deployment
+    version = await save_version_from_completion(test_client, res)
+    await test_client.post(
+        f"/v1/_/agents/{task_id}/versions/{version['id']}/deploy",
+        json={"environment": "production"},
+    )
+
+    test_client.mock_openai_call(raw_content="Hello, world!")
+    res = await openai_client.chat.completions.create(
+        model="my_agent/#1/production",
+        messages=[{"role": "user", "content": "Hello, world!"}],
+    )
+    task_id, _ = res.id.split("/")
+    assert task_id == "my_agent"
+
+
+async def test_different_types_in_input(test_client: IntegrationTestClient, openai_client: AsyncOpenAI):
+    """Check that passing all json types floats, booleans, etc. works"""
+    test_client.mock_openai_call(raw_content="Hello, world!")
+    res = await openai_client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {
+                "role": "user",
+                "content": "{{ a_number }} {{ a_boolean }} {{ a_array }} {{ a_object }} {{ a_null }} {{ a_string }}",
+            },
+        ],
+        extra_body={
+            "input": {
+                "a_number": 1.0,
+                "a_boolean": True,
+                "a_array": [1, 2, 3],
+                "a_object": {"a": 1, "b": 2},
+                "a_null": None,
+                "a_string": "hello",
+            },
+        },
+    )
+    assert res.choices[0].message.content

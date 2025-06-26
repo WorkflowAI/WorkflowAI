@@ -11,8 +11,8 @@ from core.domain.task_typology import SchemaTypology, TaskTypology
 from core.providers.openai.openai_provider import OpenAIProvider
 
 from .model_data import DeprecatedModel, FinalModelData, LatestModel, ModelData
-from .model_datas_mapping import MODEL_DATAS
-from .model_provider_datas_mapping import MODEL_PROVIDER_DATAS
+from .model_data_mapping import MODEL_DATAS
+from .model_provider_data_mapping import MODEL_PROVIDER_DATAS
 
 _FILTERED_MODEL_DATA = sorted(
     [pytest.param(m, id=m.model.value) for m in MODEL_DATAS.values() if isinstance(m, FinalModelData)],

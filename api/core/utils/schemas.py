@@ -667,5 +667,8 @@ def schema_from_data(data: Any) -> dict[str, Any]:
         return {"type": "string"}
     if isinstance(data, int):
         return {"type": "integer"}
+    if isinstance(data, float):
+        return {"type": "number"}
 
-    return data
+    # Not assuming anything on None types
+    return {}

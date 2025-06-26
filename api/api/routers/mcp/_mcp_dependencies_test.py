@@ -5,7 +5,7 @@ from typing import Any
 import pytest
 from starlette.exceptions import HTTPException
 
-from api.routers.mcp import mcp_server
+from api.routers.mcp import _mcp_dependencies
 
 
 class _DummyRequest:
@@ -34,14 +34,14 @@ async def test_missing_bearer_token_raises(
     """Ensure a 401 is returned when no *Authorization* header is present."""
 
     monkeypatch.setattr(
-        mcp_server,
+        _mcp_dependencies,
         "get_http_request",
         lambda: _DummyRequest(headers={}),
         raising=True,
     )
 
     with pytest.raises(HTTPException) as exc_info:
-        await mcp_server.get_mcp_service()
+        await _mcp_dependencies.get_mcp_service()
 
     assert exc_info.value.status_code == 401
     assert exc_info.value.detail == "Missing bearer token"
@@ -57,7 +57,7 @@ async def test_invalid_bearer_token_raises(
 
     # Provide a fake request with an *Authorization* header.
     monkeypatch.setattr(
-        mcp_server,
+        _mcp_dependencies,
         "get_http_request",
         lambda: _DummyRequest(headers={"Authorization": "Bearer invalid-token"}),
         raising=True,
@@ -65,7 +65,7 @@ async def test_invalid_bearer_token_raises(
 
     # Patch *SecurityService.find_tenant* to simulate an unknown token.
     monkeypatch.setattr(
-        mcp_server.SecurityService,
+        _mcp_dependencies.SecurityService,
         "tenant_from_credentials",
         _dummy_tenant_from_credentials,
         raising=True,
@@ -73,20 +73,20 @@ async def test_invalid_bearer_token_raises(
 
     # Patch storage helpers used before *find_tenant* is called so they don't hit real infra.
     monkeypatch.setattr(
-        mcp_server.storage,
+        _mcp_dependencies.storage,
         "shared_encryption",
         lambda: None,
         raising=True,
     )
     monkeypatch.setattr(
-        mcp_server.storage,
+        _mcp_dependencies.storage,
         "system_storage",
         lambda _: _DummySystemStorage(),  # type: ignore[misc]
         raising=True,
     )
 
     with pytest.raises(HTTPException) as exc_info:
-        await mcp_server.get_mcp_service()
+        await _mcp_dependencies.get_mcp_service()
 
     assert exc_info.value.status_code == 401
     assert exc_info.value.detail == "Invalid bearer token"
