@@ -281,6 +281,7 @@ Your primary purpose is to help developers find the most relevant WorkflowAI doc
                 result.relevant_doc_sections if result and result.relevant_doc_sections else []
             )
 
+            # Log warning for cases where the agent has reported a missing doc sections
             if result and result.missing_doc_sections_feedback:
                 _logger.warning(
                     "Documentation search agent has reported a missing doc sections",
@@ -288,7 +289,9 @@ Your primary purpose is to help developers find the most relevant WorkflowAI doc
                         "missing_doc_sections_feedback": result.missing_doc_sections_feedback,
                     },
                 )
-            if result and not result.relevant_doc_sections:
+
+            # If agent did not report any missing doc sections but no relevant doc sections were found, we log a warning too
+            if result and not result.missing_doc_sections_feedback and not result.relevant_doc_sections:
                 _logger.warning(
                     "Documentation search agent has not found any relevant doc sections",
                     extra={"query": query},
