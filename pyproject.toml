@@ -156,3 +156,4 @@ bandit = "^1.8.2"
 safety = "^3.2.4"
 taskiq = { extras = ["reload"], version = "^0.11.6" }
 vulture = "^2.11"
+debugpy = "^1.8.14"
