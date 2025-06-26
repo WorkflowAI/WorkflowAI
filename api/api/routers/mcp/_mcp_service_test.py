@@ -52,6 +52,15 @@ class TestMCPServiceSearchDocumentation:
         ]
         mock_service.get_relevant_doc_sections = AsyncMock(return_value=mock_sections)
 
+        # Mock the foundations page that gets added automatically
+        mock_foundations_sections = [
+            DocumentationSection(
+                title="foundations",
+                content="WorkflowAI foundations content explaining core concepts and architecture.",
+            ),
+        ]
+        mock_service.get_documentation_by_path = AsyncMock(return_value=mock_foundations_sections)
+
         # Act
         result = await mcp_service.search_documentation(query="how to get started")
 
@@ -60,12 +69,15 @@ class TestMCPServiceSearchDocumentation:
         assert result.data is not None
         assert result.data.query_results is not None
         search_results = result.data.query_results
-        assert len(search_results) == 2
+        assert len(search_results) == 3  # Now includes foundations page
         # TODO: should likely be getting-started without the .mdx extension ?
         assert search_results[0].source_page == "getting-started.mdx"
         assert "get started with WorkflowAI" in search_results[0].content_snippet
         assert search_results[1].source_page == "api-auth.mdx"
         assert "Authentication is required" in search_results[1].content_snippet
+        # Check that foundations page was added
+        assert search_results[2].source_page == "foundations.mdx"
+        assert "WorkflowAI foundations content" in search_results[2].content_snippet
         assert result.message and "Successfully found relevant documentation sections" in result.message
 
     @patch("api.routers.mcp._mcp_service.DocumentationService")
