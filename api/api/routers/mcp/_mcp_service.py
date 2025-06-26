@@ -547,6 +547,7 @@ class MCPService:
 
         # Always add foundations page
         # TODO: try to return the foundations page only once, per chat, but might be difficult since `mcp-session-id` is probably not scoped to a chat (for example, on CursorAI, multiple chat tabs can be open at the same time, using (probably) the same `mcp-session-id`)
+        # @guillaume suggested to add a `read_foundations: true, false` parameter to the search_documentation MCP tool
         sections = await documentation_service.get_documentation_by_path(["foundations"])
         query_results.append(
             SearchResponse.QueryResult(
