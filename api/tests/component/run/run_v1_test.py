@@ -30,7 +30,6 @@ from tests.component.common import (
     LEGACY_TEST_JWT,
     IntegrationTestClient,
     create_task,
-    create_version,
     extract_stream_chunks,
     fetch_run,
     gemini_url,
@@ -1448,14 +1447,11 @@ async def test_tool_call_recursion_streaming(test_client: IntegrationTestClient)
     assert len(fetched_run["llm_completions"]) == 2
 
 
-async def test_unknown_error_invalid_argument_max_tokens(
-    int_api_client: AsyncClient,
-    httpx_mock: HTTPXMock,
-    patched_broker: InMemoryBroker,
-):
-    task = await create_task(int_api_client, patched_broker, httpx_mock)
+async def test_unknown_error_invalid_argument_max_tokens(test_client: IntegrationTestClient):
+    task = await test_client.create_task()
+    test_client.reset_httpx_mock()
 
-    httpx_mock.add_response(
+    test_client.httpx_mock.add_response(
         status_code=400,
         json={
             "error": {
@@ -1466,19 +1462,12 @@ async def test_unknown_error_invalid_argument_max_tokens(
         },
     )
 
-    version = await create_version(
-        int_api_client,
-        task["task_id"],
-        task["task_schema_id"],
+    version = await test_client.create_version(
+        task,
         {"model": Model.GEMINI_1_5_FLASH_002},
     )
     with pytest.raises(HTTPStatusError) as exc_info:
-        await run_task_v1(
-            int_api_client,
-            task_id=task["task_id"],
-            task_schema_id=task["task_schema_id"],
-            version=version["iteration"],
-        )
+        await test_client.run_task_v1(task, version=version["iteration"])
 
     content_json = json.loads(exc_info.value.response.content)
     assert content_json["error"]["code"] == "max_tokens_exceeded"
