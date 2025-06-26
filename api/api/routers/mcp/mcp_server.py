@@ -651,6 +651,8 @@ def _get_description_search_documentation_tool() -> str:
      2. Direct navigation mode ('page' parameter): Fetch the complete content of a specific documentation page (see <available_pages> below for available pages). Use direct navigation mode when you want to read the full content of a specific page.
 
     We recommend combining search and direct navigation, and making multiple searches and direct navigations to get the most relevant knowledge.
+
+    You must at least always fetch the "foundations" page before starting any work with WorkflowAI, which contains the core concepts and architecture of WorkflowAI.
     </how_to_use>
 
      <available_pages>
