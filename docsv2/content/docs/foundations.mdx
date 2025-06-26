@@ -29,15 +29,20 @@ client = openai.OpenAI(
 The primary benefit of using WorkflowAI's API is gaining access to a unified interface for all AI models across the market. This eliminates the complexity of managing multiple API keys and switching between different provider SDKs - you can seamlessly use any model through a single, consistent API.
 
 Technical details:
-- all requests are proxied by WorkflowAI, then sent to an AI provider. 
+- all requests are proxied by WorkflowAI, then sent to an AI provider.
 
-## Observability
+#### API keys
+
+- Check first if any `WORKFLOWAI_API_KEY` (or similar) is set in the environment variables.
+- To create a new API key, use the `create_api_key` MCP tool.
+
+### Observability
 
 By default, WorkflowAI saves all LLM completions. Observability is critical for building reliable AI agents. LLM observability helps teams improve reliability, reduce costs, debug failures faster, ensure safety, and optimize prompts and models by providing end-to-end visibility into how queries are processed and where issues arise.
 
 Learn more about by reading the [Observability](/observability) section.
 
-## Deployments
+### Deployments
 
 Deployments allow you to update an agent's prompt or model without changing the code. Learn more about deployments by reading the [Deployments](/deployments) section.
 
