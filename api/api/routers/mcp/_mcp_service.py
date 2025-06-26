@@ -45,7 +45,6 @@ from core.agents.mcp_feedback_processing_agent import (
 from core.domain.agent_run import AgentRun
 from core.domain.consts import INPUT_KEY_MESSAGES, WORKFLOWAI_APP_URL
 from core.domain.events import EventRouter
-from core.domain.fields.chat_message import ChatMessage
 from core.domain.message import Messages
 from core.domain.models.model_data import FinalModelData, LatestModel
 from core.domain.models.model_data_mapping import MODEL_DATAS
@@ -531,10 +530,7 @@ class MCPService:
         """Search documentation using query and return snippets."""
 
         documentation_service = DocumentationService()
-        relevant_sections = await documentation_service.get_relevant_doc_sections(
-            chat_messages=[ChatMessage(role="USER", content=query)],
-            agent_instructions="",
-        )
+        relevant_sections = await documentation_service.search_documentation_by_query(query)
 
         # Convert to SearchResult format with content snippets
         query_results = [
