@@ -15,13 +15,17 @@ class SearchDocumentationOutput(BaseModel):
         default=None,
         description="List of documentation section titles that are most relevant to answer the query.",
     )
+    missing_doc_sections_feedback: str | None = Field(
+        default=None,
+        description="When relevant, output a feedback to explain which documentation sections are missing to fully answer the user's query and why.",
+    )
 
 
 async def search_documentation_agent(
     query: str,
     available_doc_sections: list[DocumentationSection],
     usage_context: str | None = None,
-) -> SearchDocumentationOutput | None:
+) -> tuple[SearchDocumentationOutput | None, str]:  # return the output and the run id
     client = AsyncOpenAI(
         api_key=os.environ["WORKFLOWAI_API_KEY"],
         base_url=f"{os.environ['WORKFLOWAI_API_URL']}/v1",
@@ -78,5 +82,4 @@ Given a search query and all available documentation sections, you must:
             "agent_id": "search-documentation-agent",
         },
     )
-
-    return completion.choices[0].message.parsed
+    return completion.choices[0].message.parsed, completion.id

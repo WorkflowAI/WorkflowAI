@@ -579,6 +579,10 @@ async def test_search_documentation_by_query_agent_error(
     mock_search_agent.assert_called_once_with(
         query=query,
         available_doc_sections=all_sections,
+        usage_context="""The query was made by an MCP (Model Context Protocol) client such as Cursor IDE and other code editors.
+
+Your primary purpose is to help developers find the most relevant WorkflowAI documentation sections to answer their specific queries about building, deploying, and using AI agents.
+""",
     )
     assert "Error in search documentation agent" in caplog.text
 
