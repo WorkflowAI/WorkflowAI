@@ -280,7 +280,7 @@ class TestSingleStream:
                 options=ProviderOptions(model=Model.GPT_4O_2024_11_20, max_tokens=10, temperature=0),
             )
             [chunk.output async for chunk in raw_chunks]
-        assert e.value.store_task_run is False
+        assert e.value.store_task_run
 
 
 class TestStream:
@@ -484,7 +484,7 @@ class TestComplete:
                 output_factory=_output_factory,
             )
 
-        assert e.value.store_task_run is False
+        assert e.value.store_task_run
         assert len(httpx_mock.get_requests()) == 1
 
 

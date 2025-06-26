@@ -1298,7 +1298,7 @@ class TestHandleStatusCode:
             google_provider._handle_error_status_code(mock_response)  # pyright: ignore [reportPrivateUsage]
         assert not e.value.capture
         assert e.value.code == "invalid_file"
-        assert not e.value.store_task_run
+        assert e.value.store_task_run
 
     @pytest.mark.parametrize(
         "message",
@@ -1323,7 +1323,7 @@ class TestHandleStatusCode:
             google_provider._handle_error_status_code(mock_response)  # pyright: ignore [reportPrivateUsage]
         assert not e.value.capture
         assert e.value.code == "invalid_file"
-        assert not e.value.store_task_run
+        assert e.value.store_task_run
 
     def test_file_too_large(self, google_provider: GoogleProvider):
         mock_response = Mock(spec=httpx.Response)
@@ -1340,7 +1340,7 @@ class TestHandleStatusCode:
             google_provider._handle_error_status_code(mock_response)  # pyright: ignore [reportPrivateUsage]
         assert not e.value.capture
         assert e.value.code == "bad_request"
-        assert not e.value.store_task_run
+        assert e.value.store_task_run
 
     @pytest.mark.parametrize(
         "message",

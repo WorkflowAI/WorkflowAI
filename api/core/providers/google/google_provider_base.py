@@ -248,7 +248,6 @@ class GoogleProviderBase(HTTPXProvider[_GoogleConfigVar, CompletionResponse], Ge
                         msg="Model returned a malformed function call finish reason",
                         # Capturing so we can see why this happens
                         capture=True,
-                        store_task_run=True,
                     )
                 case _:
                     pass

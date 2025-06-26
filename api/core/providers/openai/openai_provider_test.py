@@ -347,7 +347,7 @@ class TestSingleStream:
                 options=ProviderOptions(model=Model.GPT_40_AUDIO_PREVIEW_2024_10_01, max_tokens=10, temperature=0),
             )
             [o async for o in raw_chunks]
-        assert e.value.store_task_run is False
+        assert e.value.store_task_run is True
 
     async def test_invalid_json_schema(self, httpx_mock: HTTPXMock, openai_provider: OpenAIProvider):
         httpx_mock.add_response(
@@ -367,7 +367,7 @@ class TestSingleStream:
                 options=ProviderOptions(model=Model.GPT_40_AUDIO_PREVIEW_2024_10_01, max_tokens=10, temperature=0),
             )
             [o async for o in raw_chunks]
-        assert e.value.store_task_run is False
+        assert e.value.store_task_run is True
 
 
 class TestStream:
@@ -731,7 +731,7 @@ class TestComplete:
                 output_factory=lambda x, _: StructuredOutput(json.loads(x)),
             )
 
-        assert e.value.store_task_run is False
+        assert e.value.store_task_run is True
         assert len(httpx_mock.get_requests()) == 1
 
 
