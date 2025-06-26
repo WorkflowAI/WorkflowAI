@@ -430,9 +430,9 @@ class TestReasoningModel:
         model_data: FinalModelData,
         reasoning: ModelReasoningBudget,
     ):
-        assert reasoning.none == 0, f"Model {model_data.model} has no none reasoning"
+        assert reasoning.disabled == 0, f"Model {model_data.model} has no none reasoning"
 
     @pytest.mark.parametrize(("model_data", "reasoning"), _reasoning_model_data(Provider.X_AI))
     def test_no_xao_model_supports_medium_reasoning(self, model_data: FinalModelData, reasoning: ModelReasoningBudget):
-        assert reasoning.none is None, f"Model {model_data.model} has none reasoning"
+        assert reasoning.disabled is None, f"Model {model_data.model} has none reasoning"
         assert reasoning.medium is None, f"Model {model_data.model} has no medium reasoning"

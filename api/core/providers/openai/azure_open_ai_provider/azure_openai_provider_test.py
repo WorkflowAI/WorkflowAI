@@ -12,6 +12,7 @@ from core.domain.fields.file import File
 from core.domain.llm_usage import LLMUsage
 from core.domain.message import MessageDeprecated
 from core.domain.models import Model, Provider
+from core.domain.reasoning_effort import ReasoningEffort
 from core.domain.structured_output import StructuredOutput
 from core.providers.base.models import RawCompletion, StandardMessage
 from core.providers.base.provider_error import (
@@ -155,7 +156,7 @@ class TestBuildRequest:
                     model=Model.O3_2025_04_16,
                     max_tokens=10,
                     temperature=0,
-                    reasoning_effort="medium",
+                    reasoning_effort=ReasoningEffort.MEDIUM,
                 ),
                 stream=False,
             ),

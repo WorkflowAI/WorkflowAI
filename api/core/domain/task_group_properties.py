@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from core.domain.fields.image_options import ImageOptions
 from core.domain.message import Message
+from core.domain.reasoning_effort import ReasoningEffort
 from core.domain.tool import Tool
 from core.tools import ToolKind
 from core.utils.hash import compute_model_hash, compute_obj_hash
@@ -61,8 +62,6 @@ class ToolChoiceFunction(BaseModel):
 
 
 ToolChoice: TypeAlias = Literal["auto", "none", "required"] | ToolChoiceFunction
-
-ReasoningEffort: TypeAlias = Literal["none", "low", "medium", "high"]
 
 
 class TaskGroupProperties(BaseModel):

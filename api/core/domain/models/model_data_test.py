@@ -15,7 +15,7 @@ from core.domain.models.model_data import (
     QualityData,
 )
 from core.domain.models.model_provider_data import ModelProviderData, TextPricePerToken
-from core.domain.task_group_properties import ReasoningEffort
+from core.domain.reasoning_effort import ReasoningEffort
 from core.domain.task_typology import SchemaTypology, TaskTypology
 
 
@@ -207,12 +207,24 @@ class TestModelDataQualityIndex:
         assert quality_data.quality_index(mapping) == expected_index
 
 
+@pytest.mark.parametrize("effort", list(ReasoningEffort))
+def test_model_reasoning_effort_get_item(effort: ReasoningEffort):
+    """Check we don't crash on get item"""
+    model_data = ModelReasoningBudget(
+        disabled=0,
+        low=200,
+        medium=300,
+        high=400,
+    )
+    assert model_data[effort] is not None
+
+
 class TestModelReasoningCorrespondingEffort:
     @pytest.mark.parametrize(
         "budget, expected_effort",
         [
-            (0, "none"),
-            (100, "none"),
+            (0, "disabled"),
+            (100, "low"),  # lower than low but not 0 so we still return the lowest available
             (250, "low"),
             (350, "medium"),
             (450, "high"),
@@ -220,7 +232,7 @@ class TestModelReasoningCorrespondingEffort:
     )
     def test_corresponding_effort_with_all_fields_set(self, budget: int, expected_effort: ReasoningEffort):
         model_data = ModelReasoningBudget(
-            none=0,
+            disabled=0,
             low=200,
             medium=300,
             high=400,
@@ -230,8 +242,9 @@ class TestModelReasoningCorrespondingEffort:
     @pytest.mark.parametrize(
         "budget, expected_effort",
         [
-            (0, None),
-            (100, None),
+            # lower than low but not 0 so we still return the lowest available
+            (0, "low"),
+            (100, "low"),
             (250, "low"),
             (350, "low"),
             (450, "high"),
@@ -239,7 +252,7 @@ class TestModelReasoningCorrespondingEffort:
     )
     def test_corresponding_effort_with_missing_fields(self, budget: int, expected_effort: ReasoningEffort):
         model_data = ModelReasoningBudget(
-            none=None,
+            disabled=None,
             low=200,
             medium=None,
             high=400,
@@ -259,7 +272,7 @@ class TestModelReasoningCorrespondingBudget:
     )
     def test_corresponding_budget_with_all_fields_set(self, effort: ReasoningEffort, expected_budget: int):
         model_data = ModelReasoningBudget(
-            none=0,
+            disabled=0,
             low=200,
             medium=300,
             high=400,

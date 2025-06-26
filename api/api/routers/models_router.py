@@ -120,7 +120,7 @@ class ModelReasoning(BaseModel):
     @classmethod
     def from_domain(cls, model: ModelReasoningBudget) -> Self:
         return cls(
-            can_be_disabled=model.none is not None,
+            can_be_disabled=model.disabled is not None,
             low_effort_reasoning_budget=model.low or 0,
             medium_effort_reasoning_budget=model.medium or 0,
             high_effort_reasoning_budget=model.high or 0,

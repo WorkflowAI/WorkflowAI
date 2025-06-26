@@ -272,7 +272,7 @@ def mistral_models() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             provider_name=DisplayedProvider.MISTRAL_AI.value,
             supports_tool_calling=True,
             # Magistral does not support configuring a reasoning budget or effort
-            reasoning=ModelReasoningBudget(none=None, low=None, medium=None, high=None),
+            reasoning=ModelReasoningBudget(disabled=None, low=None, medium=None, high=None),
             fallback=ModelFallback.default("cheap"),
         ),
         Model.MAGISTRAL_MEDIUM_2506: ModelData(
@@ -294,7 +294,7 @@ def mistral_models() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             provider_name=DisplayedProvider.MISTRAL_AI.value,
             supports_tool_calling=True,
             # Magistral does not support configuring a reasoning budget or effort
-            reasoning=ModelReasoningBudget(none=None, low=None, medium=None, high=None),
+            reasoning=ModelReasoningBudget(disabled=None, low=None, medium=None, high=None),
             fallback=ModelFallback.default("medium"),
         ),
     }

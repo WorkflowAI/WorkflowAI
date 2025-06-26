@@ -11,6 +11,7 @@ from core.domain.models.model_data import (
     QualityData,
 )
 from core.domain.models.models import Model
+from core.domain.reasoning_effort import ReasoningEffort
 
 
 def xai_models() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
@@ -81,15 +82,15 @@ def xai_models() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             supports_tool_calling=True,
             supports_structured_output=True,
             fallback=ModelFallback.default("cheap"),
-            reasoning=ModelReasoningBudget(none=None, medium=None),
+            reasoning=ModelReasoningBudget(disabled=None, medium=None),
         ),
         Model.GROK_3_MINI_BETA_HIGH_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.GROK_3_MINI_BETA,
-            reasoning_effort="high",
+            reasoning_effort=ReasoningEffort.HIGH,
         ),
         Model.GROK_3_MINI_BETA_LOW_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.GROK_3_MINI_BETA,
-            reasoning_effort="low",
+            reasoning_effort=ReasoningEffort.LOW,
         ),
         Model.GROK_3_MINI_FAST_BETA: ModelData(
             display_name="Grok 3 Mini Fast (beta)",
@@ -112,14 +113,14 @@ def xai_models() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             supports_tool_calling=True,
             supports_structured_output=True,
             fallback=ModelFallback.default("cheap"),
-            reasoning=ModelReasoningBudget(none=None, medium=None),
+            reasoning=ModelReasoningBudget(disabled=None, medium=None),
         ),
         Model.GROK_3_MINI_FAST_BETA_HIGH_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.GROK_3_MINI_FAST_BETA,
-            reasoning_effort="high",
+            reasoning_effort=ReasoningEffort.HIGH,
         ),
         Model.GROK_3_MINI_FAST_BETA_LOW_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.GROK_3_MINI_FAST_BETA,
-            reasoning_effort="low",
+            reasoning_effort=ReasoningEffort.LOW,
         ),
     }

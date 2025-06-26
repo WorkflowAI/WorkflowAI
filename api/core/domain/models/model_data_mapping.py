@@ -5,6 +5,7 @@ from core.domain.models import Model, Provider
 from core.domain.models._displayed_provider import DisplayedProvider
 from core.domain.models._mistral import mistral_models
 from core.domain.models._xai import xai_models
+from core.domain.reasoning_effort import ReasoningEffort
 
 from .model_data import (
     DeprecatedModel,
@@ -295,15 +296,15 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
         Model.O1_MINI_2024_09_12: DeprecatedModel(replacement_model=Model.O3_MINI_2025_01_31),
         Model.O3_MINI_LATEST_HIGH_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.O3_MINI_2025_01_31,
-            reasoning_effort="high",
+            reasoning_effort=ReasoningEffort.HIGH,
         ),
         Model.O3_MINI_LATEST_MEDIUM_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.O3_MINI_2025_01_31,
-            reasoning_effort="medium",
+            reasoning_effort=ReasoningEffort.MEDIUM,
         ),
         Model.O3_MINI_LATEST_LOW_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.O3_MINI_2025_01_31,
-            reasoning_effort="low",
+            reasoning_effort=ReasoningEffort.LOW,
         ),
         Model.O3_MINI_LATEST: LatestModel(
             model=Model.O3_MINI_2025_01_31,
@@ -329,31 +330,31 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             supports_tool_calling=True,
             supports_parallel_tool_calls=False,
             fallback=_openai_fallback("cheap"),
-            reasoning=ModelReasoningBudget(none=None),
+            reasoning=ModelReasoningBudget(disabled=None),
         ),
         Model.O3_MINI_2025_01_31_HIGH_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.O3_MINI_2025_01_31,
-            reasoning_effort="high",
+            reasoning_effort=ReasoningEffort.HIGH,
         ),
         Model.O3_MINI_2025_01_31_MEDIUM_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.O3_MINI_2025_01_31,
-            reasoning_effort="medium",
+            reasoning_effort=ReasoningEffort.MEDIUM,
         ),
         Model.O3_MINI_2025_01_31_LOW_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.O3_MINI_2025_01_31,
-            reasoning_effort="low",
+            reasoning_effort=ReasoningEffort.LOW,
         ),
         Model.O4_MINI_LATEST_HIGH_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.O4_MINI_2025_04_16,
-            reasoning_effort="high",
+            reasoning_effort=ReasoningEffort.HIGH,
         ),
         Model.O4_MINI_LATEST_MEDIUM_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.O4_MINI_2025_04_16,
-            reasoning_effort="medium",
+            reasoning_effort=ReasoningEffort.MEDIUM,
         ),
         Model.O4_MINI_LATEST_LOW_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.O4_MINI_2025_04_16,
-            reasoning_effort="low",
+            reasoning_effort=ReasoningEffort.LOW,
         ),
         Model.O4_MINI_LATEST: LatestModel(
             model=Model.O4_MINI_2025_04_16,
@@ -383,19 +384,19 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             supports_tool_calling=True,
             supports_parallel_tool_calls=False,
             fallback=_openai_fallback("cheap"),
-            reasoning=ModelReasoningBudget(none=None),
+            reasoning=ModelReasoningBudget(disabled=None),
         ),
         Model.O4_MINI_2025_04_16_HIGH_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.O4_MINI_2025_04_16,
-            reasoning_effort="high",
+            reasoning_effort=ReasoningEffort.HIGH,
         ),
         Model.O4_MINI_2025_04_16_MEDIUM_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.O4_MINI_2025_04_16,
-            reasoning_effort="medium",
+            reasoning_effort=ReasoningEffort.MEDIUM,
         ),
         Model.O4_MINI_2025_04_16_LOW_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.O4_MINI_2025_04_16,
-            reasoning_effort="low",
+            reasoning_effort=ReasoningEffort.LOW,
         ),
         Model.O3_LATEST: LatestModel(model=Model.O3_2025_04_16, display_name="o3 (latest)"),
         Model.O3_2025_04_16: ModelData(
@@ -423,31 +424,31 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             supports_parallel_tool_calls=False,
             aliases=["o3-2025-04-16"],
             fallback=_openai_fallback("medium"),
-            reasoning=ModelReasoningBudget(none=None),
+            reasoning=ModelReasoningBudget(disabled=None),
         ),
         Model.O3_LATEST_HIGH_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.O3_2025_04_16,
-            reasoning_effort="high",
+            reasoning_effort=ReasoningEffort.HIGH,
         ),
         Model.O3_LATEST_MEDIUM_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.O3_2025_04_16,
-            reasoning_effort="medium",
+            reasoning_effort=ReasoningEffort.MEDIUM,
         ),
         Model.O3_LATEST_LOW_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.O3_2025_04_16,
-            reasoning_effort="low",
+            reasoning_effort=ReasoningEffort.LOW,
         ),
         Model.O3_2025_04_16_HIGH_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.O3_2025_04_16,
-            reasoning_effort="high",
+            reasoning_effort=ReasoningEffort.HIGH,
         ),
         Model.O3_2025_04_16_MEDIUM_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.O3_2025_04_16,
-            reasoning_effort="medium",
+            reasoning_effort=ReasoningEffort.MEDIUM,
         ),
         Model.O3_2025_04_16_LOW_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.O3_2025_04_16,
-            reasoning_effort="low",
+            reasoning_effort=ReasoningEffort.LOW,
         ),
         # Model.O3_PRO_LATEST_HIGH_REASONING_EFFORT: LatestModel(
         #     model=Model.O3_PRO_2025_06_10_HIGH_REASONING_EFFORT,
@@ -587,7 +588,7 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
         Model.GEMINI_2_5_FLASH_PREVIEW_0417: DeprecatedModel(replacement_model=Model.GEMINI_2_5_FLASH),
         Model.GEMINI_2_5_FLASH_PREVIEW_0520: DeprecatedModel(
             replacement_model=Model.GEMINI_2_5_FLASH,
-            reasoning_effort="none",
+            reasoning_effort=ReasoningEffort.DISABLED,
         ),
         Model.GEMINI_2_5_FLASH: ModelData(
             display_name="Gemini 2.5 Flash",
@@ -617,7 +618,7 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
                 context_exceeded="no",
             ),
             is_default=True,
-            reasoning=ModelReasoningBudget(none=0),
+            reasoning=ModelReasoningBudget(disabled=0),
         ),
         Model.GEMINI_2_5_FLASH_THINKING_PREVIEW_0417: DeprecatedModel(replacement_model=Model.GEMINI_2_5_FLASH),
         Model.GEMINI_2_5_FLASH_THINKING_PREVIEW_0520: DeprecatedModel(replacement_model=Model.GEMINI_2_5_FLASH),
@@ -647,7 +648,7 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
                 content_moderation=Model.GPT_41_LATEST,
                 context_exceeded="no",
             ),
-            reasoning=ModelReasoningBudget(none=0),
+            reasoning=ModelReasoningBudget(disabled=0),
         ),
         Model.GEMINI_2_5_FLASH_LITE_PREVIEW_0617: ModelData(
             display_name="Gemini 2.5 Flash Lite Preview (06-17)",
@@ -675,7 +676,7 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
                 content_moderation=Model.GPT_41_NANO_LATEST,
                 context_exceeded="no",
             ),
-            reasoning=ModelReasoningBudget(none=0),
+            reasoning=ModelReasoningBudget(disabled=0),
         ),
         Model.GEMINI_2_5_PRO_PREVIEW_0605: DeprecatedModel(replacement_model=Model.GEMINI_2_5_PRO),
         Model.GEMINI_2_5_PRO_PREVIEW_0506: DeprecatedModel(replacement_model=Model.GEMINI_2_5_PRO),
@@ -896,15 +897,15 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             supports_tool_calling=True,
             supports_parallel_tool_calls=False,
             fallback=_openai_fallback("expensive"),
-            reasoning=ModelReasoningBudget(none=None),
+            reasoning=ModelReasoningBudget(disabled=None),
         ),
         Model.O1_2024_12_17_HIGH_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.O1_2024_12_17,
-            reasoning_effort="high",
+            reasoning_effort=ReasoningEffort.HIGH,
         ),
         Model.O1_2024_12_17_LOW_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.O1_2024_12_17,
-            reasoning_effort="low",
+            reasoning_effort=ReasoningEffort.LOW,
         ),
         Model.CLAUDE_3_5_SONNET_20240620: ModelData(
             display_name="Claude 3.5 Sonnet (2024-06-20)",
@@ -1426,7 +1427,7 @@ def _finalize_reasoning(model_data: ModelData):
     high_budget = reasoning.high if "high" in reasoning.model_fields_set else int(round(0.8 * max_tokens))
 
     return ModelReasoningBudget(
-        none=reasoning.none,
+        disabled=reasoning.disabled,
         low=low_budget,
         medium=medium_budget,
         high=high_budget,

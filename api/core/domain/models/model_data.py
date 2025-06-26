@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 
 from core.domain.errors import ProviderDoesNotSupportModelError
 from core.domain.models import Model, Provider
+from core.domain.reasoning_effort import ReasoningEffort
 from core.domain.task_typology import TaskTypology
 
 from ._sourced_base_model import SourcedBaseModel
@@ -184,7 +185,7 @@ class ModelReasoningBudget(BaseModel):
 
     # There is some magic happening at build time here to fill missing unset values
     # explicitly if needed.
-    none: Literal[0] | None = Field(
+    disabled: Literal[0] | None = Field(
         description="If 0, the model supports reasoning effort 'none'",
         default=None,
     )
@@ -193,25 +194,25 @@ class ModelReasoningBudget(BaseModel):
     medium: int | None = Field(gt=0, default=-1)  # Default: 50% of the max tokens
     high: int | None = Field(gt=0, default=-1)  # Default: 80% of the max tokens
 
-    def __getitem__(self, key: Literal["none", "low", "medium", "high"]) -> int | None:
-        return getattr(self, key, None)
+    def __getitem__(self, key: ReasoningEffort) -> int | None:
+        return getattr(self, key)
 
-    def corresponding_effort(self, budget: int) -> Literal["none", "low", "medium", "high"] | None:
-        # Define the order of effort levels in ascending order of their typical budget values
-        effort_levels: list[Literal["none", "low", "medium", "high"]] = ["none", "low", "medium", "high"]
+    def corresponding_effort(self, budget: int) -> ReasoningEffort | None:
+        highest_matching_effort: ReasoningEffort | None = None
+        if budget == 0 and self.disabled is not None:
+            return ReasoningEffort.DISABLED
 
-        highest_matching_effort: Literal["none", "low", "medium", "high"] | None = None
-
-        for effort in effort_levels:
-            value = getattr(self, effort, None)
+        for effort in list(ReasoningEffort)[1:]:
+            value = self[effort]
             if value is None:
                 continue
-            if value <= budget:
-                highest_matching_effort = effort
+            if value > budget and highest_matching_effort:
+                return highest_matching_effort
+            highest_matching_effort = effort
 
         return highest_matching_effort
 
-    def corresponding_budget(self, effort: Literal["none", "low", "medium", "high"]) -> int | None:
+    def corresponding_budget(self, effort: ReasoningEffort) -> int | None:
         return getattr(self, effort, None)
 
 
@@ -336,7 +337,7 @@ class DeprecatedModel(BaseModel):
     aliases: list[str] | None = None
     # We used to have different model ids per reasoning levels
     # That's no longer the case but we need to allow converting an old model id to the corresponding reasoning level
-    reasoning_effort: Literal["none", "low", "medium", "high"] | None = None
+    reasoning_effort: ReasoningEffort | None = None
 
 
 ModelDataMapping: TypeAlias = dict[Model, FinalModelData | LatestModel | DeprecatedModel]

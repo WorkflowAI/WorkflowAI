@@ -2408,3 +2408,29 @@ async def test_no_model_fallback_on_provider_internal_error_gemini(
     assert len(vertex_reqs) >= 1
     assert len(gemini_reqs) >= 1
     assert len(openai_reqs) == 1
+
+
+async def test_old_reasoning_models_are_remapped(test_client: IntegrationTestClient):
+    """The reasoning effort was previously included in the model ID. This test makes
+    sure that when using a model with a reasoning effort it is correctly mapped to the
+    right version"""
+
+    # Use deprecated model
+    agent = await test_client.create_agent_v1()
+    test_client.mock_openai_call()
+
+    run = await test_client.run_task_v1(
+        agent,
+        model=Model.O3_2025_04_16_LOW_REASONING_EFFORT,
+    )
+    assert run
+
+    version = await test_client.fetch_version(agent, version_id=run["version"]["id"])
+    assert version["properties"]["model"] == Model.O3_2025_04_16
+    assert version["properties"]["reasoning_effort"] == "low"
+
+    openai_request = test_client.httpx_mock.get_request(url=openai_endpoint())
+    assert openai_request
+    body = json.loads(openai_request.content)
+    assert body["model"] == Model.O3_2025_04_16
+    assert body["reasoning_effort"] == "low"

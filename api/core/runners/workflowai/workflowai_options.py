@@ -6,7 +6,8 @@ from pydantic import BaseModel, Field
 from core.domain.fields.image_options import ImageOptions
 from core.domain.message import Message
 from core.domain.models import Model, Provider
-from core.domain.task_group_properties import FewShotExample, ReasoningEffort, ToolChoice
+from core.domain.reasoning_effort import ReasoningEffort
+from core.domain.task_group_properties import FewShotExample, ToolChoice
 from core.domain.tool import Tool
 from core.runners.workflowai.templates import TemplateName
 from core.tools import ToolKind

@@ -1,10 +1,11 @@
 import logging
-from typing import Any, Literal, Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel
 
 from core.domain.models import Model
 from core.domain.models.model_data import ModelReasoningBudget
+from core.domain.reasoning_effort import ReasoningEffort
 from core.domain.task_group_properties import ToolChoice
 from core.domain.tool import Tool
 from core.utils.models.dumps import safe_dump_pydantic_model
@@ -26,7 +27,7 @@ class ProviderOptions(BaseModel):
     presence_penalty: float | None = None
     frequency_penalty: float | None = None
     parallel_tool_calls: bool | None = None
-    reasoning_effort: Literal["none", "low", "medium", "high"] | None = None
+    reasoning_effort: ReasoningEffort | None = None
     reasoning_budget: int | None = None
 
     def _log_warning_if_no_reasoning_budget(self):
@@ -41,7 +42,7 @@ class ProviderOptions(BaseModel):
     def final_reasoning_effort(
         self,
         reasoning_budget: ModelReasoningBudget | None,
-    ) -> Literal["none", "low", "medium", "high"] | None:
+    ) -> ReasoningEffort | None:
         if reasoning_budget is None:
             self._log_warning_if_no_reasoning_budget()
             return None
