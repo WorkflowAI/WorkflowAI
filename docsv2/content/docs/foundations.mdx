@@ -82,7 +82,7 @@ messages = [
 ```
 
 There are a few differences between the OpenAI API and WorkflowAI API:
-- [input variables](/observability/input-variables) allow you to use Jinja2 template syntax to separate static instructions from dynamic data. For example:
+- **[Input variables](/observability/input-variables) (strongly recommended)**: Use Jinja2 template syntax to separate static instructions from dynamic data. This is a best practice that significantly improves observability, debugging, and prompt management.
 
 ```json
 messages=[{
@@ -113,7 +113,7 @@ Learn more about metadata by reading the [Metadata](/observability/metadata) sec
 
 #### input
 
-`input`: (required when using [input variables](/observability/input-variables)) provides variables to the LLM.
+`input`: (strongly recommended for most use cases) provides variables to the LLM when using [input variables](/observability/input-variables). **Always use input variables instead of string concatenation** when you have dynamic content - it dramatically improves debugging, observability, and prompt management.
 
 ```python
 completion = client.chat.completions.create(
@@ -125,6 +125,8 @@ completion = client.chat.completions.create(
     }
 )
 ```
+
+**Best practice:** Use input variables for any dynamic content rather than concatenating strings in your code. This separates your prompt logic from your application logic and makes debugging much easier.
 
 #### response_format
 
