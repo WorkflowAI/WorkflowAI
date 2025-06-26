@@ -42,6 +42,17 @@ By default, WorkflowAI saves all LLM completions. Observability is critical for 
 
 Learn more about by reading the [Observability](/observability) section.
 
+### Playground
+
+Playground is accessible via the WorkflowAI web app and allows a human to test a agent with a dedicated UI optimized for:
+- comparing models side-by-side
+- testing different prompts and parameters
+- testing different input
+
+It's a good idea to send a link to the playground to your user after you have implemented a first version of the agent, by using the URL `https://workflowai.com/agents/agent_id/playground`, or when the user wants to compare different models side-by-side.
+
+The playground has a "Send to Cursor" button that allows to send a specific agent version back to Cursor, so that the user can continue the development in Cursor.
+
 ### Deployments
 
 Deployments allow you to update an agent's prompt or model without changing the code. Learn more about deployments by reading the [Deployments](/deployments) section.
