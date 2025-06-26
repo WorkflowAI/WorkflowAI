@@ -1,7 +1,7 @@
 # pyright: reportPrivateUsage=false
 from datetime import date, datetime
 from typing import Any
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -38,19 +38,12 @@ def mock_final_model_data(mock_provider_data: ModelProviderData) -> Any:
     model_data.release_date = date(2024, 1, 15)
     model_data.quality_index = 100
 
-    # Mock model_dump to return supports fields - only whitelisted ones will be included
-    model_data.model_dump.return_value = {
-        "supports_tool_calling": True,
-        "supports_input_image": True,
-        "supports_input_pdf": True,
-        "supports_input_audio": True,
-        "supports_audio_only": False,  # False value should be ignored
-        "supports_json_mode": True,  # Not in whitelist, should be ignored
-        "supports_structured_output": True,  # Not in whitelist, should be ignored
-        "support_system_messages": True,  # Not in whitelist, should be ignored
-        "supports_parallel_tool_calls": True,  # Not in whitelist, should be ignored
-        "other_field": "value",  # Should be ignored
-    }
+    # Set supports attributes directly as boolean values (not Mocks)
+    model_data.supports_tool_calling = True
+    model_data.supports_input_image = True
+    model_data.supports_input_pdf = True
+    model_data.supports_input_audio = True
+    model_data.supports_audio_only = False
 
     return model_data
 
@@ -66,26 +59,33 @@ class TestConciseModelResponseFromModelData:
         assert result.cost_per_output_token_usd == 0.002
         assert result.release_date == "2024-01-15"
 
-        # Check supports filtering - only whitelisted fields that are True should be included
-        expected_supports = ["tool_calling", "input_image", "input_pdf", "input_audio"]
-        assert sorted(result.supports) == sorted(expected_supports)
+        # Check supports - now it's a ModelSupports object
+        assert result.supports.tool_calling is True
+        assert result.supports.input_image is True
+        assert result.supports.input_pdf is True
+        assert result.supports.input_audio is True
+        assert result.supports.audio_only is False
 
-    def test_only_whitelisted_supports_included(self, mock_final_model_data: Any):
-        """Test that only whitelisted supports are included"""
+    def test_supports_structure(self, mock_final_model_data: Any):
+        """Test that supports returns a proper ModelSupports object"""
         result = ConciseModelResponse.from_model_data("test-id", mock_final_model_data)
 
-        # These should NOT be in the result because they're not in the whitelist
-        assert "json_mode" not in result.supports
-        assert "structured_output" not in result.supports
-        assert "system_messages" not in result.supports
-        assert "parallel_tool_calls" not in result.supports
+        # Check that supports is a ModelSupports instance
+        assert hasattr(result.supports, "input_image")
+        assert hasattr(result.supports, "input_pdf")
+        assert hasattr(result.supports, "input_audio")
+        assert hasattr(result.supports, "audio_only")
+        assert hasattr(result.supports, "tool_calling")
 
-        # Only whitelisted ones should be included
-        for support in result.supports:
-            assert support in ["tool_calling", "input_image", "input_pdf", "input_audio", "audio_only"]
+        # All should be boolean types
+        assert isinstance(result.supports.input_image, bool)
+        assert isinstance(result.supports.input_pdf, bool)
+        assert isinstance(result.supports.input_audio, bool)
+        assert isinstance(result.supports.audio_only, bool)
+        assert isinstance(result.supports.tool_calling, bool)
 
-    def test_empty_supports_when_none_whitelisted(self, mock_provider_data: ModelProviderData):
-        """Test when model has no whitelisted supports"""
+    def test_supports_with_false_values(self, mock_provider_data: ModelProviderData):
+        """Test supports with some false values"""
         model_data = Mock()
         model_data.providers = [(Provider.ANTHROPIC, mock_provider_data)]
         model_data.provider_name = "Anthropic"
@@ -93,21 +93,23 @@ class TestConciseModelResponseFromModelData:
         model_data.release_date = date(2023, 5, 10)
         model_data.quality_index = 95
 
-        # Only non-whitelisted supports
-        model_data.model_dump.return_value = {
-            "supports_json_mode": True,  # Not in whitelist
-            "supports_structured_output": True,  # Not in whitelist
-            "supports_parallel_tool_calls": True,  # Not in whitelist
-            "other_field": True,  # Doesn't match whitelist pattern
-        }
+        # Set specific boolean values
+        model_data.supports_tool_calling = True
+        model_data.supports_input_image = False
+        model_data.supports_input_pdf = True
+        model_data.supports_input_audio = False
+        model_data.supports_audio_only = False
 
         result = ConciseModelResponse.from_model_data("claude-id", model_data)
 
-        # Should be empty since no whitelisted supports are present
-        assert result.supports == []
+        assert result.supports.tool_calling is True
+        assert result.supports.input_image is False
+        assert result.supports.input_pdf is True
+        assert result.supports.input_audio is False
+        assert result.supports.audio_only is False
 
-    def test_all_whitelisted_supports(self, mock_provider_data: ModelProviderData):
-        """Test model with all whitelisted supports enabled"""
+    def test_supports_all_true(self, mock_provider_data: ModelProviderData):
+        """Test model with all supports enabled"""
         model_data = Mock()
         model_data.providers = [(Provider.FIREWORKS, mock_provider_data)]
         model_data.provider_name = "Fireworks"
@@ -115,31 +117,23 @@ class TestConciseModelResponseFromModelData:
         model_data.release_date = date(2024, 7, 23)
         model_data.quality_index = 85
 
-        # All whitelisted supports set to True
-        model_data.model_dump.return_value = {
-            "supports_tool_calling": True,
-            "supports_input_image": True,
-            "supports_input_audio": True,
-            "supports_input_pdf": True,
-            "supports_audio_only": True,
-            # Add some non-whitelisted ones to ensure they're ignored
-            "supports_output_image": True,
-            "supports_json_mode": True,
-        }
+        # All supports set to True
+        model_data.supports_tool_calling = True
+        model_data.supports_input_image = True
+        model_data.supports_input_audio = True
+        model_data.supports_input_pdf = True
+        model_data.supports_audio_only = True
 
         result = ConciseModelResponse.from_model_data("llama-id", model_data)
 
-        expected_supports = [
-            "tool_calling",
-            "input_image",
-            "input_audio",
-            "input_pdf",
-            "audio_only",
-        ]
-        assert sorted(result.supports) == sorted(expected_supports)
+        assert result.supports.tool_calling is True
+        assert result.supports.input_image is True
+        assert result.supports.input_pdf is True
+        assert result.supports.input_audio is True
+        assert result.supports.audio_only is True
 
-    def test_false_values_ignored(self, mock_provider_data: ModelProviderData):
-        """Test that False values are ignored even if whitelisted"""
+    def test_supports_missing_attributes_default_false(self, mock_provider_data: ModelProviderData):
+        """Test that missing support attributes default to False"""
         model_data = Mock()
         model_data.providers = [(Provider.OPEN_AI, mock_provider_data)]
         model_data.provider_name = "Test Provider"
@@ -147,18 +141,25 @@ class TestConciseModelResponseFromModelData:
         model_data.release_date = date(2024, 1, 1)
         model_data.quality_index = 90
 
-        model_data.model_dump.return_value = {
-            "supports_tool_calling": True,  # Should be included
-            "supports_input_image": False,  # Should be ignored (False)
-            "supports_input_audio": True,  # Should be included
-            "supports_input_pdf": False,  # Should be ignored (False)
-            "supports_audio_only": True,  # Should be included
-        }
+        # Configure Mock to not have the supports attributes or modes
+        model_data.configure_mock(**{})
 
-        result = ConciseModelResponse.from_model_data("test", model_data)
+        # Use spec to prevent Mock from auto-creating attributes
+        def mock_hasattr_side_effect(obj, name):
+            if name.startswith("supports_") or name == "modes":
+                return False
+            return hasattr(Mock(), name)
 
-        expected_supports = ["tool_calling", "input_audio", "audio_only"]
-        assert sorted(result.supports) == sorted(expected_supports)
+        # Test the fallback to default values
+        with patch("builtins.hasattr", side_effect=mock_hasattr_side_effect):
+            result = ConciseModelResponse.from_model_data("test", model_data)
+
+        # All should default to False when not present
+        assert result.supports.tool_calling is False
+        assert result.supports.input_image is False
+        assert result.supports.input_pdf is False
+        assert result.supports.input_audio is False
+        assert result.supports.audio_only is False
 
     def test_different_provider_costs(self, mock_final_model_data: Any):
         """Test with different provider cost structure"""
@@ -217,8 +218,8 @@ class TestConciseModelResponseFromModelData:
         assert result.cost_per_input_token_usd == 0.001  # From first provider
         assert result.cost_per_output_token_usd == 0.002  # From first provider
 
-    def test_supports_prefix_removal(self, mock_provider_data: ModelProviderData):
-        """Test that 'supports_' prefix is properly removed from whitelisted field names"""
+    def test_supports_with_model_for_task_fallback(self, mock_provider_data: ModelProviderData):
+        """Test that supports extraction falls back to modes when FinalModelData attributes not found"""
         model_data = Mock()
         model_data.providers = [(Provider.OPEN_AI, mock_provider_data)]
         model_data.provider_name = "Test Provider"
@@ -226,37 +227,26 @@ class TestConciseModelResponseFromModelData:
         model_data.release_date = date(2024, 1, 1)
         model_data.quality_index = 90
 
-        model_data.model_dump.return_value = {
-            "supports_tool_calling": True,  # Whitelisted - should be included as "tool_calling"
-            "supports_input_image": True,  # Whitelisted - should be included as "input_image"
-            "supports_custom_feature": True,  # Not whitelisted - should be ignored
-        }
+        # Set up the mock to trigger ModelForTask fallback
+        model_data.modes = ["tool_calling", "input_image", "input_pdf"]
 
-        result = ConciseModelResponse.from_model_data("test", model_data)
+        # Override hasattr to control the flow
+        def mock_hasattr_side_effect(obj, name):
+            if name.startswith("supports_"):
+                return False  # Force fallback to modes
+            if name == "modes":
+                return True  # Has modes attribute
+            return hasattr(Mock(), name)
 
-        expected_supports = ["tool_calling", "input_image"]
-        assert sorted(result.supports) == sorted(expected_supports)
+        with patch("builtins.hasattr", side_effect=mock_hasattr_side_effect):
+            result = ConciseModelResponse.from_model_data("test", model_data)
 
-    def test_whitelist_exact_matching(self, mock_provider_data: ModelProviderData):
-        """Test that whitelist matching is exact (no partial matches)"""
-        model_data = Mock()
-        model_data.providers = [(Provider.OPEN_AI, mock_provider_data)]
-        model_data.provider_name = "Test Provider"
-        model_data.display_name = "Test Model"
-        model_data.release_date = date(2024, 1, 1)
-        model_data.quality_index = 75
-
-        model_data.model_dump.return_value = {
-            "supports_tool": True,  # Similar but not exact match to "supports_tool_calling"
-            "supports_tool_calling_advanced": True,  # Similar but not exact match
-            "supports_tool_calling": True,  # Exact match - should be included
-            "tool_calling": True,  # Missing prefix - should be ignored
-        }
-
-        result = ConciseModelResponse.from_model_data("test", model_data)
-
-        # Only the exact whitelist match should be included
-        assert result.supports == ["tool_calling"]
+        # Should use modes list
+        assert result.supports.tool_calling is True
+        assert result.supports.input_image is True
+        assert result.supports.input_pdf is True
+        assert result.supports.input_audio is False  # Not in modes
+        assert result.supports.audio_only is False  # Not in modes
 
 
 class TestMCPRunFromDomain:

@@ -19,7 +19,13 @@ def create_test_model(
     return ConciseModelResponse(
         id=model_id,
         display_name=f"Test Model {model_id}",
-        supports=["tool_calling"],
+        supports=ConciseModelResponse.ModelSupports(
+            input_image=False,
+            input_pdf=False,
+            input_audio=False,
+            audio_only=False,
+            tool_calling=True,
+        ),
         quality_index=quality_index,
         cost_per_input_token_usd=cost_per_input_token_usd,
         cost_per_output_token_usd=cost_per_output_token_usd,

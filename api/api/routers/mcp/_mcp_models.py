@@ -1,6 +1,6 @@
 import json
 from datetime import datetime, time
-from typing import Any, Generic, Literal, TypeAlias, TypeVar
+from typing import Any, Generic, Literal, TypeAlias, TypeVar, Union
 
 from pydantic import BaseModel, Field
 
@@ -40,38 +40,69 @@ class UsefulLinks(BaseModel):
 
 
 class ConciseLatestModelResponse(BaseModel):
-    id: str = Field(description="TODO: Add description for model ID")
-    currently_points_to: str = Field(description="TODO: Add description for currently points to")
+    id: str = Field(description="The id of the model")
+    currently_points_to: str = Field(
+        description="The id of the model that the latest version of the agent is currently pointing to",
+    )
 
 
 class ConciseModelResponse(BaseModel):
-    id: str = Field(description="TODO: Add description for model ID")
-    display_name: str = Field(description="TODO: Add description for model display name")
-    supports: list[str] = Field(description="TODO: Add description for supported features")
-    quality_index: int = Field(description="TODO: Add description for quality index")
-    cost_per_input_token_usd: float = Field(description="TODO: Add description for input token cost")
-    cost_per_output_token_usd: float = Field(description="TODO: Add description for output token cost")
-    release_date: str = Field(description="TODO: Add description for release date")
+    class ModelSupports(BaseModel):
+        """Features supported by the model"""
+
+        input_image: bool = Field(description="Whether the model supports image inputs")
+        input_pdf: bool = Field(description="Whether the model supports PDF document inputs")
+        input_audio: bool = Field(description="Whether the model supports audio inputs")
+        # TODO/QUESTION: audio_only is very confusing. What is the field supposed to represent?
+        audio_only: bool = Field(description="TODO: ...")
+        tool_calling: bool = Field(description="Whether the model supports tool/function calling")
+
+    id: str = Field(description="The id of the model")
+    display_name: str = Field(description="The display name of the model")
+    supports: ModelSupports = Field(description="The features supported by the model")
+    quality_index: int = Field(description="The quality index of the model. A higher index means a smarter model.")
+    cost_per_input_token_usd: float = Field(description="The cost per input token in USD")
+    cost_per_output_token_usd: float = Field(description="The cost per output token in USD")
+    release_date: str = Field(description="The release date of the model")
+
+    @classmethod
+    def _extract_supports(cls, model_data: Union[FinalModelData, ModelForTask]) -> "ModelSupports":
+        """Extract ModelSupports from either FinalModelData or ModelForTask"""
+        # Try FinalModelData approach first (has boolean attributes)
+        if hasattr(model_data, "supports_input_image"):
+            return cls.ModelSupports(
+                input_image=getattr(model_data, "supports_input_image", False),
+                input_pdf=getattr(model_data, "supports_input_pdf", False),
+                input_audio=getattr(model_data, "supports_input_audio", False),
+                audio_only=getattr(model_data, "supports_audio_only", False),
+                tool_calling=getattr(model_data, "supports_tool_calling", False),
+            )
+        # Fall back to ModelForTask approach (has modes list)
+        if hasattr(model_data, "modes"):
+            modes = getattr(model_data, "modes", [])
+            return cls.ModelSupports(
+                input_image="input_image" in modes,
+                input_pdf="input_pdf" in modes,
+                input_audio="input_audio" in modes,
+                audio_only="audio_only" in modes,
+                tool_calling="tool_calling" in modes,
+            )
+        # Default all to False if neither structure is found
+        return cls.ModelSupports(
+            input_image=False,
+            input_pdf=False,
+            input_audio=False,
+            audio_only=False,
+            tool_calling=False,
+        )
 
     @classmethod
     def from_model_data(cls, id: str, model: FinalModelData):
-        SUPPORTS_WHITELIST = {
-            "supports_input_image",
-            "supports_input_pdf",
-            "supports_input_audio",
-            "supports_audio_only",
-            "supports_tool_calling",
-        }
-
         provider_data = model.providers[0][1]
         return cls(
             id=id,
             display_name=model.display_name,
-            supports=[
-                k.removeprefix("supports_")
-                for k, v in model.model_dump().items()
-                if v is True and k in SUPPORTS_WHITELIST
-            ],
+            supports=cls._extract_supports(model),
             quality_index=model.quality_index,
             cost_per_input_token_usd=provider_data.text_price.prompt_cost_per_token,
             cost_per_output_token_usd=provider_data.text_price.completion_cost_per_token,
@@ -83,7 +114,7 @@ class ConciseModelResponse(BaseModel):
         return cls(
             id=model.id,
             display_name=model.name,
-            supports=model.modes,
+            supports=cls._extract_supports(model),
             quality_index=model.quality_index,
             cost_per_input_token_usd=model.price_per_input_token_usd,
             cost_per_output_token_usd=model.price_per_output_token_usd,
@@ -599,9 +630,9 @@ class StandardModelResponse(BaseModel):
 
 
 class Error(BaseModel):
-    code: str = Field(description="TODO: Add description for error code")
-    message: str = Field(description="TODO: Add description for error message")
-    details: dict[str, Any] | None = Field(description="TODO: Add description for error details")
+    code: str = Field(description="The error code")
+    message: str = Field(description="The error message")
+    details: dict[str, Any] | None = Field(description="The error details")
 
     @classmethod
     def from_domain(cls, error: ErrorResponse.Error):
@@ -613,15 +644,16 @@ class Error(BaseModel):
 
 
 class AgentVersion(BaseModel):
-    id: str = Field(description="TODO: Add description for agent version ID")
-    model: str = Field(description="TODO: Add description for model name")
-    temperature: float | None = Field(description="TODO: Add description for temperature setting")
-    messages: list[Message] | None = Field(description="TODO: Add description for version messages")
-    instructions: str | None = Field(description="TODO: Add description for agent instructions")
-    top_p: float | None = Field(description="TODO: Add description for top_p parameter")
-    max_tokens: int | None = Field(description="TODO: Add description for max_tokens setting")
-    frequency_penalty: float | None = Field(description="TODO: Add description for frequency_penalty parameter")
-    presence_penalty: float | None = Field(description="TODO: Add description for presence_penalty parameter")
+    id: str = Field(description="The version id of the agent")
+    model: str = Field(description="The model (id) used by the version")
+    temperature: float | None = Field(description="The temperature setting of the version")
+    messages: list[Message] | None = Field(description="The messages that are part of the version")
+    # QUESTION: why are instructions exactly? I thought instructions will be in the list of messages
+    instructions: str | None = Field(description="The instructions of the version")
+    top_p: float | None = Field(description="The top_p parameter of the version")
+    max_tokens: int | None = Field(description="The max_tokens setting of the version")
+    frequency_penalty: float | None = Field(description="The frequency_penalty parameter of the version")
+    presence_penalty: float | None = Field(description="The presence_penalty parameter of the version")
 
     @classmethod
     def from_domain(cls, version: TaskGroup):
@@ -641,31 +673,31 @@ class AgentVersion(BaseModel):
 class MCPRun(BaseModel):
     """A run as returned by the MCP Server"""
 
-    id: str = Field(description="TODO: Add description for run ID")
-    conversation_id: str = Field(description="TODO: Add description for conversation ID")
-    agent_id: str = Field(description="TODO: Add description for agent ID")
-    agent_schema_id: int = Field(description="TODO: Add description for agent schema ID")
-    agent_version: AgentVersion = Field(description="TODO: Add description for agent version")
+    id: str = Field(description="The id of the run")
+    conversation_id: str = Field(description="The id of the conversation that the run belongs to")
+    agent_id: str = Field(description="The id of the agent that the run belongs to")
+    agent_schema_id: int = Field(description="The id of the agent schema that the run belongs to")
+    agent_version: AgentVersion = Field(description="The version of the agent that the run belongs to")
     status: Literal[
         "success",
         "error",
-    ] = Field(description="TODO: Add description for run status")
-    # TODO: what is agent_input exactly? it is the list of input variables values? in that case, the naming is confusing
-    agent_input: dict[str, Any] | None = Field(description="TODO: Add description for agent input")
+    ] = Field(description="The status of the run (success or error)")
+    # QUESTION/TODO: what is agent_input exactly? it is the list of input variables values? in that case, the naming is confusing
+    agent_input: dict[str, Any] | None = Field(description="TODO: ...")
     messages: list[Message] = Field(description="The exchanged messages, including the returned assistant message")
-    duration_seconds: float | None = Field(description="TODO: Add description for duration in seconds")
-    cost_usd: float | None = Field(description="TODO: Add description for cost in USD")
-    created_at: datetime = Field(description="TODO: Add description for creation timestamp")
+    duration_seconds: float | None = Field(description="The duration of the run in seconds")
+    cost_usd: float | None = Field(description="The cost of the run in USD")
+    created_at: datetime = Field(description="The creation timestamp of the run")
     environment: VersionEnvironment | None = Field(
         description="The environment that was used to trigger the run, if any",
     )
-    metadata: dict[str, Any] | None = Field(description="TODO: Add description for metadata")
+    metadata: dict[str, Any] | None = Field(description="The metadata set by the user")
     response_json_schema: dict[str, Any] | None = Field(
         description="Only present when using structured outputs. The JSON schema that the model was asked to respect",
     )
     error: Error | None = Field(description="An error returned by the model")
 
-    url: str = Field(description="TODO: Add description for run URL")
+    url: str = Field(description="URL of the run on WorkflowAI web app")
 
     @classmethod
     def from_domain(
@@ -706,8 +738,8 @@ class SearchResponse(BaseModel):
     )
 
     class QueryResult(BaseModel):
-        content_snippet: str = Field(description="TODO: Add description for content snippet")
-        source_page: str = Field(description="TODO: Add description for source page")
+        content_snippet: str = Field(description="The snippet of the content of the page that matches the query")
+        source_page: str = Field(description="The page from which the content snippet was extracted")
 
     query_results: list[QueryResult] | None = Field(
         default=None,
