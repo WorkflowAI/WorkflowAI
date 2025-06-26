@@ -55,7 +55,7 @@ class TestMCPServiceSearchDocumentation:
         # Mock the foundations page that gets added automatically
         mock_foundations_sections = [
             DocumentationSection(
-                title="foundations",
+                file_path="foundations",
                 content="WorkflowAI foundations content explaining core concepts and architecture.",
             ),
         ]
