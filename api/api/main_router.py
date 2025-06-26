@@ -2,13 +2,31 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from api.dependencies.security import URLPublicOrganizationDep, key_ring_dependency, tenant_dependency
 from api.routers import (
+    agents_v1,
+    api_keys,
     clerk_webhooks,
+    examples_by_id,
     features,
     feedback_v1,
     helpscout_webhooks,
     integrations_router,
+    organizations,
+    payments,
+    reviews,
+    run,
+    runs_by_id,
+    runs_v1,
     slack_webhooks,
+    stats,
     stripe_webhooks,
+    task_groups,
+    task_schemas,
+    tasks,
+    tenant_runs,
+    tools_router,
+    transcriptions,
+    upload,
+    versions_v1,
 )
 from api.routers.agents import meta_agent, new_tool_agent
 from api.routers.tools_v1 import tools_v1_router
@@ -36,22 +54,6 @@ async def get_public_organization_settings(
 
 # Non v1 routes
 def _tenant_router():
-    from api.routers import (
-        api_keys,
-        examples_by_id,
-        organizations,
-        payments,
-        reviews,
-        runs_by_id,
-        stats,
-        task_groups,
-        task_schemas,
-        tasks,
-        tools_router,
-        transcriptions,
-        upload,
-    )
-
     tenant_router = APIRouter(prefix="/{tenant}")
     tenant_router.include_router(stats.router, tags=[RouteTags.MONITORING])
     tenant_router.include_router(api_keys.router, tags=[RouteTags.API_KEYS])
@@ -74,18 +76,17 @@ def _tenant_router():
 
 
 def _authenticated_router():
-    from api.routers import agents_v1, organizations, payments, runs_v1, task_schemas_v1, versions_v1
-
     authenticated_router = APIRouter(
         dependencies=[
             Depends(tenant_dependency),
             Depends(key_ring_dependency),
         ],
     )
-    authenticated_router.include_router(task_schemas_v1.router, tags=[RouteTags.AGENT_SCHEMAS])
+    authenticated_router.include_router(task_schemas.router, tags=[RouteTags.AGENT_SCHEMAS])
     authenticated_router.include_router(versions_v1.router)
     authenticated_router.include_router(runs_v1.router)
     authenticated_router.include_router(agents_v1.router)
+    authenticated_router.include_router(tenant_runs.router)
     authenticated_router.include_router(payments.router)
     authenticated_router.include_router(_tenant_router())
     authenticated_router.include_router(organizations.router)
@@ -97,3 +98,15 @@ def _authenticated_router():
 
 
 main_router.include_router(_authenticated_router())
+
+# Task routes
+main_router.include_router(tasks.router)
+main_router.include_router(task_schemas.router)
+main_router.include_router(task_groups.router)
+
+# Run routes
+main_router.include_router(run.task_router)
+main_router.include_router(run.agent_router)
+main_router.include_router(runs_v1.router)
+main_router.include_router(runs_by_id.router)
+main_router.include_router(tenant_runs.router)

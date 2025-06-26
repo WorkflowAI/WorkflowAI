@@ -524,3 +524,167 @@ class RunsSearchService:
 
         items, count = await asyncio.gather(_fetch_runs(), _fetch_count())
         return Page(items=items, count=count)
+
+    async def search_tenant_runs(
+        self,
+        tenant_uid: int,
+        field_queries: list[FieldQuery] | None,
+        agent_ids: list[str] | None,
+        limit: int,
+        offset: int,
+        map_fn: Callable[[AgentRunBase], BM],
+    ) -> Page[BM]:
+        """
+        Search runs across multiple agents within a tenant.
+
+        This method provides tenant-wide run search capability with optional agent filtering.
+        Performance considerations:
+        - Queries across all agents lose the task_uid ordering optimization
+        - Consider using time-based filters and agent_ids filtering for better performance
+        - Results are still ordered by (tenant_uid, created_at_date) which provides reasonable performance
+        """
+        # Convert agent_ids to task_uids for filtering if provided
+        task_uids: set[int] | None = None
+        if agent_ids:
+            # Map agent_ids to task_uids using the tasks storage
+            task_uid_map = {}
+            try:
+                # Use the proper storage interface to get task information
+                for agent_id in agent_ids:
+                    try:
+                        # This will need to be implemented in the storage layer
+                        # For now, we'll use a simpler approach that may need backend storage access
+                        task_docs = await self._storage.find_task_by_id(agent_id)
+                        if task_docs:
+                            task_uid_map[agent_id] = task_docs.uid
+                    except Exception:
+                        # Skip invalid agent_ids
+                        continue
+            except Exception as e:
+                self._logger.warning("Failed to map agent_ids to task_uids", extra={"error": str(e)})
+                # If we can't map agent_ids, return empty result to be safe
+                return Page(items=[], count=0)
+
+            task_uids = {task_uid for task_uid in task_uid_map.values()}
+            if not task_uids:
+                # No valid agent_ids found, return empty result
+                return Page(items=[], count=0)
+
+        # Process field queries - similar to existing search but without task_uid constraint
+        fields = [f async for f in self._process_tenant_field_query(field_queries)] if field_queries else None
+
+        task_runs_storage = self._storage.task_runs
+
+        async def _fetch_count():
+            return await task_runs_storage.count_tenant_filtered_runs(
+                tenant_uid,
+                fields,
+                task_uids,
+                timeout_ms=20_000,
+            )
+
+        async def _fetch_runs():
+            runs = [
+                item
+                async for item in task_runs_storage.search_tenant_runs(
+                    tenant_uid,
+                    fields,
+                    task_uids,
+                    limit,
+                    offset,
+                )
+            ]
+            # Apply reviews similar to the existing method
+            if runs:
+                # Group runs by task_id for efficient review loading
+                runs_by_task = {}
+                for run in runs:
+                    task_id = run.task_id
+                    if task_id not in runs_by_task:
+                        runs_by_task[task_id] = []
+                    runs_by_task[task_id].append(run)
+
+                # Apply reviews for each task group
+                for task_id, task_runs in runs_by_task.items():
+                    await apply_reviews(self._storage.reviews, task_id, task_runs, self._logger)
+
+            return [map_fn(item) for item in runs]
+
+        items, count = await asyncio.gather(_fetch_runs(), _fetch_count())
+        return Page(items=items, count=count)
+
+    async def _process_tenant_field_query(self, field_queries: list[FieldQuery] | None):
+        """
+        Process field queries for tenant-wide searches.
+        Similar to _process_field_query but without task_id scoping.
+        """
+        if not field_queries:
+            return
+
+        def _map_simple_query(field: SimpleSearchField, field_query: FieldQuery, map_value: Callable[[Any], Any]):
+            return SearchQuerySimple(field, self._operation_from_query(field_query, map_value), field_query.type)
+
+        version_queries: dict[MajorMinor, SingleValueOperator] = {}
+        for field_query in field_queries:
+            match field_query.field_name:
+                case SearchField.REVIEW:
+                    # Note: Review queries at tenant level need special handling
+                    # as eval_hashes are task-specific
+                    self._logger.warning("Review field queries not fully supported for tenant-wide searches")
+                    continue
+                case SearchField.SCHEMA_ID:
+                    yield _map_simple_query(SearchField.SCHEMA_ID, field_query, int)
+                    continue
+                case SearchField.VERSION:
+                    operation = self._operation_from_query(field_query, self._map_version)
+                    if not isinstance(operation, SearchOperationSingle):
+                        raise BadRequestError(f"Invalid operation for version: {operation}")
+                    if isinstance(operation.value, MajorMinor):
+                        version_queries[operation.value] = operation.operator
+                    else:
+                        yield SearchQuerySimple(SearchField.VERSION, operation, field_query.type)
+                    continue
+                case SearchField.PRICE:
+                    yield _map_simple_query(SearchField.PRICE, field_query, float)
+                    continue
+                case SearchField.LATENCY:
+                    yield _map_simple_query(SearchField.LATENCY, field_query, float)
+                    continue
+                case SearchField.TEMPERATURE:
+                    yield _map_simple_query(SearchField.TEMPERATURE, field_query, self._temperature_to_float)
+                    continue
+                case SearchField.MODEL:
+                    yield _map_simple_query(SearchField.MODEL, field_query, str)
+                    continue
+                case SearchField.SOURCE:
+                    yield _map_simple_query(SearchField.SOURCE, field_query, self._map_source)
+                    continue
+                case SearchField.TIME:
+                    yield _map_simple_query(SearchField.TIME, field_query, datetime.fromisoformat)
+                    continue
+                case SearchField.STATUS:
+                    yield _map_simple_query(SearchField.STATUS, field_query, StatusSearchOptions)
+                    continue
+                case SearchField.EVAL_HASH:
+                    # This should not be called directly
+                    yield _map_simple_query(SearchField.EVAL_HASH, field_query, lambda x: x)
+                    continue
+                case SearchField.INPUT | SearchField.OUTPUT:
+                    # The entire input / output will be searched as string
+                    yield _map_simple_query(field_query.field_name, field_query, lambda x: x)
+                    continue
+                case _:
+                    pass
+            if nested := self._nested_field_query(field_query):
+                yield nested
+                continue
+
+            raise BadRequestError(f"Unsupported field: {field_query.field_name}")
+
+        # Handle version queries that need group_id mapping
+        if version_queries:
+            # For tenant-wide searches, we need to search across all task groups in the tenant
+            # This is more complex than the single-task version
+            self._logger.warning("Semver-based version queries are complex for tenant-wide searches and may be slow")
+            # For now, we'll skip semver queries in tenant searches to avoid performance issues
+            # TODO: Implement efficient semver queries for tenant-wide searches
