@@ -1,0 +1,38 @@
+---
+title: OpenAI Rust Code
+summary: How to use Rust with WorkflowAI. WorkflowAI exposes a compatible OpenAI API endpoint. Use the reqwest HTTP client to make requests to the API.
+---
+
+TODO: check that Rust HTTP library we should use. @guillaume
+
+```rust
+use reqwest::Client;
+use serde_json::json;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // setup WorkflowAI client
+    let client = Client::new();
+    
+    let response = client
+        .post("https://run.workflowai.com/v1/chat/completions") // [!code highlight]
+        .bearer_auth("wai-***") // use create_api_key MCP tool // [!code highlight]
+        .json(&json!({
+            "model": "gpt-4o-mini",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": "Hello, how are you?"
+                }
+            ]
+            // your existing parameters
+        }))
+        .send()
+        .await?;
+
+    let result: serde_json::Value = response.json().await?;
+    println!("{}", serde_json::to_string_pretty(&result)?);
+
+    Ok(())
+}
+``` 
