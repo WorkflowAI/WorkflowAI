@@ -420,7 +420,7 @@ class TestReasoningModel:
         assert len(missing_fields) == 0, f"Model {model_data.model} has missing fields: {missing_fields}"
 
         # Also check that if a field is not None, then it is also not 0
-        values = reasoning.model_dump(exclude_none=True, exclude={"none"})
+        values = reasoning.model_dump(exclude_none=True, exclude={"disabled"})
         for k, v in values.items():
             assert v > 0, f"Model {model_data.model} has a field that is not > 0: {k}={v}"
 

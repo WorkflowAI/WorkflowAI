@@ -264,7 +264,7 @@ class TestModelReasoningCorrespondingBudget:
     @pytest.mark.parametrize(
         "effort, expected_budget",
         [
-            ("none", 0),
+            ("disabled", 0),
             ("low", 200),
             ("medium", 300),
             ("high", 400),
