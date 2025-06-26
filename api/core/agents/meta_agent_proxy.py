@@ -799,7 +799,7 @@ Check in the 'agent_lifecycle_info.deployment_info.deployments' to see if the 'c
 
 You answer MUST include:
 - Before talking about code update explains about how to deploy the agent based on the docs (200 words max.) in 'features/deployments.md'
-- Add a link to https://docs2.workflowai.com/deployments for the user to read more about deployments.
+- Add a link to https://docs.workflowai.com/deployments for the user to read more about deployments.
 - Then, you can talk about the model parameter update needed:  MODEL_NAME_PREFIX_PLACEHOLDER<current_agent.slug>/#<current_agent.schema_id>/<deployment env (production, staging, dev)>
 ex: model="MODEL_NAME_PREFIX_PLACEHOLDERmy-agent/#1/production" You can explain the format above to the user: (model="MODEL_NAME_PREFIX_PLACEHOLDERmy-agent/#1/production")
 {% if is_using_version_messages %}
