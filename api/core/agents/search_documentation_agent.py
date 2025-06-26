@@ -20,7 +20,7 @@ class SearchDocumentationOutput(BaseModel):
         description="When relevant, output a feedback to explain which documentation sections are missing to fully answer the user's query and why.",
         examples=[
             "I could not find any documentation section regarding ...",
-            "The is no section about ...",
+            "There is no section about ...",
         ],
     )
 
