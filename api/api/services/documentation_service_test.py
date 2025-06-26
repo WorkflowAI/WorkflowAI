@@ -480,7 +480,8 @@ async def test_search_documentation_by_query_success(
     )
 
     query = "How to authenticate with the API?"
-    result = await documentation_service.search_documentation_by_query(query)
+    usage_context = "Test context for MCP client"
+    result = await documentation_service.search_documentation_by_query(query, usage_context)
 
     # Should return only the relevant sections
     expected_sections = [
@@ -497,10 +498,7 @@ async def test_search_documentation_by_query_success(
     mock_search_agent.assert_called_once_with(
         query=query,
         available_doc_sections=all_sections,
-        usage_context="""The query was made by an MCP (Model Context Protocol) client such as Cursor IDE and other code editors.
-
-Your primary purpose is to help developers find the most relevant WorkflowAI documentation sections to answer their specific queries about building, deploying, and using AI agents.
-""",
+        usage_context=usage_context,
     )
 
 
@@ -529,17 +527,15 @@ async def test_search_documentation_by_query_empty_results(
     )
 
     query = "How to build a rocket ship?"
-    result = await documentation_service.search_documentation_by_query(query)
+    usage_context = "Test context for MCP client"
+    result = await documentation_service.search_documentation_by_query(query, usage_context)
 
     assert result == []
     mock_get_all_sections.assert_called_once_with("local")
     mock_search_agent.assert_called_once_with(
         query=query,
         available_doc_sections=all_sections,
-        usage_context="""The query was made by an MCP (Model Context Protocol) client such as Cursor IDE and other code editors.
-
-Your primary purpose is to help developers find the most relevant WorkflowAI documentation sections to answer their specific queries about building, deploying, and using AI agents.
-""",
+        usage_context=usage_context,
     )
 
 
@@ -560,7 +556,8 @@ async def test_search_documentation_by_query_none_result(
     mock_search_agent.return_value = None
 
     query = "test query"
-    result = await documentation_service.search_documentation_by_query(query)
+    usage_context = "Test context for MCP client"
+    result = await documentation_service.search_documentation_by_query(query, usage_context)
 
     assert result == []
     mock_get_all_sections.assert_called_once_with("local")
@@ -587,7 +584,8 @@ async def test_search_documentation_by_query_agent_error(
 
     caplog.set_level(logging.ERROR, logger="api.services.documentation_service")
     query = "How to authenticate?"
-    result = await documentation_service.search_documentation_by_query(query)
+    usage_context = "Test context for MCP client"
+    result = await documentation_service.search_documentation_by_query(query, usage_context)
 
     # Should return empty list when search agent fails
     assert result == []
@@ -595,10 +593,7 @@ async def test_search_documentation_by_query_agent_error(
     mock_search_agent.assert_called_once_with(
         query=query,
         available_doc_sections=all_sections,
-        usage_context="""The query was made by an MCP (Model Context Protocol) client such as Cursor IDE and other code editors.
-
-Your primary purpose is to help developers find the most relevant WorkflowAI documentation sections to answer their specific queries about building, deploying, and using AI agents.
-""",
+        usage_context=usage_context,
     )
     assert "Error in search documentation agent" in caplog.text
 
@@ -627,12 +622,13 @@ async def test_search_documentation_by_query_mode_selection(
 
     # Test with remote mode
     query = "test query"
-    await documentation_service.search_documentation_by_query(query, mode="remote")
+    usage_context = "Test context for MCP client"
+    await documentation_service.search_documentation_by_query(query, usage_context, mode="remote")
 
     mock_get_all_sections.assert_called_with("remote")
 
     # Test with local mode (default)
-    await documentation_service.search_documentation_by_query(query)
+    await documentation_service.search_documentation_by_query(query, usage_context)
     mock_get_all_sections.assert_called_with("local")
 
 
@@ -661,7 +657,8 @@ async def test_search_documentation_by_query_partial_matches(
     )
 
     query = "test query"
-    result = await documentation_service.search_documentation_by_query(query)
+    usage_context = "Test context for MCP client"
+    result = await documentation_service.search_documentation_by_query(query, usage_context)
 
     # Should only return sections that actually exist
     expected_sections = [

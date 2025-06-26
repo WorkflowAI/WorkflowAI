@@ -451,7 +451,11 @@ class MCPService:
         """Search documentation using query and return snippets."""
 
         documentation_service = DocumentationService()
-        relevant_sections = await documentation_service.search_documentation_by_query(query)
+        usage_context = """The query was made by an MCP (Model Context Protocol) client such as Cursor IDE and other code editors.
+
+Your primary purpose is to help developers find the most relevant WorkflowAI documentation sections to answer their specific queries about building, deploying, and using AI agents.
+"""
+        relevant_sections = await documentation_service.search_documentation_by_query(query, usage_context)
 
         # Convert to SearchResult format with content snippets
         query_results = [

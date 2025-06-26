@@ -80,6 +80,12 @@ class TestMCPServiceSearchDocumentation:
         assert "WorkflowAI foundations content" in search_results[2].content_snippet
         assert result.message and "Successfully found relevant documentation sections" in result.message
 
+        # Verify the usage_context was passed correctly
+        mock_service.search_documentation_by_query.assert_called_once()
+        call_args = mock_service.search_documentation_by_query.call_args
+        assert call_args[0][0] == "how to get started"  # query parameter
+        assert "MCP (Model Context Protocol) client" in call_args[0][1]  # usage_context parameter
+
     @patch("api.routers.mcp._mcp_service.DocumentationService")
     async def test_search_documentation_page_mode_success(
         self,

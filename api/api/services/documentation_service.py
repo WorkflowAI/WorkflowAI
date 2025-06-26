@@ -21,7 +21,7 @@ _logger = logging.getLogger(__name__)
 
 # local reads from local docsv2 folder,
 # 'remote' reads from the fumadocs nextjs app instance
-# TODO: totally decomission local mode
+# TODO: totally decommission local mode
 DocModeEnum = Literal["local", "remote"]
 
 DEFAULT_DOC_MODE: DocModeEnum = "local"
@@ -256,6 +256,7 @@ class DocumentationService:
     async def search_documentation_by_query(
         self,
         query: str,
+        usage_context: str | None = None,
         mode: DocModeEnum = DEFAULT_DOC_MODE,
     ) -> list[DocumentationSection]:
         all_doc_sections: list[DocumentationSection] = await self.get_all_doc_sections(mode)
@@ -267,10 +268,7 @@ class DocumentationService:
             result = await search_documentation_agent(
                 query=query,
                 available_doc_sections=all_doc_sections,
-                usage_context="""The query was made by an MCP (Model Context Protocol) client such as Cursor IDE and other code editors.
-
-Your primary purpose is to help developers find the most relevant WorkflowAI documentation sections to answer their specific queries about building, deploying, and using AI agents.
-""",
+                usage_context=usage_context,
             )
 
             if not result:
