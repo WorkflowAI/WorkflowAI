@@ -655,7 +655,10 @@ class MCPRun(BaseModel):
     duration_seconds: float | None
     cost_usd: float | None
     created_at: datetime
-    metadata: dict[str, Any] | None  # very important
+    environment: VersionEnvironment | None = Field(
+        description="The environment that was used to trigger the run, if any",
+    )
+    metadata: dict[str, Any] | None
     response_json_schema: dict[str, Any] | None = Field(
         description="Only present when using structured outputs. The JSON schema that the model was asked to respect",
     )
@@ -687,10 +690,11 @@ class MCPRun(BaseModel):
             duration_seconds=run.duration_seconds,
             cost_usd=run.cost_usd,
             created_at=run.created_at,
-            metadata=run.metadata,
+            metadata=run.filtered_metadata,
             response_json_schema=output_schema,
             error=Error.from_domain(run.error) if run.error else None,
             url=url,
+            environment=run.used_environment,
         )
 
 
