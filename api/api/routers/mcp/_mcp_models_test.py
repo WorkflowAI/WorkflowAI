@@ -1,13 +1,14 @@
 # pyright: reportPrivateUsage=false
 from datetime import date, datetime
-from typing import Any
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import pytest
 
 from api.routers.mcp._mcp_models import ConciseModelResponse, MCPRun
+from api.services.models import ModelForTask
 from core.domain.error_response import ErrorResponse
 from core.domain.models import Provider
+from core.domain.models.model_data import FinalModelData
 from core.domain.models.model_provider_data import ModelProviderData, TextPricePerToken
 from tests import models as test_models
 
@@ -29,9 +30,9 @@ def mock_provider_data(mock_text_price: TextPricePerToken) -> ModelProviderData:
 
 
 @pytest.fixture
-def mock_final_model_data(mock_provider_data: ModelProviderData) -> Any:
-    """Create a mock FinalModelData for testing"""
-    model_data = Mock()
+def mock_final_model_data(mock_provider_data: ModelProviderData) -> Mock:
+    """Create a mock FinalModelData for testing that works with isinstance"""
+    model_data = Mock(spec=FinalModelData)
     model_data.providers = [(Provider.OPEN_AI, mock_provider_data)]
     model_data.provider_name = "OpenAI"
     model_data.display_name = "GPT-4"
@@ -48,8 +49,23 @@ def mock_final_model_data(mock_provider_data: ModelProviderData) -> Any:
     return model_data
 
 
+@pytest.fixture
+def mock_model_for_task(mock_provider_data: ModelProviderData) -> Mock:
+    """Create a mock ModelForTask for testing that works with isinstance"""
+    model_data = Mock(spec=ModelForTask)
+    model_data.id = "model-for-task-id"
+    model_data.name = "Model For Task"
+    model_data.quality_index = 85
+    model_data.price_per_input_token_usd = 0.003
+    model_data.price_per_output_token_usd = 0.004
+    model_data.release_date = date(2024, 2, 20)
+    model_data.modes = ["tool_calling", "input_image", "input_pdf"]
+
+    return model_data
+
+
 class TestConciseModelResponseFromModelData:
-    def test_basic_functionality(self, mock_final_model_data: Any, mock_provider_data: ModelProviderData):
+    def test_basic_functionality(self, mock_final_model_data: Mock, mock_provider_data: ModelProviderData):
         """Test basic functionality with typical model data"""
         result = ConciseModelResponse.from_model_data("test-model-id", mock_final_model_data)
 
@@ -66,7 +82,7 @@ class TestConciseModelResponseFromModelData:
         assert result.supports.input_audio is True
         assert result.supports.audio_only is False
 
-    def test_supports_structure(self, mock_final_model_data: Any):
+    def test_supports_structure(self, mock_final_model_data: Mock):
         """Test that supports returns a proper ModelSupports object"""
         result = ConciseModelResponse.from_model_data("test-id", mock_final_model_data)
 
@@ -86,7 +102,7 @@ class TestConciseModelResponseFromModelData:
 
     def test_supports_with_false_values(self, mock_provider_data: ModelProviderData):
         """Test supports with some false values"""
-        model_data = Mock()
+        model_data = Mock(spec=FinalModelData)
         model_data.providers = [(Provider.ANTHROPIC, mock_provider_data)]
         model_data.provider_name = "Anthropic"
         model_data.display_name = "Claude"
@@ -110,7 +126,7 @@ class TestConciseModelResponseFromModelData:
 
     def test_supports_all_true(self, mock_provider_data: ModelProviderData):
         """Test model with all supports enabled"""
-        model_data = Mock()
+        model_data = Mock(spec=FinalModelData)
         model_data.providers = [(Provider.FIREWORKS, mock_provider_data)]
         model_data.provider_name = "Fireworks"
         model_data.display_name = "Llama 3.1"
@@ -133,26 +149,18 @@ class TestConciseModelResponseFromModelData:
         assert result.supports.audio_only is True
 
     def test_supports_missing_attributes_default_false(self, mock_provider_data: ModelProviderData):
-        """Test that missing support attributes default to False"""
-        model_data = Mock()
+        """Test that missing support attributes default to False using getattr"""
+        model_data = Mock(spec=FinalModelData)
         model_data.providers = [(Provider.OPEN_AI, mock_provider_data)]
         model_data.provider_name = "Test Provider"
         model_data.display_name = "Test Model"
         model_data.release_date = date(2024, 1, 1)
         model_data.quality_index = 90
 
-        # Configure Mock to not have the supports attributes or modes
-        model_data.configure_mock(**{})
+        # Don't set any supports attributes, so getattr will return False (the default)
+        # Note: getattr(model_data, "supports_input_image", False) will return False
 
-        # Use spec to prevent Mock from auto-creating attributes
-        def mock_hasattr_side_effect(obj, name):
-            if name.startswith("supports_") or name == "modes":
-                return False
-            return hasattr(Mock(), name)
-
-        # Test the fallback to default values
-        with patch("builtins.hasattr", side_effect=mock_hasattr_side_effect):
-            result = ConciseModelResponse.from_model_data("test", model_data)
+        result = ConciseModelResponse.from_model_data("test", model_data)
 
         # All should default to False when not present
         assert result.supports.tool_calling is False
@@ -161,7 +169,7 @@ class TestConciseModelResponseFromModelData:
         assert result.supports.input_audio is False
         assert result.supports.audio_only is False
 
-    def test_different_provider_costs(self, mock_final_model_data: Any):
+    def test_different_provider_costs(self, mock_final_model_data: Mock):
         """Test with different provider cost structure"""
         # Create provider data with different costs
         expensive_price = TextPricePerToken(
@@ -187,7 +195,7 @@ class TestConciseModelResponseFromModelData:
             (date(2025, 6, 15), "2025-06-15"),
         ],
     )
-    def test_date_formatting(self, mock_final_model_data: Any, test_date: date, expected_iso: str):
+    def test_date_formatting(self, mock_final_model_data: Mock, test_date: date, expected_iso: str):
         """Test that dates are properly formatted to ISO format"""
         mock_final_model_data.release_date = test_date
 
@@ -195,7 +203,7 @@ class TestConciseModelResponseFromModelData:
 
         assert result.release_date == expected_iso
 
-    def test_uses_first_provider_for_pricing(self, mock_final_model_data: Any):
+    def test_uses_first_provider_for_pricing(self, mock_final_model_data: Mock):
         """Test that it uses the first provider in the list for pricing"""
         # Create a second provider with different pricing
         second_price = TextPricePerToken(
@@ -218,35 +226,92 @@ class TestConciseModelResponseFromModelData:
         assert result.cost_per_input_token_usd == 0.001  # From first provider
         assert result.cost_per_output_token_usd == 0.002  # From first provider
 
-    def test_supports_with_model_for_task_fallback(self, mock_provider_data: ModelProviderData):
-        """Test that supports extraction falls back to modes when FinalModelData attributes not found"""
-        model_data = Mock()
-        model_data.providers = [(Provider.OPEN_AI, mock_provider_data)]
-        model_data.provider_name = "Test Provider"
-        model_data.display_name = "Test Model"
-        model_data.release_date = date(2024, 1, 1)
-        model_data.quality_index = 90
+    def test_from_model_for_task(self, mock_model_for_task: Mock):
+        """Test the from_model_for_task method that uses modes list"""
+        result = ConciseModelResponse.from_model_for_task(mock_model_for_task)
 
-        # Set up the mock to trigger ModelForTask fallback
-        model_data.modes = ["tool_calling", "input_image", "input_pdf"]
+        assert result.id == "model-for-task-id"
+        assert result.display_name == "Model For Task"
+        assert result.quality_index == 85
+        assert result.cost_per_input_token_usd == 0.003
+        assert result.cost_per_output_token_usd == 0.004
+        assert result.release_date == "2024-02-20"
 
-        # Override hasattr to control the flow
-        def mock_hasattr_side_effect(obj, name):
-            if name.startswith("supports_"):
-                return False  # Force fallback to modes
-            if name == "modes":
-                return True  # Has modes attribute
-            return hasattr(Mock(), name)
+        # Check supports based on modes list
+        assert result.supports.tool_calling is True  # in modes
+        assert result.supports.input_image is True  # in modes
+        assert result.supports.input_pdf is True  # in modes
+        assert result.supports.input_audio is False  # not in modes
+        assert result.supports.audio_only is False  # not in modes
 
-        with patch("builtins.hasattr", side_effect=mock_hasattr_side_effect):
-            result = ConciseModelResponse.from_model_data("test", model_data)
+    def test_extract_supports_with_model_for_task_empty_modes(self, mock_provider_data: ModelProviderData):
+        """Test ModelForTask with empty modes list"""
+        model_data = Mock(spec=ModelForTask)
+        model_data.id = "empty-modes-id"
+        model_data.name = "Empty Modes Model"
+        model_data.quality_index = 75
+        model_data.price_per_input_token_usd = 0.001
+        model_data.price_per_output_token_usd = 0.002
+        model_data.release_date = date(2024, 3, 1)
+        model_data.modes = []  # Empty modes list
 
-        # Should use modes list
-        assert result.supports.tool_calling is True
-        assert result.supports.input_image is True
-        assert result.supports.input_pdf is True
-        assert result.supports.input_audio is False  # Not in modes
-        assert result.supports.audio_only is False  # Not in modes
+        result = ConciseModelResponse.from_model_for_task(model_data)
+
+        # All should be False when modes is empty
+        assert result.supports.tool_calling is False
+        assert result.supports.input_image is False
+        assert result.supports.input_pdf is False
+        assert result.supports.input_audio is False
+        assert result.supports.audio_only is False
+
+
+class TestConciseModelResponseExtractSupports:
+    """Test the _extract_supports method specifically"""
+
+    def test_extract_supports_finalmodeldata(self):
+        """Test _extract_supports with FinalModelData"""
+        model_data = Mock(spec=FinalModelData)
+        model_data.supports_input_image = True
+        model_data.supports_input_pdf = False
+        model_data.supports_input_audio = True
+        model_data.supports_audio_only = False
+        model_data.supports_tool_calling = True
+
+        result = ConciseModelResponse._extract_supports(model_data)
+
+        assert result.input_image is True
+        assert result.input_pdf is False
+        assert result.input_audio is True
+        assert result.audio_only is False
+        assert result.tool_calling is True
+
+    def test_extract_supports_modelfortask(self):
+        """Test _extract_supports with ModelForTask"""
+        model_data = Mock(spec=ModelForTask)
+        model_data.modes = ["input_image", "tool_calling"]
+
+        result = ConciseModelResponse._extract_supports(model_data)
+
+        assert result.input_image is True
+        assert result.input_pdf is False
+        assert result.input_audio is False
+        assert result.audio_only is False
+        assert result.tool_calling is True
+
+    def test_extract_supports_missing_modes_attribute(self):
+        """Test _extract_supports with ModelForTask that's missing modes attribute"""
+        model_data = Mock(spec=ModelForTask)
+        # Explicitly set modes to empty list to simulate missing/empty modes
+        model_data.modes = []
+
+        result = ConciseModelResponse._extract_supports(model_data)
+
+        # All should be False when modes is missing/empty
+        assert result.input_image is False
+        assert result.input_pdf is False
+        assert result.input_audio is False
+        assert result.audio_only is False
+        assert result.tool_calling is False
 
 
 class TestMCPRunFromDomain:

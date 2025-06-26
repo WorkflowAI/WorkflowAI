@@ -68,8 +68,9 @@ class ConciseModelResponse(BaseModel):
     @classmethod
     def _extract_supports(cls, model_data: Union[FinalModelData, ModelForTask]) -> "ModelSupports":
         """Extract ModelSupports from either FinalModelData or ModelForTask"""
-        # Try FinalModelData approach first (has boolean attributes)
-        if hasattr(model_data, "supports_input_image"):
+        # Use isinstance for robust type detection
+        if isinstance(model_data, FinalModelData):
+            # FinalModelData has boolean attributes for each support feature
             return cls.ModelSupports(
                 input_image=getattr(model_data, "supports_input_image", False),
                 input_pdf=getattr(model_data, "supports_input_pdf", False),
@@ -77,23 +78,14 @@ class ConciseModelResponse(BaseModel):
                 audio_only=getattr(model_data, "supports_audio_only", False),
                 tool_calling=getattr(model_data, "supports_tool_calling", False),
             )
-        # Fall back to ModelForTask approach (has modes list)
-        if hasattr(model_data, "modes"):
-            modes = getattr(model_data, "modes", [])
-            return cls.ModelSupports(
-                input_image="input_image" in modes,
-                input_pdf="input_pdf" in modes,
-                input_audio="input_audio" in modes,
-                audio_only="audio_only" in modes,
-                tool_calling="tool_calling" in modes,
-            )
-        # Default all to False if neither structure is found
+        # ModelForTask has a modes list containing supported features
+        modes = getattr(model_data, "modes", [])
         return cls.ModelSupports(
-            input_image=False,
-            input_pdf=False,
-            input_audio=False,
-            audio_only=False,
-            tool_calling=False,
+            input_image="input_image" in modes,
+            input_pdf="input_pdf" in modes,
+            input_audio="input_audio" in modes,
+            audio_only="audio_only" in modes,
+            tool_calling="tool_calling" in modes,
         )
 
     @classmethod
