@@ -29,7 +29,7 @@ client = openai.OpenAI(
 The primary benefit of using WorkflowAI's API is gaining access to a unified interface for all AI models across the market. This eliminates the complexity of managing multiple API keys and switching between different provider SDKs - you can seamlessly use any model through a single, consistent API.
 
 Technical details:
-- all requests are proxied by WorkflowAI, then sent to a AI provider. 
+- all requests are proxied by WorkflowAI, then sent to an AI provider. 
 
 ## Observability
 
@@ -37,13 +37,13 @@ By default, WorkflowAI saves all LLM completions. Observability is critical for 
 
 ## Deployments
 
-Deployments allow to update an agent's prompt or model without changing the code. Learn more about deployments by reading the [Deployments](/deployments) section.
+Deployments allow you to update an agent's prompt or model without changing the code. Learn more about deployments by reading the [Deployments](/deployments) section.
 
 ## `/v1/chat/completions`
 
 ### Parameters
 
-Building a AI agent is the process of picking the right value for each parameter of the `/v1/chat/completions` API. Let's go through each parameter one by one.
+Building an AI agent is the process of picking the right value for each parameter of the `/v1/chat/completions` API. Let's go through each parameter one by one.
 
 ```python
 completion = client.chat.completions.create(  # or client.beta.chat.completions.parse for structured outputs
@@ -66,7 +66,7 @@ each model listed by WorkflowAI includes information about its price, its intell
 
 #### messages
 
-`messages`: the messages to send to the model. the messages are a list of dictionaries, each dictionary containing a role and a content. the role can be "user", "assistant", or "system". the content can be a string, or a list of strings.
+`messages`: The messages to send to the model. The messages are a list of dictionaries, each dictionary containing a role and content. The role can be "user", "assistant", or "system". The content can be a string, or a list of strings.
 
 ```json
 messages = [
@@ -75,7 +75,7 @@ messages = [
 ```
 
 There are a few differences between the OpenAI API and WorkflowAI API:
-- [input variables](/observability/input-variables) allows to use Jinja2 template syntax to separate static instructions from dynamic data. for example:
+- [input variables](/observability/input-variables) allow you to use Jinja2 template syntax to separate static instructions from dynamic data. For example:
 
 ```json
 messages=[{
@@ -84,25 +84,25 @@ messages=[{
 }]
 ```
 
-see `input` parameter below on how to pass variables to the LLM. Note that the template rendering is done server-side by WorkflowAI, so the client does not need to render the template.
+See the `input` parameter below on how to pass variables to the LLM. Note that the template rendering is done server-side by WorkflowAI, so the client does not need to render the template.
 
 Learn more about input variables by reading the [Input Variables](/observability/input-variables) section.
 
-- [deployments](/deployments). When using deployments, the `messages` parameter could be empty because the messages are stored on WorkflowAI directly, and added automatically to the request. `messages = []` is valid, note that the `messages` parameter is required by OpenAI SDKs, so `messages = None` is not valid.
+- [Deployments](/deployments): When using deployments, the `messages` parameter can be empty because the messages are stored on WorkflowAI directly, and added automatically to the request. `messages = []` is valid. Note that the `messages` parameter is required by OpenAI SDKs, so `messages = None` is not valid.
 
 Learn more about deployments by reading the [Deployments](/deployments) section.
 
 #### metadata
 
-metadata.agent_id: (highly recommended) use a descriptive agent_id to identify the agent in the logs. for example: `email-classifier`, `product-review-sentiment-analyzer`, `customer-support-chatbot`, etc. 
+`metadata.agent_id`: (highly recommended) Use a descriptive agent_id to identify the agent in the logs. For example: `email-classifier`, `product-review-sentiment-analyzer`, `customer-support-chatbot`, etc. 
 
-any key-value pair can be passed to the `metadata` parameter. runs are searchable by metadata keys (list all the metadata via `get_agent` MCP tool, and then use `search_runs` to search for runs with the desired metadata). for example, "customer_id": "1234567890", "user_email": "john.doe@example.com".
+Any key-value pair can be passed to the `metadata` parameter. Runs are searchable by metadata keys (list all the metadata via `get_agent` MCP tool, and then use `search_runs` to search for runs with the desired metadata). For example, "customer_id": "1234567890", "user_email": "john.doe@example.com".
 
 Learn more about metadata by reading the [Metadata](/observability/metadata) section.
 
 #### max_tokens
 
-`max_tokens`: (optional) the maximum number of tokens to generate. if not provided, the model will generate as many tokens as needed. make sure that `max_tokens` is high enough to generate a complete response.
+`max_tokens`: (optional) The maximum number of tokens to generate. If not provided, the model will generate as many tokens as needed. Make sure that `max_tokens` is high enough to generate a complete response.
 
 #### input
 
