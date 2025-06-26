@@ -8,6 +8,7 @@ import pytest
 from openai import AsyncOpenAI, RateLimitError
 from openai.types.chat.chat_completion_message_tool_call import ChatCompletionMessageToolCall, Function
 from openai.types.chat.chat_completion_stream_options_param import ChatCompletionStreamOptionsParam
+from pydantic import BaseModel, Field
 
 from core.domain.models.models import Model
 from core.domain.models.providers import Provider
@@ -1026,3 +1027,32 @@ async def test_different_types_in_input(test_client: IntegrationTestClient, open
         },
     )
     assert res.choices[0].message.content
+
+
+async def test_pydantic_structured_output(test_client: IntegrationTestClient, openai_client: AsyncOpenAI):
+    """Check that passing a pydantic model as a structured output works."""
+
+    class SearchDocumentationOutput(BaseModel):
+        relevant_doc_sections: list[str] | None = Field(
+            default=None,
+            description="List of documentation section titles that are most relevant to answer the query.",
+        )
+        missing_docs_feedback: str | None = Field(
+            default=None,
+            description="Optional. Feedback when useful documentation appears to be missing or when the query cannot be adequately answered with existing documentation.",
+        )
+
+    # The model will return a missing field since it has no values
+    # But the openai sdk makes all fields required
+    test_client.mock_openai_call(json_content={"relevant_doc_sections": ["Section 1", "Section 2"]})
+
+    res = await openai_client.beta.chat.completions.parse(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": "Hello, world!"}],
+        response_format=SearchDocumentationOutput,
+    )
+    parsed = res.choices[0].message.parsed
+    assert parsed == SearchDocumentationOutput(
+        relevant_doc_sections=["Section 1", "Section 2"],
+        missing_docs_feedback=None,
+    )

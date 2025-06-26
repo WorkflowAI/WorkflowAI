@@ -130,7 +130,15 @@ class OpenAIProxyHandler:
                 case "json_schema":
                     if not response_format.json_schema:
                         raise BadRequestError("JSON schema is required for json_schema response format")
-                    output_schema = SerializableTaskIO.from_json_schema(response_format.json_schema.schema_)
+                    # We sanitize the schema here, mostly to have some simplifications and make sure
+                    # some equivalent values don't trigger different schema IDs.
+                    # However we don't support passing files here since the completion API does not support them
+                    # So we do not sanitize any internal def.
+                    output_schema = SerializableTaskIO.from_json_schema(
+                        response_format.json_schema.schema_,
+                        streamline=True,
+                        use_internal_defs=False,
+                    )
                 case _:
                     raise BadRequestError(f"Invalid response format: {response_format.type}")
         else:

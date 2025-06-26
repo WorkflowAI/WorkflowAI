@@ -82,6 +82,7 @@ known-third-party = ["workflowai"]
 # in bin we use rich.print
 "scripts/*" = ["T201", "G004"]
 "api/tests/integration/mcp/*" = ["T201", "G004"]
+"integrations/python/*" = ["T201", "G004"]
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
 "openai.BaseModel".msg = "Import from pydantic instead"
