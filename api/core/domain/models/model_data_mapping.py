@@ -295,15 +295,15 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
         Model.O1_MINI_2024_09_12: DeprecatedModel(replacement_model=Model.O3_MINI_2025_01_31),
         Model.O3_MINI_LATEST_HIGH_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.O3_MINI_2025_01_31,
-            reasoning_level="high",
+            reasoning_effort="high",
         ),
         Model.O3_MINI_LATEST_MEDIUM_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.O3_MINI_2025_01_31,
-            reasoning_level="medium",
+            reasoning_effort="medium",
         ),
         Model.O3_MINI_LATEST_LOW_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.O3_MINI_2025_01_31,
-            reasoning_level="low",
+            reasoning_effort="low",
         ),
         Model.O3_MINI_LATEST: LatestModel(
             model=Model.O3_MINI_2025_01_31,
@@ -333,27 +333,27 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
         ),
         Model.O3_MINI_2025_01_31_HIGH_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.O3_MINI_2025_01_31,
-            reasoning_level="high",
+            reasoning_effort="high",
         ),
         Model.O3_MINI_2025_01_31_MEDIUM_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.O3_MINI_2025_01_31,
-            reasoning_level="medium",
+            reasoning_effort="medium",
         ),
         Model.O3_MINI_2025_01_31_LOW_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.O3_MINI_2025_01_31,
-            reasoning_level="low",
+            reasoning_effort="low",
         ),
         Model.O4_MINI_LATEST_HIGH_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.O4_MINI_2025_04_16,
-            reasoning_level="high",
+            reasoning_effort="high",
         ),
         Model.O4_MINI_LATEST_MEDIUM_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.O4_MINI_2025_04_16,
-            reasoning_level="medium",
+            reasoning_effort="medium",
         ),
         Model.O4_MINI_LATEST_LOW_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.O4_MINI_2025_04_16,
-            reasoning_level="low",
+            reasoning_effort="low",
         ),
         Model.O4_MINI_LATEST: LatestModel(
             model=Model.O4_MINI_2025_04_16,
@@ -387,15 +387,15 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
         ),
         Model.O4_MINI_2025_04_16_HIGH_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.O4_MINI_2025_04_16,
-            reasoning_level="high",
+            reasoning_effort="high",
         ),
         Model.O4_MINI_2025_04_16_MEDIUM_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.O4_MINI_2025_04_16,
-            reasoning_level="medium",
+            reasoning_effort="medium",
         ),
         Model.O4_MINI_2025_04_16_LOW_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.O4_MINI_2025_04_16,
-            reasoning_level="low",
+            reasoning_effort="low",
         ),
         Model.O3_LATEST: LatestModel(model=Model.O3_2025_04_16, display_name="o3 (latest)"),
         Model.O3_2025_04_16: ModelData(
@@ -427,27 +427,27 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
         ),
         Model.O3_LATEST_HIGH_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.O3_2025_04_16,
-            reasoning_level="high",
+            reasoning_effort="high",
         ),
         Model.O3_LATEST_MEDIUM_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.O3_2025_04_16,
-            reasoning_level="medium",
+            reasoning_effort="medium",
         ),
         Model.O3_LATEST_LOW_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.O3_2025_04_16,
-            reasoning_level="low",
+            reasoning_effort="low",
         ),
         Model.O3_2025_04_16_HIGH_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.O3_2025_04_16,
-            reasoning_level="high",
+            reasoning_effort="high",
         ),
         Model.O3_2025_04_16_MEDIUM_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.O3_2025_04_16,
-            reasoning_level="medium",
+            reasoning_effort="medium",
         ),
         Model.O3_2025_04_16_LOW_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.O3_2025_04_16,
-            reasoning_level="low",
+            reasoning_effort="low",
         ),
         # Model.O3_PRO_LATEST_HIGH_REASONING_EFFORT: LatestModel(
         #     model=Model.O3_PRO_2025_06_10_HIGH_REASONING_EFFORT,
@@ -587,7 +587,7 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
         Model.GEMINI_2_5_FLASH_PREVIEW_0417: DeprecatedModel(replacement_model=Model.GEMINI_2_5_FLASH),
         Model.GEMINI_2_5_FLASH_PREVIEW_0520: DeprecatedModel(
             replacement_model=Model.GEMINI_2_5_FLASH,
-            reasoning_level="none",
+            reasoning_effort="none",
         ),
         Model.GEMINI_2_5_FLASH: ModelData(
             display_name="Gemini 2.5 Flash",
@@ -900,11 +900,11 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
         ),
         Model.O1_2024_12_17_HIGH_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.O1_2024_12_17,
-            reasoning_level="high",
+            reasoning_effort="high",
         ),
         Model.O1_2024_12_17_LOW_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.O1_2024_12_17,
-            reasoning_level="low",
+            reasoning_effort="low",
         ),
         Model.CLAUDE_3_5_SONNET_20240620: ModelData(
             display_name="Claude 3.5 Sonnet (2024-06-20)",

@@ -85,11 +85,11 @@ def xai_models() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
         ),
         Model.GROK_3_MINI_BETA_HIGH_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.GROK_3_MINI_BETA,
-            reasoning_level="high",
+            reasoning_effort="high",
         ),
         Model.GROK_3_MINI_BETA_LOW_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.GROK_3_MINI_BETA,
-            reasoning_level="low",
+            reasoning_effort="low",
         ),
         Model.GROK_3_MINI_FAST_BETA: ModelData(
             display_name="Grok 3 Mini Fast (beta)",
@@ -116,10 +116,10 @@ def xai_models() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
         ),
         Model.GROK_3_MINI_FAST_BETA_HIGH_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.GROK_3_MINI_FAST_BETA,
-            reasoning_level="high",
+            reasoning_effort="high",
         ),
         Model.GROK_3_MINI_FAST_BETA_LOW_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.GROK_3_MINI_FAST_BETA,
-            reasoning_level="low",
+            reasoning_effort="low",
         ),
     }

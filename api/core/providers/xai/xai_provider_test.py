@@ -95,40 +95,16 @@ class TestBuildRequest:
         # else:
         #     assert request.max_tokens == model_data.max_tokens_data.max_tokens
 
-    def test_build_request_with_reasoing_effort_high(self, xai_provider: XAIProvider):
+    def test_build_request_with_reasoning_effort(self, xai_provider: XAIProvider):
         request = cast(
             CompletionRequest,
             xai_provider._build_request(  # pyright: ignore [reportPrivateUsage]
                 messages=[MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello")],
                 options=ProviderOptions(
-                    model=Model.GROK_3_MINI_BETA_HIGH_REASONING_EFFORT,
+                    model=Model.GROK_3_MINI_BETA,
                     max_tokens=10,
                     temperature=0,
-                ),
-                stream=False,
-            ),
-        )
-        # We can exclude None values because the HTTPxProvider does the same
-        assert request.model_dump(include={"messages", "reasoning_effort", "model"}, exclude_none=True) == {
-            "model": "grok-3-mini-beta",
-            "messages": [
-                {
-                    "role": "user",
-                    "content": "Hello",
-                },
-            ],
-            "reasoning_effort": "high",
-        }
-
-    def test_build_request_with_reasoing_effort_low(self, xai_provider: XAIProvider):
-        request = cast(
-            CompletionRequest,
-            xai_provider._build_request(  # pyright: ignore [reportPrivateUsage]
-                messages=[MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello")],
-                options=ProviderOptions(
-                    model=Model.GROK_3_MINI_BETA_LOW_REASONING_EFFORT,
-                    max_tokens=10,
-                    temperature=0,
+                    reasoning_effort="low",
                 ),
                 stream=False,
             ),
@@ -143,6 +119,31 @@ class TestBuildRequest:
                 },
             ],
             "reasoning_effort": "low",
+        }
+
+    def test_build_request_with_reasoning_effort_medium(self, xai_provider: XAIProvider):
+        request = cast(
+            CompletionRequest,
+            xai_provider._build_request(  # pyright: ignore [reportPrivateUsage]
+                messages=[MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello")],
+                options=ProviderOptions(
+                    model=Model.GROK_3_MINI_BETA,
+                    max_tokens=10,
+                    temperature=0,
+                    reasoning_effort="medium",
+                ),
+                stream=False,
+            ),
+        )
+        # We can exclude None values because the HTTPxProvider does the same
+        assert request.model_dump(include={"messages", "reasoning_effort", "model"}, exclude_none=True) == {
+            "model": "grok-3-mini-beta",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": "Hello",
+                },
+            ],
         }
 
     def test_build_request_with_tool_choice(self, xai_provider: XAIProvider):

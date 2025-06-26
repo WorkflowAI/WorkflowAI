@@ -372,4 +372,4 @@ class XAIProvider(HTTPXProvider[XAIConfig, CompletionResponse]):
 
     @override
     def default_model(self) -> Model:
-        return Model.GROK_3_MINI_BETA_LOW_REASONING_EFFORT
+        return Model.GROK_3_MINI_BETA

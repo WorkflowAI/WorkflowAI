@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 from core.domain.fields.image_options import ImageOptions
 from core.domain.message import Message
 from core.domain.models import Model, Provider
-from core.domain.task_group_properties import FewShotExample, ToolChoice
+from core.domain.task_group_properties import FewShotExample, ReasoningEffort, ToolChoice
 from core.domain.tool import Tool
 from core.runners.workflowai.templates import TemplateName
 from core.tools import ToolKind
@@ -60,3 +60,7 @@ class WorkflowAIRunnerOptions(BaseModel):
     frequency_penalty: float | None = None
 
     parallel_tool_calls: bool | None = None
+
+    reasoning_effort: ReasoningEffort | None = None
+
+    reasoning_budget: int | None = None

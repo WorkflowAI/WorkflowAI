@@ -62,6 +62,8 @@ class ToolChoiceFunction(BaseModel):
 
 ToolChoice: TypeAlias = Literal["auto", "none", "required"] | ToolChoiceFunction
 
+ReasoningEffort: TypeAlias = Literal["none", "low", "medium", "high"]
+
 
 class TaskGroupProperties(BaseModel):
     """Properties that described a way a task run was executed.
@@ -124,7 +126,7 @@ class TaskGroupProperties(BaseModel):
 
     messages: list[Message] | None = None
 
-    reasoning_effort: Literal["none", "low", "medium", "high"] | None = None
+    reasoning_effort: ReasoningEffort | None = None
 
     reasoning_budget: int | None = None
 

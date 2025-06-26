@@ -46,6 +46,13 @@ class ProviderOptions(BaseModel):
             self._log_warning_if_no_reasoning_budget()
             return None
         if self.reasoning_effort:
+            # If the model does not support the reasoning effort, we return None
+            if reasoning_budget[self.reasoning_effort] is None:
+                logging.getLogger(__name__).warning(
+                    "Reasoning effort is not supported by the model",
+                    extra={"options": safe_dump_pydantic_model(self)},
+                )
+                return None
             return self.reasoning_effort
         if self.reasoning_budget is None:
             return None

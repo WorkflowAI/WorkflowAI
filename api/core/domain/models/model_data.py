@@ -193,6 +193,9 @@ class ModelReasoningBudget(BaseModel):
     medium: int | None = Field(gt=0, default=-1)  # Default: 50% of the max tokens
     high: int | None = Field(gt=0, default=-1)  # Default: 80% of the max tokens
 
+    def __getitem__(self, key: Literal["none", "low", "medium", "high"]) -> int | None:
+        return getattr(self, key, None)
+
     def corresponding_effort(self, budget: int) -> Literal["none", "low", "medium", "high"] | None:
         current_effort: Literal["none", "low", "medium", "high"] | None = None
         for field in self.model_fields_set:
@@ -329,7 +332,7 @@ class DeprecatedModel(BaseModel):
     aliases: list[str] | None = None
     # We used to have different model ids per reasoning levels
     # That's no longer the case but we need to allow converting an old model id to the corresponding reasoning level
-    reasoning_level: Literal["none", "low", "medium", "high"] | None = None
+    reasoning_effort: Literal["none", "low", "medium", "high"] | None = None
 
 
 ModelDataMapping: TypeAlias = dict[Model, FinalModelData | LatestModel | DeprecatedModel]

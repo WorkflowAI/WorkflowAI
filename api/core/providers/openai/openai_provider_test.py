@@ -136,32 +136,7 @@ class TestBuildRequest:
         ]
         assert request.temperature == 1.0
 
-    def test_build_request_with_reasoing_effort_high(self, openai_provider: OpenAIProvider):
-        request = cast(
-            CompletionRequest,
-            openai_provider._build_request(  # pyright: ignore [reportPrivateUsage]
-                messages=[MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello")],
-                options=ProviderOptions(
-                    model=Model.O1_2024_12_17_HIGH_REASONING_EFFORT,
-                    max_tokens=10,
-                    temperature=0,
-                    output_schema={},
-                ),
-                stream=False,
-            ),
-        )
-        # We can exclude None values because the HTTPxProvider does the same
-        assert request.model_dump(include={"messages", "reasoning_effort"}, exclude_none=True) == {
-            "messages": [
-                {
-                    "role": "user",
-                    "content": "Hello",
-                },
-            ],
-            "reasoning_effort": "high",
-        }
-
-    def test_build_request_with_reasoing_effort_medium(self, openai_provider: OpenAIProvider):
+    def test_build_request_with_reasoning_effort(self, openai_provider: OpenAIProvider):
         request = cast(
             CompletionRequest,
             openai_provider._build_request(  # pyright: ignore [reportPrivateUsage]
@@ -170,6 +145,7 @@ class TestBuildRequest:
                     model=Model.O3_2025_04_16,
                     max_tokens=10,
                     temperature=0,
+                    reasoning_effort="medium",
                 ),
                 stream=False,
             ),
@@ -183,26 +159,6 @@ class TestBuildRequest:
                 },
             ],
             "reasoning_effort": "medium",
-        }
-
-    def test_build_request_with_reasoing_effort_low(self, openai_provider: OpenAIProvider):
-        request = cast(
-            CompletionRequest,
-            openai_provider._build_request(  # pyright: ignore [reportPrivateUsage]
-                messages=[MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello")],
-                options=ProviderOptions(model=Model.O1_2024_12_17_LOW_REASONING_EFFORT, max_tokens=10, temperature=0),
-                stream=False,
-            ),
-        )
-        # We can exclude None values because the HTTPxProvider does the same
-        assert request.model_dump(include={"messages", "reasoning_effort"}, exclude_none=True) == {
-            "messages": [
-                {
-                    "role": "user",
-                    "content": "Hello",
-                },
-            ],
-            "reasoning_effort": "low",
         }
 
     def test_build_request_with_tool_choice_none(self, openai_provider: OpenAIProvider):

@@ -1063,6 +1063,8 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
             enabled_tools=list(self._all_tools()),
             tool_choice=self._options.tool_choice,
             timeout=self._timeout,
+            reasoning_effort=self._options.reasoning_effort,
+            reasoning_budget=self._options.reasoning_budget,
         )
 
         model_data_copy = model_data.model_copy()
@@ -1179,7 +1181,7 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
         task: SerializableTaskVariant,
         properties: TaskGroupProperties,
     ) -> WorkflowAIRunnerOptions:
-        model, provider = sanitize_model_and_provider(properties.model, properties.provider)
+        model, provider, reasoning_effort = sanitize_model_and_provider(properties.model, properties.provider)
 
         is_structured_generation_enabled = (
             False if task.output_schema.is_structured_output_disabled else properties.is_structured_generation_enabled
@@ -1205,6 +1207,8 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
         raw["model"] = model
         raw["template_name"] = template_name
         raw["is_structured_generation_enabled"] = is_structured_generation_enabled
+        if reasoning_effort is not None:
+            raw["reasoning_effort"] = reasoning_effort
 
         if properties.few_shot:
             if properties.few_shot.examples:
