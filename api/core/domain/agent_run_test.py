@@ -14,3 +14,19 @@ class TestUsedEnvironment:
     def test_no_field(self):
         run = task_run_ser()
         assert run.used_environment is None
+
+
+class TestFilteredMetadata:
+    def test_no_metadata(self):
+        run = task_run_ser()
+        assert run.filtered_metadata is None
+
+    def test_metadata(self):
+        run = task_run_ser(
+            metadata={
+                "bla": "bla",
+                "workflowai.test": "test",
+                METADATA_KEY_DEPLOYMENT_ENVIRONMENT: "production",
+            },
+        )
+        assert run.filtered_metadata == {"bla": "bla"}
