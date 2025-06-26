@@ -20,7 +20,7 @@ class SearchDocumentationOutput(BaseModel):
 async def search_documentation_agent(
     query: str,
     available_doc_sections: list[DocumentationSection],
-    usage_context: str = "The user is trying to find relevant documentation about WorkflowAI.",
+    usage_context: str | None = None,
 ) -> SearchDocumentationOutput | None:
     client = AsyncOpenAI(
         api_key=os.environ["WORKFLOWAI_API_KEY"],
@@ -39,7 +39,11 @@ async def search_documentation_agent(
 
 ## Context
 The usage context is:
+{% if usage_context %}
 {{usage_context}}
+{% else %}
+The user is trying to find relevant documentation about WorkflowAI.
+{% endif %}
 
 ## Your Task
 Given a search query and all available documentation sections, you must:
