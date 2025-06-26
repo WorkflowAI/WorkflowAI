@@ -261,7 +261,7 @@ class DocumentationService:
         all_doc_sections: list[DocumentationSection] = await self.get_all_doc_sections(mode)
 
         try:
-            result, run_id = await search_documentation_agent(
+            result = await search_documentation_agent(
                 query=query,
                 available_doc_sections=all_doc_sections,
                 usage_context="""The query was made by an MCP (Model Context Protocol) client such as Cursor IDE and other code editors.
@@ -269,6 +269,13 @@ class DocumentationService:
 Your primary purpose is to help developers find the most relevant WorkflowAI documentation sections to answer their specific queries about building, deploying, and using AI agents.
 """,
             )
+
+            if not result:
+                _logger.error(
+                    "search_documentation_agent did not return any parsed result",
+                    extra={"query": query},
+                )
+                return []
 
             relevant_doc_sections: list[str] = (
                 result.relevant_doc_sections if result and result.relevant_doc_sections else []
@@ -281,8 +288,12 @@ Your primary purpose is to help developers find the most relevant WorkflowAI doc
                     "Documentation search agent has reported a missing doc sections",
                     extra={
                         "missing_doc_sections_feedback": result.missing_doc_sections_feedback,
-                        "run_id": run_id,
                     },
+                )
+            if result and not result.relevant_doc_sections:
+                _logger.warning(
+                    "Documentation search agent has not found any relevant doc sections",
+                    extra={"query": query},
                 )
 
         except Exception as e:

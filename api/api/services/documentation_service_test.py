@@ -472,8 +472,15 @@ async def test_search_documentation_by_query_success(
     # Mock the search agent response
     class MockSearchResult(NamedTuple):
         relevant_doc_sections: list[str]
+        missing_doc_sections_feedback: str | None
 
-    mock_search_agent.return_value = MockSearchResult(relevant_doc_sections=["reference/api", "guides/authentication"])
+    mock_search_agent.return_value = (
+        MockSearchResult(
+            relevant_doc_sections=["reference/api", "guides/authentication"],
+            missing_doc_sections_feedback=None,
+        ),
+        "test-run-id",
+    )
 
     query = "How to authenticate with the API?"
     result = await documentation_service.search_documentation_by_query(query)
@@ -493,6 +500,10 @@ async def test_search_documentation_by_query_success(
     mock_search_agent.assert_called_once_with(
         query=query,
         available_doc_sections=all_sections,
+        usage_context="""The query was made by an MCP (Model Context Protocol) client such as Cursor IDE and other code editors.
+
+Your primary purpose is to help developers find the most relevant WorkflowAI documentation sections to answer their specific queries about building, deploying, and using AI agents.
+""",
     )
 
 
@@ -513,8 +524,12 @@ async def test_search_documentation_by_query_empty_results(
     # Mock the search agent to return empty results
     class MockSearchResult(NamedTuple):
         relevant_doc_sections: list[str]
+        missing_doc_sections_feedback: str | None
 
-    mock_search_agent.return_value = MockSearchResult(relevant_doc_sections=[])
+    mock_search_agent.return_value = (
+        MockSearchResult(relevant_doc_sections=[], missing_doc_sections_feedback=None),
+        "test-run-id",
+    )
 
     query = "How to build a rocket ship?"
     result = await documentation_service.search_documentation_by_query(query)
@@ -524,6 +539,10 @@ async def test_search_documentation_by_query_empty_results(
     mock_search_agent.assert_called_once_with(
         query=query,
         available_doc_sections=all_sections,
+        usage_context="""The query was made by an MCP (Model Context Protocol) client such as Cursor IDE and other code editors.
+
+Your primary purpose is to help developers find the most relevant WorkflowAI documentation sections to answer their specific queries about building, deploying, and using AI agents.
+""",
     )
 
 
@@ -602,8 +621,12 @@ async def test_search_documentation_by_query_mode_selection(
 
     class MockSearchResult(NamedTuple):
         relevant_doc_sections: list[str]
+        missing_doc_sections_feedback: str | None
 
-    mock_search_agent.return_value = MockSearchResult(relevant_doc_sections=["test-section"])
+    mock_search_agent.return_value = (
+        MockSearchResult(relevant_doc_sections=["test-section"], missing_doc_sections_feedback=None),
+        "test-run-id",
+    )
 
     # Test with remote mode
     query = "test query"
@@ -633,9 +656,14 @@ async def test_search_documentation_by_query_partial_matches(
     # Mock the search agent to return some valid and some invalid section names
     class MockSearchResult(NamedTuple):
         relevant_doc_sections: list[str]
+        missing_doc_sections_feedback: str | None
 
-    mock_search_agent.return_value = MockSearchResult(
-        relevant_doc_sections=["existing-section", "non-existent-section", "another-section"],
+    mock_search_agent.return_value = (
+        MockSearchResult(
+            relevant_doc_sections=["existing-section", "non-existent-section", "another-section"],
+            missing_doc_sections_feedback=None,
+        ),
+        "test-run-id",
     )
 
     query = "test query"
