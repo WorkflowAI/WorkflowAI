@@ -38,8 +38,8 @@ async def test_get_all_doc_sections_uses_real_files() -> None:
     assert len(doc_sections) == EXPECTED_FILE_COUNT
     # Optionally, add basic checks like ensuring titles are non-empty strings
     for section in doc_sections:
-        assert isinstance(section.title, str)
-        assert len(section.title) > 0
+        assert isinstance(section.file_path, str)
+        assert len(section.file_path) > 0
         assert isinstance(section.content, str)
         # We don't check content length as some files might be empty
 
@@ -59,9 +59,9 @@ async def test_get_relevant_doc_sections_success(
 ):
     """Tests get_relevant_doc_sections successfully filters sections."""
     all_sections = [
-        DocumentationSection(title="section1.md", content="Content 1"),
-        DocumentationSection(title="section2.md", content="Content 2"),
-        DocumentationSection(title="security.md", content="Security Content"),
+        DocumentationSection(file_path="section1.md", content="Content 1"),
+        DocumentationSection(file_path="section2.md", content="Content 2"),
+        DocumentationSection(file_path="security.md", content="Security Content"),
     ]
     mock_get_all_sections.return_value = all_sections
 
@@ -76,13 +76,13 @@ async def test_get_relevant_doc_sections_success(
 
     # Expected sections: Defaults + the ones identified as relevant
     expected_sections = [
-        DocumentationSection(title="section1.md", content="Content 1"),
-        DocumentationSection(title="security.md", content="Security Content"),
+        DocumentationSection(file_path="section1.md", content="Content 1"),
+        DocumentationSection(file_path="security.md", content="Security Content"),
     ]
 
     # Convert to sets of tuples for order-independent comparison
-    actual_section_tuples = {(s.title, s.content) for s in relevant_sections}
-    expected_section_tuples = {(s.title, s.content) for s in expected_sections}
+    actual_section_tuples = {(s.file_path, s.content) for s in relevant_sections}
+    expected_section_tuples = {(s.file_path, s.content) for s in expected_sections}
 
     assert actual_section_tuples == expected_section_tuples
     mock_get_all_sections.assert_called_once()
@@ -99,9 +99,9 @@ async def test_get_relevant_doc_sections_pick_error(
 ):
     """Tests get_relevant_doc_sections falls back to all sections when pick_relevant_documentation_sections fails."""
     all_sections = [
-        DocumentationSection(title="section1.md", content="Content 1"),
-        DocumentationSection(title="section2.md", content="Content 2"),
-        DocumentationSection(title="security.md", content="Security Content"),
+        DocumentationSection(file_path="section1.md", content="Content 1"),
+        DocumentationSection(file_path="section2.md", content="Content 2"),
+        DocumentationSection(file_path="security.md", content="Security Content"),
     ]
     mock_get_all_sections.return_value = all_sections
 
@@ -112,8 +112,8 @@ async def test_get_relevant_doc_sections_pick_error(
     relevant_sections = await documentation_service.get_relevant_doc_sections([], agent_instructions)
 
     # Convert to sets of tuples for order-independent comparison
-    actual_section_tuples = {(s.title, s.content) for s in relevant_sections}
-    expected_section_tuples = {(s.title, s.content) for s in all_sections}
+    actual_section_tuples = {(s.file_path, s.content) for s in relevant_sections}
+    expected_section_tuples = {(s.file_path, s.content) for s in all_sections}
 
     assert actual_section_tuples == expected_section_tuples
     mock_get_all_sections.assert_called_once()
@@ -123,15 +123,15 @@ async def test_get_relevant_doc_sections_pick_error(
 async def test_get_documentation_by_path_with_existing_paths(documentation_service: DocumentationService):
     """Tests that get_documentation_by_path returns sections matching the provided paths."""
     sections = [
-        DocumentationSection(title="a.md", content="A content"),
-        DocumentationSection(title="b.md", content="B content"),
+        DocumentationSection(file_path="a.md", content="A content"),
+        DocumentationSection(file_path="b.md", content="B content"),
     ]
     # Patch get_all_doc_sections to return our dummy sections
     with patch.object(DocumentationService, "_get_all_doc_sections_local", return_value=sections):
         result = await documentation_service.get_documentation_by_path(["b.md", "a.md"], mode="local")
         # Order follows the order in all_doc_sections
         expected_titles = ["a.md", "b.md"]
-        assert [s.title for s in result] == expected_titles
+        assert [s.file_path for s in result] == expected_titles
         assert [s.content for s in result] == ["A content", "B content"]
 
 
@@ -141,14 +141,14 @@ async def test_get_documentation_by_path_with_missing_paths_logs_error(
 ):
     """Tests that get_documentation_by_path logs an error for missing paths and returns only found sections."""
     sections = [
-        DocumentationSection(title="a.md", content="A content"),
+        DocumentationSection(file_path="a.md", content="A content"),
     ]
     # Patch get_all_doc_sections to return our dummy sections
     with patch.object(DocumentationService, "_get_all_doc_sections_local", return_value=sections):
         caplog.set_level(logging.ERROR, logger="api.services.documentation_service")
         result = await documentation_service.get_documentation_by_path(["a.md", "c.md"], mode="local")
         # Only the existing section should be returned
-        assert [s.title for s in result] == ["a.md"]
+        assert [s.file_path for s in result] == ["a.md"]
         # The missing path should trigger an error log
         assert "Documentation not found for paths: c.md" in caplog.text
 
@@ -179,11 +179,11 @@ async def test_get_all_doc_sections_local_excludes_private_files(documentation_s
 
             # Should only include the public file
             assert len(result) == 1
-            assert result[0].title == "public"
+            assert result[0].file_path == "public"
             assert result[0].content == "# Public content"
 
             # Private and hidden files should be excluded
-            titles = [section.title for section in result]
+            titles = [section.file_path for section in result]
             assert "page.private" not in titles
             assert ".hidden" not in titles
 
@@ -218,9 +218,9 @@ async def test_get_all_doc_sections_remote_success(documentation_service: Docume
             result = await documentation_service._get_all_doc_sections_remote()
 
             assert len(result) == 2
-            assert result[0].title == "getting-started/index"
+            assert result[0].file_path == "getting-started/index"
             assert result[0].content == "# Getting Started\nThis is the getting started content."
-            assert result[1].title == "reference/api"
+            assert result[1].file_path == "reference/api"
             assert result[1].content == "# API Reference\nThis is the API reference content."
 
 
@@ -330,9 +330,9 @@ async def test_get_documentation_by_path_remote_success(documentation_service: D
         result = await documentation_service.get_documentation_by_path_remote(paths)
 
         assert len(result) == 2
-        assert result[0].title == "getting-started/index"
+        assert result[0].file_path == "getting-started/index"
         assert result[0].content == expected_contents[0]
-        assert result[1].title == "reference/api"
+        assert result[1].file_path == "reference/api"
         assert result[1].content == expected_contents[1]
 
 
@@ -354,7 +354,7 @@ async def test_get_documentation_by_path_remote_with_errors(
 
         # Only the valid path should be returned
         assert len(result) == 1
-        assert result[0].title == "valid-path"
+        assert result[0].file_path == "valid-path"
         assert result[0].content == "Valid content"
 
         # Error should be logged
@@ -363,8 +363,8 @@ async def test_get_documentation_by_path_remote_with_errors(
 
 async def test_get_all_doc_sections_mode_selection(documentation_service: DocumentationService):
     """Tests that get_all_doc_sections correctly selects local vs remote mode."""
-    mock_local_sections = [DocumentationSection(title="local.md", content="Local content")]
-    mock_remote_sections = [DocumentationSection(title="Remote Page", content="Remote content")]
+    mock_local_sections = [DocumentationSection(file_path="local.md", content="Local content")]
+    mock_remote_sections = [DocumentationSection(file_path="Remote Page", content="Remote content")]
 
     with patch.object(documentation_service, "_get_all_doc_sections_local", return_value=mock_local_sections):
         with patch.object(documentation_service, "_get_all_doc_sections_remote", return_value=mock_remote_sections):
@@ -376,8 +376,8 @@ async def test_get_all_doc_sections_mode_selection(documentation_service: Docume
 async def test_get_documentation_by_path_mode_selection(documentation_service: DocumentationService):
     """Tests that get_documentation_by_path correctly selects local vs remote mode."""
     paths = ["test-path"]
-    mock_local_sections = [DocumentationSection(title="test-path", content="Local content")]
-    mock_remote_sections = [DocumentationSection(title="test-path", content="Remote content")]
+    mock_local_sections = [DocumentationSection(file_path="test-path", content="Local content")]
+    mock_remote_sections = [DocumentationSection(file_path="test-path", content="Remote content")]
 
     with patch.object(documentation_service, "_get_documentation_by_path_local", return_value=mock_local_sections):
         with patch.object(documentation_service, "get_documentation_by_path_remote", return_value=mock_remote_sections):
@@ -422,15 +422,15 @@ def test_get_available_pages_descriptions_success(documentation_service: Documen
     # not the human-readable title. The human-readable title is in the frontmatter "title:" field.
     mock_sections = [
         DocumentationSection(
-            title="index",  # This is the page path, not the display title
+            file_path="index",  # This is the page path, not the display title
             content="---\nsummary: Getting started guide\n---\n\n# Welcome",
         ),
         DocumentationSection(
-            title="reference/auth",
+            file_path="reference/auth",
             content="---\nsummary: API authentication docs\n---\n\n# Auth",
         ),
         DocumentationSection(
-            title="use-cases/chatbot",
+            file_path="use-cases/chatbot",
             content="---\nsummary: Chatbot building guide\n---\n\n# Chatbot",
         ),
     ]
@@ -463,19 +463,19 @@ async def test_search_documentation_by_query_success(
 ):
     """Tests successful search with relevant sections returned."""
     all_sections = [
-        DocumentationSection(title="getting-started/index", content="Getting started content"),
-        DocumentationSection(title="reference/api", content="API reference content"),
-        DocumentationSection(title="guides/authentication", content="Authentication guide"),
+        DocumentationSection(file_path="getting-started/index", content="Getting started content"),
+        DocumentationSection(file_path="reference/api", content="API reference content"),
+        DocumentationSection(file_path="guides/authentication", content="Authentication guide"),
     ]
     mock_get_all_sections.return_value = all_sections
 
     # Mock the search agent response
     class MockSearchResult(NamedTuple):
-        relevant_doc_sections: list[str]
+        relevant_documentation_file_paths: list[str]
         missing_doc_sections_feedback: str | None
 
     mock_search_agent.return_value = MockSearchResult(
-        relevant_doc_sections=["reference/api", "guides/authentication"],
+        relevant_documentation_file_paths=["reference/api", "guides/authentication"],
         missing_doc_sections_feedback=None,
     )
 
@@ -485,13 +485,13 @@ async def test_search_documentation_by_query_success(
 
     # Should return only the relevant sections
     expected_sections = [
-        DocumentationSection(title="reference/api", content="API reference content"),
-        DocumentationSection(title="guides/authentication", content="Authentication guide"),
+        DocumentationSection(file_path="reference/api", content="API reference content"),
+        DocumentationSection(file_path="guides/authentication", content="Authentication guide"),
     ]
 
     # Convert to sets of tuples for order-independent comparison
-    actual_section_tuples = {(s.title, s.content) for s in result}
-    expected_section_tuples = {(s.title, s.content) for s in expected_sections}
+    actual_section_tuples = {(s.file_path, s.content) for s in result}
+    expected_section_tuples = {(s.file_path, s.content) for s in expected_sections}
 
     assert actual_section_tuples == expected_section_tuples
     mock_get_all_sections.assert_called_once_with("local")
@@ -511,18 +511,18 @@ async def test_search_documentation_by_query_empty_results(
 ):
     """Tests search when no relevant sections are found."""
     all_sections = [
-        DocumentationSection(title="getting-started/index", content="Getting started content"),
-        DocumentationSection(title="reference/api", content="API reference content"),
+        DocumentationSection(file_path="getting-started/index", content="Getting started content"),
+        DocumentationSection(file_path="reference/api", content="API reference content"),
     ]
     mock_get_all_sections.return_value = all_sections
 
     # Mock the search agent to return empty results
     class MockSearchResult(NamedTuple):
-        relevant_doc_sections: list[str]
+        relevant_documentation_file_paths: list[str]
         missing_doc_sections_feedback: str | None
 
     mock_search_agent.return_value = MockSearchResult(
-        relevant_doc_sections=[],
+        relevant_documentation_file_paths=[],
         missing_doc_sections_feedback=None,
     )
 
@@ -548,7 +548,7 @@ async def test_search_documentation_by_query_none_result(
 ):
     """Tests search when search agent returns None."""
     all_sections = [
-        DocumentationSection(title="getting-started/index", content="Getting started content"),
+        DocumentationSection(file_path="getting-started/index", content="Getting started content"),
     ]
     mock_get_all_sections.return_value = all_sections
 
@@ -574,8 +574,8 @@ async def test_search_documentation_by_query_agent_error(
 ):
     """Tests search when search agent throws an exception."""
     all_sections = [
-        DocumentationSection(title="getting-started/index", content="Getting started content"),
-        DocumentationSection(title="reference/api", content="API reference content"),
+        DocumentationSection(file_path="getting-started/index", content="Getting started content"),
+        DocumentationSection(file_path="reference/api", content="API reference content"),
     ]
     mock_get_all_sections.return_value = all_sections
 
@@ -607,16 +607,16 @@ async def test_search_documentation_by_query_mode_selection(
 ):
     """Tests that search_documentation_by_query correctly passes mode to get_all_doc_sections."""
     all_sections = [
-        DocumentationSection(title="test-section", content="Test content"),
+        DocumentationSection(file_path="test-section", content="Test content"),
     ]
     mock_get_all_sections.return_value = all_sections
 
     class MockSearchResult(NamedTuple):
-        relevant_doc_sections: list[str]
+        relevant_documentation_file_paths: list[str]
         missing_doc_sections_feedback: str | None
 
     mock_search_agent.return_value = MockSearchResult(
-        relevant_doc_sections=["test-section"],
+        relevant_documentation_file_paths=["test-section"],
         missing_doc_sections_feedback=None,
     )
 
@@ -641,18 +641,18 @@ async def test_search_documentation_by_query_partial_matches(
 ):
     """Tests search when some returned sections don't exist in all_sections."""
     all_sections = [
-        DocumentationSection(title="existing-section", content="Existing content"),
-        DocumentationSection(title="another-section", content="Another content"),
+        DocumentationSection(file_path="existing-section", content="Existing content"),
+        DocumentationSection(file_path="another-section", content="Another content"),
     ]
     mock_get_all_sections.return_value = all_sections
 
     # Mock the search agent to return some valid and some invalid section names
     class MockSearchResult(NamedTuple):
-        relevant_doc_sections: list[str]
+        relevant_documentation_file_paths: list[str]
         missing_doc_sections_feedback: str | None
 
     mock_search_agent.return_value = MockSearchResult(
-        relevant_doc_sections=["existing-section", "non-existent-section", "another-section"],
+        relevant_documentation_file_paths=["existing-section", "non-existent-section", "another-section"],
         missing_doc_sections_feedback=None,
     )
 
@@ -662,11 +662,11 @@ async def test_search_documentation_by_query_partial_matches(
 
     # Should only return sections that actually exist
     expected_sections = [
-        DocumentationSection(title="existing-section", content="Existing content"),
-        DocumentationSection(title="another-section", content="Another content"),
+        DocumentationSection(file_path="existing-section", content="Existing content"),
+        DocumentationSection(file_path="another-section", content="Another content"),
     ]
 
-    actual_section_tuples = {(s.title, s.content) for s in result}
-    expected_section_tuples = {(s.title, s.content) for s in expected_sections}
+    actual_section_tuples = {(s.file_path, s.content) for s in result}
+    expected_section_tuples = {(s.file_path, s.content) for s in expected_sections}
 
     assert actual_section_tuples == expected_section_tuples
