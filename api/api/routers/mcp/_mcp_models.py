@@ -40,18 +40,18 @@ class UsefulLinks(BaseModel):
 
 
 class ConciseLatestModelResponse(BaseModel):
-    id: str
-    currently_points_to: str
+    id: str = Field(description="TODO: Add description for model ID")
+    currently_points_to: str = Field(description="TODO: Add description for currently points to")
 
 
 class ConciseModelResponse(BaseModel):
-    id: str
-    display_name: str
-    supports: list[str]
-    quality_index: int
-    cost_per_input_token_usd: float
-    cost_per_output_token_usd: float
-    release_date: str
+    id: str = Field(description="TODO: Add description for model ID")
+    display_name: str = Field(description="TODO: Add description for model display name")
+    supports: list[str] = Field(description="TODO: Add description for supported features")
+    quality_index: int = Field(description="TODO: Add description for quality index")
+    cost_per_input_token_usd: float = Field(description="TODO: Add description for input token cost")
+    cost_per_output_token_usd: float = Field(description="TODO: Add description for output token cost")
+    release_date: str = Field(description="TODO: Add description for release date")
 
     @classmethod
     def from_model_data(cls, id: str, model: FinalModelData):
@@ -599,9 +599,9 @@ class StandardModelResponse(BaseModel):
 
 
 class Error(BaseModel):
-    code: str
-    message: str
-    details: dict[str, Any] | None
+    code: str = Field(description="TODO: Add description for error code")
+    message: str = Field(description="TODO: Add description for error message")
+    details: dict[str, Any] | None = Field(description="TODO: Add description for error details")
 
     @classmethod
     def from_domain(cls, error: ErrorResponse.Error):
@@ -613,15 +613,15 @@ class Error(BaseModel):
 
 
 class AgentVersion(BaseModel):
-    id: str
-    model: str
-    temperature: float | None
-    messages: list[Message] | None
-    instructions: str | None
-    top_p: float | None
-    max_tokens: int | None
-    frequency_penalty: float | None
-    presence_penalty: float | None
+    id: str = Field(description="TODO: Add description for agent version ID")
+    model: str = Field(description="TODO: Add description for model name")
+    temperature: float | None = Field(description="TODO: Add description for temperature setting")
+    messages: list[Message] | None = Field(description="TODO: Add description for version messages")
+    instructions: str | None = Field(description="TODO: Add description for agent instructions")
+    top_p: float | None = Field(description="TODO: Add description for top_p parameter")
+    max_tokens: int | None = Field(description="TODO: Add description for max_tokens setting")
+    frequency_penalty: float | None = Field(description="TODO: Add description for frequency_penalty parameter")
+    presence_penalty: float | None = Field(description="TODO: Add description for presence_penalty parameter")
 
     @classmethod
     def from_domain(cls, version: TaskGroup):
@@ -641,30 +641,31 @@ class AgentVersion(BaseModel):
 class MCPRun(BaseModel):
     """A run as returned by the MCP Server"""
 
-    id: str
-    conversation_id: str
-    agent_id: str
-    agent_schema_id: int
-    agent_version: AgentVersion
+    id: str = Field(description="TODO: Add description for run ID")
+    conversation_id: str = Field(description="TODO: Add description for conversation ID")
+    agent_id: str = Field(description="TODO: Add description for agent ID")
+    agent_schema_id: int = Field(description="TODO: Add description for agent schema ID")
+    agent_version: AgentVersion = Field(description="TODO: Add description for agent version")
     status: Literal[
         "success",
         "error",
-    ]
-    agent_input: dict[str, Any] | None
+    ] = Field(description="TODO: Add description for run status")
+    # TODO: what is agent_input exactly? it is the list of input variables values? in that case, the naming is confusing
+    agent_input: dict[str, Any] | None = Field(description="TODO: Add description for agent input")
     messages: list[Message] = Field(description="The exchanged messages, including the returned assistant message")
-    duration_seconds: float | None
-    cost_usd: float | None
-    created_at: datetime
+    duration_seconds: float | None = Field(description="TODO: Add description for duration in seconds")
+    cost_usd: float | None = Field(description="TODO: Add description for cost in USD")
+    created_at: datetime = Field(description="TODO: Add description for creation timestamp")
     environment: VersionEnvironment | None = Field(
         description="The environment that was used to trigger the run, if any",
     )
-    metadata: dict[str, Any] | None
+    metadata: dict[str, Any] | None = Field(description="TODO: Add description for metadata")
     response_json_schema: dict[str, Any] | None = Field(
         description="Only present when using structured outputs. The JSON schema that the model was asked to respect",
     )
     error: Error | None = Field(description="An error returned by the model")
 
-    url: str
+    url: str = Field(description="TODO: Add description for run URL")
 
     @classmethod
     def from_domain(
@@ -705,8 +706,8 @@ class SearchResponse(BaseModel):
     )
 
     class QueryResult(BaseModel):
-        content_snippet: str
-        source_page: str
+        content_snippet: str = Field(description="TODO: Add description for content snippet")
+        source_page: str = Field(description="TODO: Add description for source page")
 
     query_results: list[QueryResult] | None = Field(
         default=None,
