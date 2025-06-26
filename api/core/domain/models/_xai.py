@@ -112,6 +112,7 @@ def xai_models() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             supports_tool_calling=True,
             supports_structured_output=True,
             fallback=ModelFallback.default("cheap"),
+            reasoning=ModelReasoningBudget(none=None, medium=None),
         ),
         Model.GROK_3_MINI_FAST_BETA_HIGH_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.GROK_3_MINI_FAST_BETA,

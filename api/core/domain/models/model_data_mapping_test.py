@@ -10,7 +10,7 @@ from core.domain.models.utils import get_model_data
 from core.domain.task_typology import SchemaTypology, TaskTypology
 from core.providers.openai.openai_provider import OpenAIProvider
 
-from .model_data import DeprecatedModel, FinalModelData, LatestModel, ModelData
+from .model_data import DeprecatedModel, FinalModelData, LatestModel, ModelData, ModelReasoningBudget
 from .model_data_mapping import MODEL_DATAS
 from .model_provider_data_mapping import MODEL_PROVIDER_DATAS
 
@@ -399,3 +399,40 @@ class TestModelFallback:
                 assert fallback_text_price.prompt_cost_per_token <= max_price, (
                     f"Fallback model {fallback_model} has a higher prompt cost per token than the current model {model_data.model}"
                 )
+
+
+def _reasoning_model_data(*providers: Provider):
+    for model_data in MODEL_DATAS.values():
+        if not isinstance(model_data, FinalModelData) or not model_data.reasoning:
+            continue
+
+        if providers and not any(provider in providers for provider, _ in model_data.providers):
+            continue
+
+        yield pytest.param(model_data, model_data.reasoning, id=model_data.model.value)
+
+
+class TestReasoningModel:
+    @pytest.mark.parametrize(("model_data", "reasoning"), _reasoning_model_data())
+    def test_all_fields_set(self, model_data: FinalModelData, reasoning: ModelReasoningBudget):
+        # Check that all fields are explicitly set
+        missing_fields = set(ModelReasoningBudget.model_fields) - reasoning.model_fields_set
+        assert len(missing_fields) == 0, f"Model {model_data.model} has missing fields: {missing_fields}"
+
+        # Also check that if a field is not None, then it is also not 0
+        values = reasoning.model_dump(exclude_none=True, exclude={"none"})
+        for k, v in values.items():
+            assert v > 0, f"Model {model_data.model} has a field that is not > 0: {k}={v}"
+
+    @pytest.mark.parametrize(("model_data", "reasoning"), _reasoning_model_data(Provider.GOOGLE))
+    def test_all_google_models_support_deactivating_reasoning(
+        self,
+        model_data: FinalModelData,
+        reasoning: ModelReasoningBudget,
+    ):
+        assert reasoning.none == 0, f"Model {model_data.model} has no none reasoning"
+
+    @pytest.mark.parametrize(("model_data", "reasoning"), _reasoning_model_data(Provider.X_AI))
+    def test_no_xao_model_supports_medium_reasoning(self, model_data: FinalModelData, reasoning: ModelReasoningBudget):
+        assert reasoning.none is None, f"Model {model_data.model} has none reasoning"
+        assert reasoning.medium is None, f"Model {model_data.model} has no medium reasoning"
