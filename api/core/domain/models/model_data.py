@@ -1,5 +1,5 @@
 from datetime import date
-from typing import Any, Literal, TypeAlias, cast
+from typing import Any, Literal, TypeAlias
 
 from pydantic import BaseModel, Field
 
@@ -197,15 +197,19 @@ class ModelReasoningBudget(BaseModel):
         return getattr(self, key, None)
 
     def corresponding_effort(self, budget: int) -> Literal["none", "low", "medium", "high"] | None:
-        current_effort: Literal["none", "low", "medium", "high"] | None = None
-        for field in self.model_fields_set:
-            value = getattr(self, field, None)
+        # Define the order of effort levels in ascending order of their typical budget values
+        effort_levels: list[Literal["none", "low", "medium", "high"]] = ["none", "low", "medium", "high"]
+
+        highest_matching_effort: Literal["none", "low", "medium", "high"] | None = None
+
+        for effort in effort_levels:
+            value = getattr(self, effort, None)
             if value is None:
                 continue
-            if value > budget:
-                return current_effort
-            current_effort = cast(Literal["none", "low", "medium", "high"], field)
-        return None
+            if value <= budget:
+                highest_matching_effort = effort
+
+        return highest_matching_effort
 
     def corresponding_budget(self, effort: Literal["none", "low", "medium", "high"]) -> int | None:
         return getattr(self, effort, None)
