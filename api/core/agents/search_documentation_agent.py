@@ -15,6 +15,10 @@ class SearchDocumentationOutput(BaseModel):
         default=None,
         description="List of documentation section titles that are most relevant to answer the query.",
     )
+    missing_docs_feedback: str = Field(
+        default="",
+        description="Optional. Feedback when useful documentation appears to be missing or when the query cannot be adequately answered with existing documentation. Output '' if no feedback is needed.",
+    )
 
 
 async def search_documentation_agent(
@@ -67,7 +71,7 @@ Given a search query and all available documentation sections, you must:
             },
         },
         metadata={
-            "agent_id": "search-documentation-agent",
+            "agent_id": "search-documentation-agent-2",
         },
     )
 
