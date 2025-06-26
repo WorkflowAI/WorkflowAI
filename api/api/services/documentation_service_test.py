@@ -474,12 +474,9 @@ async def test_search_documentation_by_query_success(
         relevant_doc_sections: list[str]
         missing_doc_sections_feedback: str | None
 
-    mock_search_agent.return_value = (
-        MockSearchResult(
-            relevant_doc_sections=["reference/api", "guides/authentication"],
-            missing_doc_sections_feedback=None,
-        ),
-        "test-run-id",
+    mock_search_agent.return_value = MockSearchResult(
+        relevant_doc_sections=["reference/api", "guides/authentication"],
+        missing_doc_sections_feedback=None,
     )
 
     query = "How to authenticate with the API?"
@@ -526,9 +523,9 @@ async def test_search_documentation_by_query_empty_results(
         relevant_doc_sections: list[str]
         missing_doc_sections_feedback: str | None
 
-    mock_search_agent.return_value = (
-        MockSearchResult(relevant_doc_sections=[], missing_doc_sections_feedback=None),
-        "test-run-id",
+    mock_search_agent.return_value = MockSearchResult(
+        relevant_doc_sections=[],
+        missing_doc_sections_feedback=None,
     )
 
     query = "How to build a rocket ship?"
@@ -623,9 +620,9 @@ async def test_search_documentation_by_query_mode_selection(
         relevant_doc_sections: list[str]
         missing_doc_sections_feedback: str | None
 
-    mock_search_agent.return_value = (
-        MockSearchResult(relevant_doc_sections=["test-section"], missing_doc_sections_feedback=None),
-        "test-run-id",
+    mock_search_agent.return_value = MockSearchResult(
+        relevant_doc_sections=["test-section"],
+        missing_doc_sections_feedback=None,
     )
 
     # Test with remote mode
@@ -658,12 +655,9 @@ async def test_search_documentation_by_query_partial_matches(
         relevant_doc_sections: list[str]
         missing_doc_sections_feedback: str | None
 
-    mock_search_agent.return_value = (
-        MockSearchResult(
-            relevant_doc_sections=["existing-section", "non-existent-section", "another-section"],
-            missing_doc_sections_feedback=None,
-        ),
-        "test-run-id",
+    mock_search_agent.return_value = MockSearchResult(
+        relevant_doc_sections=["existing-section", "non-existent-section", "another-section"],
+        missing_doc_sections_feedback=None,
     )
 
     query = "test query"
