@@ -753,7 +753,7 @@ async def test_with_model_fallback_on_rate_limit(
     # And manual fallback can be used to switch to a different model
     res: Any = await openai_client.chat.completions.create(
         **completion_kwargs,
-        extra_body={"use_fallback": [Model.O3_2025_04_16_LOW_REASONING_EFFORT], "use_cache": "never"},
+        extra_body={"use_fallback": [Model.O3_2025_04_16], "use_cache": "never"},
     )
     await test_client.wait_for_completed_tasks()
 
@@ -764,7 +764,7 @@ async def test_with_model_fallback_on_rate_limit(
         # We automatically add a system message for structured gen to anthropic and bedrock
         (Model.CLAUDE_3_5_SONNET_20241022, Provider.ANTHROPIC, anthropic_message_count, None),
         (Model.CLAUDE_3_5_SONNET_20241022, Provider.AMAZON_BEDROCK, anthropic_message_count, None),
-        (Model.O3_2025_04_16_LOW_REASONING_EFFORT, Provider.OPEN_AI, 1, approx((10 * 2 + 11 * 8) / 1_000_000)),
+        (Model.O3_2025_04_16, Provider.OPEN_AI, 1, approx((10 * 2 + 11 * 8) / 1_000_000)),
     ]
 
 
