@@ -13,6 +13,8 @@ type ProxyTextareaProps = {
   inputVariblesKeys?: string[];
   supportInputVaribles?: boolean;
   supportObjectViewerIfPossible?: boolean;
+  onFocus?: () => void;
+  onBlur?: () => void;
 };
 
 export function ProxyTextarea(props: ProxyTextareaProps) {
@@ -24,6 +26,8 @@ export function ProxyTextarea(props: ProxyTextareaProps) {
     inputVariblesKeys,
     supportInputVaribles = true,
     supportObjectViewerIfPossible = false,
+    onFocus,
+    onBlur,
   } = props;
 
   const onChange = useCallback(
@@ -42,7 +46,7 @@ export function ProxyTextarea(props: ProxyTextareaProps) {
   if (readOnly && supportObjectViewerIfPossible && !!content?.text) {
     try {
       const output = JSON.parse(content.text);
-      if (!!output) {
+      if (!!output && typeof output !== 'string') {
         return (
           <TaskOutputViewer
             schema={undefined}
@@ -71,6 +75,8 @@ export function ProxyTextarea(props: ProxyTextareaProps) {
       readOnly={readOnly}
       inputVariblesKeys={inputVariblesKeys}
       supportInputVaribles={supportInputVaribles}
+      onFocus={onFocus}
+      onBlur={onBlur}
     />
   );
 }

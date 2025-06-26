@@ -56,7 +56,7 @@ export function ProxyTools(props: ProxyToolsProps) {
   const [selectedToolFromMessages, setSelectedToolFromMessages] = useState<ToolKind | undefined>(undefined);
 
   return (
-    <div className='flex flex-row gap-[10px] max-w-full min-w-[300px] items-center'>
+    <div className='flex flex-wrap gap-[10px] max-w-full min-w-[300px] items-center'>
       {tools && tools.length > 0 ? (
         <>
           {filteredTools?.map((tool) => (
@@ -83,7 +83,15 @@ export function ProxyTools(props: ProxyToolsProps) {
               {getToolName(tool)}
             </Button>
           ))}
-          {!isReadonly && <Button variant='newDesign' size='none' icon={<Add16Filled />} className='w-7 h-7' />}
+          {!isReadonly && (
+            <Button
+              variant='newDesign'
+              size='none'
+              icon={<Add16Filled />}
+              className='w-7 h-7'
+              onClick={() => setSelectedToolFromMessages(allTools[0])}
+            />
+          )}
         </>
       ) : (
         <div className='flex flex-row gap-[10px] items-center'>

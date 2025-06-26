@@ -1,7 +1,10 @@
 import { Add12Regular, Open16Regular } from '@fluentui/react-icons';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useMemo, useState } from 'react';
+import { useCopyToClipboard } from 'usehooks-ts';
 import { Button } from '@/components/ui/Button';
+import { displaySuccessToaster } from '@/components/ui/Sonner';
+import { SimpleTooltip } from '@/components/ui/Tooltip';
 import { taskSchemaRoute } from '@/lib/routeFormatter';
 import { cn } from '@/lib/utils';
 import { useOrFetchRunV1 } from '@/store/fetchers';
@@ -15,10 +18,12 @@ import { ProxyMessageRunFooter } from './components/ProxyMessageRunFooter';
 import { ProxyTextarea } from './components/ProxyTextarea';
 import { ProxyToolCallRequest } from './components/ProxyToolCallRequest';
 import { ProxyToolCallResultView } from './components/ProxyToolCallResult';
+import { ProxyToolCallResultInstantEditView } from './components/ProxyToolCallResultInstantEditView';
 import {
   ContentType,
   ExtendedMessageType,
   createEmptyMessageContent,
+  getContentToCopy,
   getContentTypeForContent,
   getContentTypes,
   getExtendedMessageType,
@@ -43,6 +48,9 @@ type Props = {
   supportInputVaribles?: boolean;
   supportRunDetails?: boolean;
   supportOpeningInPlayground?: boolean;
+  supportToolCallResultInstantEdit?: boolean;
+  onTextareaFocus?: () => void;
+  onTextareaBlur?: () => void;
 };
 
 export function ProxyMessageView(props: Props) {
@@ -62,6 +70,9 @@ export function ProxyMessageView(props: Props) {
     supportInputVaribles = true,
     supportRunDetails = false,
     supportOpeningInPlayground = true,
+    supportToolCallResultInstantEdit = false,
+    onTextareaFocus,
+    onTextareaBlur,
   } = props;
 
   const { tenant, taskId } = useParams();
@@ -192,6 +203,13 @@ export function ProxyMessageView(props: Props) {
     router.push(route);
   }, [run, tenant, taskId, message.run_id, router]);
 
+  const [, copy] = useCopyToClipboard();
+
+  const onCopy = useCallback(() => {
+    copy(getContentToCopy(message));
+    displaySuccessToaster('Copied to clipboard');
+  }, [copy, message]);
+
   return (
     <div
       id={id}
@@ -212,6 +230,7 @@ export function ProxyMessageView(props: Props) {
           onRemove={oneMessageMode || isLastMessage ? undefined : onRemove}
           onChangeType={(type) => onChangeType(type)}
           onAddContentEntry={onAddContentEntry}
+          onCopy={onCopy}
           readonly={readonly}
         />
         <div className='flex flex-col gap-[10px]'>
@@ -229,6 +248,8 @@ export function ProxyMessageView(props: Props) {
                       inputVariblesKeys={inputVariblesKeys}
                       supportInputVaribles={supportInputVaribles}
                       supportObjectViewerIfPossible={message.role === 'assistant'}
+                      onFocus={onTextareaFocus}
+                      onBlur={onTextareaBlur}
                     />
                   </div>
                 )}
@@ -253,11 +274,18 @@ export function ProxyMessageView(props: Props) {
                 )}
                 {content.tool_call_result && (
                   <div className='flex w-full px-3'>
-                    <ProxyToolCallResultView
-                      result={content.tool_call_result}
-                      setContent={(content) => onMessageChange(index, content)}
-                      readonly={readonly}
-                    />
+                    {supportToolCallResultInstantEdit ? (
+                      <ProxyToolCallResultInstantEditView
+                        result={content.tool_call_result}
+                        setContent={(content) => onMessageChange(index, content)}
+                      />
+                    ) : (
+                      <ProxyToolCallResultView
+                        result={content.tool_call_result}
+                        setContent={(content) => onMessageChange(index, content)}
+                        readonly={readonly}
+                      />
+                    )}
                   </div>
                 )}
               </div>
@@ -270,7 +298,11 @@ export function ProxyMessageView(props: Props) {
 
       {isHovering && !readonly && !oneMessageMode && (
         <>
-          <div className='absolute top-0 left-[50%] -translate-x-1/2 -translate-y-[11px] w-4 h-4 items-center justify-center'>
+          <SimpleTooltip
+            content='Add message above'
+            tooltipDelay={0}
+            triggerClassName='absolute top-0 left-[50%] -translate-x-1/2 -translate-y-[7px] w-4 h-4 items-center justify-center'
+          >
             <Button
               variant='newDesignText'
               size='none'
@@ -278,9 +310,13 @@ export function ProxyMessageView(props: Props) {
               icon={<Add12Regular className='w-3 h-3' />}
               onClick={addMessageAbove}
             />
-          </div>
+          </SimpleTooltip>
 
-          <div className='absolute bottom-0 left-[50%] -translate-x-1/2 translate-y-[4px] w-4 h-4 items-center justify-center'>
+          <SimpleTooltip
+            content='Add message below'
+            tooltipDelay={0}
+            triggerClassName='absolute bottom-0 left-[50%] -translate-x-1/2 translate-y-[8px] w-4 h-4 items-center justify-center'
+          >
             <Button
               variant='newDesignText'
               size='none'
@@ -288,19 +324,19 @@ export function ProxyMessageView(props: Props) {
               icon={<Add12Regular className='w-3 h-3' />}
               onClick={addMessageBelow}
             />
-          </div>
+          </SimpleTooltip>
         </>
       )}
 
       {showRunDetails && supportOpeningInPlayground && !!message.run_id && isHovering && (
-        <div className='absolute top-0 right-0 translate-x-2 -translate-y-[14px] items-center justify-center z-10'>
+        <div className='absolute top-0 right-0 translate-x-2 -translate-y-[17px] items-center justify-center z-10'>
           <Button
             variant='newDesign'
             size='sm'
             icon={<Open16Regular className='w-4 h-4' />}
             onClick={onTryInPlayground}
           >
-            Try From Here In Playground
+            Load From Here In Playground
           </Button>
         </div>
       )}

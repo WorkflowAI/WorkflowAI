@@ -49,7 +49,7 @@ export function ProxyReplyView(props: Props) {
           {
             tool_call_result: {
               id: toolCallRequest?.id ?? nanoid(),
-              result: 'Result of the tool call',
+              result: '',
               tool_name: toolCallRequest?.tool_name ?? 'tool_name',
               tool_input_dict: toolCallRequest?.tool_input_dict,
             },
@@ -127,10 +127,11 @@ export function ProxyReplyView(props: Props) {
     <div className='flex flex-col w-full px-4 py-2 gap-2.5'>
       <ProxyMessageView
         message={newMessage}
-        avaibleTypes={supportToolCallResult ? ['toolCallResult', 'user'] : ['user']}
+        avaibleTypes={supportToolCallResult ? ['toolCallResult', 'user'] : ['user', 'toolCallResult']}
         setMessage={handleSetMessage}
         oneMessageMode={true}
         previouseMessage={assistantMessage}
+        supportToolCallResultInstantEdit={true}
       />
       <div className='flex flex-row w-full justify-between items-center'>
         <div className='flex flex-row gap-2 items-center'>

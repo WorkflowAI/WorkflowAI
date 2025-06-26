@@ -1,5 +1,5 @@
 import { Loader2 } from 'lucide-react';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { TemperatureSelector } from '@/components/TemperatureSelector/TemperatureSelector';
 import { Button } from '@/components/ui/Button';
 import { SimpleTooltip } from '@/components/ui/Tooltip';
@@ -68,8 +68,16 @@ export function ProxyParameters(props: ProxyParametersProps) {
     return versionsForRuns[keys[0]];
   }, [versionsForRuns]);
 
+  const [isAnyTextareaFocused, setIsAnyTextareaFocused] = useState(false);
+
   return (
     <div className='flex flex-col w-full h-full'>
+      {error && !isAnyTextareaFocused && (
+        <div className='absolute top-[40px] right-0 -translate-x-[88px] translate-y-[4px] bg-red-500 flex rounded-[2px] border border-red-600 shadow-lg py-1 px-2 z-10'>
+          <div className='text-white text-[13px] whitespace-pre-wrap'>{error.message}</div>
+        </div>
+      )}
+
       <div className='flex flex-row h-[48px] w-full justify-between items-center shrink-0 border-b border-gray-200 border-dashed px-4'>
         <div className='flex flex-row items-center gap-2'>
           {improveMessagesControls.isImproving && (
@@ -123,14 +131,10 @@ export function ProxyParameters(props: ProxyParametersProps) {
               className='px-4 py-4 min-h-[100px]'
               allowRemovalOfLastMessage={false}
               inputVariblesKeys={inputVariblesKeys}
+              onAnyTextareaFocusChange={setIsAnyTextareaFocused}
             />
           )}
         </div>
-        {error && (
-          <div className='absolute top-0 right-0 -translate-x-[88px] translate-y-[4px] bg-red-500 rounded-[2px] border border-red-600 shadow-lg py-1 px-2 z-100'>
-            <div className='text-white text-[13px]'>{error.message}</div>
-          </div>
-        )}
       </div>
       <div className='flex flex-col w-full border-t border-gray-200 border-dashed'>
         <div className='flex flex-col gap-1 px-4 pt-2 pb-3 border-b border-gray-200 border-dashed'>
