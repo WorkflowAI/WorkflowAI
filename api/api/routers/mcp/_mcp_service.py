@@ -545,6 +545,16 @@ class MCPService:
             for section in relevant_sections
         ]
 
+        # Always add foundations page
+        # TODO: try to return the foundations page only once, per chat, but might be difficult since `mcp-session-id` is probably not scoped to a chat (for example, on CursorAI, multiple chat tabs can be open at the same time, using (probably) the same `mcp-session-id`)
+        sections = await documentation_service.get_documentation_by_path(["foundations"])
+        query_results.append(
+            SearchResponse.QueryResult(
+                content_snippet=sections[0].content,
+                source_page="foundations.mdx",
+            ),
+        )
+
         if len(query_results) == 0:
             return MCPToolReturn(
                 success=True,
