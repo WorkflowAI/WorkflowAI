@@ -117,6 +117,14 @@ class ModelReasoning(BaseModel):
         description="The maximum number of tokens that can be used for reasoning at high effort for the model.",
     )
 
+    min_reasoning_budget: int = Field(
+        description="The minimum number of tokens that can be used for reasoning for the model, without disabling reasoning.",
+    )
+
+    max_reasoning_budget: int = Field(
+        description="The maximum number of tokens that can be used for reasoning for the model.",
+    )
+
     @classmethod
     def from_domain(cls, model: ModelReasoningBudget) -> Self:
         return cls(
@@ -124,6 +132,8 @@ class ModelReasoning(BaseModel):
             low_effort_reasoning_budget=model.low or 0,
             medium_effort_reasoning_budget=model.medium or 0,
             high_effort_reasoning_budget=model.high or 0,
+            min_reasoning_budget=model.min or 0,
+            max_reasoning_budget=model.max,
         )
 
 

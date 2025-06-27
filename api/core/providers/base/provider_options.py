@@ -67,6 +67,10 @@ class ProviderOptions(BaseModel):
             self._log_warning_if_no_reasoning_budget()
             return None
         if self.reasoning_budget is not None:
+            if self.reasoning_budget > reasoning_budget.max:
+                return reasoning_budget.max
+            if reasoning_budget.min and self.reasoning_budget < reasoning_budget.min:
+                return reasoning_budget.min
             return self.reasoning_budget
         if self.reasoning_effort is None:
             return None

@@ -618,7 +618,7 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
                 context_exceeded="no",
             ),
             is_default=True,
-            reasoning=ModelReasoningBudget(disabled=0),
+            reasoning=ModelReasoningBudget(disabled=0, min=1, max=24576),
         ),
         Model.GEMINI_2_5_FLASH_THINKING_PREVIEW_0417: DeprecatedModel(replacement_model=Model.GEMINI_2_5_FLASH),
         Model.GEMINI_2_5_FLASH_THINKING_PREVIEW_0520: DeprecatedModel(replacement_model=Model.GEMINI_2_5_FLASH),
@@ -648,7 +648,8 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
                 content_moderation=Model.GPT_41_LATEST,
                 context_exceeded="no",
             ),
-            reasoning=ModelReasoningBudget(disabled=0),
+            # https://cloud.google.com/vertex-ai/generative-ai/docs/thinking
+            reasoning=ModelReasoningBudget(min=128, max=32_768),
         ),
         Model.GEMINI_2_5_FLASH_LITE_PREVIEW_0617: ModelData(
             display_name="Gemini 2.5 Flash Lite Preview (06-17)",
@@ -676,7 +677,8 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
                 content_moderation=Model.GPT_41_NANO_LATEST,
                 context_exceeded="no",
             ),
-            reasoning=ModelReasoningBudget(disabled=0),
+            # https://cloud.google.com/vertex-ai/generative-ai/docs/thinking
+            reasoning=ModelReasoningBudget(disabled=0, min=512, max=24_576),
         ),
         Model.GEMINI_2_5_PRO_PREVIEW_0605: DeprecatedModel(replacement_model=Model.GEMINI_2_5_PRO),
         Model.GEMINI_2_5_PRO_PREVIEW_0506: DeprecatedModel(replacement_model=Model.GEMINI_2_5_PRO),
@@ -1422,16 +1424,20 @@ def _finalize_reasoning(model_data: ModelData):
         return None
 
     max_tokens = model_data.max_tokens_data.max_output_tokens or model_data.max_tokens_data.max_tokens
+    min_budget = reasoning.min if "min" in reasoning.model_fields_set else None
+    max_budget = reasoning.max if "max" in reasoning.model_fields_set else max_tokens
 
-    low_budget = reasoning.low if "low" in reasoning.model_fields_set else int(round(0.2 * max_tokens))
-    medium_budget = reasoning.medium if "medium" in reasoning.model_fields_set else int(round(0.5 * max_tokens))
-    high_budget = reasoning.high if "high" in reasoning.model_fields_set else int(round(0.8 * max_tokens))
+    low_budget = reasoning.low if "low" in reasoning.model_fields_set else int(round(0.2 * max_budget))
+    medium_budget = reasoning.medium if "medium" in reasoning.model_fields_set else int(round(0.5 * max_budget))
+    high_budget = reasoning.high if "high" in reasoning.model_fields_set else int(round(0.8 * max_budget))
 
     return ModelReasoningBudget(
         disabled=reasoning.disabled,
         low=low_budget,
         medium=medium_budget,
         high=high_budget,
+        min=min_budget,
+        max=max_budget,
     )
 
 

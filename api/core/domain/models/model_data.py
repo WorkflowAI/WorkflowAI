@@ -190,9 +190,20 @@ class ModelReasoningBudget(BaseModel):
         default=None,
     )
     # Defaults are not validated so we can set to -1 to indicate that the reasoning effort is unset before build time
-    low: int | None = Field(gt=0, default=-1)  # Default: 20% of the max tokens
-    medium: int | None = Field(gt=0, default=-1)  # Default: 50% of the max tokens
-    high: int | None = Field(gt=0, default=-1)  # Default: 80% of the max tokens
+    low: int | None = Field(gt=0, default=-1)  # Default: 20% of the max reasoning budget
+    medium: int | None = Field(gt=0, default=-1)  # Default: 50% of the max reasoning budget
+    high: int | None = Field(gt=0, default=-1)  # Default: 80% of the max reasoning budget
+
+    min: int | None = Field(
+        description="The minimum number of tokens that can be used for reasoning for the model.",
+        gt=0,
+        default=None,
+    )
+    max: int = Field(
+        description="The maximum number of tokens that can be used for reasoning for the model.",
+        gt=0,
+        default=-1,  # -1 default value is overriden at build time
+    )
 
     def __getitem__(self, key: ReasoningEffort) -> int | None:
         return getattr(self, key)
