@@ -337,8 +337,6 @@ async def search_runs(
     - "is not" - not equal to
     - "contains" - string contains
     - "does not contain" - string does not contain
-    - "is empty" - field has no value
-    - "is not empty" - field has a value
 
     **Number fields:**
     - "is" - exact match
@@ -347,8 +345,6 @@ async def search_runs(
     - "greater than or equal to" - value >= X
     - "less than" - value < X
     - "less than or equal to" - value <= X
-    - "is empty" - field has no value
-    - "is not empty" - field has a value
 
     **Date fields:**
     - "is before" - date < X
