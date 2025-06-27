@@ -300,14 +300,9 @@ async def import_task_run(
     return res.json()
 
 
-async def wait_for_completed_tasks(broker: InMemoryBroker, max_retries: int = 10):
+async def _wait_for_broker_tasks(broker: InMemoryBroker, max_retries: int = 10):
     if isinstance(broker, PausableInMemoryBroker):
         await broker.resume()
-
-    from api.services.analytics._amplitude_analytics_service import AmplitudeAnalyticsService
-
-    with contextlib.suppress(Exception):
-        await AmplitudeAnalyticsService.batched_amplitude.flush()
 
     """Sleep for intervals of 100 until all tasks are completed or max_retries is reached."""
     running = []
@@ -318,6 +313,18 @@ async def wait_for_completed_tasks(broker: InMemoryBroker, max_retries: int = 10
         if not running:
             return
     raise TimeoutError(f"Tasks did not complete {[task for task in running]}")
+
+
+async def _flush_amplitude():
+    from api.services.analytics._amplitude_analytics_service import AmplitudeAnalyticsService
+
+    with contextlib.suppress(Exception):
+        await AmplitudeAnalyticsService.batched_amplitude.flush()
+
+
+async def wait_for_completed_tasks(broker: InMemoryBroker, max_retries: int = 10):
+    await _wait_for_broker_tasks(broker, max_retries)
+    await _flush_amplitude()
 
 
 def _task_id(task: dict[str, Any]):

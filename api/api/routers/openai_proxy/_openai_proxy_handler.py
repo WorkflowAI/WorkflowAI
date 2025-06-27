@@ -16,7 +16,7 @@ from core.domain.consts import INPUT_KEY_MESSAGES, METADATA_KEY_DEPLOYMENT_ENVIR
 from core.domain.errors import BadRequestError
 from core.domain.events import EventRouter, ProxyAgentCreatedEvent
 from core.domain.message import Message, Messages
-from core.domain.models.model_datas_mapping import MODEL_COUNT
+from core.domain.models.model_data_mapping import MODEL_COUNT
 from core.domain.task_group_properties import TaskGroupProperties
 from core.domain.task_io import RawJSONMessageSchema, RawMessagesSchema, RawStringMessageSchema, SerializableTaskIO
 from core.domain.task_variant import SerializableTaskVariant
@@ -27,7 +27,7 @@ from core.providers.base.provider_error import MissingModelError
 from core.storage import ObjectNotFoundException
 from core.storage.backend_storage import BackendStorage
 from core.utils.schemas import schema_from_data
-from core.utils.strings import slugify, to_pascal_case
+from core.utils.strings import is_url_safe, slugify, to_pascal_case
 from core.utils.templates import InvalidTemplateError
 
 from ._openai_proxy_models import (
@@ -130,7 +130,15 @@ class OpenAIProxyHandler:
                 case "json_schema":
                     if not response_format.json_schema:
                         raise BadRequestError("JSON schema is required for json_schema response format")
-                    output_schema = SerializableTaskIO.from_json_schema(response_format.json_schema.schema_)
+                    # We sanitize the schema here, mostly to have some simplifications and make sure
+                    # some equivalent values don't trigger different schema IDs.
+                    # However we don't support passing files here since the completion API does not support them
+                    # So we do not sanitize any internal def.
+                    output_schema = SerializableTaskIO.from_json_schema(
+                        response_format.json_schema.schema_,
+                        streamline=True,
+                        use_internal_defs=False,
+                    )
                 case _:
                     raise BadRequestError(f"Invalid response format: {response_format.type}")
         else:
@@ -139,7 +147,7 @@ class OpenAIProxyHandler:
         if not agent_slug:
             agent_slug = "default"
 
-        slugified_agent_slug = slugify(agent_slug)
+        slugified_agent_slug = _sanitize_agent_id(agent_slug)
 
         return SerializableTaskVariant(
             id="",
@@ -188,7 +196,7 @@ class OpenAIProxyHandler:
         input: dict[str, Any] | None,
         response_format: OpenAIProxyResponseFormat | None,
     ) -> PreparedRun:
-        agent_id = slugify(agent_ref.agent_id)
+        agent_id = _sanitize_agent_id(agent_ref.agent_id)
         try:
             deployment = await self._storage.task_deployments.get_task_deployment(
                 agent_id,
@@ -562,3 +570,9 @@ To list all models programmatically: {_curl_command}""",
         if suggested := await ModelsService.suggest_model(model):
             components.insert(1, f"Did you mean {suggested}?")
         return BadRequestError("\n".join(components))
+
+
+def _sanitize_agent_id(agent_id: str) -> str:
+    if not is_url_safe(agent_id):
+        return slugify(agent_id)
+    return agent_id

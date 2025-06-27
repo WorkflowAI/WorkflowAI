@@ -51,7 +51,7 @@ The [Model enum](./api/core/domain/models/models.py) contains the list of all mo
 
 The [ModelData](./api/core/domain/models/model_data.py) class contains metadata about a model, including the display name, icon URL, etc. It also allows deprecating a model by providing a replacement model.
 
-The actual data is built by `_raw_model_data` in the [model_datas_mapping.py](./api/core/domain/models/model_datas_mapping.py) file. Every model in the Model enum should have an associated ModelData object.
+The actual data is built by `_raw_model_data` in the [model_data_mapping.py](./api/core/domain/models/model_data_mapping.py) file. Every model in the Model enum should have an associated ModelData object.
 
 When adding a new model, you must provide:
 
@@ -73,7 +73,7 @@ When deprecating a model, make sure to replace every case where the model is use
 
 The [ModelProviderData](./api/core/domain/models/model_provider_data.py) class contains pricing information per provider per model. If a model is supported by a provider, then it must have a ModelProviderData object.
 
-The provider data is configured in [model_provider_datas_mapping.py](./api/core/domain/models/model_provider_datas_mapping.py). Each provider has its own dictionary mapping models to their provider data.
+The provider data is configured in [model_provider_data_mapping.py](./api/core/domain/models/model_provider_data_mapping.py). Each provider has its own dictionary mapping models to their provider data.
 
 When adding a new model, you must add pricing data for each provider that supports it, including:
 

@@ -54,11 +54,16 @@ def _list_cases():
 _WAI_TOOLS = [
     "list_models",
     "list_agents",
+    "get_agent",
     "fetch_run_details",
     "get_agent_versions",
-    "ask_ai_engineer",
-    "deploy_agent_version",
+    "search_runs",
+    "get_deployment_confirmation_url",
+    "send_feedback",
     "create_api_key",
+    "list_hosted_tools",
+    "search_documentation",
+    "create_completion",
 ]
 
 

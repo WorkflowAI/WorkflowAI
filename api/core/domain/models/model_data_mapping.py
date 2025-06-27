@@ -4,6 +4,8 @@ from typing import Literal
 from core.domain.models import Model, Provider
 from core.domain.models._displayed_provider import DisplayedProvider
 from core.domain.models._mistral import mistral_models
+from core.domain.models._xai import xai_models
+from core.domain.reasoning_effort import ReasoningEffort
 
 from .model_data import (
     DeprecatedModel,
@@ -13,6 +15,7 @@ from .model_data import (
     ModelData,
     ModelDataMapping,
     ModelFallback,
+    ModelReasoningBudget,
     PricingTier,
     QualityData,
 )
@@ -173,8 +176,6 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             replacement_model=Model.GPT_4O_2024_11_20,
             aliases=["gpt-4-turbo", "gpt-4", "gpt-4-0613", "gpt-4-turbo-preview"],
         ),
-        Model.GPT_4_0125_PREVIEW: DeprecatedModel(replacement_model=Model.GPT_4O_2024_11_20),
-        Model.GPT_4_1106_PREVIEW: DeprecatedModel(replacement_model=Model.GPT_4O_2024_11_20),
         Model.GPT_4O_MINI_LATEST: LatestModel(
             model=Model.GPT_4O_MINI_2024_07_18,
             display_name="GPT-4o mini (latest)",
@@ -230,13 +231,15 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
         Model.GPT_3_5_TURBO_1106: DeprecatedModel(
             replacement_model=Model.GPT_4O_MINI_2024_07_18,
         ),
+        Model.GPT_4_0125_PREVIEW: DeprecatedModel(replacement_model=Model.GPT_41_2025_04_14),
+        Model.GPT_4_1106_PREVIEW: DeprecatedModel(replacement_model=Model.GPT_41_2025_04_14),
         Model.GPT_4_1106_VISION_PREVIEW: DeprecatedModel(replacement_model=Model.GPT_4O_2024_11_20),
         Model.GPT_4O_AUDIO_PREVIEW_2025_06_03: ModelData(
             display_name="GPT-4o (Audio Preview 2025-06-03)",
             supports_json_mode=True,
             supports_input_image=False,
             supports_input_pdf=False,
-            support_input_schema=False,
+            supports_input_schema=False,
             supports_input_audio=True,
             supports_audio_only=True,
             max_tokens_data=MaxTokensData(
@@ -264,7 +267,7 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             supports_json_mode=True,
             supports_input_image=False,
             supports_input_pdf=False,
-            support_input_schema=False,
+            supports_input_schema=False,
             supports_input_audio=True,
             supports_audio_only=True,
             max_tokens_data=MaxTokensData(
@@ -287,83 +290,28 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
                 context_exceeded=None,
             ),
         ),
-        Model.GPT_40_AUDIO_PREVIEW_2024_10_01: DeprecatedModel(replacement_model=Model.GPT_4O_AUDIO_PREVIEW_2024_12_17),
-        Model.O1_PREVIEW_2024_09_12: ModelData(
-            display_name="o1-preview (2024-09-12)",
-            supports_json_mode=False,
-            supports_input_image=False,
-            supports_input_pdf=False,
-            supports_input_audio=False,
-            max_tokens_data=MaxTokensData(
-                max_tokens=128_000,
-                max_output_tokens=32768,
-                source="https://platform.openai.com/docs/models",
-            ),
-            icon_url="https://workflowai.blob.core.windows.net/workflowai-public/openai.svg",
-            release_date=date(2024, 9, 12),
-            quality_data=QualityData(mmlu=90.80, gpqa=78.30),
-            provider_name=DisplayedProvider.OPEN_AI.value,
-            supports_tool_calling=False,  # OpenAI returns 400 "model_does_not_support_mode"
-            aliases=["o1-preview"],
-            fallback=_openai_fallback("expensive"),
+        Model.GPT_4O_AUDIO_PREVIEW_2024_10_01: DeprecatedModel(replacement_model=Model.GPT_4O_AUDIO_PREVIEW_2024_12_17),
+        Model.O1_PREVIEW_2024_09_12: DeprecatedModel(replacement_model=Model.O3_2025_04_16, aliases=["o1-preview"]),
+        Model.O1_MINI_LATEST: DeprecatedModel(replacement_model=Model.O3_MINI_2025_01_31, aliases=["o1-mini"]),
+        Model.O1_MINI_2024_09_12: DeprecatedModel(replacement_model=Model.O3_MINI_2025_01_31),
+        Model.O3_MINI_LATEST_HIGH_REASONING_EFFORT: DeprecatedModel(
+            replacement_model=Model.O3_MINI_2025_01_31,
+            reasoning_effort=ReasoningEffort.HIGH,
         ),
-        Model.O1_MINI_LATEST: LatestModel(model=Model.O1_MINI_2024_09_12, display_name="o1-mini (latest)"),
-        Model.O1_MINI_2024_09_12: ModelData(
-            display_name="o1-mini (2024-09-12)",
-            supports_json_mode=False,
-            supports_input_image=False,
-            supports_input_pdf=False,
-            supports_input_audio=False,
-            max_tokens_data=MaxTokensData(
-                max_tokens=128_000,
-                max_output_tokens=65536,
-                source="https://platform.openai.com/docs/models",
-            ),
-            icon_url="https://workflowai.blob.core.windows.net/workflowai-public/openai.svg",
-            latest_model=Model.O1_MINI_LATEST,
-            release_date=date(2024, 9, 12),
-            quality_data=QualityData(mmlu=85.20, gpqa=70.00),
-            provider_name=DisplayedProvider.OPEN_AI.value,
-            supports_tool_calling=False,  # OpenAI returns 400 "model_does_not_support_mode"
-            fallback=_openai_fallback("cheap"),
+        Model.O3_MINI_LATEST_MEDIUM_REASONING_EFFORT: DeprecatedModel(
+            replacement_model=Model.O3_MINI_2025_01_31,
+            reasoning_effort=ReasoningEffort.MEDIUM,
         ),
-        Model.O3_MINI_LATEST_HIGH_REASONING_EFFORT: LatestModel(
-            model=Model.O3_MINI_2025_01_31_HIGH_REASONING_EFFORT,
-            display_name="o3-mini (latest) - High reasoning effort",
+        Model.O3_MINI_LATEST_LOW_REASONING_EFFORT: DeprecatedModel(
+            replacement_model=Model.O3_MINI_2025_01_31,
+            reasoning_effort=ReasoningEffort.LOW,
         ),
-        Model.O3_MINI_LATEST_MEDIUM_REASONING_EFFORT: LatestModel(
-            model=Model.O3_MINI_2025_01_31_MEDIUM_REASONING_EFFORT,
-            display_name="o3-mini (latest) - Medium reasoning effort",
-            aliases=["o3-mini"],
+        Model.O3_MINI_LATEST: LatestModel(
+            model=Model.O3_MINI_2025_01_31,
+            display_name="o3-mini (latest)",
         ),
-        Model.O3_MINI_LATEST_LOW_REASONING_EFFORT: LatestModel(
-            model=Model.O3_MINI_2025_01_31_LOW_REASONING_EFFORT,
-            display_name="o3-mini (latest) - Low reasoning effort",
-        ),
-        Model.O3_MINI_2025_01_31_HIGH_REASONING_EFFORT: ModelData(
-            display_name="o3-mini (2025-01-31) - High reasoning effort",
-            supports_json_mode=False,
-            supports_input_image=False,
-            supports_input_pdf=False,
-            supports_input_audio=False,
-            supports_structured_output=True,
-            release_date=date(2025, 1, 31),
-            quality_data=QualityData(mmlu=86.90, gpqa=79.70),
-            provider_name=DisplayedProvider.OPEN_AI.value,
-            icon_url="https://workflowai.blob.core.windows.net/workflowai-public/openai.svg",
-            max_tokens_data=MaxTokensData(
-                max_tokens=200_000,
-                max_output_tokens=100_000,
-                source="https://platform.openai.com/docs/models",
-            ),
-            latest_model=Model.O3_MINI_LATEST_HIGH_REASONING_EFFORT,
-            supports_tool_calling=True,
-            supports_parallel_tool_calls=False,
-            aliases=["o3-mini-2025-01-31"],
-            fallback=_openai_fallback("cheap"),
-        ),
-        Model.O3_MINI_2025_01_31_MEDIUM_REASONING_EFFORT: ModelData(
-            display_name="o3-mini (2025-01-31) - Medium reasoning effort",
+        Model.O3_MINI_2025_01_31: ModelData(
+            display_name="o3-mini (2025-01-31)",
             supports_json_mode=False,
             supports_input_image=False,
             supports_input_pdf=False,
@@ -378,70 +326,42 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
                 max_output_tokens=100_000,
                 source="https://platform.openai.com/docs/models",
             ),
-            latest_model=Model.O3_MINI_LATEST_MEDIUM_REASONING_EFFORT,
+            latest_model=Model.O3_MINI_LATEST,
             supports_tool_calling=True,
             supports_parallel_tool_calls=False,
             fallback=_openai_fallback("cheap"),
+            reasoning=ModelReasoningBudget(disabled=None),
         ),
-        Model.O3_MINI_2025_01_31_LOW_REASONING_EFFORT: ModelData(
-            display_name="o3-mini (2025-01-31) - Low reasoning effort",
-            supports_json_mode=False,
-            supports_input_image=False,
-            supports_input_pdf=False,
-            supports_input_audio=False,
-            supports_structured_output=True,
-            release_date=date(2025, 1, 31),
-            quality_data=QualityData(mmlu=79.10, gpqa=77.00),
-            provider_name=DisplayedProvider.OPEN_AI.value,
-            icon_url="https://workflowai.blob.core.windows.net/workflowai-public/openai.svg",
-            max_tokens_data=MaxTokensData(
-                max_tokens=200_000,
-                max_output_tokens=100_000,
-                source="https://platform.openai.com/docs/models",
-            ),
-            latest_model=Model.O3_MINI_LATEST_LOW_REASONING_EFFORT,
-            supports_tool_calling=True,
-            supports_parallel_tool_calls=False,
-            fallback=_openai_fallback("cheap"),
+        Model.O3_MINI_2025_01_31_HIGH_REASONING_EFFORT: DeprecatedModel(
+            replacement_model=Model.O3_MINI_2025_01_31,
+            reasoning_effort=ReasoningEffort.HIGH,
         ),
-        Model.O4_MINI_LATEST_HIGH_REASONING_EFFORT: LatestModel(
-            model=Model.O4_MINI_2025_04_16_HIGH_REASONING_EFFORT,
-            display_name="o4-mini (latest) - High reasoning effort",
+        Model.O3_MINI_2025_01_31_MEDIUM_REASONING_EFFORT: DeprecatedModel(
+            replacement_model=Model.O3_MINI_2025_01_31,
+            reasoning_effort=ReasoningEffort.MEDIUM,
         ),
-        Model.O4_MINI_LATEST_MEDIUM_REASONING_EFFORT: LatestModel(
-            model=Model.O4_MINI_2025_04_16_MEDIUM_REASONING_EFFORT,
-            display_name="o4-mini (latest) - Medium reasoning effort",
-            aliases=["o4-mini"],
+        Model.O3_MINI_2025_01_31_LOW_REASONING_EFFORT: DeprecatedModel(
+            replacement_model=Model.O3_MINI_2025_01_31,
+            reasoning_effort=ReasoningEffort.LOW,
         ),
-        Model.O4_MINI_LATEST_LOW_REASONING_EFFORT: LatestModel(
-            model=Model.O4_MINI_2025_04_16_LOW_REASONING_EFFORT,
-            display_name="o4-mini (latest) - Low reasoning effort",
+        Model.O4_MINI_LATEST_HIGH_REASONING_EFFORT: DeprecatedModel(
+            replacement_model=Model.O4_MINI_2025_04_16,
+            reasoning_effort=ReasoningEffort.HIGH,
         ),
-        Model.O4_MINI_2025_04_16_HIGH_REASONING_EFFORT: ModelData(
-            display_name="o4-mini (2025-04-16) - High reasoning effort",
-            supports_json_mode=False,
-            supports_input_image=True,
-            supports_input_pdf=False,
-            supports_input_audio=False,
-            supports_structured_output=True,
-            release_date=date(2025, 4, 16),
-            quality_data=QualityData(
-                equivalent_to=(Model.O4_MINI_2025_04_16_MEDIUM_REASONING_EFFORT, 5),
-            ),
-            provider_name=DisplayedProvider.OPEN_AI.value,
-            icon_url="https://workflowai.blob.core.windows.net/workflowai-public/openai.svg",
-            max_tokens_data=MaxTokensData(
-                max_tokens=200_000,
-                max_output_tokens=100_000,
-                source="https://platform.openai.com/docs/models",
-            ),
-            latest_model=Model.O4_MINI_LATEST_HIGH_REASONING_EFFORT,
-            supports_tool_calling=True,
-            supports_parallel_tool_calls=False,
-            fallback=_openai_fallback("cheap"),
+        Model.O4_MINI_LATEST_MEDIUM_REASONING_EFFORT: DeprecatedModel(
+            replacement_model=Model.O4_MINI_2025_04_16,
+            reasoning_effort=ReasoningEffort.MEDIUM,
         ),
-        Model.O4_MINI_2025_04_16_MEDIUM_REASONING_EFFORT: ModelData(
-            display_name="o4-mini (2025-04-16) - Medium reasoning effort",
+        Model.O4_MINI_LATEST_LOW_REASONING_EFFORT: DeprecatedModel(
+            replacement_model=Model.O4_MINI_2025_04_16,
+            reasoning_effort=ReasoningEffort.LOW,
+        ),
+        Model.O4_MINI_LATEST: LatestModel(
+            model=Model.O4_MINI_2025_04_16,
+            display_name="o4-mini (latest)",
+        ),
+        Model.O4_MINI_2025_04_16: ModelData(
+            display_name="o4-mini (2025-04-16)",
             supports_json_mode=False,
             supports_input_image=True,
             supports_input_pdf=False,
@@ -460,73 +380,27 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
                 max_output_tokens=100_000,
                 source="https://platform.openai.com/docs/models",
             ),
-            latest_model=Model.O4_MINI_LATEST_MEDIUM_REASONING_EFFORT,
-            supports_tool_calling=True,
-            supports_parallel_tool_calls=False,
-            aliases=["o4-mini-2025-04-16"],
-            fallback=_openai_fallback("cheap"),
-        ),
-        Model.O4_MINI_2025_04_16_LOW_REASONING_EFFORT: ModelData(
-            display_name="o4-mini (2025-04-16) - Low reasoning effort",
-            supports_json_mode=False,
-            supports_input_image=True,
-            supports_input_pdf=False,
-            supports_input_audio=False,
-            supports_structured_output=True,
-            release_date=date(2025, 4, 16),
-            quality_data=QualityData(
-                equivalent_to=(Model.O4_MINI_2025_04_16_MEDIUM_REASONING_EFFORT, -5),
-            ),
-            provider_name=DisplayedProvider.OPEN_AI.value,
-            icon_url="https://workflowai.blob.core.windows.net/workflowai-public/openai.svg",
-            max_tokens_data=MaxTokensData(
-                max_tokens=200_000,
-                max_output_tokens=100_000,
-                source="https://platform.openai.com/docs/models",
-            ),
-            latest_model=Model.O4_MINI_LATEST_LOW_REASONING_EFFORT,
+            latest_model=Model.O4_MINI_LATEST,
             supports_tool_calling=True,
             supports_parallel_tool_calls=False,
             fallback=_openai_fallback("cheap"),
+            reasoning=ModelReasoningBudget(disabled=None),
         ),
-        Model.O3_LATEST_HIGH_REASONING_EFFORT: LatestModel(
-            model=Model.O3_2025_04_16_HIGH_REASONING_EFFORT,
-            display_name="o3 (latest) - High reasoning effort",
+        Model.O4_MINI_2025_04_16_HIGH_REASONING_EFFORT: DeprecatedModel(
+            replacement_model=Model.O4_MINI_2025_04_16,
+            reasoning_effort=ReasoningEffort.HIGH,
         ),
-        Model.O3_LATEST_MEDIUM_REASONING_EFFORT: LatestModel(
-            model=Model.O3_2025_04_16_MEDIUM_REASONING_EFFORT,
-            display_name="o3 (latest) - Medium reasoning effort",
-            aliases=["o3"],
+        Model.O4_MINI_2025_04_16_MEDIUM_REASONING_EFFORT: DeprecatedModel(
+            replacement_model=Model.O4_MINI_2025_04_16,
+            reasoning_effort=ReasoningEffort.MEDIUM,
         ),
-        Model.O3_LATEST_LOW_REASONING_EFFORT: LatestModel(
-            model=Model.O3_2025_04_16_LOW_REASONING_EFFORT,
-            display_name="o3 (latest) - Low reasoning effort",
+        Model.O4_MINI_2025_04_16_LOW_REASONING_EFFORT: DeprecatedModel(
+            replacement_model=Model.O4_MINI_2025_04_16,
+            reasoning_effort=ReasoningEffort.LOW,
         ),
-        Model.O3_2025_04_16_HIGH_REASONING_EFFORT: ModelData(
-            display_name="o3 (2025-04-16) - High reasoning effort",
-            supports_json_mode=True,
-            supports_input_image=True,
-            supports_input_pdf=True,
-            supports_input_audio=False,
-            supports_structured_output=True,
-            release_date=date(2025, 4, 16),
-            quality_data=QualityData(
-                equivalent_to=(Model.O4_MINI_2025_04_16_MEDIUM_REASONING_EFFORT, 5),
-            ),
-            provider_name=DisplayedProvider.OPEN_AI.value,
-            icon_url="https://workflowai.blob.core.windows.net/workflowai-public/openai.svg",
-            max_tokens_data=MaxTokensData(
-                max_tokens=200_000,
-                max_output_tokens=100_000,
-                source="https://platform.openai.com/docs/models",
-            ),
-            latest_model=Model.O3_LATEST_HIGH_REASONING_EFFORT,
-            supports_tool_calling=True,
-            supports_parallel_tool_calls=False,
-            fallback=_openai_fallback("medium"),
-        ),
-        Model.O3_2025_04_16_MEDIUM_REASONING_EFFORT: ModelData(
-            display_name="o3 (2025-04-16) - Medium reasoning effort",
+        Model.O3_LATEST: LatestModel(model=Model.O3_2025_04_16, display_name="o3 (latest)"),
+        Model.O3_2025_04_16: ModelData(
+            display_name="o3 (2025-04-16)",
             supports_json_mode=True,
             supports_input_image=True,
             supports_input_pdf=True,
@@ -545,34 +419,36 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
                 max_output_tokens=100_000,
                 source="https://platform.openai.com/docs/models",
             ),
-            latest_model=Model.O3_LATEST_MEDIUM_REASONING_EFFORT,
+            latest_model=Model.O3_LATEST,
             supports_tool_calling=True,
             supports_parallel_tool_calls=False,
             aliases=["o3-2025-04-16"],
             fallback=_openai_fallback("medium"),
+            reasoning=ModelReasoningBudget(disabled=None),
         ),
-        Model.O3_2025_04_16_LOW_REASONING_EFFORT: ModelData(
-            display_name="o3 (2025-04-16) - Low reasoning effort",
-            supports_json_mode=True,
-            supports_input_image=True,
-            supports_input_pdf=True,
-            supports_input_audio=False,
-            supports_structured_output=True,
-            release_date=date(2025, 4, 16),
-            quality_data=QualityData(
-                equivalent_to=(Model.O4_MINI_2025_04_16_MEDIUM_REASONING_EFFORT, -5),
-            ),
-            provider_name=DisplayedProvider.OPEN_AI.value,
-            icon_url="https://workflowai.blob.core.windows.net/workflowai-public/openai.svg",
-            max_tokens_data=MaxTokensData(
-                max_tokens=200_000,
-                max_output_tokens=100_000,
-                source="https://platform.openai.com/docs/models",
-            ),
-            latest_model=Model.O3_LATEST_LOW_REASONING_EFFORT,
-            supports_tool_calling=True,
-            supports_parallel_tool_calls=False,
-            fallback=_openai_fallback("medium"),
+        Model.O3_LATEST_HIGH_REASONING_EFFORT: DeprecatedModel(
+            replacement_model=Model.O3_2025_04_16,
+            reasoning_effort=ReasoningEffort.HIGH,
+        ),
+        Model.O3_LATEST_MEDIUM_REASONING_EFFORT: DeprecatedModel(
+            replacement_model=Model.O3_2025_04_16,
+            reasoning_effort=ReasoningEffort.MEDIUM,
+        ),
+        Model.O3_LATEST_LOW_REASONING_EFFORT: DeprecatedModel(
+            replacement_model=Model.O3_2025_04_16,
+            reasoning_effort=ReasoningEffort.LOW,
+        ),
+        Model.O3_2025_04_16_HIGH_REASONING_EFFORT: DeprecatedModel(
+            replacement_model=Model.O3_2025_04_16,
+            reasoning_effort=ReasoningEffort.HIGH,
+        ),
+        Model.O3_2025_04_16_MEDIUM_REASONING_EFFORT: DeprecatedModel(
+            replacement_model=Model.O3_2025_04_16,
+            reasoning_effort=ReasoningEffort.MEDIUM,
+        ),
+        Model.O3_2025_04_16_LOW_REASONING_EFFORT: DeprecatedModel(
+            replacement_model=Model.O3_2025_04_16,
+            reasoning_effort=ReasoningEffort.LOW,
         ),
         # Model.O3_PRO_LATEST_HIGH_REASONING_EFFORT: LatestModel(
         #     model=Model.O3_PRO_2025_06_10_HIGH_REASONING_EFFORT,
@@ -710,34 +586,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             ),
         ),
         Model.GEMINI_2_5_FLASH_PREVIEW_0417: DeprecatedModel(replacement_model=Model.GEMINI_2_5_FLASH),
-        Model.GEMINI_2_5_FLASH_PREVIEW_0520: ModelData(
-            display_name="Gemini 2.5 Flash Preview (05-20)",
-            supports_json_mode=True,
-            supports_input_image=True,
-            supports_input_pdf=True,
-            supports_input_audio=True,
-            supports_structured_output=False,
-            max_tokens_data=MaxTokensData(
-                max_tokens=1_048_576 + 65_536,
-                max_output_tokens=65_536,
-                source="https://cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/2-5-flash",
-            ),
-            icon_url="https://workflowai.blob.core.windows.net/workflowai-public/google.svg",
-            release_date=date(2025, 6, 6),
-            quality_data=QualityData(
-                gpqa=82.8,
-                mmlu=88.4,
-                source="https://deepmind.google/models/gemini/flash/",
-            ),
-            provider_name=DisplayedProvider.GOOGLE.value,
-            supports_tool_calling=True,
-            fallback=ModelFallback.default(
-                "cheapest",
-                content_moderation=Model.GPT_41_NANO_LATEST,
-                rate_limit=Model.GEMINI_2_0_FLASH_001,
-                context_exceeded="no",
-            ),
-            reasoning_level="none",
+        Model.GEMINI_2_5_FLASH_PREVIEW_0520: DeprecatedModel(
+            replacement_model=Model.GEMINI_2_5_FLASH,
+            reasoning_effort=ReasoningEffort.DISABLED,
         ),
         Model.GEMINI_2_5_FLASH: ModelData(
             display_name="Gemini 2.5 Flash",
@@ -767,6 +618,7 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
                 context_exceeded="no",
             ),
             is_default=True,
+            reasoning=ModelReasoningBudget(disabled=0),
         ),
         Model.GEMINI_2_5_FLASH_THINKING_PREVIEW_0417: DeprecatedModel(replacement_model=Model.GEMINI_2_5_FLASH),
         Model.GEMINI_2_5_FLASH_THINKING_PREVIEW_0520: DeprecatedModel(replacement_model=Model.GEMINI_2_5_FLASH),
@@ -796,6 +648,7 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
                 content_moderation=Model.GPT_41_LATEST,
                 context_exceeded="no",
             ),
+            reasoning=ModelReasoningBudget(disabled=0),
         ),
         Model.GEMINI_2_5_FLASH_LITE_PREVIEW_0617: ModelData(
             display_name="Gemini 2.5 Flash Lite Preview (06-17)",
@@ -823,6 +676,7 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
                 content_moderation=Model.GPT_41_NANO_LATEST,
                 context_exceeded="no",
             ),
+            reasoning=ModelReasoningBudget(disabled=0),
         ),
         Model.GEMINI_2_5_PRO_PREVIEW_0605: DeprecatedModel(replacement_model=Model.GEMINI_2_5_PRO),
         Model.GEMINI_2_5_PRO_PREVIEW_0506: DeprecatedModel(replacement_model=Model.GEMINI_2_5_PRO),
@@ -837,7 +691,7 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             supports_input_audio=True,
             supports_output_image=True,
             supports_structured_output=False,
-            support_system_messages=False,
+            supports_system_messages=False,
             max_tokens_data=MaxTokensData(
                 max_tokens=1_048_576 + 8_192,
                 max_output_tokens=8_192,
@@ -1024,8 +878,8 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             model=Model.CLAUDE_3_5_SONNET_20241022,
             display_name="Claude 3.5 Sonnet (latest)",
         ),
-        Model.O1_2024_12_17_MEDIUM_REASONING_EFFORT: ModelData(
-            display_name="o1 (2024-12-17) - Medium reasoning effort",
+        Model.O1_2024_12_17: ModelData(
+            display_name="o1 (2024-12-17)",
             supports_json_mode=True,
             supports_input_image=True,
             supports_input_pdf=False,
@@ -1042,48 +896,17 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             provider_name=DisplayedProvider.OPEN_AI.value,
             supports_tool_calling=True,
             supports_parallel_tool_calls=False,
+            fallback=_openai_fallback("expensive"),
+            reasoning=ModelReasoningBudget(disabled=None),
             aliases=["o1"],
-            fallback=_openai_fallback("expensive"),
         ),
-        Model.O1_2024_12_17_HIGH_REASONING_EFFORT: ModelData(
-            display_name="o1 (2024-12-17) - High reasoning effort",
-            supports_json_mode=True,
-            supports_input_image=True,
-            supports_input_pdf=False,
-            supports_input_audio=False,
-            supports_structured_output=True,
-            max_tokens_data=MaxTokensData(
-                max_tokens=200_000,
-                max_output_tokens=100_000,
-                source="https://platform.openai.com/docs/models/gp#o1",
-            ),
-            icon_url="https://workflowai.blob.core.windows.net/workflowai-public/openai.svg",
-            release_date=date(2024, 12, 17),
-            quality_data=QualityData(mmlu=87, gpqa=91.6),
-            provider_name=DisplayedProvider.OPEN_AI.value,
-            supports_tool_calling=True,
-            supports_parallel_tool_calls=False,
-            fallback=_openai_fallback("expensive"),
+        Model.O1_2024_12_17_HIGH_REASONING_EFFORT: DeprecatedModel(
+            replacement_model=Model.O1_2024_12_17,
+            reasoning_effort=ReasoningEffort.HIGH,
         ),
-        Model.O1_2024_12_17_LOW_REASONING_EFFORT: ModelData(
-            display_name="o1 (2024-12-17) - Low reasoning effort",
-            supports_json_mode=True,
-            supports_input_image=True,
-            supports_input_pdf=False,
-            supports_input_audio=False,
-            supports_structured_output=True,
-            max_tokens_data=MaxTokensData(
-                max_tokens=200_000,
-                max_output_tokens=100_000,
-                source="https://platform.openai.com/docs/models/gp#o1",
-            ),
-            icon_url="https://workflowai.blob.core.windows.net/workflowai-public/openai.svg",
-            release_date=date(2024, 12, 17),
-            quality_data=QualityData(mmlu=84.1, gpqa=78),
-            provider_name=DisplayedProvider.OPEN_AI.value,
-            supports_tool_calling=True,
-            supports_parallel_tool_calls=False,
-            fallback=_openai_fallback("expensive"),
+        Model.O1_2024_12_17_LOW_REASONING_EFFORT: DeprecatedModel(
+            replacement_model=Model.O1_2024_12_17,
+            reasoning_effort=ReasoningEffort.LOW,
         ),
         Model.CLAUDE_3_5_SONNET_20240620: ModelData(
             display_name="Claude 3.5 Sonnet (2024-06-20)",
@@ -1490,8 +1313,8 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             release_date=date(2025, 5, 28),
             quality_data=QualityData(
                 equivalent_to=(  # TODO: adjust later, could not find score for MMLU nor GPQA
-                    Model.O4_MINI_2025_04_16_MEDIUM_REASONING_EFFORT,
-                    -10,
+                    Model.DEEPSEEK_R1_2501,
+                    5,
                 ),
             ),
             provider_name=DisplayedProvider.FIREWORKS.value,
@@ -1521,141 +1344,6 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
         Model.DEEPSEEK_V3_LATEST: LatestModel(
             model=Model.DEEPSEEK_V3_0324,
             display_name="DeepSeek V3 (latest)",
-        ),
-        Model.GROK_3_BETA: ModelData(
-            display_name="Grok 3 (beta)",
-            supports_json_mode=True,
-            supports_input_image=True,
-            supports_input_pdf=True,
-            supports_input_audio=False,
-            max_tokens_data=MaxTokensData(
-                max_tokens=131_072,
-                source="https://docs.x.ai/docs/models#models-and-pricing",
-            ),
-            icon_url="https://workflowai.blob.core.windows.net/workflowai-public/xai.svg",
-            release_date=date(2025, 4, 10),
-            quality_data=QualityData(
-                mmlu_pro=79.9,
-                gpqa=73.7,
-                source="https://www.vals.ai/models/grok_grok-3-fast-beta",
-            ),
-            provider_name=DisplayedProvider.X_AI.value,
-            supports_tool_calling=True,
-            supports_structured_output=True,
-            fallback=ModelFallback.default("medium"),
-        ),
-        Model.GROK_3_FAST_BETA: ModelData(
-            display_name="Grok 3 Fast (beta)",
-            supports_json_mode=True,
-            supports_input_image=True,
-            supports_input_pdf=True,
-            supports_input_audio=False,
-            max_tokens_data=MaxTokensData(
-                max_tokens=131_072,
-                source="https://docs.x.ai/docs/models#models-and-pricing",
-            ),
-            icon_url="https://workflowai.blob.core.windows.net/workflowai-public/xai.svg",
-            release_date=date(2025, 4, 10),
-            quality_data=QualityData(
-                mmlu_pro=79.9,
-                gpqa=73.7,
-                source="https://www.vals.ai/models/grok_grok-3-fast-beta",
-            ),
-            provider_name=DisplayedProvider.X_AI.value,
-            supports_tool_calling=True,
-            supports_structured_output=True,
-            fallback=ModelFallback.default("medium"),
-        ),
-        Model.GROK_3_MINI_BETA_HIGH_REASONING_EFFORT: ModelData(
-            display_name="Grok 3 Mini (beta) - High reasoning effort",
-            supports_json_mode=True,
-            supports_input_image=True,
-            supports_input_pdf=True,
-            supports_input_audio=False,
-            max_tokens_data=MaxTokensData(
-                max_tokens=131_072,
-                source="https://docs.x.ai/docs/models#models-and-pricing",
-            ),
-            icon_url="https://workflowai.blob.core.windows.net/workflowai-public/xai.svg",
-            release_date=date(2025, 4, 10),
-            quality_data=QualityData(
-                mmlu_pro=81.4,
-                gpqa=79,
-                source="https://www.vals.ai/models/grok_grok-3-mini-fast-beta-high-reasoning",
-            ),
-            provider_name=DisplayedProvider.X_AI.value,
-            supports_tool_calling=True,
-            supports_structured_output=True,
-            fallback=ModelFallback.default("cheap"),
-        ),
-        Model.GROK_3_MINI_BETA_LOW_REASONING_EFFORT: ModelData(
-            display_name="Grok 3 Mini (beta) - Low reasoning effort",
-            supports_json_mode=True,
-            supports_input_image=True,
-            supports_input_pdf=True,
-            supports_input_audio=False,
-            max_tokens_data=MaxTokensData(
-                max_tokens=131_072,
-                source="https://docs.x.ai/docs/models#models-and-pricing",
-            ),
-            icon_url="https://workflowai.blob.core.windows.net/workflowai-public/xai.svg",
-            release_date=date(2025, 4, 10),
-            # TODO: Update the quality index
-            quality_data=QualityData(
-                mmlu_pro=80,
-                gpqa=72.7,
-                source="https://www.vals.ai/models/grok_grok-3-mini-fast-beta-low-reasoning",
-            ),
-            provider_name=DisplayedProvider.X_AI.value,
-            supports_tool_calling=True,
-            supports_structured_output=True,
-            fallback=ModelFallback.default("cheap"),
-        ),
-        Model.GROK_3_MINI_FAST_BETA_HIGH_REASONING_EFFORT: ModelData(
-            display_name="Grok 3 Mini Fast (beta) - High reasoning effort",
-            supports_json_mode=True,
-            supports_input_image=True,
-            supports_input_pdf=True,
-            supports_input_audio=False,
-            max_tokens_data=MaxTokensData(
-                max_tokens=131_072,
-                source="https://docs.x.ai/docs/models#models-and-pricing",
-            ),
-            icon_url="https://workflowai.blob.core.windows.net/workflowai-public/xai.svg",
-            release_date=date(2025, 4, 10),
-            # TODO: Update the quality index
-            quality_data=QualityData(
-                mmlu_pro=81.4,
-                gpqa=79,
-                source="https://www.vals.ai/models/grok_grok-3-mini-fast-beta-high-reasoning",
-            ),
-            provider_name=DisplayedProvider.X_AI.value,
-            supports_tool_calling=True,
-            supports_structured_output=True,
-            fallback=ModelFallback.default("cheap"),
-        ),
-        Model.GROK_3_MINI_FAST_BETA_LOW_REASONING_EFFORT: ModelData(
-            display_name="Grok 3 Mini Fast (beta) - Low reasoning effort",
-            supports_json_mode=True,
-            supports_input_image=True,
-            supports_input_pdf=True,
-            supports_input_audio=False,
-            max_tokens_data=MaxTokensData(
-                max_tokens=131_072,
-                source="https://docs.x.ai/docs/models#models-and-pricing",
-            ),
-            icon_url="https://workflowai.blob.core.windows.net/workflowai-public/xai.svg",
-            release_date=date(2025, 4, 10),
-            # TODO: Update the quality index
-            quality_data=QualityData(
-                mmlu_pro=80,
-                gpqa=72.7,
-                source="https://www.vals.ai/models/grok_grok-3-mini-fast-beta-low-reasoning",
-            ),
-            provider_name=DisplayedProvider.X_AI.value,
-            supports_tool_calling=True,
-            supports_structured_output=True,
-            fallback=ModelFallback.default("cheap"),
         ),
         Model.IMAGEN_3_0_LATEST: LatestModel(
             model=Model.IMAGEN_3_0_002,
@@ -1724,13 +1412,33 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             fallback=None,  # No fallback for image generation
         ),
         **mistral_models(),
+        **xai_models(),
     }
+
+
+def _finalize_reasoning(model_data: ModelData):
+    reasoning = model_data.reasoning
+    if not reasoning:
+        return None
+
+    max_tokens = model_data.max_tokens_data.max_output_tokens or model_data.max_tokens_data.max_tokens
+
+    low_budget = reasoning.low if "low" in reasoning.model_fields_set else int(round(0.2 * max_tokens))
+    medium_budget = reasoning.medium if "medium" in reasoning.model_fields_set else int(round(0.5 * max_tokens))
+    high_budget = reasoning.high if "high" in reasoning.model_fields_set else int(round(0.8 * max_tokens))
+
+    return ModelReasoningBudget(
+        disabled=reasoning.disabled,
+        low=low_budget,
+        medium=medium_budget,
+        high=high_budget,
+    )
 
 
 def _build_model_datas() -> ModelDataMapping:
     models = _raw_model_data()
 
-    from .model_provider_datas_mapping import MODEL_PROVIDER_DATAS
+    from .model_provider_data_mapping import MODEL_PROVIDER_DATAS
 
     def _map_model_data(model: Model, model_data: ModelData | LatestModel | DeprecatedModel):
         if isinstance(model_data, LatestModel):
@@ -1748,6 +1456,7 @@ def _build_model_datas() -> ModelDataMapping:
                 "model": model,
                 "providers": [],
                 "quality_index": model_data.quality_data.quality_index(models),
+                "reasoning": _finalize_reasoning(model_data),
             },
         )
         for provider in Provider:

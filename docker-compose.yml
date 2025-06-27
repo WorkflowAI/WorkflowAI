@@ -39,8 +39,7 @@ services:
   # API service
   api: &api
     platform: linux/x86_64
-    # Override script to only start uvicorn
-    # Default start.sh starts both uvicorn and taskiq worker
+    # Standard uvicorn command without debugpy
     command:
       [
         'poetry',
@@ -86,6 +85,40 @@ services:
       - redis
       - minio
       - clickhouse
+
+  # API service with debugging enabled
+  api-debug:
+    <<: *api
+    # Override command to include debugpy for debugging
+    command:
+      [
+        'poetry',
+        'run',
+        'python',
+        '-m',
+        'debugpy',
+        '--wait-for-client',
+        '--listen',
+        '0.0.0.0:5678',
+        '-m',
+        'uvicorn',
+        'api.main:app',
+        '--host',
+        '0.0.0.0',
+        '--port',
+        '8000',
+        '--reload',
+        '--reload-exclude',
+        'scripts/*',
+        '--reload-exclude',
+        '*_test.py',
+        '--reload-exclude',
+        'tests/*',
+      ]
+    ports:
+      - '8000:8000'
+      - '5678:5678'
+
   worker:
     <<: *api
     # No ports needed

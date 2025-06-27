@@ -268,7 +268,6 @@ class FireworksAIProvider(HTTPXProvider[FireworksConfig, CompletionResponse]):
             return MaxTokensExceededError(
                 msg=payload.error.message,
                 response=response,
-                store_task_run=False,
             )
         if "model not found, inaccessible, and/or not deployed" in lower_msg:
             return MissingModelError(
@@ -288,7 +287,6 @@ class FireworksAIProvider(HTTPXProvider[FireworksConfig, CompletionResponse]):
                 response=response,
             )
 
-        store_task_run: bool | None = None
         error_cls = UnknownProviderError
         match payload.error.code:
             case "string_above_max_length" | "context_length_exceeded":
@@ -296,7 +294,6 @@ class FireworksAIProvider(HTTPXProvider[FireworksConfig, CompletionResponse]):
                 # does not incur cost
                 # We still bin with max tokens exceeded since it is related
                 error_cls = MaxTokensExceededError
-                store_task_run = False
 
             case None:
                 if err := self._invalid_request_error(payload, response):
@@ -308,7 +305,6 @@ class FireworksAIProvider(HTTPXProvider[FireworksConfig, CompletionResponse]):
         return error_cls(
             msg=payload.error.message or "Unknown error",
             response=response,
-            store_task_run=store_task_run,
         )
 
     @override

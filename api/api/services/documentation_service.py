@@ -9,6 +9,9 @@ from core.agents.pick_relevant_documentation_categories import (
     PickRelevantDocumentationSectionsInput,
     pick_relevant_documentation_sections,
 )
+from core.agents.search_documentation_agent import (
+    search_documentation_agent,
+)
 from core.domain.documentation_section import DocumentationSection
 from core.domain.fields.chat_message import ChatMessage
 from core.utils.redis_cache import redis_cached
@@ -18,7 +21,7 @@ _logger = logging.getLogger(__name__)
 
 # local reads from local docsv2 folder,
 # 'remote' reads from the fumadocs nextjs app instance
-# TODO: totally decomission local mode
+# TODO: totally decommission local mode
 DocModeEnum = Literal["local", "remote"]
 
 DEFAULT_DOC_MODE: DocModeEnum = "local"
@@ -49,7 +52,7 @@ class DocumentationService:
                     with open(full_path, "r") as f:
                         doc_sections.append(
                             DocumentationSection(
-                                title=relative_path.replace(".mdx", "").replace(".md", ""),
+                                file_path=relative_path.replace(".mdx", "").replace(".md", ""),
                                 content=f.read(),
                             ),
                         )
@@ -59,7 +62,8 @@ class DocumentationService:
                         extra={"file_path": full_path},
                         exc_info=e,
                     )
-        return doc_sections
+        # Sort by title to ensure consistent ordering, for example to trigger LLM provider caching
+        return sorted(doc_sections, key=lambda x: x.file_path)
 
     async def _get_all_doc_sections_remote(self) -> list[DocumentationSection]:
         """Fetch all documentation sections from remote fumadocs instance"""
@@ -78,7 +82,7 @@ class DocumentationService:
                 for page_raw, page_content in zip(response.json()["pages"], page_contents):
                     page_title = page_raw["url"].lstrip("/")
                     doc_sections.append(
-                        DocumentationSection(title=page_title, content=page_content),
+                        DocumentationSection(file_path=page_title, content=page_content),
                     )
 
             except Exception as e:
@@ -87,7 +91,8 @@ class DocumentationService:
                     exc_info=e,
                 )
 
-        return doc_sections
+        # Sort by title to ensure consistent ordering, for example to trigger LLM provider caching
+        return sorted(doc_sections, key=lambda x: x.file_path)
 
     @redis_cached(expiration_seconds=60 * 15)
     async def _fetch_page_content(self, page_path: str) -> str:
@@ -128,10 +133,10 @@ class DocumentationService:
 
     async def _get_documentation_by_path_local(self, pathes: list[str]) -> list[DocumentationSection]:
         all_doc_sections: list[DocumentationSection] = self._get_all_doc_sections_local()
-        found_sections = [doc_section for doc_section in all_doc_sections if doc_section.title in pathes]
+        found_sections = [doc_section for doc_section in all_doc_sections if doc_section.file_path in pathes]
 
         # Check if any paths were not found
-        found_paths = {doc_section.title for doc_section in found_sections}
+        found_paths = {doc_section.file_path for doc_section in found_sections}
         missing_paths = set(pathes) - found_paths
 
         if missing_paths:
@@ -147,7 +152,7 @@ class DocumentationService:
             try:
                 content = await self._fetch_page_content(path)
                 doc_sections.append(
-                    DocumentationSection(title=path, content=content),
+                    DocumentationSection(file_path=path, content=content),
                 )
             except Exception as e:
                 _logger.warning(
@@ -157,7 +162,7 @@ class DocumentationService:
                 )
 
         # Check if any paths were not found
-        found_paths = {doc_section.title for doc_section in doc_sections}
+        found_paths = {doc_section.file_path for doc_section in doc_sections}
         missing_paths = set(paths) - found_paths
 
         if missing_paths:
@@ -198,10 +203,12 @@ class DocumentationService:
         except Exception as e:
             _logger.exception("Error getting relevant doc sections", exc_info=e)
             # Fallback on all doc sections (no filtering)
-            relevant_doc_sections: list[str] = [doc_category.title for doc_category in all_doc_sections]
+            relevant_doc_sections: list[str] = [doc_category.file_path for doc_category in all_doc_sections]
 
         return [
-            document_section for document_section in all_doc_sections if document_section.title in relevant_doc_sections
+            document_section
+            for document_section in all_doc_sections
+            if document_section.file_path in relevant_doc_sections
         ]
 
     def _extract_summary_from_content(self, content: str) -> str:
@@ -236,8 +243,8 @@ class DocumentationService:
             # Build simple list of pages with descriptions
             result_lines: list[str] = []
 
-            for section in sorted(all_sections, key=lambda s: s.title):
-                page_path = section.title
+            for section in sorted(all_sections, key=lambda s: s.file_path):
+                page_path = section.file_path
                 summary = self._extract_summary_from_content(section.content)
                 result_lines.append(f"     - '{page_path}' - {summary}")
 
@@ -247,3 +254,58 @@ class DocumentationService:
             _logger.exception("Error generating available pages descriptions", exc_info=e)
             # Fallback to empty list when there's an error
             return ""
+
+    async def search_documentation_by_query(
+        self,
+        query: str,
+        usage_context: str | None = None,
+        mode: DocModeEnum = DEFAULT_DOC_MODE,
+    ) -> list[DocumentationSection]:
+        all_doc_sections: list[DocumentationSection] = await self.get_all_doc_sections(mode)
+
+        # TODO: have a static list of the most relevant docs as a fallback ?
+        fallback_docs_sections: list[DocumentationSection] = []
+
+        try:
+            result = await search_documentation_agent(
+                query=query,
+                available_doc_sections=all_doc_sections,
+                usage_context=usage_context,
+            )
+
+            if not result:
+                _logger.error(
+                    "search_documentation_agent did not return any parsed result",
+                    extra={"query": query},
+                )
+                return fallback_docs_sections
+
+            relevant_doc_sections: list[str] = (
+                result.relevant_documentation_file_paths if result and result.relevant_documentation_file_paths else []
+            )
+
+            # Log warning for cases where the agent has reported a missing doc sections
+            if result and result.missing_doc_sections_feedback:
+                _logger.warning(
+                    "Documentation search agent has reported a missing doc sections",
+                    extra={
+                        "missing_doc_sections_feedback": result.missing_doc_sections_feedback,
+                    },
+                )
+
+            # If agent did not report any missing doc sections but no relevant doc sections were found, we log a warning too
+            if result and not result.missing_doc_sections_feedback and not result.relevant_documentation_file_paths:
+                _logger.warning(
+                    "Documentation search agent has not found any relevant doc sections",
+                    extra={"query": query},
+                )
+
+        except Exception as e:
+            _logger.exception("Error in search documentation agent", exc_info=e)
+            return fallback_docs_sections
+
+        return [
+            document_section
+            for document_section in all_doc_sections
+            if document_section.file_path in relevant_doc_sections
+        ]

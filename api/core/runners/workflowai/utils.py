@@ -19,7 +19,8 @@ from core.domain.fields.file import File, FileWithKeyPath
 from core.domain.fields.internal_reasoning_steps import InternalReasoningStep
 from core.domain.models import Model, Provider
 from core.domain.models.model_data import DeprecatedModel
-from core.domain.models.model_datas_mapping import MODEL_DATAS
+from core.domain.models.model_data_mapping import MODEL_DATAS
+from core.domain.task_group_properties import ReasoningEffort
 from core.domain.tool import Tool
 from core.domain.types import AgentOutput
 from core.runners.workflowai.internal_tool import InternalTool
@@ -276,7 +277,10 @@ async def download_file(file: File):
     return response.content
 
 
-def sanitize_model_and_provider(model_str: str | None, provider_str: str | None) -> tuple[Model, Provider | None]:
+def sanitize_model_and_provider(
+    model_str: str | None,
+    provider_str: str | None,
+) -> tuple[Model, Provider | None, ReasoningEffort | None]:
     if not model_str:
         # We should never be here so we capture
         raise InvalidRunOptionsError("Model is required", capture=True)
@@ -287,15 +291,17 @@ def sanitize_model_and_provider(model_str: str | None, provider_str: str | None)
         raise InvalidRunOptionsError(f"Model {model_str} is not valid")
 
     data = MODEL_DATAS[model]  # noqa: F821
+    reasoning_effort: ReasoningEffort | None = None
     if isinstance(data, DeprecatedModel):
         model = data.replacement_model
+        reasoning_effort = data.reasoning_effort
 
     try:
         provider = Provider(provider_str) if provider_str else None
     except ValueError:
         raise InvalidRunOptionsError(f"Provider {provider_str} is not valid")
 
-    return model, provider
+    return model, provider, reasoning_effort
 
 
 class ToolCallRecursionError(Exception):

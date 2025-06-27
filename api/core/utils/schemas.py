@@ -1,3 +1,4 @@
+import logging
 import re
 from typing import (
     Any,
@@ -14,6 +15,8 @@ from typing import (
     Union,
     cast,
 )
+
+_logger = logging.getLogger(__name__)
 
 FieldType = Literal["string", "number", "integer", "boolean", "object", "array", "null", "array_length", "date"]
 
@@ -52,6 +55,9 @@ RawJsonSchema = TypedDict(
 
 class InvalidSchemaError(Exception):
     pass
+
+
+_oneOfKeys = ("oneOf", "anyOf", "allOf")
 
 
 class JsonSchema:
@@ -124,8 +130,7 @@ class JsonSchema:
     @classmethod
     def _one_any_all_of(cls, schema: RawJsonSchema) -> Optional[list[RawJsonSchema]]:
         """Return the components of oneOf, anyOf, allOf if they exist"""
-        keys = ("oneOf", "anyOf", "allOf")
-        for key in keys:
+        for key in _oneOfKeys:
             sub: list["RawJsonSchema"] | None = schema.get(key)  # type: ignore
             if sub:
                 return sub
@@ -134,15 +139,25 @@ class JsonSchema:
     @classmethod
     def splat_nulls(cls, schema: RawJsonSchema) -> tuple[RawJsonSchema, bool]:
         """Returns the sub schema if it contains a oneOf, anyOf, allOf that would represent a nullable value"""
-        subs = cls._one_any_all_of(schema)
-        if not subs or len(subs) != 2:
+        subs: list["RawJsonSchema"] | None = None
+        key: Literal["oneOf", "anyOf", "allOf"] | None = None
+        for key in _oneOfKeys:
+            subs = schema.get(key)  # type: ignore
+            if subs:
+                break
+        if not subs:
             return schema, False
 
-        not_nulls = [sub for sub in subs if "null" != sub.get("type", "")]
-        if len(not_nulls) != 1:
-            return schema, False
+        if len(subs) == 1:
+            # This check is duplicated from upstream, but it's ok here
+            return subs[0], False
 
-        return not_nulls[0], True
+        not_nulls = [sub for sub in subs if "null" != sub.get("type")]
+        if len(not_nulls) == 1:
+            return not_nulls[0], True
+        if len(not_nulls) != len(subs):
+            return cast(RawJsonSchema, {key: not_nulls}), True
+        return schema, False
 
     @classmethod
     def _follow_ref(cls, schema: RawJsonSchema, defs: Optional[dict[str, "RawJsonSchema"]]) -> RawJsonSchema:
@@ -484,33 +499,69 @@ def remove_extra_keys(schema: JsonSchema, obj: Any):
             del obj[key]
 
 
-def remove_optional_nulls_and_empty_strings(schema: JsonSchema, obj: Any):  # noqa: C901
-    """Use with navigate to remove all optional nulls and empty strings from a schema.
+def _handle_missing_required_field(obj: dict[str, Any], key: str, schema: JsonSchema):
+    """Adds None if the field is required and not present in the object"""
 
+    child_schema = schema.safe_child_schema(key)
+    if not child_schema:
+        return
+
+    if child_schema.is_nullable:
+        obj[key] = None
+        return
+
+    _type = child_schema.get("type")
+    if not _type:
+        return
+    if _type == "null":
+        obj[key] = None
+        return
+    if isinstance(_type, list):
+        if "null" in _type:
+            obj[key] = None
+            return
+
+
+def _handle_optional_field(obj: dict[str, Any], key: str, schema: JsonSchema):
+    val: Any = obj[key]
+    # For now we remove all optional nulls since they should not happen
+    if val is None:
+        del obj[key]
+        return
+
+    # We also remove empty strings but only when they have a format
+    # We have seen models return "" for dates for example
+    if val == "" and (child_schema := schema.safe_child_schema(key)) and child_schema.get("format"):
+        del obj[key]
+
+
+def sanitize_empty_values(schema: JsonSchema, obj: Any):  # noqa: C901
+    """Use with navigate to:
+    - remove all optional nulls and empty strings from a schema.
     Sometimes models return an empty string or null instead of omitting the field
     which can sometimes create schema violations.
+    - add missing None when required. the OpenAI proxy sanitizes json schema to make all fields required.
+    It also removes all default values.
+    So we need to return certain values to pass validation.
     """
     if schema.type != "object":
         return
     if not isinstance(obj, dict):
         return
 
-    required = set(schema.get("required", []))
-    for k in list(cast(dict[str, Any], obj).keys()):
-        # We keep required keys
-        if k in required:
-            continue
-        val: Any = obj[k]
-        # For now we remove all optional nulls since they should not happen
-        if val is None:
-            del obj[k]
-            continue
+    properties = schema.schema.get("properties")
+    if not properties:
+        return
 
-        # We also remove empty strings but only when they have a format
-        # We have seen models return "" for dates for example
-        if val == "":
-            if (child_schema := schema.safe_child_schema(k)) and child_schema.get("format"):
-                del obj[k]
+    required = set(schema.get("required", []))
+    obj = cast(dict[str, Any], obj)  # ok here since the obj comes from JSON
+    for key in properties:
+        if key in required:
+            if key not in obj:
+                _handle_missing_required_field(obj, key, schema)
+        else:
+            if key in obj:
+                _handle_optional_field(obj, key, schema)
 
 
 class IsSchemaOnlyContainingOneFileProperty(NamedTuple):
@@ -667,5 +718,8 @@ def schema_from_data(data: Any) -> dict[str, Any]:
         return {"type": "string"}
     if isinstance(data, int):
         return {"type": "integer"}
+    if isinstance(data, float):
+        return {"type": "number"}
 
-    return data
+    # Not assuming anything on None types
+    return {}

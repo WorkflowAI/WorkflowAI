@@ -42,15 +42,24 @@ class TestMCPServiceSearchDocumentation:
 
         mock_sections = [
             DocumentationSection(
-                title="getting-started.mdx",
+                file_path="getting-started.mdx",
                 content="This is a comprehensive guide to get started with WorkflowAI. Follow these detailed steps to create your first agent and understand the platform's capabilities.",
             ),
             DocumentationSection(
-                title="api-auth.mdx",
+                file_path="api-auth.mdx",
                 content="Authentication is required for all API calls. Use Bearer tokens with your API key to authenticate requests.",
             ),
         ]
-        mock_service.get_relevant_doc_sections = AsyncMock(return_value=mock_sections)
+        mock_service.search_documentation_by_query = AsyncMock(return_value=mock_sections)
+
+        # Mock the foundations page that gets added automatically
+        mock_foundations_sections = [
+            DocumentationSection(
+                file_path="foundations",
+                content="WorkflowAI foundations content explaining core concepts and architecture.",
+            ),
+        ]
+        mock_service.get_documentation_by_path = AsyncMock(return_value=mock_foundations_sections)
 
         # Act
         result = await mcp_service.search_documentation(query="how to get started")
@@ -60,13 +69,22 @@ class TestMCPServiceSearchDocumentation:
         assert result.data is not None
         assert result.data.query_results is not None
         search_results = result.data.query_results
-        assert len(search_results) == 2
+        assert len(search_results) == 3  # Now includes foundations page
         # TODO: should likely be getting-started without the .mdx extension ?
         assert search_results[0].source_page == "getting-started.mdx"
         assert "get started with WorkflowAI" in search_results[0].content_snippet
         assert search_results[1].source_page == "api-auth.mdx"
         assert "Authentication is required" in search_results[1].content_snippet
+        # Check that foundations page was added
+        assert search_results[2].source_page == "foundations.mdx"
+        assert "WorkflowAI foundations content" in search_results[2].content_snippet
         assert result.message and "Successfully found relevant documentation sections" in result.message
+
+        # Verify the usage_context was passed correctly
+        mock_service.search_documentation_by_query.assert_called_once()
+        call_args = mock_service.search_documentation_by_query.call_args
+        assert call_args[0][0] == "how to get started"  # query parameter
+        assert "MCP (Model Context Protocol) client" in call_args[0][1]  # usage_context parameter
 
     @patch("api.routers.mcp._mcp_service.DocumentationService")
     async def test_search_documentation_page_mode_success(
@@ -81,7 +99,7 @@ class TestMCPServiceSearchDocumentation:
 
         mock_sections = [
             DocumentationSection(
-                title="getting-started.mdx",
+                file_path="getting-started.mdx",
                 content="Complete getting started guide content here with detailed instructions...",
             ),
         ]
@@ -112,8 +130,8 @@ class TestMCPServiceSearchDocumentation:
 
         # Mock get_all_doc_sections for available pages listing
         mock_sections = [
-            DocumentationSection(title="existing1.mdx", content="content1"),
-            DocumentationSection(title="existing2.mdx", content="content2"),
+            DocumentationSection(file_path="existing1.mdx", content="content1"),
+            DocumentationSection(file_path="existing2.mdx", content="content2"),
         ]
         mock_service.get_all_doc_sections = AsyncMock(return_value=mock_sections)
 
@@ -140,7 +158,7 @@ class TestMCPServiceSearchDocumentation:
         mock_service.get_documentation_by_path = AsyncMock(return_value=[])
 
         # Create more than 10 sections to test truncation
-        mock_sections = [DocumentationSection(title=f"page{i}.mdx", content=f"content{i}") for i in range(15)]
+        mock_sections = [DocumentationSection(file_path=f"page{i}.mdx", content=f"content{i}") for i in range(15)]
         mock_service.get_all_doc_sections = AsyncMock(return_value=mock_sections)
 
         # Act
@@ -242,3 +260,208 @@ class TestMergeProperties:
                 },
             ],
         }
+
+
+class TestMCPServiceSendFeedback:
+    async def test_send_feedback_success(self, mcp_service: MCPService):
+        """Test successful feedback submission"""
+        with patch("api.routers.mcp._mcp_service.add_background_task") as mock_add_task:
+            feedback = "MCP server performed well"
+            context = "Used list_agents successfully"
+            user_agent = "test-user-agent"
+
+            result = await mcp_service.send_feedback(feedback, user_agent, context)
+
+            assert result.success is True
+            assert result.message is not None
+            assert "received and sent for processing" in result.message
+
+            # Verify background task was scheduled
+            mock_add_task.assert_called_once()
+            # Verify the coroutine arguments
+            call_args = mock_add_task.call_args[0][0]
+            assert hasattr(call_args, "__name__")  # It's a coroutine
+
+    async def test_send_feedback_without_context(self, mcp_service: MCPService):
+        """Test feedback submission without context"""
+        with patch("api.routers.mcp._mcp_service.add_background_task") as mock_add_task:
+            feedback = "Simple feedback"
+            user_agent = "test-user-agent"
+
+            result = await mcp_service.send_feedback(feedback, user_agent, None)
+
+            assert result.success is True
+            assert result.message is not None
+            assert "received and sent for processing" in result.message
+            mock_add_task.assert_called_once()
+
+    async def test_send_feedback_exception_handling(self, mcp_service: MCPService):
+        """Test exception handling in send_feedback"""
+        with patch(
+            "api.routers.mcp._mcp_service.MCPService._process_feedback",
+            side_effect=Exception("Whatever"),
+        ):
+            feedback = "Test feedback"
+            user_agent = "test-user-agent"
+
+            result = await mcp_service.send_feedback(feedback, user_agent, None)
+
+            assert result.success is True
+
+
+class TestMCPServiceProcessFeedback:
+    async def test_process_feedback_success(self, mcp_service: MCPService):
+        """Test successful feedback processing"""
+        from core.agents.mcp_feedback_processing_agent import MCPFeedbackProcessingOutput
+
+        mock_response = MCPFeedbackProcessingOutput(
+            summary="Feedback processed successfully",
+            sentiment="positive",
+            key_themes=["performance", "tools"],
+            suggested_improvements=["Improve the performance of the MCP server"],
+            confidence=0.9,
+        )
+
+        with patch(
+            "api.routers.mcp._mcp_service.mcp_feedback_processing_agent",
+            return_value=mock_response,
+        ) as mock_agent:
+            with patch("api.routers.mcp._mcp_service._logger") as mock_logger:
+                feedback = "Great MCP server performance"
+                context = "Testing context"
+
+                await mcp_service._process_feedback(  # pyright: ignore[reportPrivateUsage]
+                    feedback,
+                    context,
+                    "test-user-agent",
+                    "test-org",
+                    "test@example.com",
+                )
+
+                # Verify agent was called with correct parameters
+                mock_agent.assert_called_once_with(
+                    feedback=feedback,
+                    context=context,
+                    user_agent="test-user-agent",
+                    organization_name="test-org",
+                    user_email="test@example.com",
+                )
+
+                # Verify successful processing was logged
+                mock_logger.info.assert_called_once_with(
+                    "MCP client feedback processed",
+                    extra={
+                        "organization_name": "test-org",
+                        "sentiment": "positive",
+                        "summary": "Feedback processed successfully",
+                        "key_themes": ["performance", "tools"],
+                        "confidence": 0.9,
+                        "user_agent": "test-user-agent",
+                    },
+                )
+
+    async def test_process_feedback_agent_returns_none(self, mcp_service: MCPService):
+        """Test handling when feedback processing agent returns None"""
+
+        with patch("api.routers.mcp._mcp_service.mcp_feedback_processing_agent", return_value=None) as mock_agent:
+            with patch("api.routers.mcp._mcp_service._logger") as mock_logger:
+                feedback = "Test feedback"
+                context = None
+
+                await mcp_service._process_feedback(  # pyright: ignore[reportPrivateUsage]
+                    feedback,
+                    context,
+                    "test-user-agent",
+                    "test-org",
+                    "test@example.com",
+                )
+
+                # Verify agent was called
+                mock_agent.assert_called_once_with(
+                    feedback=feedback,
+                    context=context,
+                    user_agent="test-user-agent",
+                    organization_name="test-org",
+                    user_email="test@example.com",
+                )
+
+                # Verify error was logged when no response received
+                mock_logger.error.assert_called_once_with(
+                    "MCP client feedback processing agent returned no response",
+                    extra={
+                        "organization_name": "test-org",
+                        "user_email": "test@example.com",
+                        "feedback": feedback,
+                        "context": context,
+                        "user_agent": "test-user-agent",
+                    },
+                )
+
+    async def test_process_feedback_exception_handling(self, mcp_service: MCPService):
+        """Test exception handling in _process_feedback"""
+
+        with patch(
+            "api.routers.mcp._mcp_service.mcp_feedback_processing_agent",
+            side_effect=Exception("Agent failed"),
+        ) as mock_agent:
+            with patch("api.routers.mcp._mcp_service._logger") as mock_logger:
+                feedback = "Test feedback"
+                context = "Test context"
+
+                await mcp_service._process_feedback(  # pyright: ignore[reportPrivateUsage]
+                    feedback,
+                    context,
+                    "test-user-agent",
+                    "test-org",
+                    "test@example.com",
+                )
+
+                # Verify agent was called
+                mock_agent.assert_called_once()
+
+                # Verify exception was logged
+                mock_logger.exception.assert_called_once_with(
+                    "Error processing MCP client feedback",
+                    exc_info=mock_agent.side_effect,
+                )
+
+    async def test_process_feedback_with_minimal_parameters(self, mcp_service: MCPService):
+        """Test _process_feedback with minimal parameters (None values)"""
+        from core.agents.mcp_feedback_processing_agent import MCPFeedbackProcessingOutput
+
+        mock_response = MCPFeedbackProcessingOutput(
+            summary="Minimal feedback processed",
+            sentiment="neutral",
+            key_themes=[],
+            suggested_improvements=[],
+            confidence=0.5,
+        )
+
+        with patch(
+            "api.routers.mcp._mcp_service.mcp_feedback_processing_agent",
+            return_value=mock_response,
+        ) as mock_agent:
+            with patch("api.routers.mcp._mcp_service._logger") as mock_logger:
+                feedback = "Minimal feedback"
+
+                await mcp_service._process_feedback(  # pyright: ignore[reportPrivateUsage]
+                    feedback,
+                    None,
+                    "test-user-agent",
+                    None,
+                    None,
+                )
+
+                # Verify agent was called with None values
+                mock_agent.assert_called_once_with(
+                    feedback=feedback,
+                    context=None,
+                    user_agent="test-user-agent",
+                    organization_name=None,
+                    user_email=None,
+                )
+
+                # Verify logging included None organization name
+                mock_logger.info.assert_called_once()
+                log_call = mock_logger.info.call_args
+                assert log_call[1]["extra"]["organization_name"] is None

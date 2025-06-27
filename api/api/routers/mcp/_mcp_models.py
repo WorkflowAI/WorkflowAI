@@ -6,13 +6,14 @@ from pydantic import BaseModel, Field
 
 from api.schemas.user_identifier import UserIdentifier
 from api.schemas.version_properties import ShortVersionProperties
-from api.services.internal_tasks.ai_engineer_service import AIEngineerReponse
 from api.services.models import ModelForTask
 from core.domain.agent_run import AgentRun
 from core.domain.error_response import ErrorResponse
 from core.domain.message import Message
-from core.domain.models.model_data import FinalModelData
+from core.domain.models.model_data import FinalModelData, ModelData
 from core.domain.models.model_data_supports import ModelDataSupports
+from core.domain.models.models import Model
+from core.domain.models.utils import get_model_data
 from core.domain.task import SerializableTask
 from core.domain.task_group import TaskGroup
 from core.domain.task_group_properties import TaskGroupProperties
@@ -29,25 +30,35 @@ ModelSortField: TypeAlias = Literal["release_date", "quality_index", "cost"]
 SortOrder: TypeAlias = Literal["asc", "desc"]
 
 
-class UsefulLinks(BaseModel):
-    class Link(BaseModel):
-        title: str
-        url: str
-        description: str
-
-    description: str = "A collection of useful link that the user can access in the browser, those link are NOT directly accessible without being authenticated in the browser"
-    useful_links: list[Link]
-
-
 class ConciseLatestModelResponse(BaseModel):
     id: str
     currently_points_to: str
 
 
+class ConciseModelSupports(BaseModel):
+    input_image: bool
+    input_pdf: bool
+    input_audio: bool
+    audio_only: bool
+    tool_calling: bool
+    reasoning: bool
+
+    @classmethod
+    def from_domain(cls, model_data: ModelData):
+        return cls(
+            input_image=model_data.supports_input_image,
+            input_pdf=model_data.supports_input_pdf,
+            input_audio=model_data.supports_input_audio,
+            audio_only=model_data.supports_audio_only,
+            tool_calling=model_data.supports_tool_calling,
+            reasoning=model_data.reasoning is not None,
+        )
+
+
 class ConciseModelResponse(BaseModel):
     id: str
     display_name: str
-    supports: list[str]
+    supports: ConciseModelSupports
     quality_index: int
     cost_per_input_token_usd: float
     cost_per_output_token_usd: float
@@ -55,23 +66,11 @@ class ConciseModelResponse(BaseModel):
 
     @classmethod
     def from_model_data(cls, id: str, model: FinalModelData):
-        SUPPORTS_WHITELIST = {
-            "supports_input_image",
-            "supports_input_pdf",
-            "supports_input_audio",
-            "supports_audio_only",
-            "supports_tool_calling",
-        }
-
         provider_data = model.providers[0][1]
         return cls(
             id=id,
             display_name=model.display_name,
-            supports=[
-                k.removeprefix("supports_")
-                for k, v in model.model_dump().items()
-                if v is True and k in SUPPORTS_WHITELIST
-            ],
+            supports=ConciseModelSupports.from_domain(model),
             quality_index=model.quality_index,
             cost_per_input_token_usd=provider_data.text_price.prompt_cost_per_token,
             cost_per_output_token_usd=provider_data.text_price.completion_cost_per_token,
@@ -83,7 +82,8 @@ class ConciseModelResponse(BaseModel):
         return cls(
             id=model.id,
             display_name=model.name,
-            supports=model.modes,
+            # TODO:Not great to call get_model_data here. ModelForTask should just use ModelData
+            supports=ConciseModelSupports.from_domain(get_model_data(Model(model.id))),
             quality_index=model.quality_index,
             cost_per_input_token_usd=model.price_per_input_token_usd,
             cost_per_output_token_usd=model.price_per_output_token_usd,
@@ -128,13 +128,15 @@ class AgentListItem(BaseModel):
 
 
 class AgentResponse(BaseModel):
-    """Detailed agent response with full schema information - used when fetching a single agent"""
+    """Details about a single agent"""
 
-    agent_id: str
-    is_public: bool
+    agent_id: str = Field(description="The ID of the agent")
+    is_public: bool = Field(description="Whether the agent is public, meaning that it can be accessed by anyone")
 
     class DetailedAgentSchema(BaseModel):
-        agent_schema_id: int
+        """An AgentSchema, i-e a pair of input and output JSON schemas"""
+
+        agent_schema_id: int = Field(description="The unique ID of this agent schema version")
         created_at: str | None = None
         input_json_schema: dict[str, Any] | None
         output_json_schema: dict[str, Any] | None
@@ -154,13 +156,58 @@ class AgentResponse(BaseModel):
 
     schemas: list[DetailedAgentSchema]
 
-    run_count: int
-    total_cost_usd: float
+    class Deployment(BaseModel):
+        """A deployment of an agent schema version"""
 
-    name: str | None
+        schema_id: int = Field(description="The schema ID of the agent schema version that is deployed")
+        version_id: str = Field(description="The version ID of the agent schema version that is deployed")
+        deployed_at: datetime = Field(description="The date and time when the agent schema version was deployed")
+        deployed_by: UserIdentifier | None = Field(description="The user who deployed the agent schema version")
+        environment: VersionEnvironment = Field(
+            description="The environment in which the agent schema version is deployed",
+        )
+        model: str = Field(description="The model that is used by that deployment")
+        run_count: int | None = Field(description="The number of times the agent schema version has been run")
+        last_active_at: datetime | None = Field(
+            description="The date and time when the agent schema version was last run",
+        )
+
+        @classmethod
+        def from_domain(cls, major: VersionMajor, minor: VersionMajor.Minor, deployment: VersionDeploymentMetadata):
+            return cls(
+                schema_id=major.schema_id,
+                version_id=f"{major.major}.{minor.minor}",
+                deployed_at=deployment.deployed_at,
+                deployed_by=UserIdentifier.from_domain(deployment.deployed_by),
+                environment=deployment.environment,
+                model=minor.properties.model or "",
+                run_count=minor.run_count,
+                last_active_at=minor.last_active_at,
+            )
+
+    deployments: list[Deployment] = Field(description="List of deployments of this agent")
+
+    run_count: int = Field(description="Total number of times this agent has been executed in the selected time range")
+    total_cost_usd: float = Field(description="Total cost in USD for all runs of this agent in the selected time range")
+
+    name: str | None = Field(description="The name of the agent")
 
     @classmethod
-    def from_domain(cls, agent: SerializableTask, stats: TaskRunStorage.AgentRunCount | None):
+    def _deployment_iterator(cls, versions: list[VersionMajor]):
+        for major in versions:
+            for minor in major.minors:
+                if not minor.deployments:
+                    continue
+                for deployment in minor.deployments:
+                    yield major, minor, deployment
+
+    @classmethod
+    def from_domain(
+        cls,
+        agent: SerializableTask,
+        stats: TaskRunStorage.AgentRunCount | None,
+        versions: list[VersionMajor],
+    ):
         return cls(
             agent_id=agent.id,
             is_public=agent.is_public or False,
@@ -168,12 +215,17 @@ class AgentResponse(BaseModel):
             run_count=stats.run_count if stats else 0,
             total_cost_usd=stats.total_cost_usd if stats else 0,
             name=agent.name,
+            deployments=[cls.Deployment.from_domain(*d) for d in cls._deployment_iterator(versions)],
         )
 
 
 T = TypeVar("T", bound=BaseModel)
 NullableT = TypeVar("NullableT", bound=BaseModel | None)
 ItemT = TypeVar("ItemT", bound=BaseModel)
+
+
+class EmptyModel(BaseModel):
+    """Substitute for a model that is not used in the response"""
 
 
 class PaginationInfo(BaseModel):
@@ -191,10 +243,6 @@ class MCPToolReturn(BaseModel, Generic[T]):
     message: str | None = None
     data: T | None = None
     error: str | None = None
-
-
-class AIEngineerReponseWithUsefulLinks(AIEngineerReponse):
-    useful_links: UsefulLinks
 
 
 class PaginatedMCPToolReturn(BaseModel, Generic[NullableT, ItemT]):
@@ -403,7 +451,7 @@ class _MinorVersion(BaseModel):
 
     deployments: list[_VersionDeploymentMetadata] | None
 
-    cost_estimate_usd: float | None
+    cost_estimate_per_run_usd: float | None
 
     last_active_at: datetime | None
 
@@ -433,7 +481,7 @@ class _MinorVersion(BaseModel):
             deployments=[_VersionDeploymentMetadata.from_domain(d) for d in minor.deployments]
             if minor.deployments
             else None,
-            cost_estimate_usd=minor.cost_estimate_usd,
+            cost_estimate_per_run_usd=minor.cost_estimate_usd,
             last_active_at=minor.last_active_at,
             is_favorite=minor.is_favorite,
             notes=minor.notes,
@@ -455,7 +503,7 @@ class _MinorVersion(BaseModel):
             minor=version.semver.minor if version.semver else 0,
             model=version.properties.model or "",
             deployments=[_VersionDeploymentMetadata.from_domain(d) for d in deployments] if deployments else None,
-            cost_estimate_usd=cost_estimate_usd,
+            cost_estimate_per_run_usd=cost_estimate_usd,
             last_active_at=version.last_active_at,
             is_favorite=version.is_favorite,
             notes=version.notes,
@@ -603,7 +651,10 @@ class MCPRun(BaseModel):
     duration_seconds: float | None
     cost_usd: float | None
     created_at: datetime
-    metadata: dict[str, Any] | None  # very important
+    environment: VersionEnvironment | None = Field(
+        description="The environment that was used to trigger the run, if any",
+    )
+    metadata: dict[str, Any] | None
     response_json_schema: dict[str, Any] | None = Field(
         description="Only present when using structured outputs. The JSON schema that the model was asked to respect",
     )
@@ -635,10 +686,11 @@ class MCPRun(BaseModel):
             duration_seconds=run.duration_seconds,
             cost_usd=run.cost_usd,
             created_at=run.created_at,
-            metadata=run.metadata,
+            metadata=run.filtered_metadata,
             response_json_schema=output_schema,
             error=Error.from_domain(run.error) if run.error else None,
             url=url,
+            environment=run.used_environment,
         )
 
 
@@ -656,13 +708,3 @@ class SearchResponse(BaseModel):
         default=None,
         description="Query results, only present when a query is provided",
     )
-
-
-class DeployAgentResponse(BaseModel):
-    version_id: str
-    agent_schema_id: int
-    environment: VersionEnvironment
-    deployed_at: str
-
-    # TODO: switch to a proper model
-    migration_guide: dict[str, Any]

@@ -12,6 +12,7 @@ from core.domain.fields.file import File
 from core.domain.llm_usage import LLMUsage
 from core.domain.message import MessageDeprecated
 from core.domain.models import Model, Provider
+from core.domain.reasoning_effort import ReasoningEffort
 from core.domain.structured_output import StructuredOutput
 from core.providers.base.models import RawCompletion, StandardMessage
 from core.providers.base.provider_error import (
@@ -146,35 +147,16 @@ class TestBuildRequest:
         ]
         assert request.temperature == 1.0
 
-    def test_build_request_with_reasoing_effort_high(self, azure_openai_provider: AzureOpenAIProvider):
-        request = cast(
-            CompletionRequest,
-            azure_openai_provider._build_request(  # pyright: ignore [reportPrivateUsage]
-                messages=[MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello")],
-                options=ProviderOptions(model=Model.O1_2024_12_17_HIGH_REASONING_EFFORT, max_tokens=10, temperature=0),
-                stream=False,
-            ),
-        )
-        # We can exclude None values because the HTTPxProvider does the same
-        assert request.model_dump(include={"messages", "reasoning_effort"}, exclude_none=True) == {
-            "messages": [
-                {
-                    "role": "user",
-                    "content": "Hello",
-                },
-            ],
-            "reasoning_effort": "high",
-        }
-
-    def test_build_request_with_reasoing_effort_medium(self, azure_openai_provider: AzureOpenAIProvider):
+    def test_build_request_with_reasoning_effort(self, azure_openai_provider: AzureOpenAIProvider):
         request = cast(
             CompletionRequest,
             azure_openai_provider._build_request(  # pyright: ignore [reportPrivateUsage]
                 messages=[MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello")],
                 options=ProviderOptions(
-                    model=Model.O1_2024_12_17_MEDIUM_REASONING_EFFORT,
+                    model=Model.O3_2025_04_16,
                     max_tokens=10,
                     temperature=0,
+                    reasoning_effort=ReasoningEffort.MEDIUM,
                 ),
                 stream=False,
             ),
@@ -188,26 +170,6 @@ class TestBuildRequest:
                 },
             ],
             "reasoning_effort": "medium",
-        }
-
-    def test_build_request_with_reasoing_effort_low(self, azure_openai_provider: AzureOpenAIProvider):
-        request = cast(
-            CompletionRequest,
-            azure_openai_provider._build_request(  # pyright: ignore [reportPrivateUsage]
-                messages=[MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello")],
-                options=ProviderOptions(model=Model.O1_2024_12_17_LOW_REASONING_EFFORT, max_tokens=10, temperature=0),
-                stream=False,
-            ),
-        )
-        # We can exclude None values because the HTTPxProvider does the same
-        assert request.model_dump(include={"messages", "reasoning_effort"}, exclude_none=True) == {
-            "messages": [
-                {
-                    "role": "user",
-                    "content": "Hello",
-                },
-            ],
-            "reasoning_effort": "low",
         }
 
 
@@ -280,7 +242,7 @@ class TestSingleStream:
                 options=ProviderOptions(model=Model.GPT_4O_2024_11_20, max_tokens=10, temperature=0),
             )
             [chunk.output async for chunk in raw_chunks]
-        assert e.value.store_task_run is False
+        assert e.value.store_task_run
 
 
 class TestStream:
@@ -484,7 +446,7 @@ class TestComplete:
                 output_factory=_output_factory,
             )
 
-        assert e.value.store_task_run is False
+        assert e.value.store_task_run
         assert len(httpx_mock.get_requests()) == 1
 
 
