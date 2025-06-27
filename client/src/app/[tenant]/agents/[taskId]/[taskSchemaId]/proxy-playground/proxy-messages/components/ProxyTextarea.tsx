@@ -46,7 +46,9 @@ export function ProxyTextarea(props: ProxyTextareaProps) {
   if (readOnly && supportObjectViewerIfPossible && !!content?.text) {
     try {
       const output = JSON.parse(content.text);
-      if (!!output && typeof output !== 'string') {
+      const isString = typeof output === 'string';
+
+      if (!!output) {
         return (
           <TaskOutputViewer
             schema={undefined}
@@ -54,11 +56,16 @@ export function ProxyTextarea(props: ProxyTextareaProps) {
             referenceValue={undefined}
             defs={undefined}
             textColor='text-gray-900'
-            className='flex sm:flex-1 w-full border border-gray-200 rounded-[2px] bg-white h-max mx-3 mt-1'
+            className={
+              isString
+                ? 'flex sm:flex-1 w-full h-max'
+                : 'flex sm:flex-1 w-full border border-gray-200 rounded-[2px] bg-white h-max mx-3 mt-1'
+            }
             showTypes={false}
             showDescriptionExamples={undefined}
             showDescriptionPopover={false}
             defaultOpenForSteps={false}
+            hideCopyValue={isString}
           />
         );
       }

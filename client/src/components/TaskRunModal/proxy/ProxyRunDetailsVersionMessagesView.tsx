@@ -87,7 +87,7 @@ export function ProxyRunDetailsVersionMessagesView(props: Props) {
     (key: string, value: string) => {
       const params: Params = {
         field_name: `metadata.${key}`,
-        operator: 'is',
+        operator: 'contains',
         value: value,
       };
 
