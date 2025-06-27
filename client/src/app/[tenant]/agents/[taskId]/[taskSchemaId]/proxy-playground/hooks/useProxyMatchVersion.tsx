@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { ProxyMessage } from '@/types/workflowAI';
 import { MajorVersion } from '@/types/workflowAI';
 import { removeIdsFromMessages } from '../proxy-messages/utils';
+import { defaultValueForAdvencedSetting, parseValidNumber, valueFromToolChoice } from '../utils';
 import { AdvancedSettings } from './useProxyPlaygroundSearchParams';
 
 function proxyMessagesValue(proxyMessages: ProxyMessage[] | undefined) {
@@ -29,10 +30,26 @@ export function useProxyMatchVersion(props: Props) {
   const matchedVersion = useMemo(() => {
     const matchingVersions = majorVersions.filter((version) => {
       const candidateProxyMessagesValue = proxyMessagesValue(version.properties.messages || undefined);
-      const numberTemperature = advancedSettings.temperature ? Number(advancedSettings.temperature) : undefined;
-      const isTemperatureValid = typeof numberTemperature === 'number' && !Number.isNaN(numberTemperature);
-      const temperatureMatches = isTemperatureValid ? version.properties.temperature === numberTemperature : true;
-      return temperatureMatches && candidateProxyMessagesValue === stringifiedProxyMessages;
+
+      const numberTemperature =
+        parseValidNumber(advancedSettings.temperature) ?? defaultValueForAdvencedSetting('temperature');
+      const numberTopP = parseValidNumber(advancedSettings.top_p) ?? defaultValueForAdvencedSetting('top_p');
+      const numberFrequencyPenalty =
+        parseValidNumber(advancedSettings.frequency_penalty) ?? defaultValueForAdvencedSetting('frequency_penalty');
+      const numberPresencePenalty =
+        parseValidNumber(advancedSettings.presence_penalty) ?? defaultValueForAdvencedSetting('presence_penalty');
+      const toolChoice = advancedSettings.tool_choice ?? defaultValueForAdvencedSetting('tool_choice');
+
+      const versionToolChoiceValue = valueFromToolChoice(version.properties.tool_choice);
+
+      return (
+        version.properties.temperature === numberTemperature &&
+        version.properties.top_p === numberTopP &&
+        version.properties.frequency_penalty === numberFrequencyPenalty &&
+        version.properties.presence_penalty === numberPresencePenalty &&
+        versionToolChoiceValue === toolChoice &&
+        candidateProxyMessagesValue === stringifiedProxyMessages
+      );
     });
 
     const allMatchedVersions = matchingVersions.sort((a, b) => b.major - a.major);

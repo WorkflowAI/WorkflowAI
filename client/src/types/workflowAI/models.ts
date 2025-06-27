@@ -912,11 +912,8 @@ export type MajorVersionProperties = {
   max_tokens?: number | null;
   is_structured_generation_enabled?: boolean | null;
   has_templated_instructions?: boolean | null;
-  stream?: boolean | null;
-  stream_options?: OpenAIProxyStreamOptions | null;
   presence_penalty?: number | null;
   frequency_penalty?: number | null;
-  stop?: string | Array<string> | null;
   tool_choice?: string | OpenAIProxyToolChoice | null;
 };
 
@@ -1882,11 +1879,8 @@ export type TaskGroupProperties_Output = {
    */
   is_structured_generation_enabled?: boolean | null;
   has_templated_instructions?: boolean | null;
-  stream?: boolean | null;
-  stream_options?: OpenAIProxyStreamOptions | null;
   presence_penalty?: number | null;
   frequency_penalty?: number | null;
-  stop?: string | Array<string> | null;
   tool_choice?: string | OpenAIProxyToolChoice | null;
   [key: string]: unknown;
 };

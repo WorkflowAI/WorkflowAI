@@ -47,7 +47,12 @@ import { useProxyPerformRuns } from './hooks/useProxyPerformRuns';
 import { useProxyPlaygroundStates } from './hooks/useProxyPlaygroundStates';
 import { useProxyRunners } from './hooks/useProxyRunners';
 import { ProxyOutput } from './output/ProxyOutput';
-import { findMessagesInVersion, moveInputMessagesToVersionIfRequired, repairMessageKeyInInput } from './utils';
+import {
+  findMessagesInVersion,
+  moveInputMessagesToVersionIfRequired,
+  repairMessageKeyInInput,
+  valueFromToolChoice,
+} from './utils';
 
 export type Props = {
   taskId: TaskID;
@@ -234,7 +239,12 @@ export function ProxyPlayground(props: Props) {
   const useParametersFromMajorVersion = useCallback(
     (version: MajorVersion) => {
       resetTaskRunIds();
+
       advancedSettings.setTemperature(String(version.properties.temperature));
+      advancedSettings.setTopP(String(version.properties.top_p));
+      advancedSettings.setFrequencyPenalty(String(version.properties.frequency_penalty));
+      advancedSettings.setPresencePenalty(String(version.properties.presence_penalty));
+      advancedSettings.setToolChoice(valueFromToolChoice(version.properties.tool_choice));
 
       const messages = (version.properties.messages as ProxyMessage[]) ?? undefined;
       setProxyMessages(messages);

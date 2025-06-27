@@ -32,12 +32,6 @@ export type AdvancedSettings = {
   setTopP: (topP: string | undefined) => void;
   max_tokens: string | undefined;
   setMaxTokens: (maxTokens: string | undefined) => void;
-  stream: string | undefined;
-  setStream: (stream: string | undefined) => void;
-  stream_options_include_usage: string | undefined;
-  setStreamOptionsIncludeUsage: (streamOptionsIncludeUsage: string | undefined) => void;
-  stop: string | undefined;
-  setStop: (stop: string | undefined) => void;
   presence_penalty: string | undefined;
   setPresencePenalty: (presencePenalty: string | undefined) => void;
   frequency_penalty: string | undefined;
@@ -72,9 +66,6 @@ export function useProxyPlaygroundSearchParams(
     cache: cacheFromParams,
     top_p: topPFromParams,
     max_tokens: maxTokensFromParams,
-    stream: streamFromParams,
-    stream_options_include_usage: streamOptionsIncludeUsageFromParams,
-    stop: stopFromParams,
     presence_penalty: presencePenaltyFromParams,
     frequency_penalty: frequencyPenaltyFromParams,
     tool_choice: toolChoiceFromParams,
@@ -99,9 +90,6 @@ export function useProxyPlaygroundSearchParams(
     'cache',
     'top_p',
     'max_tokens',
-    'stream',
-    'stream_options_include_usage',
-    'stop',
     'presence_penalty',
     'frequency_penalty',
     'tool_choice'
@@ -129,11 +117,6 @@ export function useProxyPlaygroundSearchParams(
   const [cache, setCache] = useState<string | undefined>(cacheFromParams);
   const [top_p, setTopP] = useState<string | undefined>(topPFromParams);
   const [max_tokens, setMaxTokens] = useState<string | undefined>(maxTokensFromParams);
-  const [stream, setStream] = useState<string | undefined>(streamFromParams);
-  const [stream_options_include_usage, setStreamOptionsIncludeUsage] = useState<string | undefined>(
-    streamOptionsIncludeUsageFromParams
-  );
-  const [stop, setStop] = useState<string | undefined>(stopFromParams);
   const [presence_penalty, setPresencePenalty] = useState<string | undefined>(presencePenaltyFromParams);
   const [frequency_penalty, setFrequencyPenalty] = useState<string | undefined>(frequencyPenaltyFromParams);
   const [tool_choice, setToolChoice] = useState<string | undefined>(toolChoiceFromParams);
@@ -160,9 +143,6 @@ export function useProxyPlaygroundSearchParams(
       cache: cache,
       top_p,
       max_tokens,
-      stream: stream,
-      stream_options_include_usage,
-      stop: stop,
       presence_penalty,
       frequency_penalty,
       tool_choice,
@@ -188,9 +168,6 @@ export function useProxyPlaygroundSearchParams(
     cache,
     top_p,
     max_tokens,
-    stream,
-    stream_options_include_usage,
-    stop,
     presence_penalty,
     frequency_penalty,
     tool_choice,
@@ -249,12 +226,6 @@ export function useProxyPlaygroundSearchParams(
     setTopP,
     max_tokens,
     setMaxTokens,
-    stream,
-    setStream,
-    stream_options_include_usage,
-    setStreamOptionsIncludeUsage,
-    stop,
-    setStop,
     presence_penalty,
     setPresencePenalty,
     frequency_penalty,

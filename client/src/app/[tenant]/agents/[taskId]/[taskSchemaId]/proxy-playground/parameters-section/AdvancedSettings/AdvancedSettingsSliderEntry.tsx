@@ -4,6 +4,7 @@ import { Slider } from '@/components/ui/Slider';
 import { Switch } from '@/components/ui/Switch';
 import { SimpleTooltip } from '@/components/ui/Tooltip';
 import { cn } from '@/lib/utils';
+import { parseValidNumber } from '../../utils';
 
 type Props = {
   name: string;
@@ -130,7 +131,7 @@ export function AdvancedSettingsSliderEntry(props: Props) {
         <Slider
           min={minValue}
           max={maxValue}
-          value={[Number(valueToUse)]}
+          value={[parseValidNumber(valueToUse) ?? 0]}
           onValueChange={(value) => onUpdateValue(String(value[0]))}
           step={step}
           rangeColor='bg-gray-700'

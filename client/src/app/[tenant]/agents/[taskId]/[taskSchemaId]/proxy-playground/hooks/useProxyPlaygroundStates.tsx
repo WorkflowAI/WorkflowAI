@@ -147,14 +147,6 @@ export function useProxyPlaygroundStates(tenant: TenantID | undefined, taskId: T
     advancedSettings.max_tokens,
     advancedSettings.setMaxTokens
   );
-  useSetPropertyFromVersionIfNotSetYet(version, 'stream', advancedSettings.stream, advancedSettings.setStream);
-  useSetPropertyFromVersionIfNotSetYet(
-    version,
-    'stream_options_include_usage',
-    advancedSettings.stream_options_include_usage,
-    advancedSettings.setStreamOptionsIncludeUsage
-  );
-  useSetPropertyFromVersionIfNotSetYet(version, 'stop', advancedSettings.stop, advancedSettings.setStop);
   useSetPropertyFromVersionIfNotSetYet(
     version,
     'presence_penalty',

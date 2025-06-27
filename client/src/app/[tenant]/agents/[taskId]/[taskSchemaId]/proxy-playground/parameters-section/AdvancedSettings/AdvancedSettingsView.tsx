@@ -6,7 +6,6 @@ import { advencedSettingNameFromKey, defaultValueForAdvencedSetting } from '../.
 import { AdvancedSettingsCacheEntry } from './AdvancedSettingsCacheEntry';
 import { AdvancedSettingsPreviewLabel } from './AdvancedSettingsPreviewLabel';
 import { AdvancedSettingsSliderEntry } from './AdvancedSettingsSliderEntry';
-import { AdvancedSettingsSwitchEntry } from './AdvancedSettingsSwitchEntry';
 import { AdvancedSettingsTextEntry } from './AdvancedSettingsTextEntry';
 
 type Props = {
@@ -88,27 +87,6 @@ export function AdvancedSettingsView(props: Props) {
                 className='border-b border-gray-100'
                 prompt='Optional integer greater than 0. Sets the maximum number of tokens the model can generate in its response. If not set, the model will use its full available limit.'
                 step={1}
-              />
-              <AdvancedSettingsSwitchEntry
-                name={advencedSettingNameFromKey('stream')}
-                value={advancedSettings.stream}
-                setValue={advancedSettings.setStream}
-                className='border-b border-gray-100'
-                prompt='Optional boolean. If true, the response is returned as a stream of chunks instead of waiting for the full output. Defaults to false.'
-              />
-              <AdvancedSettingsSwitchEntry
-                name='Stream Options: Include Usage'
-                value={advancedSettings.stream_options_include_usage}
-                setValue={advancedSettings.setStreamOptionsIncludeUsage}
-                className='border-b border-gray-100'
-                prompt='Optional boolean. When stream is true, this includes token usage details in the final streamed message.'
-              />
-              <AdvancedSettingsTextEntry
-                name={advencedSettingNameFromKey('stop')}
-                value={advancedSettings.stop}
-                setValue={advancedSettings.setStop}
-                className='border-b border-gray-100'
-                prompt='Optional string or array of up to 4 strings. The model stops generating once it encounters any of these sequences.'
               />
               <AdvancedSettingsSliderEntry
                 name={advencedSettingNameFromKey('presence_penalty')}

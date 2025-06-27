@@ -51,14 +51,6 @@ export function AdvencedSettingsDetails(props: Props) {
 
   const top_p = version?.properties.top_p ?? majorVersionProperties?.top_p ?? defaultValueForAdvencedSetting('top_p');
 
-  const stream =
-    version?.properties.stream ?? majorVersionProperties?.stream ?? defaultValueForAdvencedSetting('stream');
-
-  const stream_options = version?.properties.stream_options ?? majorVersionProperties?.stream_options;
-
-  const stream_options_include_usage =
-    stream_options && 'include_usage' in stream_options && stream_options.include_usage === true;
-
   const presence_penalty =
     version?.properties.presence_penalty ??
     majorVersionProperties?.presence_penalty ??
@@ -68,8 +60,6 @@ export function AdvencedSettingsDetails(props: Props) {
     version?.properties.frequency_penalty ??
     majorVersionProperties?.frequency_penalty ??
     defaultValueForAdvencedSetting('frequency_penalty');
-
-  const stop = version?.properties.stop ?? majorVersionProperties?.stop;
 
   const tool_choice =
     version?.properties.tool_choice ??
@@ -114,12 +104,6 @@ export function AdvencedSettingsDetails(props: Props) {
               borderColor={borderColor}
             />
             <AdvencedSettingsDetailsEntry title='Top P' value={top_p ?? 'Not Set'} borderColor={borderColor} />
-            <AdvencedSettingsDetailsEntry title='Stream' value={stream ?? 'Not Set'} borderColor={borderColor} />
-            <AdvencedSettingsDetailsEntry
-              title='Include Usage'
-              value={stream_options_include_usage ?? false}
-              borderColor={borderColor}
-            />
             <AdvencedSettingsDetailsEntry
               title='Presence Penalty'
               value={presence_penalty ?? 'Not Set'}
@@ -131,7 +115,6 @@ export function AdvencedSettingsDetails(props: Props) {
               borderColor={borderColor}
             />
           </div>
-          <AdvencedSettingsDetailsEntry title='Stop' value={stop ?? 'Not Set'} borderColor={borderColor} />
           <AdvencedSettingsDetailsEntry
             title='Tool Choice'
             value={tool_choice ?? 'Not Set'}

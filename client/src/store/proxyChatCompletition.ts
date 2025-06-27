@@ -3,7 +3,11 @@ import {
   AdvancedSettings,
   getCacheValue,
 } from '@/app/[tenant]/agents/[taskId]/[taskSchemaId]/proxy-playground/hooks/useProxyPlaygroundSearchParams';
-import { getToolsFromMessages } from '@/app/[tenant]/agents/[taskId]/[taskSchemaId]/proxy-playground/utils';
+import {
+  getToolsFromMessages,
+  parseValidNumber,
+  toolChoiceFromValue,
+} from '@/app/[tenant]/agents/[taskId]/[taskSchemaId]/proxy-playground/utils';
 import { Method, SSEClient } from '@/lib/api/client';
 import { API_URL } from '@/lib/constants';
 import { TaskID } from '@/types/aliases';
@@ -80,29 +84,24 @@ interface ProxyChatCompletitionState {
 
 export const useProxyChatCompletition = create<ProxyChatCompletitionState>(() => ({
   performRun: async (taskId, variantId, model, input, versionMessages, advancedSettings, tools, onMessage, signal) => {
-    const stream_options =
-      advancedSettings?.stream_options_include_usage !== undefined
-        ? { include_usage: advancedSettings?.stream_options_include_usage === 'true', valid_json_chunks: true }
-        : { valid_json_chunks: true };
+    const stream_options = { valid_json_chunks: true };
 
     const body: OpenAIProxyChatCompletionRequest = {
       agent_id: taskId,
       input,
       messages: [],
       model: model,
-      temperature: advancedSettings?.temperature !== undefined ? Number(advancedSettings.temperature) : undefined,
-      max_tokens: advancedSettings?.max_tokens !== undefined ? Number(advancedSettings.max_tokens) : undefined,
-      top_p: advancedSettings?.top_p !== undefined ? Number(advancedSettings.top_p) : undefined,
-      frequency_penalty:
-        advancedSettings?.frequency_penalty !== undefined ? Number(advancedSettings.frequency_penalty) : undefined,
-      presence_penalty:
-        advancedSettings?.presence_penalty !== undefined ? Number(advancedSettings.presence_penalty) : undefined,
-      stream: advancedSettings?.stream !== undefined ? advancedSettings.stream === 'true' : undefined,
+      temperature: parseValidNumber(advancedSettings?.temperature),
+      max_tokens: parseValidNumber(advancedSettings?.max_tokens),
+      top_p: parseValidNumber(advancedSettings?.top_p),
+      frequency_penalty: parseValidNumber(advancedSettings?.frequency_penalty),
+      presence_penalty: parseValidNumber(advancedSettings?.presence_penalty),
+      stream: true,
       stream_options,
-      stop: advancedSettings?.stop !== undefined ? advancedSettings.stop : undefined,
       use_cache: getCacheValue(advancedSettings?.cache),
       workflowai_tools: getToolsFromMessages(versionMessages),
       tools: getOpenAITools(tools),
+      tool_choice: toolChoiceFromValue(advancedSettings?.tool_choice),
       workflowai_internal: {
         variant_id: variantId,
         version_messages: versionMessages,

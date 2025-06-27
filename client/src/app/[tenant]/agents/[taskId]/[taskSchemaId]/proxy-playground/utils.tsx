@@ -1,6 +1,13 @@
 import { GeneralizedTaskInput, TaskSchemaResponseWithSchema } from '@/types';
 import { JsonSchema } from '@/types/json_schema';
-import { CacheUsage, ProxyMessage, TaskGroupProperties_Input, ToolKind, VersionV1 } from '@/types/workflowAI';
+import {
+  CacheUsage,
+  OpenAIProxyToolChoice,
+  ProxyMessage,
+  TaskGroupProperties_Input,
+  ToolKind,
+  VersionV1,
+} from '@/types/workflowAI';
 import { allTools } from '../playground/components/Toolbox/utils';
 import { AdvancedSettings } from './hooks/useProxyPlaygroundSearchParams';
 
@@ -256,9 +263,6 @@ export function addAdvencedSettingsToProperties(
     cache,
     top_p: topP,
     max_tokens: maxTokens,
-    stream,
-    stream_options_include_usage,
-    stop,
     presence_penalty,
     frequency_penalty,
     tool_choice,
@@ -280,21 +284,6 @@ export function addAdvencedSettingsToProperties(
 
   if (maxTokens !== undefined) {
     result.max_tokens = Number(maxTokens);
-  }
-
-  if (stream !== undefined) {
-    result.stream = stream === 'true';
-  }
-
-  if (stream_options_include_usage !== undefined) {
-    if (!result.stream_options || typeof result.stream_options !== 'object') {
-      result.stream_options = {};
-    }
-    (result.stream_options as { include_usage?: boolean }).include_usage = stream_options_include_usage === 'true';
-  }
-
-  if (stop !== undefined) {
-    result.stop = stop;
   }
 
   if (presence_penalty !== undefined) {
@@ -343,12 +332,6 @@ export function defaultValueForAdvencedSetting(name: string): string | undefined
       return '1.0';
     case 'max_tokens':
       return undefined;
-    case 'stream':
-      return 'false';
-    case 'stream_options_include_usage':
-      return 'false';
-    case 'stop':
-      return undefined;
     case 'presence_penalty':
       return '0';
     case 'frequency_penalty':
@@ -370,12 +353,6 @@ export function advencedSettingNameFromKey(key: string): string {
       return 'Top P';
     case 'max_tokens':
       return 'Max tokens';
-    case 'stream':
-      return 'Stream';
-    case 'stream_options_include_usage':
-      return 'Stream Options';
-    case 'stop':
-      return 'Stop';
     case 'presence_penalty':
       return 'Presence Penalty';
     case 'frequency_penalty':
@@ -391,9 +368,6 @@ export const advencedSettingsVersionPropertiesKeys = [
   'cache',
   'top_p',
   'max_tokens',
-  'stream',
-  'stream_options_include_usage',
-  'stop',
   'presence_penalty',
   'frequency_penalty',
   'tool_choice',
@@ -450,4 +424,47 @@ export function cleanChunkOutput(output: Record<string, unknown> | null | undefi
     return (output as { content: string }).content;
   }
   return output;
+}
+
+export function valueFromToolChoice(toolChoice: string | OpenAIProxyToolChoice | null | undefined): string | undefined {
+  if (toolChoice === undefined || toolChoice === null) {
+    return undefined;
+  }
+
+  if (typeof toolChoice === 'string') {
+    return toolChoice;
+  }
+
+  if (typeof toolChoice === 'object' && toolChoice !== null) {
+    try {
+      return JSON.stringify(toolChoice);
+    } catch {
+      return `${toolChoice}`;
+    }
+  }
+
+  return undefined;
+}
+
+export function toolChoiceFromValue(value: string | undefined): string | OpenAIProxyToolChoice | null | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  try {
+    const parsed = JSON.parse(value);
+    if (typeof parsed === 'string') {
+      return parsed;
+    }
+    return parsed;
+  } catch {
+    return value;
+  }
+}
+
+export function parseValidNumber(value: unknown): number | undefined {
+  if (value !== undefined && value !== null && value !== '' && !isNaN(Number(value))) {
+    return Number(value);
+  }
+  return undefined;
 }
