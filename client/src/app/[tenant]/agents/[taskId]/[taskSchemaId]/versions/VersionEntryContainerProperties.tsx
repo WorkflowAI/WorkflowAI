@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { AdvencedSettingsDetails } from '@/components/TaskRunModal/proxy/AdvencedSettingsDetails';
+import { useIsProxy } from '@/components/contexts/IsProxyContext';
 import { TaskTemperatureView } from '@/components/v2/TaskTemperatureBadge';
 import { useCopy } from '@/lib/hooks/useCopy';
 import { ProxyMessagesView } from '../proxy-playground/proxy-messages/ProxyMessagesView';
@@ -39,6 +40,8 @@ export function VersionEntryContainerProperties(props: VersionEntryContainerProp
     return instructions;
   }, [entry.majorVersion.properties.instructions]);
 
+  const isProxy = useIsProxy();
+
   return (
     <div className='flex flex-col flex-1 border-l border-gray-200 border-dashed pt-3 pb-3 px-4 gap-3'>
       {!!messages ? (
@@ -67,11 +70,13 @@ export function VersionEntryContainerProperties(props: VersionEntryContainerProp
         </div>
       </div>
 
-      <AdvencedSettingsDetails
-        majorVersionProperties={entry.majorVersion.properties}
-        style='single'
-        borderColor='border-gray-200'
-      />
+      {isProxy && (
+        <AdvencedSettingsDetails
+          majorVersionProperties={entry.majorVersion.properties}
+          style='single'
+          borderColor='border-gray-200'
+        />
+      )}
     </div>
   );
 }
