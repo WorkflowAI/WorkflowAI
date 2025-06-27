@@ -16,7 +16,7 @@ import {
   CustomCommandInput,
 } from '@/components/ui/Command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/Popover';
-import { NEW_TASK_MODAL_OPEN, useQueryParamModal } from '@/lib/globalModal';
+import { NEW_PROXY_AGENT_MODAL_OPEN, useQueryParamModal } from '@/lib/globalModal';
 import { useAutoScrollRef } from '@/lib/hooks/useAutoScrollRef';
 import { useDefaultRedirectRoute } from '@/lib/hooks/useTaskParams';
 import { cn } from '@/lib/utils';
@@ -126,14 +126,11 @@ export function TaskSwitcher(props: TaskSwitcherProps) {
   const currentTaskId = currentTask?.id as TaskID | undefined;
   const currentTaskName = currentTask?.name;
 
-  const { openModal: openNewTaskModal } = useQueryParamModal(NEW_TASK_MODAL_OPEN);
+  const { openModal: openNewTaskModal } = useQueryParamModal(NEW_PROXY_AGENT_MODAL_OPEN);
 
   const onNewTaskClick = useCallback(() => {
     if (!checkIfSignedIn()) return;
-    openNewTaskModal({
-      mode: 'new',
-      redirectToPlaygrounds: 'true',
-    });
+    openNewTaskModal();
     amplitude.track('user.clicked.new_task');
     setOpen(false);
   }, [openNewTaskModal, checkIfSignedIn, setOpen]);
