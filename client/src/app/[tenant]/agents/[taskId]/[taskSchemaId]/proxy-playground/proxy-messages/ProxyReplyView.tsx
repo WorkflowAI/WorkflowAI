@@ -132,6 +132,7 @@ export function ProxyReplyView(props: Props) {
         oneMessageMode={true}
         previouseMessage={assistantMessage}
         supportToolCallResultInstantEdit={true}
+        supportCopy={false}
       />
       <div className='flex flex-row w-full justify-between items-center'>
         <div className='flex flex-row gap-2 items-center'>

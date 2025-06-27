@@ -49,6 +49,7 @@ type Props = {
   supportRunDetails?: boolean;
   supportOpeningInPlayground?: boolean;
   supportToolCallResultInstantEdit?: boolean;
+  supportCopy?: boolean;
   onTextareaFocus?: () => void;
   onTextareaBlur?: () => void;
 };
@@ -73,6 +74,7 @@ export function ProxyMessageView(props: Props) {
     supportToolCallResultInstantEdit = false,
     onTextareaFocus,
     onTextareaBlur,
+    supportCopy = true,
   } = props;
 
   const { tenant, taskId } = useParams();
@@ -230,7 +232,7 @@ export function ProxyMessageView(props: Props) {
           onRemove={oneMessageMode || isLastMessage ? undefined : onRemove}
           onChangeType={(type) => onChangeType(type)}
           onAddContentEntry={onAddContentEntry}
-          onCopy={onCopy}
+          onCopy={supportCopy ? onCopy : undefined}
           readonly={readonly}
         />
         <div className='flex flex-col gap-[10px]'>

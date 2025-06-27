@@ -47,7 +47,7 @@ export function ProxyToolCallResultInstantEditView(props: Props) {
           <Textarea
             className='flex w-full flex-1 text-gray-700 placeholder:text-gray-500 border-l border-r-0 border-t-0 border-b-0 py-1 border-gray-200 font-normal text-[13px] overflow-y-auto focus-within:ring-inset  whitespace-pre-wrap overflow-auto'
             value={text ?? ''}
-            placeholder='Result of the tool call'
+            placeholder=''
             onChange={(e) => setText(e.target.value)}
             autoFocus={true}
           />
