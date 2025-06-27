@@ -122,6 +122,7 @@ Given a search query and all available documentation sections, you must:
         metadata={
             "agent_id": "search-documentation-agent",
         },
+        temperature=0.0,
     )
 
     if completion.choices[0].message.content:
