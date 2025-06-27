@@ -19,6 +19,28 @@ type AdditionalFieldsProps = {
   filteredMetadata?: [string, unknown][];
 };
 
+function renderMetadataValue(value: unknown): React.ReactNode {
+  if (value === null) return <span className='text-gray-400 text-[12px]'>null</span>;
+  if (value === undefined) return <span className='text-gray-400 text-[12px]'>undefined</span>;
+  if (typeof value === 'object') {
+    let json: string;
+    try {
+      json = JSON.stringify(value, null, 2);
+    } catch (err) {
+      return (
+        <span className='text-red-400'>
+          Unserializable object{err instanceof Error && err.message ? `: ${err.message}` : ''}
+        </span>
+      );
+    }
+    return <div className='text-[12px] p-1 overflow-x-auto max-w-full whitespace-pre-wrap'>{json}</div>;
+  }
+  if (typeof value === 'boolean') return value ? 'true' : 'false';
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') return value;
+  return '';
+}
+
 function AdditionalFields({ showAllFields, model, provider, temperature, filteredMetadata }: AdditionalFieldsProps) {
   if (!showAllFields) return null;
 
@@ -37,8 +59,8 @@ function AdditionalFields({ showAllFields, model, provider, temperature, filtere
       )}
 
       {filteredMetadata?.map(([key, value]) => (
-        <div className='flex h-10' key={key}>
-          <BaseOutputValueRow label={key} value={`${value}`} />
+        <div className='flex min-h-10 items-center' key={key}>
+          <BaseOutputValueRow label={key} value={renderMetadataValue(value)} />
         </div>
       ))}
     </>
@@ -84,6 +106,7 @@ export function TaskRunOutputRows({
     const filtered = Object.entries(taskRun.metadata).filter(
       ([key]) => !key.startsWith(WORKFLOW_AI_METADATA_PREFIX) && !key.startsWith(LEGACY_TASK_RUN_RUN_BY_METADATA_KEY)
     );
+
     return filtered.length > 0 ? filtered : undefined;
   }, [taskRun?.metadata]);
 
