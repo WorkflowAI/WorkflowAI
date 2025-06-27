@@ -38,10 +38,14 @@ class MCPObservabilityMiddleware(BaseHTTPMiddleware):
         # Return None if no session ID found
         return None
 
-    async def _get_or_create_session(self, session_id: str | None, tenant: TenantData) -> SessionState:
+    def _inject_session_id_to_headers(self, request: Request, session_id: str) -> None:
+        """Inject session ID into request headers and FastMCP context"""
+        request.scope["headers"].append((b"mcp-session-id", session_id.encode()))
+
+    async def _get_or_create_session(self, session_id: str | None, tenant: TenantData) -> tuple[SessionState, bool]:
         """Get existing session or create a new one using Redis"""
-        session_state, _ = await SessionState.get_or_create(session_id, tenant)
-        return session_state
+        session_state, is_new_session = await SessionState.get_or_create(session_id, tenant)
+        return session_state, is_new_session
 
     def _is_mcp_tool_call(self, request_data: dict[str, Any] | None) -> bool:
         """Check if this is an MCP tool call request"""
@@ -129,6 +133,7 @@ class MCPObservabilityMiddleware(BaseHTTPMiddleware):
     async def _setup_session_and_validate_request(
         self,
         request: Request,
+        session_id_from_header: str | None,
     ) -> tuple[TenantData, SessionState, dict[str, Any] | None] | None:
         """Setup session and validate request. Returns None if should use fallback."""
         try:
@@ -137,8 +142,7 @@ class MCPObservabilityMiddleware(BaseHTTPMiddleware):
             logger.warning("No tenant info found, using fallback response", extra={"error": str(e)})
             return None
 
-        session_id_from_header = self._extract_session_id(request)
-        session_state = await self._get_or_create_session(session_id_from_header, tenant_info)
+        session_state, _ = await self._get_or_create_session(session_id_from_header, tenant_info)
 
         # Read and parse request body
         try:
@@ -247,15 +251,35 @@ class MCPObservabilityMiddleware(BaseHTTPMiddleware):
 
         return on_streaming_complete
 
+    def _log_request(self, request: Request) -> None:
+        """Log the request"""
+        # Log the headers to investigate mcp-session-id problems
+        # But remove the authorization header
+        headers = dict(request.headers)
+        headers.pop("authorization", None)
+
+        logger.info(
+            "MCPMiddleware has received a call request",
+            extra={"headers": headers},
+        )
+
     async def dispatch(self, request: Request, call_next: Callable[[Request], Any]) -> Response:
         """Main dispatch method with comprehensive error handling"""
-        # Setup session and validate request
+
+        self._log_request(request)
+
+        session_id_from_header = self._extract_session_id(request)
+
+        # Setup session and validate request for observability
         # TODO: refactor, we are validating the token and fetching the tenant twice, here and in the actual tool functions
-        setup_result = await self._setup_session_and_validate_request(request)
+        setup_result = await self._setup_session_and_validate_request(request, session_id_from_header)
         if not setup_result:
+            # No valid tenant or request data
             return await call_next(request)
 
         tenant_info, session_state, request_data = setup_result
+        if session_id_from_header is None:
+            self._inject_session_id_to_headers(request, session_state.session_id)
 
         # Validate MCP tool call and extract info
         tool_call_info = await self._validate_mcp_tool_call(request_data, session_state)
