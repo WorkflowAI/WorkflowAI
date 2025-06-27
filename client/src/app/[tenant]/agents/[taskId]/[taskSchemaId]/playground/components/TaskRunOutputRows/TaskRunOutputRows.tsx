@@ -1,6 +1,8 @@
 import { HoverCardContentProps } from '@radix-ui/react-hover-card';
+import { useMemo } from 'react';
 import { TaskModelBadge } from '@/components/TaskModelBadge';
 import { TaskTemperatureBadge } from '@/components/v2/TaskTemperatureBadge';
+import { LEGACY_TASK_RUN_RUN_BY_METADATA_KEY, WORKFLOW_AI_METADATA_PREFIX } from '@/lib/constants';
 import { ContextWindowInformation } from '@/lib/taskRunUtils';
 import { ModelResponse, RunV1, VersionV1 } from '@/types/workflowAI';
 import { BaseOutputValueRow } from './BaseOutputValueRow';
@@ -14,9 +16,10 @@ type AdditionalFieldsProps = {
   model?: string | null;
   provider?: string | null;
   temperature?: number | null;
+  filteredMetadata?: [string, unknown][];
 };
 
-function AdditionalFields({ showAllFields, model, provider, temperature }: AdditionalFieldsProps) {
+function AdditionalFields({ showAllFields, model, provider, temperature, filteredMetadata }: AdditionalFieldsProps) {
   if (!showAllFields) return null;
 
   return (
@@ -32,6 +35,12 @@ function AdditionalFields({ showAllFields, model, provider, temperature }: Addit
           <BaseOutputValueRow label='Temperature' value={<TaskTemperatureBadge temperature={temperature} />} />
         </div>
       )}
+
+      {filteredMetadata?.map(([key, value]) => (
+        <div className='flex h-10' key={key}>
+          <BaseOutputValueRow label={key} value={`${value}`} />
+        </div>
+      ))}
     </>
   );
 }
@@ -68,6 +77,16 @@ export function TaskRunOutputRows({
   const properties = version?.properties;
   const { temperature, instructions, model, provider } = properties ?? {};
 
+  const filteredMetadata = useMemo(() => {
+    if (!taskRun?.metadata) {
+      return undefined;
+    }
+    const filtered = Object.entries(taskRun.metadata).filter(
+      ([key]) => !key.startsWith(WORKFLOW_AI_METADATA_PREFIX) && !key.startsWith(LEGACY_TASK_RUN_RUN_BY_METADATA_KEY)
+    );
+    return filtered.length > 0 ? filtered : undefined;
+  }, [taskRun?.metadata]);
+
   return (
     <div className='flex flex-col'>
       <div className='grid grid-cols-[repeat(auto-fit,minmax(max(160px,50%),1fr))] [&>*]:border-gray-100 [&>*]:border-b [&>*:nth-child(odd)]:border-r'>
@@ -100,7 +119,13 @@ export function TaskRunOutputRows({
         <div className='flex h-10'>
           <ContextWindowOutputValueRow isInitialized={!!taskRun} contextWindowInformation={contextWindowInformation} />
         </div>
-        <AdditionalFields showAllFields={showAllFields} model={model} provider={provider} temperature={temperature} />
+        <AdditionalFields
+          showAllFields={showAllFields}
+          model={model}
+          provider={provider}
+          temperature={temperature}
+          filteredMetadata={filteredMetadata}
+        />
       </div>
 
       {showAllFields && !!instructions && (
