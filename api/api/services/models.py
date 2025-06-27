@@ -25,6 +25,7 @@ from core.utils.lru.lru_cache import TLRUCache
 from core.utils.models.dumps import safe_dump_pydantic_model
 
 
+# TODO: remove all the fileds that can be accessed from the model_data
 class ModelForTask(NamedTuple):
     id: str
     name: str
@@ -39,6 +40,7 @@ class ModelForTask(NamedTuple):
     quality_index: int
     providers: list[Provider]
     supports_structured_output: bool
+    model_data: ModelData
     is_not_supported_reason: str | None = None
     average_cost_per_run_usd: float | None = None
     is_latest: bool = False
@@ -156,6 +158,7 @@ class ModelsService:
                 is_default=is_default,
                 release_date=data.release_date,
                 quality_index=data.quality_index,
+                model_data=data,
                 price_per_input_token_usd=provider_data.text_price.prompt_cost_per_token,
                 price_per_output_token_usd=provider_data.text_price.completion_cost_per_token,
                 context_window_tokens=data.max_tokens_data.max_tokens,
