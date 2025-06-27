@@ -410,3 +410,27 @@ export function createAssistantMessageFromRun(run: RunV1): ProxyMessage {
     content: [...content, { text: assistantText }],
   };
 }
+
+function getTextFromContentToCopy(message: ProxyMessageContent): string | undefined {
+  if (message.text) {
+    return message.text;
+  }
+
+  if (message.tool_call_result) {
+    return formatResponseToText(message.tool_call_result.result);
+  }
+
+  if (message.tool_call_request) {
+    return formatResponseToText(message.tool_call_request.tool_input_dict);
+  }
+
+  if (message.file) {
+    return message.file.url ?? message.file.data ?? undefined;
+  }
+
+  return undefined;
+}
+
+export function getContentToCopy(message: ProxyMessage): string {
+  return message.content.map((content) => getTextFromContentToCopy(content)).join('\n');
+}

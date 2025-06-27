@@ -1,4 +1,4 @@
-import { Copy16Regular } from '@fluentui/react-icons';
+import { BrainCircuitRegular, Copy16Regular } from '@fluentui/react-icons';
 import { cx } from 'class-variance-authority';
 import { Check } from 'lucide-react';
 import Image from 'next/image';
@@ -19,7 +19,7 @@ import { AIModelComboboxOption } from '../utils';
 import { IntelliganceProgress } from './IntelliganceProgress';
 import { ModelDetailsTooltip } from './ModelDetailsTooltip';
 
-type ModelLabelProps = {
+type ComboboxModelEntryProps = {
   taskId?: TaskID;
   isSelected: boolean;
   showCheck?: boolean;
@@ -28,9 +28,10 @@ type ModelLabelProps = {
   information: 'price' | 'intelligence' | 'latest';
   allIntelligenceScores: number[] | undefined;
   isProxy?: boolean;
+  mode: 'popover' | 'selected';
 };
 
-export function ModelLabel(props: ModelLabelProps) {
+export function ComboboxModelEntry(props: ComboboxModelEntryProps) {
   const {
     isSelected,
     showCheck = true,
@@ -39,7 +40,7 @@ export function ModelLabel(props: ModelLabelProps) {
     information,
     allIntelligenceScores,
     isProxy,
-    taskId,
+    mode,
   } = props;
   const disabled = !!model.is_not_supported_reason;
 
@@ -92,7 +93,7 @@ export function ModelLabel(props: ModelLabelProps) {
           <div className='overflow-hidden text-ellipsis truncate whitespace-nowrap text-gray-900 text-[13px] font-normal'>
             {model.name}
           </div>
-          {isHovering && isProxy && (
+          {isHovering && isProxy && mode === 'selected' && (
             <SimpleTooltip
               content={
                 <div>
@@ -138,10 +139,7 @@ export function ModelLabel(props: ModelLabelProps) {
   );
 }
 
-export function formatAIModels(
-  aiModels: ModelResponse[],
-  information: 'price' | 'intelligence' | 'latest'
-): AIModelComboboxOption[] {
+export function formatAIModels(aiModels: ModelResponse[]): AIModelComboboxOption[] {
   const allIntelligenceScores: number[] = [];
 
   aiModels.forEach((model) => {
@@ -157,26 +155,10 @@ export function formatAIModels(
     label: model.name,
     disabled: !!model.is_not_supported_reason,
     isLatest: model.is_latest ?? true,
-    renderLabel: ({ isSelected, showCheck = true, dropdownOpen, isProxy, taskId }) => (
-      <ModelLabel
-        isSelected={isSelected}
-        showCheck={showCheck}
-        model={model}
-        dropdownOpen={dropdownOpen}
-        information={information}
-        allIntelligenceScores={allIntelligenceScores}
-        isProxy={isProxy}
-        taskId={taskId}
-      />
-    ),
   }));
 }
 
-export function formatAIModel(
-  model: ModelResponse,
-  allModels: ModelResponse[],
-  information: 'price' | 'intelligence' | 'latest'
-): AIModelComboboxOption {
+export function formatAIModel(model: ModelResponse, allModels: ModelResponse[]): AIModelComboboxOption {
   const allIntelligenceScores: number[] = [];
 
   allModels.forEach((model) => {
@@ -192,18 +174,6 @@ export function formatAIModel(
     label: model.name,
     disabled: !!model.is_not_supported_reason,
     isLatest: model.is_latest ?? true,
-    renderLabel: ({ isSelected, showCheck = true, dropdownOpen, isProxy, taskId }) => (
-      <ModelLabel
-        isSelected={isSelected}
-        showCheck={showCheck}
-        model={model}
-        dropdownOpen={dropdownOpen}
-        information={information}
-        allIntelligenceScores={allIntelligenceScores}
-        isProxy={isProxy}
-        taskId={taskId}
-      />
-    ),
   };
 
   return result;

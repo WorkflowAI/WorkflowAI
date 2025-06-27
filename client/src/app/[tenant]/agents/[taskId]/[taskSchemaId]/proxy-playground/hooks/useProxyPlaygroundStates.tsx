@@ -1,9 +1,45 @@
 import { nanoid } from 'nanoid';
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useOrFetchLatestRun, useOrFetchRunV1, useOrFetchVersion } from '@/store/fetchers';
 import { TaskID, TaskSchemaID, TenantID } from '@/types/aliases';
+import { VersionV1 } from '@/types/workflowAI';
 import { useProxyOutputModels } from './useProxyOutputModels';
 import { useProxyPlaygroundSearchParams } from './useProxyPlaygroundSearchParams';
+
+function useSetPropertyFromVersionIfNotSetYet(
+  version: VersionV1 | undefined,
+  key: string,
+  property: string | undefined,
+  setProperty: (property: string | undefined) => void
+) {
+  const propertyRef = useRef<string | undefined>(property);
+  useEffect(() => {
+    propertyRef.current = property;
+  }, [property]);
+
+  const keyRef = useRef<string>(key);
+  useEffect(() => {
+    keyRef.current = key;
+  }, [key]);
+
+  const setPropertyRef = useRef<((property: string | undefined) => void) | undefined>(setProperty);
+  useEffect(() => {
+    setPropertyRef.current = setProperty;
+  }, [setProperty]);
+
+  useEffect(() => {
+    const property = propertyRef.current;
+    const key = keyRef.current;
+
+    // If the property is already set or the version is undefined or the property in version is not set yet, do nothing
+    if (property !== undefined || version === undefined || version.properties[key] === undefined) {
+      return;
+    }
+
+    const value = String(version.properties[key]);
+    setPropertyRef.current?.(value);
+  }, [version]);
+}
 
 export function useProxyPlaygroundStates(tenant: TenantID | undefined, taskId: TaskID, urlSchemaId: TaskSchemaID) {
   const {
@@ -25,8 +61,6 @@ export function useProxyPlaygroundStates(tenant: TenantID | undefined, taskId: T
     runIdForModal,
     historyId,
     setHistoryId,
-    temperature,
-    setTemperature,
     model1,
     model2,
     model3,
@@ -34,12 +68,21 @@ export function useProxyPlaygroundStates(tenant: TenantID | undefined, taskId: T
     setModel2,
     setModel3,
 
+    modelReasoning1,
+    modelReasoning2,
+    modelReasoning3,
+    setModelReasoning1,
+    setModelReasoning2,
+    setModelReasoning3,
+
     schemaId,
     setSchemaId,
     changeURLSchemaId,
 
     scrollToBottom,
     setScrollToBottom,
+
+    advancedSettings,
   } = useProxyPlaygroundSearchParams(tenant, taskId, urlSchemaId);
 
   const { version } = useOrFetchVersion(tenant, taskId, versionId);
@@ -91,13 +134,38 @@ export function useProxyPlaygroundStates(tenant: TenantID | undefined, taskId: T
     }
   }, [versionId, baseRun, setVersionId, run1, run2, run3, baseRunId, setTaskRunId1]);
 
-  useEffect(() => {
-    if (temperature !== undefined || !version) {
-      return;
-    }
-
-    setTemperature(version.properties.temperature ?? undefined);
-  }, [version, temperature, setTemperature]);
+  useSetPropertyFromVersionIfNotSetYet(
+    version,
+    'temperature',
+    advancedSettings.temperature,
+    advancedSettings.setTemperature
+  );
+  useSetPropertyFromVersionIfNotSetYet(version, 'top_p', advancedSettings.top_p, advancedSettings.setTopP);
+  useSetPropertyFromVersionIfNotSetYet(
+    version,
+    'max_tokens',
+    advancedSettings.max_tokens,
+    advancedSettings.setMaxTokens
+  );
+  useSetPropertyFromVersionIfNotSetYet(
+    version,
+    'presence_penalty',
+    advancedSettings.presence_penalty,
+    advancedSettings.setPresencePenalty
+  );
+  useSetPropertyFromVersionIfNotSetYet(
+    version,
+    'frequency_penalty',
+    advancedSettings.frequency_penalty,
+    advancedSettings.setFrequencyPenalty
+  );
+  useSetPropertyFromVersionIfNotSetYet(
+    version,
+    'tool_choice',
+    advancedSettings.tool_choice,
+    advancedSettings.setToolChoice
+  );
+  useSetPropertyFromVersionIfNotSetYet(version, 'use_cache', advancedSettings.cache, advancedSettings.setCache);
 
   // Setters and Getters with Sync
 
@@ -147,7 +215,7 @@ export function useProxyPlaygroundStates(tenant: TenantID | undefined, taskId: T
     setTaskRunId3(undefined);
   }, [setTaskRunId1, setTaskRunId2, setTaskRunId3]);
 
-  const { outputModels, setOutputModels, compatibleModels, allModels } = useProxyOutputModels(
+  const { outputModels, setOutputModels, compatibleModels, allModels, maxTokens } = useProxyOutputModels(
     tenant,
     taskId,
     schemaId,
@@ -159,7 +227,13 @@ export function useProxyPlaygroundStates(tenant: TenantID | undefined, taskId: T
     model3,
     setModel1,
     setModel2,
-    setModel3
+    setModel3,
+    modelReasoning1,
+    modelReasoning2,
+    modelReasoning3,
+    setModelReasoning1,
+    setModelReasoning2,
+    setModelReasoning3
   );
 
   return {
@@ -182,8 +256,6 @@ export function useProxyPlaygroundStates(tenant: TenantID | undefined, taskId: T
     setRunIdForModal,
     runIdForModal,
     historyId,
-    temperature,
-    setTemperature,
     outputModels,
     setOutputModels,
     compatibleModels,
@@ -193,5 +265,8 @@ export function useProxyPlaygroundStates(tenant: TenantID | undefined, taskId: T
     changeURLSchemaId,
     scrollToBottom,
     setScrollToBottom,
+
+    advancedSettings,
+    maxTokens,
   };
 }

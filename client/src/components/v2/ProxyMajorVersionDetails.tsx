@@ -65,7 +65,7 @@ export function ProxyMajorVersionDetails(props: Props) {
         </div>
       )}
 
-      <div className='grid grid-cols-3 gap-2'>
+      <div className='grid grid-cols-3'>
         {temperature !== undefined && temperature !== null && (
           <TaskMetadataSection title='temperature'>
             <TaskTemperatureBadge temperature={temperature} />

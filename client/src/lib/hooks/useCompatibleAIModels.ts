@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useOrFetchAllAiModels } from '@/store';
+import { useOrFetchSchemaAIModels } from '@/store';
 import { TaskID, TaskSchemaID, TenantID } from '@/types/aliases';
 import { ModelResponse } from '@/types/workflowAI';
 
@@ -20,7 +20,7 @@ export function filterDefaultModels(models: ModelResponse[]) {
 export function useCompatibleAIModels(props: TModeAiModelsProps) {
   const { tenant, taskId, taskSchemaId } = props;
 
-  const { models, isInitialized, isLoading } = useOrFetchAllAiModels({
+  const { models, isInitialized, isLoading } = useOrFetchSchemaAIModels({
     tenant,
     taskId,
     taskSchemaId,

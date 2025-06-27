@@ -16,9 +16,10 @@ import {
   Tool_Output,
   VersionV1,
 } from '@/types/workflowAI';
-import { PlaygroundModels } from '../../playground/hooks/utils';
 import { SideBySideVersionPopoverItem } from '../../side-by-side/SideBySideVersionPopoverItem';
 import { SideBySideVersionPopoverModelItem } from '../../side-by-side/SideBySideVersionPopoverModelItem';
+import { AdvancedSettings } from '../hooks/useProxyPlaygroundSearchParams';
+import { ProxyPlaygroundModels, addAdvencedSettingsToProperties, getModelAndReasoning } from '../utils';
 
 type Props = {
   tenant: TenantID | undefined;
@@ -27,12 +28,12 @@ type Props = {
 
   runs: (RunV1 | undefined)[];
   versionsForRuns: Record<string, VersionV1>;
-  outputModels: PlaygroundModels;
+  outputModels: ProxyPlaygroundModels;
   models: ModelResponse[];
 
   proxyMessages: ProxyMessage[] | undefined;
   proxyToolCalls: (ToolKind | Tool_Output)[] | undefined;
-  temperature: number | undefined;
+  advancedSettings: AdvancedSettings;
 
   setVersionIdForCode: (versionId: string | undefined) => void;
 };
@@ -47,7 +48,7 @@ export function ProxyCodeButton(props: Props) {
     taskId,
     proxyMessages,
     proxyToolCalls,
-    temperature,
+    advancedSettings,
     schemaId,
     setVersionIdForCode,
   } = props;
@@ -63,7 +64,7 @@ export function ProxyCodeButton(props: Props) {
         return;
       }
 
-      const modelId = outputModels?.[index] ?? undefined;
+      const { model: modelId } = getModelAndReasoning(index, outputModels);
       if (modelId) {
         const model = models.find((model) => model.id === modelId);
         if (model) {
@@ -106,14 +107,15 @@ export function ProxyCodeButton(props: Props) {
 
       const properties: TaskGroupProperties_Input = {
         model: modelId,
-        temperature: temperature,
         enabled_tools: proxyToolCalls,
         messages: proxyMessages,
       };
 
+      const propertiesWithAdvancedSettings = addAdvencedSettingsToProperties(properties, advancedSettings);
+
       try {
         const { id: versionId } = await createVersion(tenant, taskId, schemaId, {
-          properties,
+          properties: propertiesWithAdvancedSettings,
         });
 
         await saveVersion(tenant, taskId, versionId);
@@ -127,7 +129,6 @@ export function ProxyCodeButton(props: Props) {
     },
     [
       setOpen,
-      temperature,
       proxyToolCalls,
       proxyMessages,
       createVersion,
@@ -136,6 +137,7 @@ export function ProxyCodeButton(props: Props) {
       schemaId,
       saveVersion,
       setVersionIdForCode,
+      advancedSettings,
     ]
   );
 

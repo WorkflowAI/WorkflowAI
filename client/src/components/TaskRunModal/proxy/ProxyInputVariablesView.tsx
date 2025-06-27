@@ -37,7 +37,7 @@ export function ProxyInputVariablesView(props: Props) {
           defs={inputSchema?.$defs}
           value={generatedInputWithVoid}
           voidValue={voidInput}
-          editable={true}
+          editable={false}
           textColor='text-gray-500'
           className='flex w-full h-max'
           showDescriptionPopover={false}

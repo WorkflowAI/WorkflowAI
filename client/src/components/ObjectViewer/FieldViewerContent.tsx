@@ -11,10 +11,11 @@ type FieldViewerContentProps = ValueViewerProps<unknown> & {
   isParentArray?: boolean;
   isArrayObject?: boolean;
   onRemove: (() => void) | undefined;
+  fieldKey: string;
 };
 
 export function FieldViewerContent(props: FieldViewerContentProps) {
-  const { subSchemaFieldType, isRoot, isParentArray, isArrayObject, onRemove, ...rest } = props;
+  const { subSchemaFieldType, isRoot, isParentArray, isArrayObject, fieldKey, onRemove, ...rest } = props;
 
   const content = useMemo(() => {
     if (onRemove) {

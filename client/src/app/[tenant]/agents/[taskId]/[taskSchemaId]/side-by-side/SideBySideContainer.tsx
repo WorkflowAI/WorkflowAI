@@ -7,8 +7,8 @@ import { PageContainer } from '@/components/v2/PageContainer';
 import { useTaskSchemaParams } from '@/lib/hooks/useTaskParams';
 import { useParsedSearchParams, useRedirectWithParams } from '@/lib/queryString';
 import {
-  useOrFetchAllAiModels,
   useOrFetchLatestRun,
+  useOrFetchSchemaAIModels,
   useOrFetchTask,
   useOrFetchTaskRuns,
   useOrFetchVersions,
@@ -63,7 +63,7 @@ export function SideBySideContainer() {
 
   const { task } = useOrFetchTask(tenant, taskId);
   const { versions, isLoading: isVersionsLoading } = useOrFetchVersions(tenant, taskId, taskSchemaId);
-  const { models } = useOrFetchAllAiModels({ tenant, taskId, taskSchemaId });
+  const { models } = useOrFetchSchemaAIModels({ tenant, taskId, taskSchemaId });
 
   const numberOfVersions = !!versions ? versions.length : 0;
   const areThereAnyRuns = !!latestRun;

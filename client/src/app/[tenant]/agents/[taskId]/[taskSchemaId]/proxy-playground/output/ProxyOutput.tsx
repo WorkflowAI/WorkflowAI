@@ -8,7 +8,6 @@ import { SimpleTooltip } from '@/components/ui/Tooltip';
 import { useDemoMode } from '@/lib/hooks/useDemoMode';
 import { useOrFetchOrganizationSettings } from '@/store';
 import { JsonSchema } from '@/types';
-import { Model } from '@/types/aliases';
 import { TaskID, TaskSchemaID, TenantID } from '@/types/aliases';
 import { RunV1, VersionV1 } from '@/types/workflowAI';
 import { TaskInputDict } from '@/types/workflowAI';
@@ -17,15 +16,15 @@ import { FreeCreditsLimitReachedInfo } from '../../playground/FreeCreditsLimitRe
 import { useMinimumCostTaskRun } from '../../playground/hooks/useMinimumCostTaskRun';
 import { useMinimumLatencyTaskRun } from '../../playground/hooks/useMinimumLatencyTaskRun';
 import { TaskRunner } from '../../playground/hooks/useTaskRunners';
-import { PlaygroundModels } from '../../playground/hooks/utils';
+import { ProxyPlaygroundModels } from '../utils';
 import { ProxyModelOutput } from './ProxyModelOutput';
 
 type Props = {
   aiModels: ModelResponse[];
   areInstructionsLoading: boolean;
   errorForModels: Omit<Map<string, Error>, 'set' | 'clear' | 'delete'>;
-  models: PlaygroundModels;
-  onModelsChange: (index: number, newModel: Model | null | undefined) => void;
+  models: ProxyPlaygroundModels;
+  onModelsChange: (index: number, newModel: string | undefined, newReasoning: string | undefined) => void;
   outputSchema: JsonSchema | undefined;
   tenant: TenantID | undefined;
   taskId: TaskID;

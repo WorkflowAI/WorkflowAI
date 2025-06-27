@@ -1,7 +1,6 @@
 import { FaGoogle } from 'react-icons/fa';
 import { SiAnthropic } from 'react-icons/si';
 import { isNullish } from '@/types';
-import { TaskID } from '@/types/aliases';
 import { ModelResponse, Provider } from '@/types/workflowAI';
 import { AmazonBedrockIcon } from '../icons/models/amazonBedrockIcon';
 import { AzureIcon } from '../icons/models/azureIcon';
@@ -14,19 +13,6 @@ export type AIModelComboboxOption = {
   model: ModelResponse;
   value: string;
   label: string;
-  renderLabel: ({
-    isSelected,
-    showCheck,
-    dropdownOpen,
-    isProxy,
-    taskId,
-  }: {
-    isSelected: boolean;
-    showCheck?: boolean;
-    dropdownOpen?: boolean;
-    isProxy?: boolean;
-    taskId?: TaskID;
-  }) => React.ReactNode;
   disabled?: boolean;
   isLatest?: boolean;
 };
