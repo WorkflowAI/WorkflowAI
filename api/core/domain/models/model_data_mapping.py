@@ -291,8 +291,8 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             ),
         ),
         Model.GPT_4O_AUDIO_PREVIEW_2024_10_01: DeprecatedModel(replacement_model=Model.GPT_4O_AUDIO_PREVIEW_2024_12_17),
-        Model.O1_PREVIEW_2024_09_12: DeprecatedModel(replacement_model=Model.O3_2025_04_16),
-        Model.O1_MINI_LATEST: DeprecatedModel(replacement_model=Model.O3_MINI_2025_01_31),
+        Model.O1_PREVIEW_2024_09_12: DeprecatedModel(replacement_model=Model.O3_2025_04_16, aliases=["o1-preview"]),
+        Model.O1_MINI_LATEST: DeprecatedModel(replacement_model=Model.O3_MINI_2025_01_31, aliases=["o1-mini"]),
         Model.O1_MINI_2024_09_12: DeprecatedModel(replacement_model=Model.O3_MINI_2025_01_31),
         Model.O3_MINI_LATEST_HIGH_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.O3_MINI_2025_01_31,
@@ -898,6 +898,7 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             supports_parallel_tool_calls=False,
             fallback=_openai_fallback("expensive"),
             reasoning=ModelReasoningBudget(disabled=None),
+            aliases=["o1"],
         ),
         Model.O1_2024_12_17_HIGH_REASONING_EFFORT: DeprecatedModel(
             replacement_model=Model.O1_2024_12_17,

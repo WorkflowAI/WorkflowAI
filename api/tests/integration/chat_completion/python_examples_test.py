@@ -11,7 +11,11 @@ def _python_dir():
 
 
 @pytest.mark.parametrize("model", ["gemini-2.5-flash", "gpt-4.1-nano"])
-def test_search_documentation_agent(model: str):
+def test_search_documentation_agent(
+    model: str,
+    api_server: str,
+    workflowai_api_key: str,
+):
     result = subprocess.run(
         ["python", "pydantic_output.py"],
         capture_output=True,  # Capture both stdout and stderr
@@ -20,6 +24,8 @@ def test_search_documentation_agent(model: str):
         env={
             **os.environ,
             "WORKFLOWAI_TEST_MODEL": model,
+            "WORKFLOWAI_API_KEY": workflowai_api_key,
+            "WORKFLOWAI_API_URL": api_server,
         },
     )
     assert result.returncode == 0, f"Command failed with stderr: {result.stderr}\nstdout: {result.stdout}"
