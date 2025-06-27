@@ -6,7 +6,6 @@ from pydantic import BaseModel, Field
 
 from api.schemas.user_identifier import UserIdentifier
 from api.schemas.version_properties import ShortVersionProperties
-from api.services.internal_tasks.ai_engineer_service import AIEngineerReponse
 from api.services.models import ModelForTask
 from core.domain.agent_run import AgentRun
 from core.domain.error_response import ErrorResponse
@@ -27,16 +26,6 @@ from core.utils.token_utils import tokens_from_string
 AgentSortField: TypeAlias = Literal["last_active_at", "total_cost_usd", "run_count"]
 ModelSortField: TypeAlias = Literal["release_date", "quality_index", "cost"]
 SortOrder: TypeAlias = Literal["asc", "desc"]
-
-
-class UsefulLinks(BaseModel):
-    class Link(BaseModel):
-        title: str
-        url: str
-        description: str
-
-    description: str = "A collection of useful link that the user can access in the browser, those link are NOT directly accessible without being authenticated in the browser"
-    useful_links: list[Link]
 
 
 class ConciseLatestModelResponse(BaseModel):
@@ -243,10 +232,6 @@ class MCPToolReturn(BaseModel, Generic[T]):
     message: str | None = None
     data: T | None = None
     error: str | None = None
-
-
-class AIEngineerReponseWithUsefulLinks(AIEngineerReponse):
-    useful_links: UsefulLinks
 
 
 class PaginatedMCPToolReturn(BaseModel, Generic[NullableT, ItemT]):
