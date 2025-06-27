@@ -37,12 +37,12 @@ export function ProxyReplyView(props: Props) {
     }
   }, [toolCalls]);
 
-  const supportToolCallResult = useMemo(() => {
+  const perferToolCallResult = useMemo(() => {
     return !!toolCallRequest;
   }, [toolCallRequest]);
 
   const blankMessage: ProxyMessage = useMemo(() => {
-    if (supportToolCallResult) {
+    if (perferToolCallResult) {
       return {
         role: 'user',
         content: [
@@ -66,7 +66,7 @@ export function ProxyReplyView(props: Props) {
         },
       ],
     };
-  }, [supportToolCallResult, toolCallRequest]);
+  }, [perferToolCallResult, toolCallRequest]);
 
   const assistantMessage: ProxyMessage = useMemo(() => {
     const assistantText = typeof output === 'string' ? output : JSON.stringify(output);
@@ -127,7 +127,7 @@ export function ProxyReplyView(props: Props) {
     <div className='flex flex-col w-full px-4 py-2 gap-2.5'>
       <ProxyMessageView
         message={newMessage}
-        avaibleTypes={supportToolCallResult ? ['toolCallResult', 'user'] : ['user', 'toolCallResult']}
+        avaibleTypes={perferToolCallResult ? ['toolCallResult', 'user'] : ['user', 'toolCallResult']}
         setMessage={handleSetMessage}
         oneMessageMode={true}
         previouseMessage={assistantMessage}
