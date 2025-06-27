@@ -31,13 +31,20 @@ export function useProxyMatchVersion(props: Props) {
     const matchingVersions = majorVersions.filter((version) => {
       const candidateProxyMessagesValue = proxyMessagesValue(version.properties.messages || undefined);
 
-      const numberTemperature =
-        parseValidNumber(advancedSettings.temperature) ?? defaultValueForAdvencedSetting('temperature');
-      const numberTopP = parseValidNumber(advancedSettings.top_p) ?? defaultValueForAdvencedSetting('top_p');
-      const numberFrequencyPenalty =
-        parseValidNumber(advancedSettings.frequency_penalty) ?? defaultValueForAdvencedSetting('frequency_penalty');
-      const numberPresencePenalty =
-        parseValidNumber(advancedSettings.presence_penalty) ?? defaultValueForAdvencedSetting('presence_penalty');
+      const numberTemperature = parseValidNumber(
+        advancedSettings.temperature ?? defaultValueForAdvencedSetting('temperature')
+      );
+
+      const numberTopP = parseValidNumber(advancedSettings.top_p ?? defaultValueForAdvencedSetting('top_p'));
+
+      const numberFrequencyPenalty = parseValidNumber(
+        advancedSettings.frequency_penalty ?? defaultValueForAdvencedSetting('frequency_penalty')
+      );
+
+      const numberPresencePenalty = parseValidNumber(
+        advancedSettings.presence_penalty ?? defaultValueForAdvencedSetting('presence_penalty')
+      );
+
       const toolChoice = advancedSettings.tool_choice ?? defaultValueForAdvencedSetting('tool_choice');
 
       const versionToolChoiceValue = valueFromToolChoice(version.properties.tool_choice);
