@@ -127,13 +127,6 @@ class ImprovePromptToolCallResult(BaseResult, ImprovePromptToolCallRequest):
     pass
 
 
-class EditSchemaStructureToolCallRequest(BaseToolCallRequest):
-    edition_request_message: str | None = Field(
-        default=None,
-        description="The message to edit the agent schema with.",
-    )
-
-
 class EditSchemaDescriptionAndExamplesToolCallRequest(BaseToolCallRequest):
     description_and_examples_edition_request_message: str | None = Field(
         default=None,
@@ -535,11 +528,6 @@ class ProxyMetaAgentOutput(BaseModel):
         description="The run trigger config to use for the agent, if any",
     )
 
-    edit_schema_structure_request: EditSchemaStructureToolCallRequest | None = Field(
-        default=None,
-        description="The schema structure editing request, if any",
-    )
-
     edit_schema_description_and_examples_request: EditSchemaDescriptionAndExamplesToolCallRequest | None = Field(
         default=None,
         description="The schema description and examples editing request, if any",
@@ -564,7 +552,6 @@ class ParsedToolCall(NamedTuple):
     tool_description: str | None = None
     tool_parameters: dict[str, Any] | None = None
     run_trigger_config: ProxyMetaAgentOutput.RunTriggerConfig | None = None
-    edit_schema_structure_request: EditSchemaStructureToolCallRequest | None = None
     edit_schema_description_and_examples_request: EditSchemaDescriptionAndExamplesToolCallRequest | None = None
     generate_input_request: GenerateAgentInputToolCallRequest | None = None
     updated_version_messages: list[dict[str, Any]] | None = None
@@ -603,14 +590,6 @@ def parse_tool_call(tool_call: Any) -> ParsedToolCall:
             tool_name=arguments["name"],
             tool_description=arguments["description"],
             tool_parameters=arguments["parameters"],
-        )
-
-    if function_name == "edit_output_schema_structure":
-        return ParsedToolCall(
-            edit_schema_structure_request=EditSchemaStructureToolCallRequest(
-                edition_request_message=arguments.get("edition_request_message"),
-                ask_user_confirmation=arguments.get("ask_user_confirmation"),
-            ),
         )
 
     if function_name == "edit_output_schema_description_and_examples":
@@ -1196,25 +1175,6 @@ OUTPUT_SCHEMA_EDITION_TOOLS: list[ChatCompletionToolParam] = [
     {
         "type": "function",
         "function": {
-            "name": "edit_output_schema_structure",
-            "description": "Edit the structural aspects of the agent's OUTPUT schema ONLY including fields, field names, field types, etc. IMPORTANT: This tool is exclusively for output schema modifications - input schema changes must use 'update_version_messages'. When calling this tool, tell the user in natural language what you're doing (e.g., 'I will modify your output schema structure') rather than mentioning the tool name.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "edition_request_message": {
-                        "type": "string",
-                        "description": "The message describing the structural changes to make to the agent OUTPUT schema (e.g., 'Add a new field called confidence with type number', 'Remove the optional field description', 'Make the field email required').",
-                    },
-                },
-                "required": ["edition_request_message"],
-                "additionalProperties": False,
-            },
-            "strict": True,
-        },
-    },
-    {
-        "type": "function",
-        "function": {
             "name": "edit_output_schema_description_and_examples",
             "description": "Edit the descriptions and examples of fields in the agent's OUTPUT schema ONLY without changing the structure. IMPORTANT: This tool is exclusively for output schema modifications - input schema changes must use 'update_version_messages'. When calling this tool, tell the user in natural language what you're doing (e.g., 'I will improve your output schema descriptions') rather than mentioning the tool name.",
             "parameters": {
@@ -1352,7 +1312,6 @@ async def proxy_meta_agent(
             if parsed_tool_call.tool_name and parsed_tool_call.tool_description and parsed_tool_call.tool_parameters
             else None,
             run_trigger_config=parsed_tool_call.run_trigger_config,
-            edit_schema_structure_request=parsed_tool_call.edit_schema_structure_request,
             edit_schema_description_and_examples_request=parsed_tool_call.edit_schema_description_and_examples_request,
             generate_input_request=parsed_tool_call.generate_input_request,
             updated_version_messages=parsed_tool_call.updated_version_messages,
