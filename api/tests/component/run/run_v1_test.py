@@ -30,7 +30,6 @@ from tests.component.common import (
     LEGACY_TEST_JWT,
     IntegrationTestClient,
     create_task,
-    create_version,
     extract_stream_chunks,
     fetch_run,
     gemini_url,
@@ -1448,14 +1447,11 @@ async def test_tool_call_recursion_streaming(test_client: IntegrationTestClient)
     assert len(fetched_run["llm_completions"]) == 2
 
 
-async def test_unknown_error_invalid_argument_max_tokens(
-    int_api_client: AsyncClient,
-    httpx_mock: HTTPXMock,
-    patched_broker: InMemoryBroker,
-):
-    task = await create_task(int_api_client, patched_broker, httpx_mock)
+async def test_unknown_error_invalid_argument_max_tokens(test_client: IntegrationTestClient):
+    task = await test_client.create_task()
+    test_client.reset_httpx_mock()
 
-    httpx_mock.add_response(
+    test_client.httpx_mock.add_response(
         status_code=400,
         json={
             "error": {
@@ -1466,19 +1462,12 @@ async def test_unknown_error_invalid_argument_max_tokens(
         },
     )
 
-    version = await create_version(
-        int_api_client,
-        task["task_id"],
-        task["task_schema_id"],
+    version = await test_client.create_version(
+        task,
         {"model": Model.GEMINI_1_5_FLASH_002},
     )
     with pytest.raises(HTTPStatusError) as exc_info:
-        await run_task_v1(
-            int_api_client,
-            task_id=task["task_id"],
-            task_schema_id=task["task_schema_id"],
-            version=version["iteration"],
-        )
+        await test_client.run_task_v1(task, version=version["iteration"])
 
     content_json = json.loads(exc_info.value.response.content)
     assert content_json["error"]["code"] == "max_tokens_exceeded"
@@ -2118,7 +2107,7 @@ async def test_with_model_fallback_on_rate_limit(test_client: IntegrationTestCli
     # And manual fallback can be used to switch to a different model
     run2 = await test_client.run_task_v1(
         task,
-        use_fallback=[Model.O3_2025_04_16_LOW_REASONING_EFFORT],
+        use_fallback=[Model.O3_2025_04_16],
         use_cache="never",
         **run_kwargs,
     )
@@ -2127,7 +2116,7 @@ async def test_with_model_fallback_on_rate_limit(test_client: IntegrationTestCli
     assert [(c["model"], c["provider"], len(c["messages"]), c.get("cost_usd")) for c in completions2] == [
         (Model.CLAUDE_3_5_SONNET_20241022, Provider.ANTHROPIC, 2, None),
         (Model.CLAUDE_3_5_SONNET_20241022, Provider.AMAZON_BEDROCK, 2, None),
-        (Model.O3_2025_04_16_LOW_REASONING_EFFORT, Provider.OPEN_AI, 2, approx((10 * 2 + 11 * 8) / 1_000_000)),
+        (Model.O3_2025_04_16, Provider.OPEN_AI, 2, approx((10 * 2 + 11 * 8) / 1_000_000)),
     ]
 
 
@@ -2176,7 +2165,7 @@ async def test_with_model_fallback_on_failed_generation(test_client: Integration
     # And manual fallback can be used to switch to a different model
     run2 = await test_client.run_task_v1(
         task,
-        use_fallback=[Model.O3_2025_04_16_LOW_REASONING_EFFORT],
+        use_fallback=[Model.O3_2025_04_16],
         use_cache="never",
         **run_kwargs,
     )
@@ -2186,7 +2175,7 @@ async def test_with_model_fallback_on_failed_generation(test_client: Integration
         (Model.CLAUDE_3_5_SONNET_20241022, Provider.ANTHROPIC, 2, approx(10 * (3 + 15) / 1_000_000)),
         # Second time we retry with different messages
         (Model.CLAUDE_3_5_SONNET_20241022, Provider.ANTHROPIC, 4, approx(10 * (3 + 15) / 1_000_000)),  # 2 + 2
-        (Model.O3_2025_04_16_LOW_REASONING_EFFORT, Provider.OPEN_AI, 2, approx((10 * 2 + 11 * 8) / 1_000_000)),
+        (Model.O3_2025_04_16, Provider.OPEN_AI, 2, approx((10 * 2 + 11 * 8) / 1_000_000)),
     ]
 
 
@@ -2408,3 +2397,29 @@ async def test_no_model_fallback_on_provider_internal_error_gemini(
     assert len(vertex_reqs) >= 1
     assert len(gemini_reqs) >= 1
     assert len(openai_reqs) == 1
+
+
+async def test_old_reasoning_models_are_remapped(test_client: IntegrationTestClient):
+    """The reasoning effort was previously included in the model ID. This test makes
+    sure that when using a model with a reasoning effort it is correctly mapped to the
+    right version"""
+
+    # Use deprecated model
+    agent = await test_client.create_agent_v1()
+    test_client.mock_openai_call()
+
+    run = await test_client.run_task_v1(
+        agent,
+        model=Model.O3_2025_04_16_LOW_REASONING_EFFORT,
+    )
+    assert run
+
+    version = await test_client.fetch_version(agent, version_id=run["version"]["id"])
+    assert version["properties"]["model"] == Model.O3_2025_04_16
+    assert version["properties"]["reasoning_effort"] == "low"
+
+    openai_request = test_client.httpx_mock.get_request(url=openai_endpoint())
+    assert openai_request
+    body = json.loads(openai_request.content)
+    assert body["model"] == Model.O3_2025_04_16
+    assert body["reasoning_effort"] == "low"

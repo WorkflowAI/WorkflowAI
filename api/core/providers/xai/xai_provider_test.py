@@ -14,6 +14,7 @@ from core.domain.fields.internal_reasoning_steps import InternalReasoningStep
 from core.domain.llm_usage import LLMUsage
 from core.domain.message import MessageDeprecated
 from core.domain.models import Model
+from core.domain.reasoning_effort import ReasoningEffort
 from core.domain.structured_output import StructuredOutput
 from core.providers.base.abstract_provider import RawCompletion
 from core.providers.base.models import StandardMessage
@@ -95,40 +96,16 @@ class TestBuildRequest:
         # else:
         #     assert request.max_tokens == model_data.max_tokens_data.max_tokens
 
-    def test_build_request_with_reasoing_effort_high(self, xai_provider: XAIProvider):
+    def test_build_request_with_reasoning_effort(self, xai_provider: XAIProvider):
         request = cast(
             CompletionRequest,
             xai_provider._build_request(  # pyright: ignore [reportPrivateUsage]
                 messages=[MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello")],
                 options=ProviderOptions(
-                    model=Model.GROK_3_MINI_BETA_HIGH_REASONING_EFFORT,
+                    model=Model.GROK_3_MINI_BETA,
                     max_tokens=10,
                     temperature=0,
-                ),
-                stream=False,
-            ),
-        )
-        # We can exclude None values because the HTTPxProvider does the same
-        assert request.model_dump(include={"messages", "reasoning_effort", "model"}, exclude_none=True) == {
-            "model": "grok-3-mini-beta",
-            "messages": [
-                {
-                    "role": "user",
-                    "content": "Hello",
-                },
-            ],
-            "reasoning_effort": "high",
-        }
-
-    def test_build_request_with_reasoing_effort_low(self, xai_provider: XAIProvider):
-        request = cast(
-            CompletionRequest,
-            xai_provider._build_request(  # pyright: ignore [reportPrivateUsage]
-                messages=[MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello")],
-                options=ProviderOptions(
-                    model=Model.GROK_3_MINI_BETA_LOW_REASONING_EFFORT,
-                    max_tokens=10,
-                    temperature=0,
+                    reasoning_effort=ReasoningEffort.LOW,
                 ),
                 stream=False,
             ),
@@ -143,6 +120,31 @@ class TestBuildRequest:
                 },
             ],
             "reasoning_effort": "low",
+        }
+
+    def test_build_request_with_reasoning_effort_medium(self, xai_provider: XAIProvider):
+        request = cast(
+            CompletionRequest,
+            xai_provider._build_request(  # pyright: ignore [reportPrivateUsage]
+                messages=[MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello")],
+                options=ProviderOptions(
+                    model=Model.GROK_3_MINI_BETA,
+                    max_tokens=10,
+                    temperature=0,
+                    reasoning_effort=ReasoningEffort.MEDIUM,
+                ),
+                stream=False,
+            ),
+        )
+        # We can exclude None values because the HTTPxProvider does the same
+        assert request.model_dump(include={"messages", "reasoning_effort", "model"}, exclude_none=True) == {
+            "model": "grok-3-mini-beta",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": "Hello",
+                },
+            ],
         }
 
     def test_build_request_with_tool_choice(self, xai_provider: XAIProvider):
@@ -251,7 +253,7 @@ class TestSingleStream:
             partial_output_factory=lambda x: StructuredOutput(x),
             raw_completion=raw,
             options=ProviderOptions(
-                model=Model.GPT_40_AUDIO_PREVIEW_2024_10_01,
+                model=Model.GROK_3_MINI_BETA,
                 max_tokens=10,
                 temperature=0,
                 output_schema={},
@@ -265,47 +267,6 @@ class TestSingleStream:
         assert parsed_chunks[1][0] == {"answer": "Oh it has 30 words!"}
 
         assert len(httpx_mock.get_requests()) == 1
-
-    @pytest.mark.skip(reason="Not sure about max message length for now")
-    async def test_max_message_length(self, httpx_mock: HTTPXMock, xai_provider: XAIProvider):
-        httpx_mock.add_response(
-            url="https://api.x.ai/v1/chat/completions",
-            status_code=400,
-            json={"error": {"code": "string_above_max_length", "message": "The string is too long"}},
-        )
-        raw = RawCompletion(usage=LLMUsage(), response="")
-
-        with pytest.raises(MaxTokensExceededError) as e:
-            raw_chunks = xai_provider._single_stream(  # pyright: ignore [reportPrivateUsage]
-                request={"messages": [{"role": "user", "content": "Hello"}]},
-                output_factory=lambda x, _: StructuredOutput(json.loads(x)),
-                partial_output_factory=lambda x: StructuredOutput(x),
-                raw_completion=raw,
-                options=ProviderOptions(model=Model.GPT_40_AUDIO_PREVIEW_2024_10_01, max_tokens=10, temperature=0),
-            )
-            [o async for o in raw_chunks]
-        assert e.value.store_task_run is False
-
-    @pytest.mark.skip(reason="Not sure about invalid json schema for now")
-    async def test_invalid_json_schema(self, httpx_mock: HTTPXMock, xai_provider: XAIProvider):
-        httpx_mock.add_response(
-            url="https://api.x.ai/v1/chat/completions",
-            status_code=400,
-            json=fixtures_json("xai", "invalid_json_schema.json"),
-        )
-
-        raw = RawCompletion(usage=LLMUsage(), response="")
-
-        with pytest.raises(StructuredGenerationError) as e:
-            raw_chunks = xai_provider._single_stream(  # pyright: ignore [reportPrivateUsage]
-                request={"messages": [{"role": "user", "content": "Hello"}]},
-                output_factory=lambda x, _: StructuredOutput(json.loads(x)),
-                partial_output_factory=lambda x: StructuredOutput(x),
-                raw_completion=raw,
-                options=ProviderOptions(model=Model.GPT_40_AUDIO_PREVIEW_2024_10_01, max_tokens=10, temperature=0),
-            )
-            [o async for o in raw_chunks]
-        assert e.value.store_task_run is False
 
     async def test_stream_reasoning(self, httpx_mock: HTTPXMock, xai_provider: XAIProvider):
         httpx_mock.add_response(

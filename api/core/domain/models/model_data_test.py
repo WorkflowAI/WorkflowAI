@@ -11,9 +11,11 @@ from core.domain.models.model_data import (
     MaxTokensData,
     ModelData,
     ModelDataMapping,
+    ModelReasoningBudget,
     QualityData,
 )
 from core.domain.models.model_provider_data import ModelProviderData, TextPricePerToken
+from core.domain.reasoning_effort import ReasoningEffort
 from core.domain.task_typology import SchemaTypology, TaskTypology
 
 
@@ -203,3 +205,76 @@ class TestModelDataQualityIndex:
             Model.O3_2025_04_16_MEDIUM_REASONING_EFFORT: _md(quality_data=QualityData(index=100)),
         }
         assert quality_data.quality_index(mapping) == expected_index
+
+
+@pytest.mark.parametrize("effort", list(ReasoningEffort))
+def test_model_reasoning_effort_get_item(effort: ReasoningEffort):
+    """Check we don't crash on get item"""
+    model_data = ModelReasoningBudget(
+        disabled=0,
+        low=200,
+        medium=300,
+        high=400,
+    )
+    assert model_data[effort] is not None
+
+
+class TestModelReasoningCorrespondingEffort:
+    @pytest.mark.parametrize(
+        "budget, expected_effort",
+        [
+            (0, "disabled"),
+            (100, "low"),  # lower than low but not 0 so we still return the lowest available
+            (250, "low"),
+            (350, "medium"),
+            (450, "high"),
+        ],
+    )
+    def test_corresponding_effort_with_all_fields_set(self, budget: int, expected_effort: ReasoningEffort):
+        model_data = ModelReasoningBudget(
+            disabled=0,
+            low=200,
+            medium=300,
+            high=400,
+        )
+        assert model_data.corresponding_effort(budget) == expected_effort
+
+    @pytest.mark.parametrize(
+        "budget, expected_effort",
+        [
+            # lower than low but not 0 so we still return the lowest available
+            (0, "low"),
+            (100, "low"),
+            (250, "low"),
+            (350, "low"),
+            (450, "high"),
+        ],
+    )
+    def test_corresponding_effort_with_missing_fields(self, budget: int, expected_effort: ReasoningEffort):
+        model_data = ModelReasoningBudget(
+            disabled=None,
+            low=200,
+            medium=None,
+            high=400,
+        )
+        assert model_data.corresponding_effort(budget) == expected_effort
+
+
+class TestModelReasoningCorrespondingBudget:
+    @pytest.mark.parametrize(
+        "effort, expected_budget",
+        [
+            ("disabled", 0),
+            ("low", 200),
+            ("medium", 300),
+            ("high", 400),
+        ],
+    )
+    def test_corresponding_budget_with_all_fields_set(self, effort: ReasoningEffort, expected_budget: int):
+        model_data = ModelReasoningBudget(
+            disabled=0,
+            low=200,
+            medium=300,
+            high=400,
+        )
+        assert model_data.corresponding_budget(effort) == expected_budget

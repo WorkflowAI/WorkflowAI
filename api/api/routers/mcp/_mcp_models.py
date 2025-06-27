@@ -1,18 +1,19 @@
 import json
 from datetime import datetime, time
-from typing import Any, Generic, Literal, TypeAlias, TypeVar, Union
+from typing import Any, Generic, Literal, TypeAlias, TypeVar
 
 from pydantic import BaseModel, Field
 
 from api.schemas.user_identifier import UserIdentifier
 from api.schemas.version_properties import ShortVersionProperties
-from api.services.internal_tasks.ai_engineer_service import AIEngineerReponse
 from api.services.models import ModelForTask
 from core.domain.agent_run import AgentRun
 from core.domain.error_response import ErrorResponse
 from core.domain.message import Message
-from core.domain.models.model_data import FinalModelData
+from core.domain.models.model_data import FinalModelData, ModelData
 from core.domain.models.model_data_supports import ModelDataSupports
+from core.domain.models.models import Model
+from core.domain.models.utils import get_model_data
 from core.domain.task import SerializableTask
 from core.domain.task_group import TaskGroup
 from core.domain.task_group_properties import TaskGroupProperties
@@ -29,16 +30,6 @@ ModelSortField: TypeAlias = Literal["release_date", "quality_index", "cost"]
 SortOrder: TypeAlias = Literal["asc", "desc"]
 
 
-class UsefulLinks(BaseModel):
-    class Link(BaseModel):
-        title: str
-        url: str
-        description: str
-
-    description: str = "A collection of useful link that the user can access in the browser, those link are NOT directly accessible without being authenticated in the browser"
-    useful_links: list[Link]
-
-
 class ConciseLatestModelResponse(BaseModel):
     id: str = Field(description="The id of the model")
     currently_points_to: str = Field(
@@ -46,47 +37,32 @@ class ConciseLatestModelResponse(BaseModel):
     )
 
 
-class ConciseModelResponse(BaseModel):
-    class ModelSupports(BaseModel):
-        """Features supported by the model"""
-
-        input_image: bool = Field(description="Whether the model supports image inputs")
-        input_pdf: bool = Field(description="Whether the model supports PDF document inputs")
-        input_audio: bool = Field(description="Whether the model supports audio inputs")
-        # TODO/QUESTION: audio_only is very confusing. What is the field supposed to represent?
-        audio_only: bool = Field(description="TODO: ...")
-        tool_calling: bool = Field(description="Whether the model supports tool/function calling")
-
-    id: str = Field(description="The id of the model")
-    display_name: str = Field(description="The display name of the model")
-    supports: ModelSupports = Field(description="The features supported by the model")
-    quality_index: int = Field(description="The quality index of the model. A higher index means a smarter model.")
-    cost_per_input_token_usd: float = Field(description="The cost per input token in USD")
-    cost_per_output_token_usd: float = Field(description="The cost per output token in USD")
-    release_date: str = Field(description="The release date of the model")
+class ConciseModelSupports(BaseModel):
+    input_image: bool = Field(description="Whether the model supports image inputs")
+    input_pdf: bool = Field(description="Whether the model supports PDF document inputs")
+    input_audio: bool = Field(description="Whether the model supports audio inputs")
+    tool_calling: bool = Field(description="Whether the model supports tool/function calling")
+    reasoning: bool = Field(description="Whether the model supports reasoning")
 
     @classmethod
-    def _extract_supports(cls, model_data: Union[FinalModelData, ModelForTask]) -> "ModelSupports":
-        """Extract ModelSupports from either FinalModelData or ModelForTask"""
-        # Use isinstance for robust type detection
-        if isinstance(model_data, FinalModelData):
-            # FinalModelData has boolean attributes for each support feature
-            return cls.ModelSupports(
-                input_image=getattr(model_data, "supports_input_image", False),
-                input_pdf=getattr(model_data, "supports_input_pdf", False),
-                input_audio=getattr(model_data, "supports_input_audio", False),
-                audio_only=getattr(model_data, "supports_audio_only", False),
-                tool_calling=getattr(model_data, "supports_tool_calling", False),
-            )
-        # ModelForTask has a modes list containing supported features
-        modes = getattr(model_data, "modes", [])
-        return cls.ModelSupports(
-            input_image="input_image" in modes,
-            input_pdf="input_pdf" in modes,
-            input_audio="input_audio" in modes,
-            audio_only="audio_only" in modes,
-            tool_calling="tool_calling" in modes,
+    def from_domain(cls, model_data: ModelData):
+        return cls(
+            input_image=model_data.supports_input_image,
+            input_pdf=model_data.supports_input_pdf,
+            input_audio=model_data.supports_input_audio,
+            tool_calling=model_data.supports_tool_calling,
+            reasoning=model_data.reasoning is not None,
         )
+
+
+class ConciseModelResponse(BaseModel):
+    id: str
+    display_name: str
+    supports: ConciseModelSupports
+    quality_index: int
+    cost_per_input_token_usd: float
+    cost_per_output_token_usd: float
+    release_date: str
 
     @classmethod
     def from_model_data(cls, id: str, model: FinalModelData):
@@ -94,7 +70,7 @@ class ConciseModelResponse(BaseModel):
         return cls(
             id=id,
             display_name=model.display_name,
-            supports=cls._extract_supports(model),
+            supports=ConciseModelSupports.from_domain(model),
             quality_index=model.quality_index,
             cost_per_input_token_usd=provider_data.text_price.prompt_cost_per_token,
             cost_per_output_token_usd=provider_data.text_price.completion_cost_per_token,
@@ -106,7 +82,8 @@ class ConciseModelResponse(BaseModel):
         return cls(
             id=model.id,
             display_name=model.name,
-            supports=cls._extract_supports(model),
+            # TODO:Not great to call get_model_data here. ModelForTask should just use ModelData
+            supports=ConciseModelSupports.from_domain(get_model_data(Model(model.id))),
             quality_index=model.quality_index,
             cost_per_input_token_usd=model.price_per_input_token_usd,
             cost_per_output_token_usd=model.price_per_output_token_usd,
@@ -266,10 +243,6 @@ class MCPToolReturn(BaseModel, Generic[T]):
     message: str | None = None
     data: T | None = None
     error: str | None = None
-
-
-class AIEngineerReponseWithUsefulLinks(AIEngineerReponse):
-    useful_links: UsefulLinks
 
 
 class PaginatedMCPToolReturn(BaseModel, Generic[NullableT, ItemT]):

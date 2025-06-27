@@ -41,15 +41,6 @@ AUDIO_MIME_TO_FORMAT_MAP = TwoWayDict[str, str](
     ("audio/x-mpeg", "mp3"),
 )
 
-MODEL_NAME_MAP = {
-    Model.O1_2024_12_17_HIGH_REASONING_EFFORT: "o1-2024-12-17",
-    Model.O1_2024_12_17_MEDIUM_REASONING_EFFORT: "o1-2024-12-17",
-    Model.O1_2024_12_17_LOW_REASONING_EFFORT: "o1-2024-12-17",
-    Model.O3_MINI_2025_01_31_HIGH_REASONING_EFFORT: "o3-mini-2025-01-31",
-    Model.O3_MINI_2025_01_31_MEDIUM_REASONING_EFFORT: "o3-mini-2025-01-31",
-    Model.O3_MINI_2025_01_31_LOW_REASONING_EFFORT: "o3-mini-2025-01-31",
-}
-
 
 class TextContent(BaseModel):
     type: Literal["text"] = "text"
