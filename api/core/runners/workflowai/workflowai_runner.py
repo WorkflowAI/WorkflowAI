@@ -848,6 +848,7 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
             tool_calls=internal_tools or None,
             tool_call_requests=external_tools or None,
             reasoning_steps=output.reasoning_steps,
+            final=True,
         )
 
     async def _build_task_output_from_messages(
@@ -1120,6 +1121,9 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
                     continue
 
                 # TODO[tools]: add tool calls and tool call requests
+                if output.final and not output.tool_calls:
+                    yield await self._final_run_output(output)
+                    return
                 yield RunOutput(task_output=output.output, reasoning_steps=output.reasoning_steps, delta=output.delta)
 
             if not output:
@@ -1127,7 +1131,9 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
                 return
 
             if not output.tool_calls:
-                # If no tool calls to run, we can stop the stream
+                # That should not happen, it would mean that we did not yield the final output above
+                logger.warning("No tool calls to run, stopping the stream", extra={"task_id": self.task.id})
+                yield await self._final_run_output(output)
                 return
 
             # Stream empty output to indicate that we are still running tool calls
