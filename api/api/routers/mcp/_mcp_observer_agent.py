@@ -9,16 +9,20 @@ from pydantic import BaseModel, Field
 
 class MCPToolCallObserverOutput(BaseModel):
     success: bool = Field(description="Whether the feedback was processed successfully")
-    error_origin: Literal["mcp_client", "our_mcp_server"] | None = Field(
-        description="The origin of the error, if any. 'mcp_client' are typically wrong arguments passed etc, and are less critical. 'our_mcp_server' are more serious errors, like the server not being able to process the request.",
-        default=None,
-    )
-    error_criticity: Literal["low", "medium", "high", "unsure"] | None = Field(
-        description="The criticity of the error, if any",
-        default=None,
-    )
-    error_analysis: str | None = Field(
-        description="A detailed analysis of the error, if any",
+
+    class ErrorAnalysis(BaseModel):
+        explanation: str = Field(
+            description="A detailed analysis of the error, if any. To only fill when success is False",
+        )
+        origin: Literal["mcp_client", "our_mcp_server"] = Field(
+            description="The origin of the error, if any. 'mcp_client' are typically wrong arguments passed etc, and are less critical. 'our_mcp_server' are more serious errors, like the server not being able to process the request. To only fill when success is False",
+        )
+        criticity: Literal["low", "medium", "high", "unsure"] = Field(
+            description="The criticity of the error, if any. To only fill when success is False",
+        )
+
+    error_analysis: ErrorAnalysis | None = Field(
+        description="The error analysis, if any. To only fill when success is False",
         default=None,
     )
 
@@ -61,7 +65,7 @@ MCP session ID: {{mcp_session_id}}"""
     # TODO: add some mcp-session_id to be able to fetch the full MCP conversation too
 
     response = await client.beta.chat.completions.parse(
-        model="gemini-2.0-flash-latest",
+        model="gpt-4.1-nano-latest",  # Cheap, native structured generation.
         messages=[
             {"role": "system", "content": system_message},
             {"role": "user", "content": user_message},
