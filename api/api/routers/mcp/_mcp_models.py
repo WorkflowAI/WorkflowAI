@@ -694,6 +694,19 @@ class MCPRun(BaseModel):
         )
 
 
+class HostedToolItem(BaseModel):
+    """A tool hosted by WorkflowAI.
+    To use a WorkflowAI hosted tool:
+    - either refer to the tool name (e.g., '@search-google') in the first system message of
+    the completion request
+    - pass a tool with a corresponding name and no arguments in the `tools` argument of the completion request
+    """
+
+    name: str = Field(description="The tool handle/name (e.g., '@search-google')")
+    description: str = Field(description="Description of what the tool does")
+    price: str | None = Field(description="Pricing information for the tool")
+
+
 class SearchResponse(BaseModel):
     page_content: str | None = Field(
         default=None,

@@ -119,9 +119,8 @@ async def browser_text_with_proxy_setting(url: str, proxy_setting: ProxySetting 
 
 
 # WARNING update this function's name and signature with caution since it's an internal tool for agent.
-# NOTE: This function's docstring is exposed as public API documentation
-# via the GET /v1/tools/hosted endpoint. Changes to the docstring will
-# be reflected in external documentation.
+# NOTE: Tool descriptions are now defined in api/core/tools/tool_definitions.py
+# This docstring is for internal documentation only.
 async def browser_text(url: str) -> str:
     """Extracts and converts web page content from the given URL into clean, readable markdown format. This is a text-only browser tool that cannot see images, click elements, interact with JavaScript, or perform any dynamic actions - it only parses and returns the static text content of web pages."""
 
