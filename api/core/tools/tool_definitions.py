@@ -19,7 +19,7 @@ class BaseTool(BaseModel, ABC):
 class GoogleSearchTool(BaseTool):
     """Google search tool definition."""
 
-    name: str = "@search-google"
+    name: str = "@google-search"
     description: str = (
         "Performs a Google web search using Serper.dev API and returns search results "
         "including links, snippets, and related information in JSON format."
