@@ -18,6 +18,7 @@ from core.domain.review import Review
 from core.domain.task_group import TaskGroup
 from core.domain.tool_call import ToolCall, ToolCallRequestWithID
 from core.domain.utils import compute_eval_hash
+from core.domain.version_environment import VersionEnvironment
 
 AIReview = Literal["in_progress", "positive", "negative", "unsure"]
 
@@ -130,16 +131,30 @@ class AgentRun(AgentRunBase):
     conversation_id: str | None = None
 
     @property
-    def used_environment(self) -> str | None:
+    def used_environment(self) -> VersionEnvironment | None:
         if not self.metadata:
             return None
 
-        if METADATA_KEY_DEPLOYMENT_ENVIRONMENT in self.metadata:
-            return str(self.metadata[METADATA_KEY_DEPLOYMENT_ENVIRONMENT])
+        try:
+            if METADATA_KEY_DEPLOYMENT_ENVIRONMENT in self.metadata:
+                return VersionEnvironment(self.metadata[METADATA_KEY_DEPLOYMENT_ENVIRONMENT])
 
-        if METADATA_KEY_DEPLOYMENT_ENVIRONMENT_DEPRECATED in self.metadata:
-            return str(self.metadata[METADATA_KEY_DEPLOYMENT_ENVIRONMENT_DEPRECATED]).removeprefix("environment=")
+            if METADATA_KEY_DEPLOYMENT_ENVIRONMENT_DEPRECATED in self.metadata:
+                return VersionEnvironment(
+                    self.metadata[METADATA_KEY_DEPLOYMENT_ENVIRONMENT_DEPRECATED].removeprefix(
+                        "environment=",
+                    ),
+                )
+        except ValueError:
+            logging.getLogger(__name__).exception("error parsing used environment", extra={"run_id": self.id})
+            pass
         return None
+
+    @property
+    def filtered_metadata(self) -> dict[str, Any] | None:
+        if not self.metadata:
+            return None
+        return {k: v for k, v in self.metadata.items() if not k.startswith("workflowai.")}
 
     @model_validator(mode="after")
     def post_validate(self):

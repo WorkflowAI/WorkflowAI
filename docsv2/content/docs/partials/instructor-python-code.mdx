@@ -1,6 +1,8 @@
 ---
 title: Instructor Python Code
+summary: How to use the Instructor Python SDK with WorkflowAI. WorkflowAI exposes a compatible OpenAI API endpoint. The only changes you need to make are updating the `base_url`, `api_key`, and use the recommended `mode`.
 ---
+
 ```python
 import instructor
 from openai import OpenAI
@@ -9,7 +11,7 @@ from pydantic import BaseModel
 # setup WorkflowAI client
 workflowai_client = OpenAI(
   base_url="https://run.workflowai.com/v1", # [!code highlight]
-  api_key="wai-***", # workflowai.com/keys or create_api_key MCP tool // [!code highlight]
+  api_key="wai-***", # use create_api_key MCP tool // [!code highlight]
 )
 
 client = instructor.from_openai(workflowai_client,

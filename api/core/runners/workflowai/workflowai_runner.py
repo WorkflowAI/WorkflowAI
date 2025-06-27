@@ -27,7 +27,7 @@ from core.domain.fields.image_options import ImageOptions
 from core.domain.message import Message, MessageContent, MessageDeprecated, Messages
 from core.domain.metrics import send_gauge
 from core.domain.models.model_data import FinalModelData, ModelData
-from core.domain.models.model_datas_mapping import MODEL_DATAS
+from core.domain.models.model_data_mapping import MODEL_DATAS
 from core.domain.models.models import Model
 from core.domain.models.utils import get_model_data, get_model_provider_data
 from core.domain.reasoning_step import INTERNAL_REASONING_STEPS_SCHEMA_KEY
@@ -386,7 +386,7 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
             # not show the output schema
             is_structured_generation_enabled=is_structured_generation_enabled
             and not self._prepared_output_schema.no_schema,
-            supports_input_schema=data.support_input_schema,
+            supports_input_schema=data.supports_input_schema,
         )
         return provider.sanitize_template(sanitized)
 
@@ -1063,6 +1063,8 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
             enabled_tools=list(self._all_tools()),
             tool_choice=self._options.tool_choice,
             timeout=self._timeout,
+            reasoning_effort=self._options.reasoning_effort,
+            reasoning_budget=self._options.reasoning_budget,
         )
 
         model_data_copy = model_data.model_copy()
@@ -1179,7 +1181,7 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
         task: SerializableTaskVariant,
         properties: TaskGroupProperties,
     ) -> WorkflowAIRunnerOptions:
-        model, provider = sanitize_model_and_provider(properties.model, properties.provider)
+        model, provider, reasoning_effort = sanitize_model_and_provider(properties.model, properties.provider)
 
         is_structured_generation_enabled = (
             False if task.output_schema.is_structured_output_disabled else properties.is_structured_generation_enabled
@@ -1191,7 +1193,7 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
                 template_name=properties.template_name,
                 is_tool_use_enabled=len(properties.enabled_tools or []) > 0,
                 is_structured_generation_enabled=is_structured_generation_enabled or False,
-                supports_input_schema=get_model_data(model).support_input_schema,
+                supports_input_schema=get_model_data(model).supports_input_schema,
             )
         else:
             template_name = None
@@ -1205,6 +1207,8 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
         raw["model"] = model
         raw["template_name"] = template_name
         raw["is_structured_generation_enabled"] = is_structured_generation_enabled
+        if reasoning_effort is not None:
+            raw["reasoning_effort"] = reasoning_effort
 
         if properties.few_shot:
             if properties.few_shot.examples:

@@ -1462,7 +1462,7 @@ export type RunV1 = {
    * Tool calls that should be executed client side.
    */
   tool_call_requests: Array<APIToolCallRequest> | null;
-  metadata: Record<string, unknown> | null;
+  metadata?: Record<string, unknown> | null;
 };
 
 export type SearchFields = {

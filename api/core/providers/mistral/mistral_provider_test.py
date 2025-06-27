@@ -549,7 +549,7 @@ class TestComplete:
                 output_factory=lambda x, _: StructuredOutput(json.loads(x)),
             )
 
-        assert not e.value.store_task_run
+        assert e.value.store_task_run
 
     async def test_max_tokens_exceeded(self, httpx_mock: HTTPXMock, mistral_provider: MistralAIProvider):
         httpx_mock.add_response(

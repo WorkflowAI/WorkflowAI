@@ -275,6 +275,31 @@ class TestPrepareRunForDeployment:
         )
         assert result.final_input == Messages.with_messages(Message.with_text("Hello, world!"))
 
+    async def test_with_agent_id_with_underscores(self, proxy_handler: OpenAIProxyHandler, mock_storage: Mock):
+        """Check that we slugify the agent id if it's not a slug"""
+        mock_storage.task_deployments.get_task_deployment.return_value = test_models.task_deployment(
+            properties=TaskGroupProperties(
+                model="gpt-4o",
+                task_variant_id="my-variant",  # type: ignore
+                # No messages
+            ),
+        )
+        mock_storage.task_version_resource_by_id.return_value = test_models.task_variant(task_id="my_agent")
+        result = await proxy_handler._prepare_for_deployment(
+            agent_ref=EnvironmentRef(agent_id="my_agent", schema_id=1, environment=VersionEnvironment.PRODUCTION),
+            tenant_data=PublicOrganizationData(),
+            messages=Messages.with_messages(Message.with_text("Hello, world!")),
+            input=None,
+            response_format=None,
+        )
+        assert result.final_input == Messages.with_messages(Message.with_text("Hello, world!"))
+
+        mock_storage.task_deployments.get_task_deployment.assert_called_once_with(
+            "my_agent",
+            1,
+            "production",
+        )
+
 
 class TestPrepareRunForModel:
     @pytest.fixture(autouse=True)
@@ -401,3 +426,14 @@ class TestBuildVariant:
 
         assert result.task_id == "lagent-de-la-mere"
         assert result.name == "L'agent de la mère"
+
+    def test_build_variant_with_agent_id_with_underscores(self):
+        result, idx = OpenAIProxyHandler._build_variant(
+            messages=Messages.with_messages(Message.with_text("Hello, world!", role="user")),
+            agent_slug="my_agent",
+            input=None,
+            response_format=None,
+        )
+        assert idx == -1
+        assert result.task_id == "my_agent"
+        assert result.name == "My Agent"

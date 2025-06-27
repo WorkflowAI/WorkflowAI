@@ -1,4 +1,5 @@
 import datetime
+import logging
 import time
 from typing import Annotated, Any, Literal
 
@@ -6,6 +7,7 @@ from fastmcp import FastMCP
 from fastmcp.server.dependencies import get_http_request
 from pydantic import BaseModel, Field
 from starlette.exceptions import HTTPException
+from starlette.middleware import Middleware
 
 from api.dependencies.task_info import TaskTuple
 from api.routers.mcp._mcp_dependencies import get_mcp_service
@@ -16,7 +18,7 @@ from api.routers.mcp._mcp_models import (
     AgentSortField,
     ConciseLatestModelResponse,
     ConciseModelResponse,
-    DeployAgentResponse,
+    EmptyModel,
     MajorVersion,
     MCPRun,
     MCPToolReturn,
@@ -25,6 +27,7 @@ from api.routers.mcp._mcp_models import (
     SearchResponse,
     SortOrder,
 )
+from api.routers.mcp._mcp_observability_middleware import MCPObservabilityMiddleware
 from api.routers.mcp._mcp_serializer import tool_serializer
 from api.routers.openai_proxy._openai_proxy_models import (
     OpenAIProxyChatCompletionRequest,
@@ -33,9 +36,10 @@ from api.routers.openai_proxy._openai_proxy_models import (
 from api.services.documentation_service import DocumentationService
 from api.services.tools_service import ToolsService
 from core.domain.tool import Tool
-from core.domain.users import UserIdentifier
 from core.storage.backend_storage import BackendStorage
 from core.utils.schema_formatter import format_schema_as_yaml_description
+
+logger = logging.getLogger(__name__)
 
 _mcp = FastMCP("WorkflowAI 🚀", tool_serializer=tool_serializer)  # pyright: ignore [reportUnknownVariableType]
 
@@ -86,7 +90,7 @@ async def list_models(
     ] = 1,
 ) -> PaginatedMCPToolReturn[None, ConciseModelResponse | ConciseLatestModelResponse]:
     """<when_to_use>
-    When you need to pick a model for the user's WorkflowAI agent, or any model-related goal.
+    To select a model for a WorkflowAI agent or explore available models.
     </when_to_use>
     <returns>
     Returns a list of all available AI models from WorkflowAI.
@@ -108,7 +112,7 @@ def description_for_list_agents() -> str:
     agent_item_description = format_schema_as_yaml_description(AgentListItem)
 
     return f"""<when_to_use>
-When the user wants to see all agents they have created, along with their basic statistics (run counts and costs).
+To list all WorkflowAI agents along with their basic statistics (run counts and costs).
 </when_to_use>
 <returns>
 Returns a list of agents with the following structure:
@@ -144,7 +148,15 @@ async def list_agents(
     )
 
 
-@_mcp.tool()
+@_mcp.tool(
+    description=f"""<when_to_use>
+    To retrieve detailed information about a specific WorkflowAI agent, including full input/output schemas, versions, name, description, and statistics.
+    </when_to_use>
+    <returns>
+    Return a single agent with the following structure:
+    {format_schema_as_yaml_description(AgentResponse)}
+    </returns>""",
+)
 async def get_agent(
     agent_id: Annotated[
         str,
@@ -159,17 +171,6 @@ async def get_agent(
         ),
     ] = None,
 ) -> MCPToolReturn[AgentResponse]:
-    """<when_to_use>
-    When the user wants to get detailed information about a specific agent, including full input/output schemas, versions, name, description, and statistics.
-    </when_to_use>
-    <returns>
-    Returns detailed information for a specific agent including:
-    - Full input and output JSON schemas for each schema version
-    - Agent name and description
-    - Complete schema information (created_at, is_hidden, last_active_at)
-    - Run statistics (run count and total cost)
-    - Agent metadata (is_public status)
-    </returns>"""
     service = await get_mcp_service()
     return await service.get_agent(
         agent_id=agent_id,
@@ -195,7 +196,7 @@ async def fetch_run_details(
     ] = None,
 ) -> MCPToolReturn[MCPRun]:
     """<when_to_use>
-    When the user wants to investigate a specific run of a WorkflowAI agent, for debugging, improving the agent, fixing a problem on a specific use case, or any other reason. This is particularly useful for:
+    To investigate a specific run of a WorkflowAI agent for debugging, improvement, or troubleshooting. This is particularly useful for:
     - Debugging failed runs by examining error details and input/output data
     - Analyzing successful runs to understand agent behavior and performance
     - Reviewing cost and duration metrics for optimization
@@ -252,7 +253,7 @@ async def get_agent_versions(
     ] = 1,
 ) -> PaginatedMCPToolReturn[None, MajorVersion]:
     """<when_to_use>
-    When the user wants to retrieve details of versions of a WorkflowAI agent, or when they want to compare a specific version of an agent.
+    To retrieve version details of a WorkflowAI agent or compare specific agent versions.
 
     Example:
     - when debugging a failed run, you can use this tool to get the parameters of the agent that was used.
@@ -298,7 +299,7 @@ async def search_runs(
     ] = 1,
 ) -> PaginatedMCPToolReturn[None, MCPRun]:
     """<when_to_use>
-    When the user wants to search agent runs based on various criteria including metadata values, run properties (status, time, cost, latency), model parameters, input/output content, and reviews.
+    To search agent runs based on various criteria including metadata values, run properties (status, time, cost, latency), model parameters, input/output content, and reviews.
     </when_to_use>
 
     <searchable_fields>
@@ -483,7 +484,7 @@ async def search_runs(
 
 
 @_mcp.tool()
-async def deploy_agent_version(
+async def get_deployment_confirmation_url(
     agent_id: Annotated[
         str,
         Field(
@@ -500,44 +501,49 @@ async def deploy_agent_version(
         Literal["dev", "staging", "production"],
         Field(description="The deployment environment. Must be one of: 'dev', 'staging', or 'production'"),
     ],
-) -> MCPToolReturn[DeployAgentResponse]:
+) -> MCPToolReturn[EmptyModel]:
     """<when_to_use>
-    When the user wants to deploy a specific version of their WorkflowAI agent to an environment (dev, staging, or production).
+    When the user wants to deploy a specific version of a WorkflowAI agent to an environment (dev, staging, or production). For example: "Deploy the version 1.0 of my chat-bot agent to the production environment".
 
-    The version ID can be obtained by:
-    1. Asking the user which version they want to deploy
-    2. Using the get_agent_versions tool to list available versions
-    3. Checking the response payload from a chat completion endpoint which contains version_id metadata
+    Note that the deployment is done by the user from the web app, not from the MCP client.
     </when_to_use>
-
     <returns>
-    Returns deployment confirmation with:
-    - version_id: The deployed version ID
-    - task_schema_id: The schema ID of the deployed version
-    - environment: The deployment environment
-    - deployed_at: The deployment timestamp
-    - message: Success message
-    - migration_guide: Detailed instructions on how to update your code to use the deployed version, including:
-      - model_parameter: The exact model parameter to use in your code
-      - migration_instructions: Step-by-step examples for both scenarios (with and without input variables)
-      - important_notes: Key considerations for the migration
+    Returns a link to the deployment page in WorkflowAI web app where the user needs to confirm the deployment. Once the user has confirmed the deployment, you can use the `get_agent_code` tool to get the code of the deployed version and make any changes to the code.
+    </returns>"""
+    # TODO: update to allow deep-link to a specific `version_id` with a specific `environment`
+    return MCPToolReturn(
+        success=True,
+        message=f"https://workflowai.com/agents/{agent_id}/deployments",
+        data=EmptyModel(),
+    )
+
+
+def _get_user_agent_from_request() -> str | None:
+    request = get_http_request()
+    return request.headers.get("user-agent")
+
+
+@_mcp.tool()
+async def send_feedback(
+    feedback: str = Field(description="Feedback about the MCP client's experience using the MCP server"),
+    context: str | None = Field(
+        default=None,
+        description="Optional context about the MCP operations that generated this feedback",
+    ),
+) -> MCPToolReturn[EmptyModel]:
+    """<when_to_use>
+    When an MCP client wants to provide feedback about its experience using the MCP server.
+    This tool is designed for automated feedback collection from MCP clients after they complete operations,
+    not for end-user feedback. The feedback helps improve MCP server functionality and user experience.
+
+    You can use this tool when you are running into issues with achieving your goal, or when you are not sure how to use the MCP server. Use this tool between your other tool calls.
+    </when_to_use>
+    <returns>
+    Returns acknowledgment that the feedback was received and sent for processing.
+    The actual analysis is handled asynchronously by the feedback processing agent.
     </returns>"""
     service = await get_mcp_service()
-    task_tuple = await get_task_tuple_from_task_id(service.storage, agent_id)
-
-    # Get user identifier for deployment tracking
-    # Since we already validated the token in get_mcp_service, we can create a basic user identifier
-    user_identifier = UserIdentifier(user_id=None, user_email=None)  # System user for MCP deployments
-
-    return await mcp_wrap(
-        service.deploy_agent_version(
-            task_tuple=task_tuple,
-            version_id=version_id,
-            environment=environment,
-            deployed_by=user_identifier,
-        ),
-        message=lambda x: f"Successfully deployed version {x.version_id} to {x.environment} environment",
-    )
+    return await service.send_feedback(feedback=feedback, context=context, user_agent=_get_user_agent_from_request())
 
 
 class CreateApiKeyResponse(BaseModel):
@@ -547,7 +553,7 @@ class CreateApiKeyResponse(BaseModel):
 @_mcp.tool()
 async def create_api_key() -> MCPToolReturn[CreateApiKeyResponse]:
     """<when_to_use>
-    When the user wants to get their API key for WorkflowAI. This is a temporary tool that returns the API key that was used to authenticate the current request.
+    To retrieve the API key for WorkflowAI. This is a temporary tool that returns the API key that was used to authenticate the current request.
     </when_to_use>
     <returns>
     Returns the API key that was used to authenticate the current MCP request.
@@ -593,7 +599,7 @@ async def list_hosted_tools() -> PaginatedMCPToolReturn[None, HostedToolItem]:
     Read the documentation about hosted tools using the `search_documentation` tool.
 
     <when_to_use>
-    When there is a need to see all available hosted tools in WorkflowAI, including web search, browser tools, and other built-in capabilities.
+    To view all available hosted tools in WorkflowAI, including web search, browser tools, and other built-in capabilities.
     </when_to_use>
 
     <returns>
@@ -620,6 +626,8 @@ def _get_description_search_documentation_tool() -> str:
      2. Direct navigation mode ('page' parameter): Fetch the complete content of a specific documentation page (see <available_pages> below for available pages). Use direct navigation mode when you want to read the full content of a specific page.
 
     We recommend combining search and direct navigation, and making multiple searches and direct navigations to get the most relevant knowledge.
+
+    You must at least always read the "foundations" page before starting any work with WorkflowAI, which contains the core concepts and architecture of WorkflowAI.
     </how_to_use>
 
      <available_pages>
@@ -646,8 +654,14 @@ async def search_documentation(
         default=None,
         description="Use page when you know which specific page contains the information you need.",
     ),
+    programming_language: str | None = Field(
+        default=None,
+        description="The programming language to generate code examples for (e.g., 'python', 'typescript', 'javascript', 'go', 'rust', 'java', 'csharp'). This can help provide more relevant documentation with language-specific examples.",
+    ),
 ) -> MCPToolReturn[SearchResponse]:
     service = await get_mcp_service()
+    # TODO: Pass programming_language to service when implementing POC
+    _ = programming_language  # Unused for now
     try:
         return await service.search_documentation(query=query, page=page)
     except MCPError as e:
@@ -676,13 +690,27 @@ async def create_completion(
     """Create a completion for an agent.
 
     <when_to_use>
-    When the user wants to create a completion for an agent.
-    It is possible to either create a brand new completion or to retry an existing run by overriding certain parameters.
-    When retrying a run, the model must be provided in the request. All other parameters are optional.
+    Use create_completion to:
+    - Test or compare different AI models without local setup
+    - Create a completion for a WorkflowAI agent (new or existing)
+    - Quickly prototype prompts, structured outputs, or templates
+    - Debug agent behavior by testing specific inputs
+    - Compare model performance (speed, cost, quality)
+    - Retry an existing run with different parameters (requires 'original_run_id' to be provided)
+
+    Supports all OpenAI API features including structured outputs (Pydantic models),
+    prompt templates with Jinja2, input variables, and tool calling.
+
+    When retrying a run, the model must be provided in the request. All other parameters are optional. The request
+    parameter is identical to the OpenAI completion request.
     </when_to_use>
 
     <returns>
-    Returns a completion response from the agent.
+    Returns a completion response from the agent. The object is identical to the OpenAI completion response, including:
+    - The AI model's response (text or structured output)
+    - Usage statistics (tokens, cost, duration)
+    - Run metadata (run ID, URL, feedback token)
+    - Model information (provider, actual model used)
     </returns>"""
 
     start_time = time.time()
@@ -692,4 +720,7 @@ async def create_completion(
 
 
 def mcp_http_app():
-    return _mcp.http_app(path="/", stateless_http=True)
+    custom_middleware = [
+        Middleware(MCPObservabilityMiddleware),
+    ]
+    return _mcp.http_app(path="/", stateless_http=True, middleware=custom_middleware)

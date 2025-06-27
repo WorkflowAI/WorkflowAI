@@ -8,6 +8,7 @@ import pytest
 from openai import AsyncOpenAI, RateLimitError
 from openai.types.chat.chat_completion_message_tool_call import ChatCompletionMessageToolCall, Function
 from openai.types.chat.chat_completion_stream_options_param import ChatCompletionStreamOptionsParam
+from pydantic import BaseModel, Field
 
 from core.domain.models.models import Model
 from core.domain.models.providers import Provider
@@ -752,7 +753,7 @@ async def test_with_model_fallback_on_rate_limit(
     # And manual fallback can be used to switch to a different model
     res: Any = await openai_client.chat.completions.create(
         **completion_kwargs,
-        extra_body={"use_fallback": [Model.O3_2025_04_16_LOW_REASONING_EFFORT], "use_cache": "never"},
+        extra_body={"use_fallback": [Model.O3_2025_04_16], "use_cache": "never"},
     )
     await test_client.wait_for_completed_tasks()
 
@@ -763,7 +764,7 @@ async def test_with_model_fallback_on_rate_limit(
         # We automatically add a system message for structured gen to anthropic and bedrock
         (Model.CLAUDE_3_5_SONNET_20241022, Provider.ANTHROPIC, anthropic_message_count, None),
         (Model.CLAUDE_3_5_SONNET_20241022, Provider.AMAZON_BEDROCK, anthropic_message_count, None),
-        (Model.O3_2025_04_16_LOW_REASONING_EFFORT, Provider.OPEN_AI, 1, approx((10 * 2 + 11 * 8) / 1_000_000)),
+        (Model.O3_2025_04_16, Provider.OPEN_AI, 1, approx((10 * 2 + 11 * 8) / 1_000_000)),
     ]
 
 
@@ -966,3 +967,92 @@ async def test_hosted_tools_in_version_messages(test_client: IntegrationTestClie
 
     run = await fetch_run_from_completion(test_client, res)
     assert run
+
+
+async def test_url_safe_but_non_slug_agent_id(test_client: IntegrationTestClient, openai_client: AsyncOpenAI):
+    """Make sure that we support a URL safe but non slug agent id"""
+    # First run
+    test_client.mock_openai_call(raw_content="Hello, world!")
+    res = await openai_client.chat.completions.create(
+        model="my_agent/gpt-4.1",
+        messages=[{"role": "user", "content": "Hello, world!"}],
+    )
+    assert res.choices[0].message.content == "Hello, world!"
+
+    task_id, _ = res.id.split("/")
+    assert task_id == "my_agent"
+
+    await test_client.wait_for_completed_tasks()
+
+    run = await fetch_run_from_completion(test_client, res)
+    assert run
+    assert run["task_id"] == "my_agent"
+
+    # Try again with a deployment
+    version = await save_version_from_completion(test_client, res)
+    await test_client.post(
+        f"/v1/_/agents/{task_id}/versions/{version['id']}/deploy",
+        json={"environment": "production"},
+    )
+
+    test_client.mock_openai_call(raw_content="Hello, world!")
+    res = await openai_client.chat.completions.create(
+        model="my_agent/#1/production",
+        messages=[{"role": "user", "content": "Hello, world!"}],
+    )
+    task_id, _ = res.id.split("/")
+    assert task_id == "my_agent"
+
+
+async def test_different_types_in_input(test_client: IntegrationTestClient, openai_client: AsyncOpenAI):
+    """Check that passing all json types floats, booleans, etc. works"""
+    test_client.mock_openai_call(raw_content="Hello, world!")
+    res = await openai_client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {
+                "role": "user",
+                "content": "{{ a_number }} {{ a_boolean }} {{ a_array }} {{ a_object }} {{ a_null }} {{ a_string }}",
+            },
+        ],
+        extra_body={
+            "input": {
+                "a_number": 1.0,
+                "a_boolean": True,
+                "a_array": [1, 2, 3],
+                "a_object": {"a": 1, "b": 2},
+                "a_null": None,
+                "a_string": "hello",
+            },
+        },
+    )
+    assert res.choices[0].message.content
+
+
+async def test_pydantic_structured_output(test_client: IntegrationTestClient, openai_client: AsyncOpenAI):
+    """Check that passing a pydantic model as a structured output works."""
+
+    class SearchDocumentationOutput(BaseModel):
+        relevant_doc_sections: list[str] | None = Field(
+            default=None,
+            description="List of documentation section titles that are most relevant to answer the query.",
+        )
+        missing_docs_feedback: str | None = Field(
+            default=None,
+            description="Optional. Feedback when useful documentation appears to be missing or when the query cannot be adequately answered with existing documentation.",
+        )
+
+    # The model will return a missing field since it has no values
+    # But the openai sdk makes all fields required
+    test_client.mock_openai_call(json_content={"relevant_doc_sections": ["Section 1", "Section 2"]})
+
+    res = await openai_client.beta.chat.completions.parse(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": "Hello, world!"}],
+        response_format=SearchDocumentationOutput,
+    )
+    parsed = res.choices[0].message.parsed
+    assert parsed == SearchDocumentationOutput(
+        relevant_doc_sections=["Section 1", "Section 2"],
+        missing_docs_feedback=None,
+    )

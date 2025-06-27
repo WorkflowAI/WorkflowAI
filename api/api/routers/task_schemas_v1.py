@@ -39,6 +39,7 @@ class AgentModelResponse(ModelResponse):
             metadata=ModelMetadata.from_service(model),
             is_default=model.is_default,
             providers=model.providers,
+            reasoning=cls.Reasoning.from_domain(model.model_data.reasoning) if model.model_data.reasoning else None,
         )
 
 

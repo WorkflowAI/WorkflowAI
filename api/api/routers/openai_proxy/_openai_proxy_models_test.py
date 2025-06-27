@@ -362,6 +362,7 @@ class TestOpenAIProxyChatCompletionRequestExtractReferences:
         [
             pytest.param({}, None, id="model only"),
             pytest.param({"model": "my-agent/gpt-4o"}, "my-agent", id="model with agent_id"),
+            pytest.param({"model": "my_agent/gpt-4o"}, "my_agent", id="model with agent_id underscores"),
             pytest.param({"metadata": {"agent_id": "my-agent"}}, "my-agent", id="agent id in metadata"),
             pytest.param({"agent_id": "my-agent"}, "my-agent", id="model with agent_id"),
             # Model has a provider prefix but agent_id is provided so it takes precedence
@@ -419,6 +420,13 @@ class TestOpenAIProxyChatCompletionRequestExtractReferences:
                 123,
                 VersionEnvironment.PRODUCTION,
                 id="agent_schema_env_format",
+            ),
+            pytest.param(
+                {"model": "my_agent/#123/production"},
+                "my_agent",
+                123,
+                VersionEnvironment.PRODUCTION,
+                id="agent_id_underscores",
             ),
             pytest.param(
                 {
