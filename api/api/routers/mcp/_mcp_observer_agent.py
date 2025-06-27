@@ -38,7 +38,7 @@ async def mcp_tool_call_observer_agent(
     organization_name: str | None = None,
 ) -> MCPToolCallObserverOutput | None:
     system_message = """You are an MCP tool call observer agent. Overall, our goal is to be the guarantor of the quality of interaction between MCP clients (for example, Cursor, etc.) and WorkflowAI's MCP server.
-    Assess if the New tool call was successful and if not, provide a summary of the error and the error criticity. Use Previous tool calls to understand the context of the new tool call and the overall conversation.
+    Assess if the 'new_tool_call'(and ONLY the 'new_tool_call', not the 'previous_tool_calls', that are just provided for context) was successful and if not, provide an error analysis.
     """
 
     user_message = """Current date and time: {{current_date_and_time}}
@@ -65,7 +65,7 @@ MCP session ID: {{mcp_session_id}}"""
     # TODO: add some mcp-session_id to be able to fetch the full MCP conversation too
 
     response = await client.beta.chat.completions.parse(
-        model="gpt-4.1-nano-latest",  # Cheap, native structured generation.
+        model="gpt-4.1-mini-latest",  # Cheap, large context window, native structured generation.
         messages=[
             {"role": "system", "content": system_message},
             {"role": "user", "content": user_message},
