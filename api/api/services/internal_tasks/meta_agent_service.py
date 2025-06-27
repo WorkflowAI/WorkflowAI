@@ -42,6 +42,7 @@ from core.agents.meta_agent import (
 )
 from core.agents.meta_agent_proxy import (
     GENERIC_INSTRUCTIONS,
+    HOSTED_TOOL_UPDATE_INSTRUCTIONS,
     PROPOSE_DEPLOYMENT_INSTRUCTIONS,
     PROPOSE_INPUT_VARIABLES_INSTRUCTIONS,
     PROPOSE_INPUT_VARIABLES_INSTRUCTIONS_NO_VERSION_MESSAGES,
@@ -68,6 +69,7 @@ from core.agents.meta_agent_user_confirmation_agent import (
 from core.agents.output_schema_extractor_agent import OutputSchemaExtractorInput, output_schema_extractor_agent
 from core.domain.agent_run import AgentRun
 from core.domain.consts import METADATA_KEY_DEPLOYMENT_ENVIRONMENT
+from core.domain.documentation_section import DocumentationSection
 from core.domain.events import EventRouter, MetaAgentChatMessagesSent
 from core.domain.fields.chat_message import ChatMessage
 from core.domain.fields.file import File
@@ -335,6 +337,17 @@ class AddToolToolCall(MetaAgentToolCall):
         return None
 
 
+class DirectVersionMessagesToolCall(MetaAgentToolCall):
+    tool_name: str = "direct_version_messages"
+
+    messages: list[dict[str, Any]] = Field(
+        description="The direct version messages to update the agent with.",
+    )
+
+    def to_domain(self) -> None:
+        return None
+
+
 MetaAgentToolCallType: TypeAlias = (
     ImprovePromptToolCall
     | EditSchemaToolCall
@@ -342,6 +355,7 @@ MetaAgentToolCallType: TypeAlias = (
     | GenerateAgentInputToolCall
     | UpdateVersionMessagesToolCall
     | AddToolToolCall
+    | DirectVersionMessagesToolCall
 )
 
 
@@ -731,7 +745,9 @@ class MetaAgentService:
                 company_products=context.company_description.products if context.company_description else None,
                 existing_agents_descriptions=context.existing_agents or [],
             ),
-            workflowai_documentation_sections=await DocumentationService().get_relevant_doc_sections(
+            workflowai_documentation_sections=[]
+            if playground_state.is_proxy
+            else await DocumentationService().get_relevant_doc_sections(
                 chat_messages=[message.to_chat_message() for message in messages],
                 agent_instructions=META_AGENT_INSTRUCTIONS or "",
             ),
@@ -1227,6 +1243,15 @@ class MetaAgentService:
             ],
         )
 
+    async def _pick_relevant_doc_sections(
+        self,
+        messages: list[MetaAgentChatMessage],
+    ) -> list[DocumentationSection]:
+        return await DocumentationService().get_relevant_doc_sections(
+            chat_messages=[message.to_chat_message() for message in messages],
+            agent_instructions=GENERIC_INSTRUCTIONS or "",
+        )
+
     async def _build_proxy_meta_agent_input(
         self,
         task_tuple: TaskTuple,
@@ -1235,6 +1260,7 @@ class MetaAgentService:
         messages: list[MetaAgentChatMessage],
         current_agent: SerializableTaskVariant,
         playground_state: PlaygroundState,
+        hosted_tool_update_mode: bool = False,
     ) -> tuple[ProxyMetaAgentInput, list[AgentRun]]:
         # Fetch context data with exception handling
         context = await self._fetch_proxy_meta_agent_context(
@@ -1263,6 +1289,21 @@ class MetaAgentService:
             else None
         )
 
+        if hosted_tool_update_mode:
+            # In the case when the use case is very well defined, we avoid dynamically picking a documentation section to save time—and manually pick the one to use.
+            overidden_doc_sections = ["agents/tools"]
+            relevant_doc_sections = await DocumentationService().get_documentation_by_path(
+                paths=overidden_doc_sections,
+            )
+            if len(relevant_doc_sections) == 0:
+                self._logger.error(
+                    "Could not find overridden doc sections, reverting to dynamically picking relevant doc sections",
+                    extra={"overidden_doc_sections": ", ".join(overidden_doc_sections)},
+                )
+                relevant_doc_sections = await self._pick_relevant_doc_sections(messages)
+        else:
+            relevant_doc_sections = await self._pick_relevant_doc_sections(messages)
+
         return ProxyMetaAgentInput(
             current_datetime=datetime.datetime.now(tz=datetime.timezone.utc),
             chat_messages=[message.to_proxy_domain() for message in messages],
@@ -1285,10 +1326,7 @@ class MetaAgentService:
                 company_products=context.company_description.products if context.company_description else None,
                 existing_agents_descriptions=context.existing_agents or [],
             ),
-            workflowai_documentation_sections=await DocumentationService().get_relevant_doc_sections(
-                chat_messages=[message.to_chat_message() for message in messages],
-                agent_instructions=GENERIC_INSTRUCTIONS or "",
-            ),
+            workflowai_documentation_sections=relevant_doc_sections,
             integration_documentation=[],  # Will be filled in later in 'stream_meta_agent_chat'
             available_hosted_tools_description=internal_tools_description(
                 include={ToolKind.WEB_BROWSER_TEXT, ToolKind.WEB_SEARCH_PERPLEXITY_SONAR_PRO},
@@ -1301,6 +1339,7 @@ class MetaAgentService:
                 available_models=await self._proxy_build_model_list("", current_agent),  # TODO: add instructions
                 selected_models=playground_state.selected_models.to_domain(),
                 playground_agent_runs=playground_agent_runs,
+                version_messages=playground_state.version_messages,
             ),
             agent_lifecycle_info=ProxyMetaAgentInput.AgentLifecycleInfo(
                 deployment_info=ProxyMetaAgentInput.AgentLifecycleInfo.DeploymentInfo(
@@ -1510,11 +1549,17 @@ class MetaAgentService:
         edit_schema_structure_request: EditSchemaStructureToolCallRequest | None,
         edit_schema_description_and_examples_request: EditSchemaDescriptionAndExamplesToolCallRequest | None,
         generate_input_request: GenerateAgentInputToolCallRequest | None,
+        direct_version_messages: list[dict[str, Any]] | None = None,
     ) -> MetaAgentToolCallType | None:
         tool_call_to_return = None
         if improvement_instructions:
             tool_call_to_return = UpdateVersionMessagesToolCall(
                 improvement_instructions=improvement_instructions,
+            )
+
+        if direct_version_messages:
+            tool_call_to_return = DirectVersionMessagesToolCall(
+                messages=direct_version_messages,
             )
 
         if new_tool:
@@ -1571,6 +1616,7 @@ class MetaAgentService:
         user_email: str | None,
         messages: list[MetaAgentChatMessage],
         playground_state: PlaygroundState,
+        hosted_tool_update_mode: bool = False,
     ) -> AsyncIterator[list[MetaAgentChatMessage]]:
         now = datetime.datetime.now(tz=datetime.timezone.utc)
         if len(messages) == 0:
@@ -1599,6 +1645,7 @@ class MetaAgentService:
             messages,
             current_agent,
             playground_state,
+            hosted_tool_update_mode,
         )
 
         integration = await self._resolve_integration_for_agent(current_agent, agent_runs, task_tuple, agent_schema_id)
@@ -1890,6 +1937,10 @@ Please double check:
                             ),
                         ]
                         return
+            elif hosted_tool_update_mode:
+                use_tools = True
+                instructions = HOSTED_TOOL_UPDATE_INSTRUCTIONS
+                message_kind = "non_specific"
             else:
                 # This is a another client message like 'I want to do ...'
                 use_tools = True
@@ -1907,6 +1958,7 @@ Please double check:
             None
         )
         generate_input_request_chunk: GenerateAgentInputToolCallRequest | None = None
+        direct_version_messages_chunk: list[dict[str, Any]] | None = None
         tool_call_to_return: MetaAgentToolCallType | None = None
         async for chunk in proxy_meta_agent(
             input=proxy_meta_agent_input,
@@ -1918,6 +1970,7 @@ Please double check:
             agent_has_output_schema=is_using_structured_generation,
             is_using_input_variables=is_using_instruction_variables,
             is_agent_deployed=agent_deployment is not None,
+            hosted_tool_update_mode=hosted_tool_update_mode,
         ):
             if chunk.assistant_answer:
                 accumulator = await self._sanitize_output_string(accumulator + chunk.assistant_answer, integration)
@@ -1949,6 +2002,8 @@ Please double check:
             edit_schema_description_and_examples_request_chunk = chunk.edit_schema_description_and_examples_request
             if chunk.generate_input_request:
                 generate_input_request_chunk = chunk.generate_input_request
+            if chunk.direct_version_messages:
+                direct_version_messages_chunk = chunk.direct_version_messages
 
         tool_call_to_return = self._extract_tool_call_to_return(
             improvement_instructions_chunk,
@@ -1957,6 +2012,7 @@ Please double check:
             edit_schema_structure_request_chunk,
             edit_schema_description_and_examples_request_chunk,
             generate_input_request_chunk,
+            direct_version_messages_chunk,
         )
 
         if tool_call_to_return:
