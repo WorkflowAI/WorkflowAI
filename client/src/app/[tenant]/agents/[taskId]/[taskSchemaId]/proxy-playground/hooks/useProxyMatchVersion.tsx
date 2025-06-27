@@ -49,11 +49,19 @@ export function useProxyMatchVersion(props: Props) {
 
       const versionToolChoiceValue = valueFromToolChoice(version.properties.tool_choice);
 
+      const versionTemperature =
+        version.properties.temperature ?? parseValidNumber(defaultValueForAdvencedSetting('temperature'));
+      const versionTopP = version.properties.top_p ?? parseValidNumber(defaultValueForAdvencedSetting('top_p'));
+      const versionFrequencyPenalty =
+        version.properties.frequency_penalty ?? parseValidNumber(defaultValueForAdvencedSetting('frequency_penalty'));
+      const versionPresencePenalty =
+        version.properties.presence_penalty ?? parseValidNumber(defaultValueForAdvencedSetting('presence_penalty'));
+
       return (
-        version.properties.temperature === numberTemperature &&
-        version.properties.top_p === numberTopP &&
-        version.properties.frequency_penalty === numberFrequencyPenalty &&
-        version.properties.presence_penalty === numberPresencePenalty &&
+        versionTemperature === numberTemperature &&
+        versionTopP === numberTopP &&
+        versionFrequencyPenalty === numberFrequencyPenalty &&
+        versionPresencePenalty === numberPresencePenalty &&
         versionToolChoiceValue === toolChoice &&
         candidateProxyMessagesValue === stringifiedProxyMessages
       );
