@@ -337,8 +337,8 @@ class AddToolToolCall(MetaAgentToolCall):
         return None
 
 
-class DirectVersionMessagesToolCall(MetaAgentToolCall):
-    tool_name: str = "direct_version_messages"
+class DirectUpdateVersionMessages(MetaAgentToolCall):
+    tool_name: str = "update_version_messages_direct"
 
     messages: list[dict[str, Any]] = Field(
         description="The direct version messages to update the agent with.",
@@ -355,7 +355,7 @@ MetaAgentToolCallType: TypeAlias = (
     | GenerateAgentInputToolCall
     | UpdateVersionMessagesToolCall
     | AddToolToolCall
-    | DirectVersionMessagesToolCall
+    | DirectUpdateVersionMessages
 )
 
 
@@ -1549,7 +1549,7 @@ class MetaAgentService:
         edit_schema_structure_request: EditSchemaStructureToolCallRequest | None,
         edit_schema_description_and_examples_request: EditSchemaDescriptionAndExamplesToolCallRequest | None,
         generate_input_request: GenerateAgentInputToolCallRequest | None,
-        direct_version_messages: list[dict[str, Any]] | None = None,
+        updated_version_messages: list[dict[str, Any]] | None = None,
     ) -> MetaAgentToolCallType | None:
         tool_call_to_return = None
         if improvement_instructions:
@@ -1557,9 +1557,9 @@ class MetaAgentService:
                 improvement_instructions=improvement_instructions,
             )
 
-        if direct_version_messages:
-            tool_call_to_return = DirectVersionMessagesToolCall(
-                messages=direct_version_messages,
+        if updated_version_messages:
+            tool_call_to_return = DirectUpdateVersionMessages(
+                messages=updated_version_messages,
             )
 
         if new_tool:
@@ -1958,7 +1958,7 @@ Please double check:
             None
         )
         generate_input_request_chunk: GenerateAgentInputToolCallRequest | None = None
-        direct_version_messages_chunk: list[dict[str, Any]] | None = None
+        updated_version_messages_chunk: list[dict[str, Any]] | None = None
         tool_call_to_return: MetaAgentToolCallType | None = None
         async for chunk in proxy_meta_agent(
             input=proxy_meta_agent_input,
@@ -2002,8 +2002,8 @@ Please double check:
             edit_schema_description_and_examples_request_chunk = chunk.edit_schema_description_and_examples_request
             if chunk.generate_input_request:
                 generate_input_request_chunk = chunk.generate_input_request
-            if chunk.direct_version_messages:
-                direct_version_messages_chunk = chunk.direct_version_messages
+            if chunk.updated_version_messages:
+                updated_version_messages_chunk = chunk.updated_version_messages
 
         tool_call_to_return = self._extract_tool_call_to_return(
             improvement_instructions_chunk,
@@ -2012,7 +2012,7 @@ Please double check:
             edit_schema_structure_request_chunk,
             edit_schema_description_and_examples_request_chunk,
             generate_input_request_chunk,
-            direct_version_messages_chunk,
+            updated_version_messages_chunk,
         )
 
         if tool_call_to_return:

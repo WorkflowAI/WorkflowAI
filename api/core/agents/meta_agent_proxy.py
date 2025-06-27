@@ -550,7 +550,7 @@ class ProxyMetaAgentOutput(BaseModel):
         description="The generate input request, if any",
     )
 
-    direct_version_messages: list[dict[str, Any]] | None = Field(
+    updated_version_messages: list[dict[str, Any]] | None = Field(
         default=None,
         description="The directly generated version messages, if any",
     )
@@ -580,7 +580,7 @@ def parse_tool_call(tool_call: Any) -> ParsedToolCall:
     - edit_schema_description_and_examples: edit_schema_description_and_examples_request
     - run_agent_on_model: run_trigger_config
     - generate_agent_input: generate_input_request
-    - updated_version_messages: direct_version_messages
+    - updated_version_messages: updated_version_messages
     """
     if not tool_call.function or not tool_call.function.arguments:
         return ParsedToolCall()
@@ -1363,5 +1363,5 @@ async def proxy_meta_agent(
             edit_schema_structure_request=parsed_tool_call.edit_schema_structure_request,
             edit_schema_description_and_examples_request=parsed_tool_call.edit_schema_description_and_examples_request,
             generate_input_request=parsed_tool_call.generate_input_request,
-            direct_version_messages=parsed_tool_call.updated_version_messages,
+            updated_version_messages=parsed_tool_call.updated_version_messages,
         )
