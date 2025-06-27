@@ -12,7 +12,7 @@ import { TaskSchemaID } from '@/types/aliases';
 import { StreamError } from '@/types/errors';
 import { JsonSchema } from '@/types/json_schema';
 import { GeneralizedTaskInput } from '@/types/task_run';
-import { ProxyMessage, ToolKind, Tool_Output } from '@/types/workflowAI';
+import { ModelResponse, ProxyMessage, ToolKind, Tool_Output } from '@/types/workflowAI';
 import { useFetchTaskRunUntilCreated } from '../../playground/hooks/useFetchTaskRunUntilCreated';
 import {
   ProxyPlaygroundModels,
@@ -22,6 +22,19 @@ import {
 } from '../utils';
 import { AdvancedSettings } from './useProxyPlaygroundSearchParams';
 import { useProxyStreamedChunks } from './useProxyStreamedChunks';
+
+function isModelReasoning(model: string, models: ModelResponse[]): boolean {
+  if (!model) {
+    return false;
+  }
+
+  const matchedModel = models.find((m) => m.id === model);
+  if (!matchedModel) {
+    return false;
+  }
+
+  return matchedModel.reasoning !== undefined;
+}
 
 type Props = {
   tenant: TenantID | undefined;
@@ -44,6 +57,7 @@ type Props = {
   input: GeneralizedTaskInput | undefined;
   setScheduledPlaygroundStateMessage: (message: string | undefined) => void;
   advancedSettings: AdvancedSettings;
+  models: ModelResponse[];
 };
 
 export function useProxyPerformRuns(props: Props) {
@@ -68,6 +82,7 @@ export function useProxyPerformRuns(props: Props) {
     input,
     setScheduledPlaygroundStateMessage,
     advancedSettings,
+    models,
   } = props;
 
   const variantIdRef = useRef<string | undefined>(variantId);
@@ -222,11 +237,13 @@ export function useProxyPerformRuns(props: Props) {
         return;
       }
 
-      // After adding the resoning to the endpoint we should also use the returned reasoning
-      const { model } = getModelAndReasoning(index, outputModelsRef.current);
+      const { model, reasoning } = getModelAndReasoning(index, outputModelsRef.current);
+
       if (!model) {
         return;
       }
+
+      const isReasoningModel = isModelReasoning(model, models);
 
       if (model) {
         removeModelError(model);
@@ -255,6 +272,7 @@ export function useProxyPerformRuns(props: Props) {
           taskId,
           variantId,
           model,
+          isReasoningModel ? reasoning ?? 'medium' : undefined,
           cleanedInput,
           proxyMessagesRef.current ?? [],
           advancedSettingsRef.current,
@@ -326,6 +344,7 @@ export function useProxyPerformRuns(props: Props) {
       setModelError,
       removeModelError,
       performRunProxy,
+      models,
     ]
   );
 

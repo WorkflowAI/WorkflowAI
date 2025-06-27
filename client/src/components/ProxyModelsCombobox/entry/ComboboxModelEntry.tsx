@@ -123,7 +123,7 @@ export function ComboboxModelEntry(props: ComboboxModelEntryProps) {
               />
             </SimpleTooltip>
           )}
-          {mode === 'popover' && (
+          {mode === 'popover' && isModelSupportingReasoning && (
             <SimpleTooltip content={'Reasoning model'} side='top' tooltipDelay={0}>
               <Button
                 variant='newDesignGray'

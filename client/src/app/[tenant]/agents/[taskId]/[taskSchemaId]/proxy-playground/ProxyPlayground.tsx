@@ -187,6 +187,7 @@ export function ProxyPlayground(props: Props) {
       setSchemaId,
       setScheduledPlaygroundStateMessage,
       advancedSettings,
+      models: allModels,
     });
 
   const onPerformRuns = useCallback(
@@ -227,7 +228,9 @@ export function ProxyPlayground(props: Props) {
   const setModelAndRun = useCallback(
     async (index: number, model: string | undefined, reasoning: string | undefined) => {
       setOutputModels(index, model, reasoning);
-      onPerformRuns([index]);
+      setTimeout(() => {
+        onPerformRuns([index]);
+      }, 300);
     },
     [onPerformRuns, setOutputModels]
   );

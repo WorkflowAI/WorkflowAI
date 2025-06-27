@@ -11,6 +11,7 @@ import { useIsAllowed } from '@/lib/hooks/useIsAllowed';
 import { useTaskSchemaParams } from '@/lib/hooks/useTaskParams';
 import { taskApiRoute } from '@/lib/routeFormatter';
 import { environmentsForVersion, formatSemverVersion, isVersionSaved } from '@/lib/versionUtils';
+import { getReasoningForVersion } from '@/lib/versionUtils';
 import { useVersions } from '@/store/versions';
 import { TaskSchemaID } from '@/types/aliases';
 import { ProxyMessage, VersionV1 } from '@/types/workflowAI';
@@ -180,8 +181,12 @@ export function ProxyVersionDetails(props: TaskMetadataProps) {
       )}
       {model && (
         <TaskMetadataSection title='model'>
-          {/* Reasoning is hardcoded for now becasue we are wating for the information to be added on the backend side */}
-          <TaskModelBadge model={model} providerId={provider} reasoning={'medium'} allowTooltips={false} />
+          <TaskModelBadge
+            model={model}
+            providerId={provider}
+            reasoning={getReasoningForVersion(version)}
+            allowTooltips={false}
+          />
         </TaskMetadataSection>
       )}
 

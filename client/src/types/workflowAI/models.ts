@@ -1103,6 +1103,13 @@ export type ModelMetadata = {
   quality_index: number;
 };
 
+export type ModelReasoning = {
+  can_be_disabled: boolean;
+  low_effort_reasoning_budget: number;
+  medium_effort_reasoning_budget: number;
+  high_effort_reasoning_budget: number;
+};
+
 export type ModelResponse = {
   id: string;
   name: string;
@@ -1138,6 +1145,7 @@ export type ModelResponse = {
    * The providers that support this model
    */
   providers: Array<Provider>;
+  reasoning?: ModelReasoning | null;
 };
 
 export type OpenAIConfig = {
@@ -1882,6 +1890,8 @@ export type TaskGroupProperties_Output = {
   presence_penalty?: number | null;
   frequency_penalty?: number | null;
   tool_choice?: string | OpenAIProxyToolChoice | null;
+  reasoning_effort?: string | null;
+  reasoning_budget?: number | null;
   [key: string]: unknown;
 };
 
@@ -2951,6 +2961,11 @@ export type OpenAIProxyMessage = {
   [key: string]: unknown;
 };
 
+export type OpenAIProxyReasoning = {
+  effort?: string | null;
+  budget?: number | null;
+};
+
 export type OpenAIProxyChatCompletionRequest = {
   /**
    * An input to template the messages with.This field is not defined by the default OpenAI api.When provided, an input schema is generated and the messages are used as a template.
@@ -3015,5 +3030,6 @@ export type OpenAIProxyChatCompletionRequest = {
   top_p?: number | null;
   user?: string | null;
   web_search_options?: OpenAIProxyWebSearchOptions | null;
+  reasoning?: OpenAIProxyReasoning | null;
   [key: string]: unknown;
 };

@@ -13,6 +13,7 @@ import { API_URL } from '@/lib/constants';
 import { TaskID } from '@/types/aliases';
 import {
   OpenAIProxyChatCompletionRequest,
+  OpenAIProxyReasoning,
   OpenAIProxyTool,
   ProxyMessage,
   ToolKind,
@@ -68,11 +69,29 @@ function getOpenAITools(tools?: (ToolKind | Tool_Output)[]): OpenAIProxyTool[] |
   return result.length > 0 ? result : undefined;
 }
 
+function getReasoningObject(reasoning: string | undefined): OpenAIProxyReasoning | undefined {
+  const numberValue = Number(reasoning);
+
+  const effort = isNaN(numberValue) ? reasoning : undefined;
+  const budget = isNaN(numberValue) ? undefined : numberValue;
+
+  if (effort !== undefined) {
+    return { effort };
+  }
+
+  if (budget !== undefined) {
+    return { budget };
+  }
+
+  return undefined;
+}
+
 interface ProxyChatCompletitionState {
   performRun(
     taskId: TaskID,
     variantId: string,
     model: string,
+    reasoning: string | undefined,
     input: Record<string, unknown> | undefined,
     versionMessages: ProxyMessage[],
     advancedSettings: AdvancedSettings | undefined,
@@ -83,7 +102,18 @@ interface ProxyChatCompletitionState {
 }
 
 export const useProxyChatCompletition = create<ProxyChatCompletitionState>(() => ({
-  performRun: async (taskId, variantId, model, input, versionMessages, advancedSettings, tools, onMessage, signal) => {
+  performRun: async (
+    taskId,
+    variantId,
+    model,
+    reasoning,
+    input,
+    versionMessages,
+    advancedSettings,
+    tools,
+    onMessage,
+    signal
+  ) => {
     const stream_options = { valid_json_chunks: true };
 
     const body: OpenAIProxyChatCompletionRequest = {
@@ -106,6 +136,7 @@ export const useProxyChatCompletition = create<ProxyChatCompletitionState>(() =>
         variant_id: variantId,
         version_messages: versionMessages,
       },
+      reasoning: getReasoningObject(reasoning),
     };
 
     const path = `${API_URL}/v1/chat/completions`;

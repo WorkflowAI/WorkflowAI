@@ -7,6 +7,7 @@ import { TaskVersionBadgeContainer } from '@/components/TaskIterationBadge/TaskV
 import { SimpleRadioIndicator } from '@/components/ui/RadioGroup';
 import { TaskEnvironmentBadge } from '@/components/v2/TaskEnvironmentBadge';
 import { cn } from '@/lib/utils';
+import { getReasoningForVersion } from '@/lib/versionUtils';
 import { User } from '@/types/user';
 import { VersionV1 } from '@/types/workflowAI';
 import { TaskCostBadge, TaskCostView } from '../TaskCostBadge';
@@ -61,6 +62,8 @@ export function TaskVersionEntry(props: TaskVersionEntryProps) {
     [version.deployments]
   );
 
+  const reasoning = useMemo(() => getReasoningForVersion(version), [version]);
+
   if (smallMode) {
     return (
       <TaskVersionTooltip
@@ -89,8 +92,7 @@ export function TaskVersionEntry(props: TaskVersionEntryProps) {
             {!!version.model && (
               <div className='flex flex-row items-center gap-1 overflow-hidden'>
                 <div className='truncate text-gray-700 text-[13px] font-normal'>{version.model}</div>
-                {/* Reasoning is hardcoded for now becasue we are wating for the information to be added on the backend side */}
-                <ResoningBadge reasoning={'medium'} allowTooltips={true} />
+                {reasoning && <ResoningBadge reasoning={reasoning} allowTooltips={true} />}
               </div>
             )}
           </div>
@@ -126,6 +128,7 @@ export function TaskVersionEntry(props: TaskVersionEntryProps) {
         </div>
         <div className={cn('flex items-center overflow-hidden truncate gap-1.5', COLUMN_WIDTHS[ColumnName.Model])}>
           {!!version.model && <div className='truncate text-gray-500 text-[13px] font-normal'>{version.model}</div>}
+          {reasoning && <ResoningBadge reasoning={reasoning} allowTooltips={true} />}
         </div>
         <div className={cn('flex items-center', COLUMN_WIDTHS[ColumnName.Price])}>
           <TaskCostView cost={version.cost_estimate_usd} />

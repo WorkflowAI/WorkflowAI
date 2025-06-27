@@ -34,6 +34,7 @@ type TriggerContentProps = {
 
 function TriggerContent(props: TriggerContentProps) {
   const { value, reasoning, selectedOption, defaultLabel, isProxy, taskId, onReasoningChange } = props;
+
   if (!value) {
     return (
       <div className='flex items-center gap-2'>
@@ -42,6 +43,7 @@ function TriggerContent(props: TriggerContentProps) {
       </div>
     );
   }
+
   if (selectedOption) {
     return (
       <ComboboxModelEntry
