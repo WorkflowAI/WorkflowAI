@@ -255,6 +255,11 @@ class PlaygroundState(BaseModel):
         description="The agent runs that were made in the playground",
     )
 
+    version_messages: list[dict[str, Any]] | None = Field(
+        default=None,
+        description="The version messages of the agent",
+    )
+
     class PlaygroundModel(BaseModel):
         id: str = Field(
             description="The id of the model",
@@ -545,6 +550,11 @@ class ProxyMetaAgentOutput(BaseModel):
         description="The generate input request, if any",
     )
 
+    updated_version_messages: list[dict[str, Any]] | None = Field(
+        default=None,
+        description="The directly generated version messages, if any",
+    )
+
 
 class ParsedToolCall(NamedTuple):
     """Result of parsing a tool call from the OpenAI streaming response."""
@@ -557,6 +567,7 @@ class ParsedToolCall(NamedTuple):
     edit_schema_structure_request: EditSchemaStructureToolCallRequest | None = None
     edit_schema_description_and_examples_request: EditSchemaDescriptionAndExamplesToolCallRequest | None = None
     generate_input_request: GenerateAgentInputToolCallRequest | None = None
+    updated_version_messages: list[dict[str, Any]] | None = None
 
 
 def parse_tool_call(tool_call: Any) -> ParsedToolCall:
@@ -569,6 +580,7 @@ def parse_tool_call(tool_call: Any) -> ParsedToolCall:
     - edit_schema_description_and_examples: edit_schema_description_and_examples_request
     - run_agent_on_model: run_trigger_config
     - generate_agent_input: generate_input_request
+    - updated_version_messages: updated_version_messages
     """
     if not tool_call.function or not tool_call.function.arguments:
         return ParsedToolCall()
@@ -579,6 +591,11 @@ def parse_tool_call(tool_call: Any) -> ParsedToolCall:
     if function_name == "update_version_messages":
         return ParsedToolCall(
             improvement_instructions=arguments["improvement_instructions"],
+        )
+
+    if function_name == "update_version_messages_hosted_tools":
+        return ParsedToolCall(
+            updated_version_messages=arguments["messages"],
         )
 
     if function_name == "create_custom_tool":
@@ -814,6 +831,7 @@ You answer MUST NOT INCLUDE:
 - A repetition of the whole code from previous answers. You ONLY need to show the "model=..." parameters and the "messages=[]".
 """
 
+
 PROPOSE_DEPLOYMENT_INSTRUCTIONS = (
     _PROXY_META_AGENT_COMMON_INSTRUCTIONS
     + """
@@ -821,6 +839,28 @@ PROPOSE_DEPLOYMENT_INSTRUCTIONS = (
 # Goal
 """
     + _PROPOSE_DEPLOYMENT_INSTRUCTIONS
+    + INSTRUCTIONS_FOOTER
+)
+
+
+_HOSTED_TOOL_UPDATE_INSTRUCTIONS = """
+Ensure the updated version messages maintain coherence and flow with the existing content while accurately reflecting the tool changes.
+DO NOT update any other part of the 'version_messages' that the parts related to 'tools_to_remove' or 'tools_to_add'.
+DO NOT use markdown formatting (**, *, #, etc.), unless markdown is already present in the 'version_messages'.
+DO NOT add any character around tool handles (quotes, etc.) just use @the-tool-handle
+To add / remove hosted tool to the agent's version messages, you must use the 'update_version_messages_hosted_tools' in order to update the version messages directly.
+"""
+
+HOSTED_TOOL_UPDATE_INSTRUCTIONS = (
+    _PROXY_META_AGENT_COMMON_INSTRUCTIONS
+    + """
+# Goal
+
+As the use want to add / update / remove hosted tools from its agent's (see playground_state.version_messages), you MUST use the 'update_version_messages_hosted_tools' tool.
+The hosted tools use in the updated version messages must be the exactly the same (nothing more, nothing less) as the ones requested by the user.
+If the user is asking for no hosted tools to be used, and the current playground_state.version_messages contains hosted tools, you MUST remove the hosted tools from the version messages by using the 'update_version_messages_hosted_tools' tool.
+"""
+    + _HOSTED_TOOL_UPDATE_INSTRUCTIONS
     + INSTRUCTIONS_FOOTER
 )
 
@@ -997,6 +1037,9 @@ You can enhance the agent capabilities by using hosted tools that will run insid
 <available_hosted_tools_description>
 {{available_hosted_tools_description}}
 </available_hosted_tools_description>
+<tips_for_adding_hosted_tools> """
+    + _HOSTED_TOOL_UPDATE_INSTRUCTIONS
+    + """</tips_for_adding_hosted_tools>
 </hosted_tools>
 
 <custom_tools>
@@ -1027,6 +1070,43 @@ You MUST always make an actual 'generate_agent_input' tool call to generate the 
 """
     + INSTRUCTIONS_FOOTER
 )
+
+VERSION_MESSAGES_HOSTED_TOOL_UPDATE_TOOL: ChatCompletionToolParam = {
+    "type": "function",
+    "function": {
+        "name": "update_version_messages_hosted_tools",
+        "description": "Update the version messages of the current agent version by providing instructions for improvement in order to add / remove / update hosted tools",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "messages": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "role": {
+                                "type": "string",
+                                "enum": ["system", "user", "assistant"],
+                            },
+                            "content": {
+                                "type": "string",
+                            },
+                        },
+                        "required": ["role", "content"],
+                        "additionalProperties": False,
+                    },
+                    "description": "The complete list of messages that should replace the current agent's messages.",
+                },
+            },
+            "required": [
+                "messages",
+            ],
+            "additionalProperties": False,
+        },
+        "strict": True,
+    },
+}
+
 
 TOOL_DEFINITIONS: list[ChatCompletionToolParam] = [
     {
@@ -1120,7 +1200,9 @@ TOOL_DEFINITIONS: list[ChatCompletionToolParam] = [
             "strict": True,
         },
     },
+    VERSION_MESSAGES_HOSTED_TOOL_UPDATE_TOOL,
 ]
+
 
 OUTPUT_SCHEMA_EDITION_TOOLS: list[ChatCompletionToolParam] = [
     {
@@ -1164,9 +1246,19 @@ OUTPUT_SCHEMA_EDITION_TOOLS: list[ChatCompletionToolParam] = [
 ]
 
 
-def _pick_tools_to_use(use_tool_calls: bool, agent_has_output_schema: bool) -> list[ChatCompletionToolParam]:
+def _pick_tools_to_use(
+    use_tool_calls: bool,
+    agent_has_output_schema: bool,
+    direct_version_message_update: bool = False,
+) -> list[ChatCompletionToolParam]:
     if not use_tool_calls:
         return []
+
+    # When direct version message update is enabled, only provide that tool
+    if direct_version_message_update:
+        return [VERSION_MESSAGES_HOSTED_TOOL_UPDATE_TOOL]
+
+    # Otherwise use regular tools
     if agent_has_output_schema:
         return TOOL_DEFINITIONS + OUTPUT_SCHEMA_EDITION_TOOLS
     return TOOL_DEFINITIONS
@@ -1182,6 +1274,7 @@ async def proxy_meta_agent(
     agent_has_output_schema: bool,
     use_tool_calls: bool,
     is_agent_deployed: bool,
+    hosted_tool_update_mode: bool = False,
 ) -> AsyncIterator[ProxyMetaAgentOutput]:
     client = AsyncOpenAI(
         api_key=os.environ["WORKFLOWAI_API_KEY"],
@@ -1191,7 +1284,11 @@ async def proxy_meta_agent(
     instructions = instructions.replace("MODEL_NAME_PREFIX_PLACEHOLDER", model_name_prefix)
     instructions = instructions.replace("COMPLETION_CLIENT_PLACEHOLDER", completion_client)
 
-    tools_to_use = _pick_tools_to_use(use_tool_calls=use_tool_calls, agent_has_output_schema=agent_has_output_schema)
+    tools_to_use = _pick_tools_to_use(
+        use_tool_calls=use_tool_calls,
+        agent_has_output_schema=agent_has_output_schema,
+        direct_version_message_update=hosted_tool_update_mode,
+    )
 
     response = await client.chat.completions.create(
         model="proxy-meta-agent/claude-sonnet-4-20250514",
@@ -1270,4 +1367,5 @@ async def proxy_meta_agent(
             edit_schema_structure_request=parsed_tool_call.edit_schema_structure_request,
             edit_schema_description_and_examples_request=parsed_tool_call.edit_schema_description_and_examples_request,
             generate_input_request=parsed_tool_call.generate_input_request,
+            updated_version_messages=parsed_tool_call.updated_version_messages,
         )

@@ -30,6 +30,11 @@ class MetaAgentChatRequest(BaseModel):
         description="The list of messages in the conversation, the last message being the most recent one",
     )
 
+    hosted_tool_update_mode: bool = Field(
+        default=False,
+        description="When true, the agent will generate full updated version messages directly instead of calling another agent",
+    )
+
 
 class MetaAgentChatResponse(BaseModel):
     messages: list[MetaAgentChatMessage] = Field(
@@ -73,6 +78,7 @@ async def get_meta_agent_chat(
             user_email=user_properties.user_email,
             messages=request.messages,
             playground_state=request.playground_state,
+            hosted_tool_update_mode=request.hosted_tool_update_mode,
         ):
             yield MetaAgentChatResponse(messages=messages)
 
