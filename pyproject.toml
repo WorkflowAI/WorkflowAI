@@ -86,6 +86,13 @@ known-third-party = ["workflowai"]
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
 "openai.BaseModel".msg = "Import from pydantic instead"
+"openai.Field".msg = "Import from pydantic instead"
+"anthropic.BaseModel".msg = "Import from pydantic instead"
+"anthropic.Field".msg = "Import from pydantic instead"
+"litellm.AsyncOpenAI".msg = "Import from openai instead"
+"litellm.OpenAI".msg = "Import from anthropic instead"
+"litellm.BaseModel".msg = "Import from pydantic instead"
+"litellm.Field".msg = "Import from pydantic instead"
 
 [tool.poetry]
 # Not deploying a lib

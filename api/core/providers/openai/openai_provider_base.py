@@ -34,7 +34,6 @@ from core.providers.google.google_provider_domain import (
 from core.providers.openai._openai_utils import get_openai_json_schema_name, prepare_openai_json_schema
 
 from .openai_domain import (
-    MODEL_NAME_MAP,
     CompletionRequest,
     CompletionResponse,
     JSONResponseFormat,
@@ -61,13 +60,14 @@ _O1_PREVIEW_MODELS = {
 }
 
 _AUDIO_PREVIEW_MODELS = {
-    Model.GPT_40_AUDIO_PREVIEW_2024_10_01,
+    Model.GPT_4O_AUDIO_PREVIEW_2024_10_01,
     Model.GPT_4O_AUDIO_PREVIEW_2024_12_17,
 }
 
+# TODO: use value from model data
 _UNSUPPORTED_TEMPERATURES = {
     Model.O1_2024_12_17_LOW_REASONING_EFFORT,
-    Model.O1_2024_12_17_MEDIUM_REASONING_EFFORT,
+    Model.O1_2024_12_17,
     Model.O1_2024_12_17_HIGH_REASONING_EFFORT,
     Model.O3_MINI_2025_01_31_HIGH_REASONING_EFFORT,
     Model.O3_MINI_2025_01_31_MEDIUM_REASONING_EFFORT,
@@ -85,30 +85,13 @@ _UNSUPPORTED_TEMPERATURES = {
     *_AUDIO_PREVIEW_MODELS,
 }
 
-_REASONING_EFFORT_FOR_MODEL = {
-    Model.O1_2024_12_17_LOW_REASONING_EFFORT: "low",
-    Model.O1_2024_12_17_MEDIUM_REASONING_EFFORT: "medium",
-    Model.O1_2024_12_17_HIGH_REASONING_EFFORT: "high",
-    Model.O3_MINI_2025_01_31_HIGH_REASONING_EFFORT: "high",
-    Model.O3_MINI_2025_01_31_MEDIUM_REASONING_EFFORT: "medium",
-    Model.O3_MINI_2025_01_31_LOW_REASONING_EFFORT: "low",
-    Model.O3_2025_04_16_HIGH_REASONING_EFFORT: "high",
-    Model.O3_2025_04_16_MEDIUM_REASONING_EFFORT: "medium",
-    Model.O3_2025_04_16_LOW_REASONING_EFFORT: "low",
-    # Model.O3_PRO_2025_06_10_HIGH_REASONING_EFFORT: "high",
-    # Model.O3_PRO_2025_06_10_MEDIUM_REASONING_EFFORT: "medium",
-    # Model.O3_PRO_2025_06_10_LOW_REASONING_EFFORT: "low",
-    Model.O4_MINI_2025_04_16_HIGH_REASONING_EFFORT: "high",
-    Model.O4_MINI_2025_04_16_MEDIUM_REASONING_EFFORT: "medium",
-    Model.O4_MINI_2025_04_16_LOW_REASONING_EFFORT: "low",
-}
 
 _OpenAIConfigVar = TypeVar("_OpenAIConfigVar", bound=OpenAIProviderBaseConfig)
 
 
 class OpenAIProviderBase(HTTPXProvider[_OpenAIConfigVar, CompletionResponse], Generic[_OpenAIConfigVar]):
     def _build_request(self, messages: list[MessageDeprecated], options: ProviderOptions, stream: bool) -> BaseModel:
-        model_name = MODEL_NAME_MAP.get(options.model, options.model)
+        model_name = options.model
         is_preview_model = options.model in _O1_PREVIEW_MODELS or options.model in _AUDIO_PREVIEW_MODELS
         model_data = get_model_data(options.model)
 
@@ -130,7 +113,7 @@ class OpenAIProviderBase(HTTPXProvider[_OpenAIConfigVar, CompletionResponse], Ge
             stream_options=StreamOptions(include_usage=True) if stream else None,
             # store=True,
             response_format=self._response_format(options, is_preview_model),
-            reasoning_effort=_REASONING_EFFORT_FOR_MODEL.get(options.model, None),
+            reasoning_effort=options.final_reasoning_effort(model_data.reasoning),
             tool_choice=CompletionRequest.tool_choice_from_domain(options.tool_choice),
             top_p=options.top_p,
             presence_penalty=options.presence_penalty,
