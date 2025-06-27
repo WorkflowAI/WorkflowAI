@@ -113,16 +113,6 @@ export function ComboboxModelEntry(props: ComboboxModelEntryProps) {
               />
             </SimpleTooltip>
           )}
-          {mode === 'popover' && (
-            <SimpleTooltip content={'Reasoning model'} side='top' tooltipDelay={0}>
-              <Button
-                variant='newDesignGray'
-                size='none'
-                icon={<BrainCircuitRegular className='text-gray-900 w-4 h-4' />}
-                className='w-5 h-5 bg-clear'
-              />
-            </SimpleTooltip>
-          )}
         </div>
         <div className='ml-auto flex flex-row gap-1 items-center'>
           {information === 'price' && (

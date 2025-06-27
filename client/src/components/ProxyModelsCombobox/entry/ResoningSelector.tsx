@@ -23,7 +23,7 @@ export function ResoningSelector(props: Props) {
   const { reasoning, onReasoningChange, model } = props;
 
   const maxTokens = useMemo(() => {
-    return model.metadata.context_window_tokens;
+    return model.max_budget ?? model.metadata?.context_window_tokens;
   }, [model]);
 
   const value: ReasoningValue = useMemo(() => {

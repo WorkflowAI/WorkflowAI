@@ -1146,6 +1146,7 @@ export type ModelResponse = {
    */
   providers: Array<Provider>;
   reasoning?: ModelReasoning | null;
+  max_budget?: number | null;
 };
 
 export type OpenAIConfig = {
