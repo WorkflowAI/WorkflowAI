@@ -333,14 +333,14 @@ async def search_runs(
     Different field types support different operators:
 
     **String fields:**
-    - "is" - exact match
-    - "is not" - not equal to
+    - "is" - exact match (use value "Empty" to check for empty/null fields)
+    - "is not" - not equal to (use value "Empty" to check for non-empty fields)
     - "contains" - string contains
     - "does not contain" - string does not contain
 
     **Number fields:**
-    - "is" - exact match
-    - "is not" - not equal to
+    - "is" - exact match (use value "Empty" to check for empty/null fields)
+    - "is not" - not equal to (use value "Empty" to check for non-empty fields)
     - "greater than" - value > X
     - "greater than or equal to" - value >= X
     - "less than" - value < X
@@ -457,6 +457,25 @@ async def search_runs(
                 "operator": "greater than",
                 "values": [0.95],
                 "type": "number"
+            }
+        ]
+    }
+
+    Example 6 - Search for runs with empty or non-empty fields:
+    {
+        "agent_id": "content-processor",
+        "field_queries": [
+            {
+                "field_name": "input.optional_field",
+                "operator": "is",
+                "values": ["Empty"],
+                "type": "string"
+            },
+            {
+                "field_name": "output.result",
+                "operator": "is not",
+                "values": ["Empty"],
+                "type": "string"
             }
         ]
     }
