@@ -42,20 +42,20 @@ class TestMCPServiceSearchDocumentation:
 
         mock_sections = [
             DocumentationSection(
-                title="getting-started.mdx",
+                file_path="getting-started.mdx",
                 content="This is a comprehensive guide to get started with WorkflowAI. Follow these detailed steps to create your first agent and understand the platform's capabilities.",
             ),
             DocumentationSection(
-                title="api-auth.mdx",
+                file_path="api-auth.mdx",
                 content="Authentication is required for all API calls. Use Bearer tokens with your API key to authenticate requests.",
             ),
         ]
-        mock_service.get_relevant_doc_sections = AsyncMock(return_value=mock_sections)
+        mock_service.search_documentation_by_query = AsyncMock(return_value=mock_sections)
 
         # Mock the foundations page that gets added automatically
         mock_foundations_sections = [
             DocumentationSection(
-                title="foundations",
+                file_path="foundations",
                 content="WorkflowAI foundations content explaining core concepts and architecture.",
             ),
         ]
@@ -80,6 +80,12 @@ class TestMCPServiceSearchDocumentation:
         assert "WorkflowAI foundations content" in search_results[2].content_snippet
         assert result.message and "Successfully found relevant documentation sections" in result.message
 
+        # Verify the usage_context was passed correctly
+        mock_service.search_documentation_by_query.assert_called_once()
+        call_args = mock_service.search_documentation_by_query.call_args
+        assert call_args[0][0] == "how to get started"  # query parameter
+        assert "MCP (Model Context Protocol) client" in call_args[0][1]  # usage_context parameter
+
     @patch("api.routers.mcp._mcp_service.DocumentationService")
     async def test_search_documentation_page_mode_success(
         self,
@@ -93,7 +99,7 @@ class TestMCPServiceSearchDocumentation:
 
         mock_sections = [
             DocumentationSection(
-                title="getting-started.mdx",
+                file_path="getting-started.mdx",
                 content="Complete getting started guide content here with detailed instructions...",
             ),
         ]
@@ -124,8 +130,8 @@ class TestMCPServiceSearchDocumentation:
 
         # Mock get_all_doc_sections for available pages listing
         mock_sections = [
-            DocumentationSection(title="existing1.mdx", content="content1"),
-            DocumentationSection(title="existing2.mdx", content="content2"),
+            DocumentationSection(file_path="existing1.mdx", content="content1"),
+            DocumentationSection(file_path="existing2.mdx", content="content2"),
         ]
         mock_service.get_all_doc_sections = AsyncMock(return_value=mock_sections)
 
@@ -152,7 +158,7 @@ class TestMCPServiceSearchDocumentation:
         mock_service.get_documentation_by_path = AsyncMock(return_value=[])
 
         # Create more than 10 sections to test truncation
-        mock_sections = [DocumentationSection(title=f"page{i}.mdx", content=f"content{i}") for i in range(15)]
+        mock_sections = [DocumentationSection(file_path=f"page{i}.mdx", content=f"content{i}") for i in range(15)]
         mock_service.get_all_doc_sections = AsyncMock(return_value=mock_sections)
 
         # Act

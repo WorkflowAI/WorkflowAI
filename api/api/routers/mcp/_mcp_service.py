@@ -43,7 +43,6 @@ from core.agents.mcp_feedback_processing_agent import (
 from core.domain.agent_run import AgentRun
 from core.domain.consts import INPUT_KEY_MESSAGES
 from core.domain.events import EventRouter
-from core.domain.fields.chat_message import ChatMessage
 from core.domain.message import Messages
 from core.domain.models.model_data import FinalModelData, LatestModel
 from core.domain.models.model_data_mapping import MODEL_DATAS
@@ -380,16 +379,17 @@ class MCPService:
         """Search documentation using query and return snippets."""
 
         documentation_service = DocumentationService()
-        relevant_sections = await documentation_service.get_relevant_doc_sections(
-            chat_messages=[ChatMessage(role="USER", content=query)],
-            agent_instructions="",
-        )
+        usage_context = """The query was made by an MCP (Model Context Protocol) client such as Cursor IDE and other code editors.
+
+Your primary purpose is to help developers find the most relevant WorkflowAI documentation sections to answer their specific queries about building, deploying, and using AI agents.
+"""
+        relevant_sections = await documentation_service.search_documentation_by_query(query, usage_context)
 
         # Convert to SearchResult format with content snippets
         query_results = [
             SearchResponse.QueryResult(
                 content_snippet=section.content,
-                source_page=section.title.replace("content/", ""),
+                source_page=section.file_path,
             )
             for section in relevant_sections
         ]
@@ -413,7 +413,7 @@ class MCPService:
         return MCPToolReturn(
             success=True,
             data=SearchResponse(query_results=query_results),
-            message=f"Successfully found relevant documentation sections: {[section.title for section in relevant_sections]}",
+            message=f"Successfully found relevant documentation sections: {[section.file_path for section in relevant_sections]}",
         )
 
     async def _get_documentation_page(self, page: str) -> MCPToolReturn[SearchResponse]:
@@ -433,7 +433,7 @@ class MCPService:
 
         # Page not found - list available pages for user reference
         all_sections = await documentation_service.get_all_doc_sections()
-        available_pages = [section.title for section in all_sections]
+        available_pages = [section.file_path for section in all_sections]
 
         return MCPToolReturn(
             success=False,
