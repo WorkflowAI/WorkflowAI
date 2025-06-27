@@ -39,7 +39,6 @@ class MCPObservabilityMiddleware(BaseHTTPMiddleware):
         return None
 
     def _inject_session_id_to_headers(self, request: Request, session_id: str) -> None:
-        """Inject session ID into request headers and FastMCP context"""
         request.scope["headers"].append((b"mcp-session-id", session_id.encode()))
 
     async def _get_or_create_session(self, session_id: str | None, tenant: TenantData) -> tuple[SessionState, bool]:
@@ -270,7 +269,6 @@ class MCPObservabilityMiddleware(BaseHTTPMiddleware):
 
         session_id_from_header = self._extract_session_id(request)
 
-        # Setup session and validate request for observability
         # TODO: refactor, we are validating the token and fetching the tenant twice, here and in the actual tool functions
         setup_result = await self._setup_session_and_validate_request(request, session_id_from_header)
         if not setup_result:
