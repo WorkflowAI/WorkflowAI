@@ -32,7 +32,7 @@ function useSetPropertyFromVersionIfNotSetYet(
     const key = keyRef.current;
 
     // If the property is already set or the version is undefined or the property in version is not set yet, do nothing
-    if (property !== undefined || version === undefined || !version.properties[key]) {
+    if (property !== undefined || version === undefined || version.properties[key] === undefined) {
       return;
     }
 
