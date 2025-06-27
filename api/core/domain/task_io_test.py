@@ -169,9 +169,9 @@ def test_optional_nulls(output: dict[str, Any]):
     schema = fixtures_json("jsonschemas", "extract_event_output.json")
     task_io = SerializableTaskIO(version="1", json_schema=schema)
     with pytest.raises(JSONSchemaValidationError):
-        task_io.enforce(output, strip_opt_none_and_empty_strings=False)
+        task_io.enforce(output, sanitize_empties=False)
 
-    task_io.enforce(output, strip_opt_none_and_empty_strings=True)
+    task_io.enforce(output, sanitize_empties=True)
 
     if "end_time" in output:
         assert output["end_time"] == {}
@@ -209,7 +209,7 @@ def test_strip_empty_strings():
         "title": "Quarterly Review Meeting",
     }
 
-    task_io.enforce(output, strip_opt_none_and_empty_strings=True)
+    task_io.enforce(output, sanitize_empties=True)
 
     assert output == {
         "description": "",
@@ -483,3 +483,42 @@ class TestUsesRawMessages:
 
     def test_sanity_raw_messages(self):
         assert RawMessagesSchema.uses_raw_messages
+
+
+class TestFromJSONSchema:
+    def test_streamline_with_internal_defs(self):
+        schema = {
+            "$defs": {"File": {"type": "object"}},
+            "properties": {
+                "name": {"type": "string"},
+                "file": {"$ref": "#/$defs/File"},
+            },
+        }
+        task_io = SerializableTaskIO.from_json_schema(schema, streamline=True)
+        assert task_io.json_schema == {
+            "$defs": {"File": {"type": "object", "properties": mock.ANY}},
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+                "file": {"$ref": "#/$defs/File"},
+            },
+        }
+
+    def test_streamline_without_internal_defs(self):
+        """Instead of using our own internal defs, we should just inline the provided ones"""
+        schema = {
+            "$defs": {"File": {"type": "string"}},
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+                "file": {"$ref": "#/$defs/File"},
+            },
+        }
+        task_io = SerializableTaskIO.from_json_schema(schema, streamline=True, use_internal_defs=False)
+        assert task_io.json_schema == {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+                "file": {"type": "string"},
+            },
+        }

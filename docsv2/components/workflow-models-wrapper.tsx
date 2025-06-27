@@ -8,9 +8,9 @@ interface ModelSupports {
   output_text: boolean;
   json_mode: boolean;
   audio_only: boolean;
-  support_system_messages: boolean;
+  supports_system_messages: boolean;
   structured_output: boolean;
-  support_input_schema: boolean;
+  supports_input_schema: boolean;
   parallel_tool_calls: boolean;
   tool_calling: boolean;
 }
@@ -34,13 +34,13 @@ async function getModels(): Promise<Model[]> {
   try {
     const response = await fetch('https://api.workflowai.com/v1/models', {
       // Cache for 1 hour, revalidate in background
-      next: { revalidate: 3600 }
+      next: { revalidate: 3600 },
     });
-    
+
     if (!response.ok) {
       throw new Error(`Failed to fetch models: ${response.statusText}`);
     }
-    
+
     const data: ModelsResponse = await response.json();
     // Sort models by created date (newest first)
     return data.data.sort((a, b) => b.created - a.created);
@@ -53,14 +53,14 @@ async function getModels(): Promise<Model[]> {
 
 export async function WorkflowModelsWrapper() {
   const models = await getModels();
-  
+
   if (models.length === 0) {
     return (
-      <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-4">
-        <p className="text-muted-foreground">Unable to load models at this time. Please try again later.</p>
+      <div className='rounded-lg border bg-card text-card-foreground shadow-sm p-4'>
+        <p className='text-muted-foreground'>Unable to load models at this time. Please try again later.</p>
       </div>
     );
   }
-  
+
   return <WorkflowModelsTable models={models} />;
-} 
+}

@@ -4,7 +4,7 @@ from typing import Literal
 
 import pytest
 
-from api.routers.mcp._mcp_models import ConciseLatestModelResponse, ConciseModelResponse
+from api.routers.mcp._mcp_models import ConciseLatestModelResponse, ConciseModelResponse, ConciseModelSupports
 from api.routers.mcp._utils.model_sorting import sort_models
 
 
@@ -19,7 +19,14 @@ def create_test_model(
     return ConciseModelResponse(
         id=model_id,
         display_name=f"Test Model {model_id}",
-        supports=["tool_calling"],
+        supports=ConciseModelSupports(
+            input_image=False,
+            input_pdf=False,
+            input_audio=False,
+            audio_only=False,
+            tool_calling=True,
+            reasoning=False,
+        ),
         quality_index=quality_index,
         cost_per_input_token_usd=cost_per_input_token_usd,
         cost_per_output_token_usd=cost_per_output_token_usd,

@@ -8,7 +8,7 @@ from pytest_httpx import HTTPXMock, IteratorStream
 from taskiq import InMemoryBroker
 
 from core.domain.models import Model, Provider
-from core.domain.models.model_provider_datas_mapping import OPENAI_PROVIDER_DATA
+from core.domain.models.model_provider_data_mapping import OPENAI_PROVIDER_DATA
 from core.utils.ids import id_uint32
 from tests.component.common import (
     LEGACY_TEST_JWT,

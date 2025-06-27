@@ -30,9 +30,9 @@ class ModelDataSupports(ModelDataIOSupports):
         default=False,
         description="Whether the model supports audio only",
     )
-    support_system_messages: bool = Field(default=True, description="Whether the model supports system messages")
+    supports_system_messages: bool = Field(default=True, description="Whether the model supports system messages")
     supports_structured_output: bool = Field(default=False, description="Whether the model supports structured output")
-    support_input_schema: bool = Field(default=True, description="Whether the model supports input schema")
+    supports_input_schema: bool = Field(default=True, description="Whether the model supports input schema")
     supports_parallel_tool_calls: bool = Field(
         default=True,
         description="Whether the model supports parallel tool calls",

@@ -1,3 +1,4 @@
+import logging
 from collections.abc import Iterator
 from datetime import datetime, timedelta
 from typing import Any, NamedTuple
@@ -10,7 +11,7 @@ from api.routers.mcp._mcp_models import (
     AgentSortField,
     ConciseLatestModelResponse,
     ConciseModelResponse,
-    DeployAgentResponse,
+    EmptyModel,
     MajorVersion,
     MCPRun,
     MCPToolReturn,
@@ -18,7 +19,6 @@ from api.routers.mcp._mcp_models import (
     PaginatedMCPToolReturn,
     SearchResponse,
     SortOrder,
-    UsefulLinks,
 )
 from api.routers.mcp._mcp_utils import extract_agent_id_and_run_id
 from api.routers.mcp._utils.agent_sorting import sort_agents
@@ -37,13 +37,15 @@ from api.services.runs.runs_service import RunsService
 from api.services.runs_search import RunsSearchService
 from api.services.task_deployments import TaskDeploymentsService
 from api.services.versions import VersionsService
+from core.agents.mcp_feedback_processing_agent import (
+    mcp_feedback_processing_agent,
+)
 from core.domain.agent_run import AgentRun
-from core.domain.consts import INPUT_KEY_MESSAGES, WORKFLOWAI_APP_URL
+from core.domain.consts import INPUT_KEY_MESSAGES
 from core.domain.events import EventRouter
-from core.domain.fields.chat_message import ChatMessage
 from core.domain.message import Messages
 from core.domain.models.model_data import FinalModelData, LatestModel
-from core.domain.models.model_datas_mapping import MODEL_DATAS
+from core.domain.models.model_data_mapping import MODEL_DATAS
 from core.domain.models.models import Model
 from core.domain.search_query import FieldQuery, SearchOperator
 from core.domain.task_group import TaskGroup, TaskGroupQuery
@@ -51,11 +53,15 @@ from core.domain.task_group_properties import TaskGroupProperties
 from core.domain.task_info import TaskInfo
 from core.domain.task_variant import SerializableTaskVariant
 from core.domain.tenant_data import PublicOrganizationData
-from core.domain.users import UserIdentifier
-from core.domain.version_environment import VersionEnvironment
 from core.storage import ObjectNotFoundException
 from core.storage.backend_storage import BackendStorage
+from core.storage.task_run_storage import TaskRunStorage
+from core.utils.background import add_background_task
+from core.utils.coroutines import capture_errors
 from core.utils.schemas import FieldType
+
+_logger = logging.getLogger(__name__)
+
 
 # Claude Code only support 25k tokens, for example.
 # Overall it's a good practice to limit the tool return tokens to avoid overflowing the coding agents context.
@@ -86,77 +92,6 @@ class MCPService:
         self.tenant = tenant
         self.run_service = run_service
         self.event_router = event_router
-
-    def _get_useful_links(self, agent_id: str | None, agent_schema_id: int | None) -> UsefulLinks:
-        if agent_id is None:
-            agent_id = "<example_agent_id>"
-
-        tenant_slug = self.tenant.slug
-
-        return UsefulLinks(
-            useful_links=[
-                UsefulLinks.Link(
-                    title="Agents list",
-                    url=f"{WORKFLOWAI_APP_URL}/{tenant_slug}/agents",
-                    description="View all agents in the user's organization, also allow to see the count of runs and cost of the last 7 days",
-                ),
-                UsefulLinks.Link(
-                    title="API Keys management model",
-                    url=f"{WORKFLOWAI_APP_URL}/keys",
-                    description="View and create API keys for the user's organization",
-                ),
-                UsefulLinks.Link(
-                    title="WorkflowAI playground",
-                    url=f"{WORKFLOWAI_APP_URL}/{tenant_slug}/agents/{agent_id}/{agent_schema_id or 1}",
-                    description="Main page of the WorkflowAI web app, allow to run agents on different models, update version messages, and more",
-                ),
-                UsefulLinks.Link(
-                    title="Agent runs",
-                    url=f"{WORKFLOWAI_APP_URL}/{tenant_slug}/agents/{agent_id}/{agent_schema_id or 1}/runs",
-                    description="View runs for a specific agent",
-                ),
-                UsefulLinks.Link(
-                    title="Agent versions",
-                    url=f"{WORKFLOWAI_APP_URL}/{tenant_slug}/agents/{agent_id}/{agent_schema_id or 1}/versions",
-                    description="View versions for a specific agent",
-                ),
-                UsefulLinks.Link(
-                    title="Deployments",
-                    url=f"{WORKFLOWAI_APP_URL}/{tenant_slug}/agents/{agent_id}/{agent_schema_id or 1}/deployments",
-                    description="View deployments (deployed versions) for a specific agent",
-                ),
-                UsefulLinks.Link(
-                    title="Agent side-by-side",
-                    url=f"{WORKFLOWAI_APP_URL}/{tenant_slug}/agents/{agent_id}/{agent_schema_id or 1}/side-by-side",
-                    description="View side-by-side comparison of two versions of an agent",
-                ),
-                UsefulLinks.Link(
-                    title="Agent reviews",
-                    url=f"{WORKFLOWAI_APP_URL}/{tenant_slug}/agents/{agent_id}/{agent_schema_id or 1}/reviews",
-                    description="View reviews for a specific agent created by staff members in the organization",
-                ),
-                UsefulLinks.Link(
-                    title="Agent benchmarks",
-                    url=f"{WORKFLOWAI_APP_URL}/{tenant_slug}/agents/{agent_id}/{agent_schema_id or 1}/benchmarks",
-                    description="View benchmarks for a specific agent, allow to compare different versions / models of an agent and compare their correctness, latency, and price",
-                ),
-                UsefulLinks.Link(
-                    title="Agent feedback",
-                    url=f"{WORKFLOWAI_APP_URL}/{tenant_slug}/agents/{agent_id}/{agent_schema_id or 1}/feedback",
-                    description="View feedback for a specific agent created by end users (customers)",
-                ),
-                UsefulLinks.Link(
-                    title="Agent cost",
-                    url=f"{WORKFLOWAI_APP_URL}/{tenant_slug}/agents/{agent_id}/{agent_schema_id or 1}/cost",
-                    description="View cost for a specific agent on different time frames (yesterday, last week, last month, last year, all time)",
-                ),
-                UsefulLinks.Link(
-                    title="WorkflowAI offical documentation",
-                    url="https://docs.workflowai.com",
-                    description="Official documentation for WorkflowAI, including guides, API references, and more",
-                ),
-            ],
-        )
 
     async def list_models(
         self,
@@ -266,6 +201,22 @@ class MCPService:
             self.tenant.app_run_url(agent_id, run_id),
         )
 
+    async def _get_agent_stats(
+        self,
+        from_date: datetime,
+        agent_uids: set[int] | None,
+    ) -> dict[int, TaskRunStorage.AgentRunCount]:
+        with capture_errors(_logger, "Failed to get agent stats"):
+            return {
+                stat.agent_uid: stat
+                async for stat in self.storage.task_runs.run_count_by_agent_uid(
+                    from_date=from_date,
+                    agent_uids=agent_uids,
+                )
+            }
+        # Return is still needed here since capture_errors supresses exceptions
+        return {}
+
     async def list_agents(
         self,
         page: int,
@@ -306,26 +257,20 @@ class MCPService:
         try:
             # Get single agent with detailed information
             agent = await tasks.get_task_by_id(self.storage, agent_id, with_schemas=True)
-            stats = {
-                stat.agent_uid: stat
-                async for stat in self.storage.task_runs.run_count_by_agent_uid(
-                    from_date=parsed_from_date,
-                    agent_uids={agent.uid},
-                )
-            }
-
-            detailed_response = AgentResponse.from_domain(agent, stats.get(agent.uid))
-
-            return MCPToolReturn[AgentResponse](
-                success=True,
-                data=detailed_response,
-            )
-
         except ObjectNotFoundException:
             return MCPToolReturn[AgentResponse](
                 success=False,
                 error=f"Agent {agent_id} not found",
             )
+        stats = await self._get_agent_stats(parsed_from_date, {agent.uid})
+        versions = await self.versions_service.list_version_majors((agent.id, agent.uid), None, self.models_service)
+
+        detailed_response = AgentResponse.from_domain(agent, stats.get(agent.uid), versions)
+
+        return MCPToolReturn[AgentResponse](
+            success=True,
+            data=detailed_response,
+        )
 
     async def get_agent_version(
         self,
@@ -392,82 +337,6 @@ class MCPService:
 
         return agent_info
 
-    async def deploy_agent_version(
-        self,
-        task_tuple: tuple[str, int],
-        version_id: str,
-        environment: str,
-        deployed_by: UserIdentifier,
-    ) -> DeployAgentResponse:
-        """Deploy a specific version of an agent to an environment."""
-
-        try:
-            env = VersionEnvironment(environment.lower())
-        except ValueError:
-            raise MCPError(f"Invalid environment '{environment}'. Must be one of: dev, staging, production")
-
-        deployment = await self.task_deployments_service.deploy_version(
-            task_id=task_tuple,
-            task_schema_id=None,
-            version_id=version_id,
-            environment=env,
-            deployed_by=deployed_by,
-        )
-
-        # Build the model parameter for the migration guide
-        model_param = f"{task_tuple[0]}/#{deployment.schema_id}/{environment}"
-
-        # Create migration guide based on deployment documentation
-        migration_guide: dict[str, Any] = {
-            "model_parameter": model_param,
-            "migration_instructions": {
-                "overview": "Update your code to point to the deployed version instead of hardcoded prompts",
-                "with_input_variables": {
-                    "description": "If your prompt uses input variables (double curly braces)",
-                    "before": {
-                        "model": f"{task_tuple[0]}/your-model-name",
-                        "messages": [{"role": "user", "content": "Your prompt with..."}],
-                        "extra_body": {"input": {"variable": "value"}},
-                    },
-                    "after": {
-                        "model": model_param,
-                        "messages": [],  # Empty because prompt is stored in WorkflowAI
-                        "extra_body": {"input": {"variable": "value"}},
-                    },
-                },
-                "without_input_variables": {
-                    "description": "If your prompt doesn't use input variables (e.g., chatbots with system messages)",
-                    "before": {
-                        "model": f"{task_tuple[0]}/your-model-name",
-                        "messages": [
-                            {"role": "system", "content": "Your system instructions"},
-                            {"role": "user", "content": "user_message"},
-                        ],
-                    },
-                    "after": {
-                        "model": model_param,
-                        "messages": [
-                            {"role": "user", "content": "user_message"},
-                        ],  # System message now comes from the deployment
-                    },
-                },
-                "important_notes": [
-                    "The messages parameter is always required, even if empty",
-                    "Schema number defines the input/output contract",
-                    f"This deployment uses schema #{deployment.schema_id}",
-                    "Test thoroughly before deploying to production",
-                ],
-            },
-        }
-
-        return DeployAgentResponse(
-            version_id=deployment.version_id,
-            agent_schema_id=deployment.schema_id,
-            environment=deployment.environment,
-            deployed_at=deployment.deployed_at.isoformat() if deployment.deployed_at else "",
-            migration_guide=migration_guide,
-        )
-
     async def search_documentation(
         self,
         query: str | None = None,
@@ -510,19 +379,30 @@ class MCPService:
         """Search documentation using query and return snippets."""
 
         documentation_service = DocumentationService()
-        relevant_sections = await documentation_service.get_relevant_doc_sections(
-            chat_messages=[ChatMessage(role="USER", content=query)],
-            agent_instructions="",
-        )
+        usage_context = """The query was made by an MCP (Model Context Protocol) client such as Cursor IDE and other code editors.
+
+Your primary purpose is to help developers find the most relevant WorkflowAI documentation sections to answer their specific queries about building, deploying, and using AI agents.
+"""
+        relevant_sections = await documentation_service.search_documentation_by_query(query, usage_context)
 
         # Convert to SearchResult format with content snippets
         query_results = [
             SearchResponse.QueryResult(
                 content_snippet=section.content,
-                source_page=section.title.replace("content/", ""),
+                source_page=section.file_path,
             )
             for section in relevant_sections
         ]
+
+        # Always add foundations page
+        # TODO: try to return the foundations page only once, per chat, but might be difficult since `mcp-session-id` is probably not scoped to a chat (for example, on CursorAI, multiple chat tabs can be open at the same time, using (probably) the same `mcp-session-id`)
+        sections = await documentation_service.get_documentation_by_path(["foundations"])
+        query_results.append(
+            SearchResponse.QueryResult(
+                content_snippet=sections[0].content,
+                source_page="foundations.mdx",
+            ),
+        )
 
         if len(query_results) == 0:
             return MCPToolReturn(
@@ -533,7 +413,7 @@ class MCPService:
         return MCPToolReturn(
             success=True,
             data=SearchResponse(query_results=query_results),
-            message=f"Successfully found relevant documentation sections: {[section.title for section in relevant_sections]}",
+            message=f"Successfully found relevant documentation sections: {[section.file_path for section in relevant_sections]}",
         )
 
     async def _get_documentation_page(self, page: str) -> MCPToolReturn[SearchResponse]:
@@ -553,7 +433,7 @@ class MCPService:
 
         # Page not found - list available pages for user reference
         all_sections = await documentation_service.get_all_doc_sections()
-        available_pages = [section.title for section in all_sections]
+        available_pages = [section.file_path for section in all_sections]
 
         return MCPToolReturn(
             success=False,
@@ -580,15 +460,20 @@ class MCPService:
             async for v in self.storage.task_variants.variants_iterator(task_tuple[0], variant_ids)
         }
 
-        return [
-            MCPRun.from_domain(
-                run,
-                versions.get(run.group.id),
-                schema_by_id.get(run.task_schema_id),
-                url=self.tenant.app_run_url(task_tuple[0], run.id),
+        mcp_runs: list[MCPRun] = []
+        for run in runs:
+            # TODO: not great here, but until we store the messages directly in the run
+            # We need to make sure the completions are standardized
+            run = self.runs_service._sanitize_run(run)  # pyright: ignore[reportPrivateUsage]
+            mcp_runs.append(
+                MCPRun.from_domain(
+                    run,
+                    versions.get(run.group.id),
+                    schema_by_id.get(run.task_schema_id),
+                    url=self.tenant.app_run_url(task_tuple[0], run.id),
+                ),
             )
-            for run in runs
-        ]
+        return mcp_runs
 
     @classmethod
     def _process_run_fields(cls, field_queries: list[dict[str, Any]]) -> list[FieldQuery]:
@@ -661,9 +546,11 @@ class MCPService:
             exclude_fields={"tool_calls"},
         )
 
+        mcp_runs = await self._map_runs(task_tuple, page_result.items)
+
         return PaginatedMCPToolReturn[None, MCPRun](
             success=True,
-            items=await self._map_runs(task_tuple, page_result.items),
+            items=mcp_runs,
         ).paginate(max_tokens=MAX_TOOL_RETURN_TOKENS, page=page)
 
     async def create_completion(
@@ -711,12 +598,77 @@ class MCPService:
                 variant=merged_variant,
                 final_input=merged_input,
             )
-
         res = await handler.handle_prepared_run(prepared, request, None, start_time, self.tenant)
         if not isinstance(res, OpenAIProxyChatCompletionResponse):
             # That should never happen since we are not streaming
             raise ValueError("Unexpected response type")
         return res
+
+    async def send_feedback(
+        self,
+        feedback: str,
+        user_agent: str | None,
+        context: str | None = None,
+    ) -> MCPToolReturn[EmptyModel]:
+        """Send MCP client feedback to processing agent and return acknowledgment"""
+
+        # Fire-and-forget: start the agent processing but don't wait for results
+        add_background_task(
+            self._process_feedback(feedback, context, user_agent, self.tenant.slug, self.user_email),
+        )
+
+        return MCPToolReturn(
+            success=True,
+            message="MCP client feedback received and sent for processing",
+            data=None,
+        )
+
+    async def _process_feedback(
+        self,
+        feedback: str,
+        context: str | None,
+        user_agent: str | None,
+        organization_name: str | None,
+        user_email: str | None,
+    ):
+        """Background task to process MCP client feedback with the agent"""
+        try:
+            # Process feedback with an agent, including metadata for tracking
+            response = await mcp_feedback_processing_agent(
+                feedback=feedback,
+                context=context,
+                user_agent=user_agent,
+                organization_name=organization_name,
+                user_email=user_email,
+            )
+            # Log the analysis or store it somewhere if needed
+            # For now, just log that processing completed
+            if response:
+                _logger.info(
+                    "MCP client feedback processed",
+                    extra={
+                        "organization_name": organization_name,
+                        "sentiment": response.sentiment,
+                        "summary": response.summary,
+                        "key_themes": response.key_themes,
+                        "confidence": response.confidence,
+                        "user_agent": user_agent,
+                    },
+                )
+            else:
+                _logger.error(
+                    "MCP client feedback processing agent returned no response",
+                    extra={
+                        "organization_name": organization_name,
+                        "user_email": user_email,
+                        "feedback": feedback,
+                        "context": context,
+                        "user_agent": user_agent,
+                    },
+                )
+
+        except Exception as e:
+            _logger.exception("Error processing MCP client feedback", exc_info=e)
 
 
 def _merge_properties(

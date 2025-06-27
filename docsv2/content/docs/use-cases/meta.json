@@ -1,14 +1,5 @@
 {
   "title": "Use Cases",
   "icon": "BookOpenText",
-  "pages": [
-    "chatbot",
-    "new_agent",
-    "migrating_existing_agent",
-    "improving_and_debugging_existing_agent",
-    "classifier",
-    "image-input",
-    "pdf-input",
-    "image-generation"
-  ]
+  "pages": ["new_agent", "migrating_existing_agent", "improving_and_debugging_existing_agent"]
 }

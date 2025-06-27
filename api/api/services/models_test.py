@@ -18,7 +18,7 @@ def models_service(mock_storage: Mock):
 
 class TestComputeCostEstimate:
     @patch(
-        "core.domain.models.model_provider_datas_mapping.MODEL_PROVIDER_DATAS",
+        "core.domain.models.model_provider_data_mapping.MODEL_PROVIDER_DATAS",
         {
             Provider.OPEN_AI: {
                 "gpt-4o-2024-08-06": ModelProviderData(

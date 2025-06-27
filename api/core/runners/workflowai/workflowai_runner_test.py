@@ -23,7 +23,7 @@ from core.domain.message import Message, MessageContent, MessageDeprecated, Mess
 from core.domain.metrics import Metric
 from core.domain.models import Model, Provider
 from core.domain.models.model_data import FinalModelData, LatestModel, MaxTokensData, ModelData, QualityData
-from core.domain.models.model_datas_mapping import MODEL_DATAS, DisplayedProvider
+from core.domain.models.model_data_mapping import MODEL_DATAS, DisplayedProvider
 from core.domain.run_output import RunOutput
 from core.domain.structured_output import StructuredOutput
 from core.domain.task_group_properties import FewShotConfiguration, FewShotExample, TaskGroupProperties

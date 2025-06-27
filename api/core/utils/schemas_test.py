@@ -13,7 +13,8 @@ from .schemas import (
     is_schema_only_containing_one_property,
     make_optional,
     remove_extra_keys,
-    remove_optional_nulls_and_empty_strings,
+    sanitize_empty_values,
+    schema_from_data,
     schema_needs_explanation,
     strip_json_schema_metadata_keys,
     strip_metadata,
@@ -307,26 +308,80 @@ class TestNavigate:
         }
 
 
-class TestRemoveOptionalNulls:
-    def test_basic(self, schema_2: JsonSchema, base_schema2_obj: dict[str, Any]):
+class TestSanitizeEmptyValues:
+    def test_remove_optional_nulls(self, schema_2: JsonSchema, base_schema2_obj: dict[str, Any]):
         clone = deepcopy(base_schema2_obj)
         assert "opt_description2" in clone
 
-        schema_2.navigate(base_schema2_obj, [remove_optional_nulls_and_empty_strings])
+        schema_2.navigate(base_schema2_obj, [sanitize_empty_values])
         assert "opt_description2" not in base_schema2_obj
         del clone["opt_description2"]
 
         assert base_schema2_obj == clone
 
-    def test_nested_obj(self, schema_2: JsonSchema, base_schema2_obj: dict[str, Any]):
+    def test_remove_optional_nulls_in_nested(self, schema_2: JsonSchema, base_schema2_obj: dict[str, Any]):
         # Test for objects in refs
         schema_2["$defs"]["Sub1"]["required"].remove("key2")
         base_schema2_obj["sub1"]["key2"] = None
 
         assert "key2" in base_schema2_obj["sub1"]
-        schema_2.navigate(base_schema2_obj, [remove_optional_nulls_and_empty_strings])
+        schema_2.navigate(base_schema2_obj, [sanitize_empty_values])
 
         assert "key2" not in base_schema2_obj["sub1"]
+
+    @pytest.mark.parametrize(
+        ("name", "value"),
+        [
+            pytest.param({"type": ["string", "null"]}, None, id="type_string_null"),
+            pytest.param({"type": "null"}, None, id="type_null"),
+            pytest.param({"anyOf": [{"type": "string"}, {"type": "null"}]}, None, id="anyOf_string_null"),
+            pytest.param(
+                {"oneOf": [{"type": "string"}, {"type": "null"}, {"type": "integer"}]},
+                None,
+                id="oneOf_string_null_integer",
+            ),
+        ],
+    )
+    def test_add_missing_nones(self, name: dict[str, Any], value: Any):
+        """Check that we add missing None values"""
+
+        schema = JsonSchema(
+            {
+                "type": "object",
+                "properties": {"name": name},
+                "required": ["name"],
+            },
+        )
+        obj = {}
+        schema.navigate(obj, [sanitize_empty_values])
+
+        assert obj == {"name": value}
+
+    @pytest.mark.parametrize(
+        "name",
+        [
+            {"type": "string"},
+            {"type": "number"},
+            {"type": "integer"},
+            {"type": "boolean"},
+            {"type": "array"},
+            {"type": "object"},
+        ],
+    )
+    def test_not_add_missing_key(self, name: dict[str, Any]):
+        """Validates that we do not set the missing key for most types"""
+
+        schema = JsonSchema(
+            {
+                "type": "object",
+                "properties": {"name": name},
+                "required": ["name"],
+            },
+        )
+        obj = {}
+        schema.navigate(obj, [sanitize_empty_values])
+
+        assert obj == {}
 
 
 class TestRemoveExtraKeys:
@@ -439,7 +494,7 @@ class TestRemoveEmptyStrings:
             "array": ["", "not empty", None],
         }
 
-        basic_schema.navigate(obj, [remove_optional_nulls_and_empty_strings])
+        basic_schema.navigate(obj, [sanitize_empty_values])
         assert obj == expected
 
     @pytest.fixture
@@ -472,7 +527,7 @@ class TestRemoveEmptyStrings:
             "items": [{"name": "Item 1", "description": ""}, {"name": ""}, {"name": "Item 3", "description": "Valid"}],
         }
 
-        array_schema.navigate(obj, [remove_optional_nulls_and_empty_strings])
+        array_schema.navigate(obj, [sanitize_empty_values])
         assert obj == expected
 
     @pytest.fixture
@@ -1617,4 +1672,27 @@ class TestRemoveFromParent:
         assert schema.schema == {
             "type": "object",
             "properties": {},
+        }
+
+
+class TestSchemaFromData:
+    def test_schema_from_data_all_types(self):
+        schema = schema_from_data(
+            {
+                "a_number": 1.0,
+                "a_boolean": True,
+                "a_array": [1, 2, 3],
+                "a_object": {"a": 1, "b": "hello"},
+                "a_null": None,
+            },
+        )
+        assert schema == {
+            "type": "object",
+            "properties": {
+                "a_number": {"type": "number"},
+                "a_boolean": {"type": "boolean"},
+                "a_array": {"type": "array", "items": {"type": "integer"}},
+                "a_object": {"type": "object", "properties": {"a": {"type": "integer"}, "b": {"type": "string"}}},
+                "a_null": {},
+            },
         }

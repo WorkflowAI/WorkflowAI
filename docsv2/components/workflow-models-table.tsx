@@ -8,9 +8,9 @@ interface ModelSupports {
   output_text: boolean;
   json_mode: boolean;
   audio_only: boolean;
-  support_system_messages: boolean;
+  supports_system_messages: boolean;
   structured_output: boolean;
-  support_input_schema: boolean;
+  supports_input_schema: boolean;
   parallel_tool_calls: boolean;
   tool_calling: boolean;
 }

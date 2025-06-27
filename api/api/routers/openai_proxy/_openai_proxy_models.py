@@ -5,7 +5,7 @@ import time
 from collections.abc import Callable, Iterator, Mapping
 from typing import Any, Literal, NamedTuple, TypeAlias
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
 from pydantic.alias_generators import to_camel, to_pascal
 from workflowai import CacheUsage
 
@@ -20,9 +20,10 @@ from core.domain.message import (
     MessageContent,
     MessageRole,
 )
-from core.domain.models.model_datas_mapping import MODEL_ALIASES
+from core.domain.models.model_data_mapping import MODEL_ALIASES
 from core.domain.models.models import Model
 from core.domain.models.providers import Provider
+from core.domain.reasoning_effort import ReasoningEffort
 from core.domain.run_output import RunOutput
 from core.domain.task_group_properties import TaskGroupProperties, ToolChoice, ToolChoiceFunction
 from core.domain.tenant_data import PublicOrganizationData
@@ -419,6 +420,19 @@ class _OpenAIProxyExtraFields(BaseModel):
     )
 
 
+class OpenAIProxyReasoning(BaseModel):
+    """A custom reasoning object that allows setting an effort or a budget"""
+
+    effort: ReasoningEffort | None = None
+    budget: int | None = None
+
+    @model_validator(mode="after")
+    def validate_effort_or_budget(self):
+        if self.effort is None and self.budget is None:
+            raise ValueError("Either effort or budget must be set")
+        return self
+
+
 class OpenAIProxyChatCompletionRequest(_OpenAIProxyExtraFields):
     messages: list[OpenAIProxyMessage] = Field(default_factory=list)
     model: str
@@ -462,6 +476,8 @@ class OpenAIProxyChatCompletionRequest(_OpenAIProxyExtraFields):
 
     # Not in extra fields because we don't want to expose them or add an alias
     workflowai_internal: SkipJsonSchema[WorkflowAIInternal | None] = None
+
+    reasoning: OpenAIProxyReasoning | None = None
 
     model_config = ConfigDict(extra="allow")
 
@@ -752,6 +768,20 @@ class OpenAIProxyChatCompletionRequest(_OpenAIProxyExtraFields):
             properties.max_tokens = max_tokens
         if tools := self.domain_tools():
             properties.enabled_tools = tools
+        if self.reasoning:
+            properties.reasoning_effort = self.reasoning.effort
+            properties.reasoning_budget = self.reasoning.budget
+        elif self.reasoning_effort:
+            try:
+                properties.reasoning_effort = ReasoningEffort(self.reasoning_effort)
+            except ValueError:
+                # Using the default reasoning effort
+                # TODO: remove warning since it could be a customer issue
+                # We should likely just reject the request
+                _logger.warning(
+                    "Client provided an invalid reasoning effort",
+                    extra={"reasoning_effort": self.reasoning_effort},
+                )
 
     def domain_messages(self) -> Iterator[Message]:
         previous_message: Message | None = None
