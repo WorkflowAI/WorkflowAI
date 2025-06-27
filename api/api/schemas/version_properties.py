@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field, model_validator
 from core.domain.models import Model
 from core.domain.models.model_data import DeprecatedModel
 from core.domain.models.model_data_mapping import MODEL_DATAS
+from core.domain.reasoning_effort import ReasoningEffort
 from core.domain.task_group_properties import TaskGroupProperties
 
 
@@ -24,12 +25,17 @@ class ShortVersionProperties(BaseModel):
     provider: str | None = Field(default=None, description="The LLM provider used for the run")
     temperature: float | None = Field(default=None, description="The temperature for generation")
 
+    reasoning_budget: int | None = None
+    reasoning_effort: ReasoningEffort | None = None
+
     @classmethod
     def from_domain(cls, properties: TaskGroupProperties):
         return cls(
             model=properties.model,
             provider=properties.provider,
             temperature=properties.temperature,
+            reasoning_budget=properties.reasoning_budget,
+            reasoning_effort=properties.reasoning_effort,
         )
 
     @model_validator(mode="after")
