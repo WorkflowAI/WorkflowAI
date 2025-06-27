@@ -857,6 +857,7 @@ HOSTED_TOOL_UPDATE_INSTRUCTIONS = (
 # Goal
 
 As the use want to add / update / remove hosted tools from its agent's (see playground_state.version_messages), you MUST use the 'update_version_messages_hosted_tools' tool.
+The hosted tools use in the updated version messages must be the exactly the same (nothing more, nothing less) as the ones requested by the user.
 If the user is asking for no hosted tools to be used, and the current playground_state.version_messages contains hosted tools, you MUST remove the hosted tools from the version messages by using the 'update_version_messages_hosted_tools' tool.
 """
     + _HOSTED_TOOL_UPDATE_INSTRUCTIONS
