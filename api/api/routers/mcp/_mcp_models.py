@@ -56,13 +56,13 @@ class ConciseModelSupports(BaseModel):
 
 
 class ConciseModelResponse(BaseModel):
-    id: str
-    display_name: str
-    supports: ConciseModelSupports
-    quality_index: int
-    cost_per_input_token_usd: float
-    cost_per_output_token_usd: float
-    release_date: str
+    id: str = Field(description="The id of the model")
+    display_name: str = Field(description="The display name of the model")
+    supports: ConciseModelSupports = Field(description="The features supported by the model")
+    quality_index: int = Field(description="The quality index of the model. A higher index means a smarter model.")
+    cost_per_input_token_usd: float = Field(description="The cost per input token in USD")
+    cost_per_output_token_usd: float = Field(description="The cost per output token in USD")
+    release_date: str = Field(description="The release date of the model")
 
     @classmethod
     def from_model_data(cls, id: str, model: FinalModelData):
@@ -613,8 +613,6 @@ class AgentVersion(BaseModel):
     model: str = Field(description="The model (id) used by the version")
     temperature: float | None = Field(description="The temperature setting of the version")
     messages: list[Message] | None = Field(description="The messages that are part of the version")
-    # QUESTION: why are instructions exactly? I thought instructions will be in the list of messages
-    instructions: str | None = Field(description="The instructions of the version")
     top_p: float | None = Field(description="The top_p parameter of the version")
     max_tokens: int | None = Field(description="The max_tokens setting of the version")
     frequency_penalty: float | None = Field(description="The frequency_penalty parameter of the version")
@@ -626,8 +624,8 @@ class AgentVersion(BaseModel):
             id=version.displayed_id,  # TODO: make sure the MCP is capable of retrieving a version by its Semver
             model=version.properties.model or "",  # there is always a model
             temperature=version.properties.temperature,
+            # TODO: map instructions to system messages ?
             messages=version.properties.messages,
-            instructions=version.properties.instructions,
             top_p=version.properties.top_p,
             max_tokens=version.properties.max_tokens,
             frequency_penalty=version.properties.frequency_penalty,
@@ -647,8 +645,9 @@ class MCPRun(BaseModel):
         "success",
         "error",
     ] = Field(description="The status of the run (success or error)")
-    # QUESTION/TODO: what is agent_input exactly? it is the list of input variables values? in that case, the naming is confusing
-    agent_input: dict[str, Any] | None = Field(description="TODO: ...")
+    input_variables: dict[str, Any] | None = Field(
+        description="The input variables included in the completion request. Used to template the version messages.",
+    )
     messages: list[Message] = Field(description="The exchanged messages, including the returned assistant message")
     duration_seconds: float | None = Field(description="The duration of the run in seconds")
     cost_usd: float | None = Field(description="The cost of the run in USD")
@@ -681,7 +680,7 @@ class MCPRun(BaseModel):
             # See https://linear.app/workflowai/issue/WOR-4485/stop-storing-non-saved-versions-and-attach-them-to-runs-instead
             agent_version=AgentVersion.from_domain(version) if version else AgentVersion.from_domain(run.group),
             status="success" if run.status == "success" else "error",
-            agent_input={k: v for k, v in run.task_input.items() if k != "workflowai.messages"}
+            input_variables={k: v for k, v in run.task_input.items() if k != "workflowai.messages"}
             if run.task_input
             else None,
             messages=run.messages,
