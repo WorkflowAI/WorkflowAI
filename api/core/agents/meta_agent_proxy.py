@@ -1070,6 +1070,43 @@ You MUST always make an actual 'generate_agent_input' tool call to generate the 
     + INSTRUCTIONS_FOOTER
 )
 
+VERSION_MESSAGES_HOSTED_TOOL_UPDATE_TOOL: ChatCompletionToolParam = {
+    "type": "function",
+    "function": {
+        "name": "update_version_messages_hosted_tools",
+        "description": "Update the version messages of the current agent version by providing instructions for improvement in order to add / remove / update hosted tools",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "messages": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "role": {
+                                "type": "string",
+                                "enum": ["system", "user", "assistant"],
+                            },
+                            "content": {
+                                "type": "string",
+                            },
+                        },
+                        "required": ["role", "content"],
+                        "additionalProperties": False,
+                    },
+                    "description": "The complete list of messages that should replace the current agent's messages.",
+                },
+            },
+            "required": [
+                "messages",
+            ],
+            "additionalProperties": False,
+        },
+        "strict": True,
+    },
+}
+
+
 TOOL_DEFINITIONS: list[ChatCompletionToolParam] = [
     {
         "type": "function",
@@ -1162,43 +1199,9 @@ TOOL_DEFINITIONS: list[ChatCompletionToolParam] = [
             "strict": True,
         },
     },
+    VERSION_MESSAGES_HOSTED_TOOL_UPDATE_TOOL,
 ]
 
-DIRECT_VERSION_MESSAGES_TOOL: ChatCompletionToolParam = {
-    "type": "function",
-    "function": {
-        "name": "update_version_messages_hosted_tools",
-        "description": "Update the version messages of the current agent version by providing instructions for improvement in order to add / remove / update hosted tools",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "messages": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "role": {
-                                "type": "string",
-                                "enum": ["system", "user", "assistant"],
-                            },
-                            "content": {
-                                "type": "string",
-                            },
-                        },
-                        "required": ["role", "content"],
-                        "additionalProperties": False,
-                    },
-                    "description": "The complete list of messages that should replace the current agent's messages.",
-                },
-            },
-            "required": [
-                "messages",
-            ],
-            "additionalProperties": False,
-        },
-        "strict": True,
-    },
-}
 
 OUTPUT_SCHEMA_EDITION_TOOLS: list[ChatCompletionToolParam] = [
     {
@@ -1252,7 +1255,7 @@ def _pick_tools_to_use(
 
     # When direct version message update is enabled, only provide that tool
     if direct_version_message_update:
-        return [DIRECT_VERSION_MESSAGES_TOOL]
+        return [VERSION_MESSAGES_HOSTED_TOOL_UPDATE_TOOL]
 
     # Otherwise use regular tools
     if agent_has_output_schema:
