@@ -1,0 +1,335 @@
+---
+title: Conversations
+summary: Documentation on how agent interactions are grouped into conversations. Explains both automatic and manual methods for tracking multi-turn chats for observability and debugging.
+description: Group runs from chat agents into conversations to track multi-turn interactions
+---
+
+import { Tabs, Tab } from "fumadocs-ui/components/tabs"
+import { Accordions, Accordion } from "fumadocs-ui/components/accordion"
+
+WorkflowAI automatically groups successive related runs of the same agent into conversations, making it easier to track and analyze multi-turn interactions. Let's see how conversation grouping works.
+
+## Introduction
+
+Here's an example of a typical chatbot conversation that would be automatically grouped together:
+
+```
+Customer Support Chatbot
+
+User: Hi, I'm having trouble with my order #12345
+Bot:  I'd be happy to help! Let me look up your order.
+      Order #12345 shows as shipped yesterday.
+
+User: I haven't received a tracking number though
+Bot:  I see the issue. Here's your tracking number:
+      1Z999AA1234567890. It should arrive tomorrow.
+
+User: Perfect, thank you!
+Bot:  You're welcome! Is there anything else I can
+      help you with today?
+```
+
+Without conversation grouping, each of these exchanges would appear as separate, unrelated runs in your dashboard. With automatic grouping, WorkflowAI recognizes they're part of the same conversation and groups them together.
+
+[TODO: add screenshot of run view with a conversation @anya]
+
+This feature is particularly valuable for:
+
+- **Observability**: Track complete conversation flows in the UI
+- **Debugging**: Easily trace issues across multiple turns of a conversation
+
+{/* TODO: add screenshot */}
+
+A conversation can represent either:
+- A chat between a user and the agent
+- A series of LLM completions involving tool calls
+
+<Callout type="warning">
+A conversation is always agent specific, meaning that runs that have the same conversation id but are from different agents are not considered part of the same conversation. Make sure to set [`agent_id`](/observability#identify-your-agent) in the `metadata` of your requests.
+</Callout>
+
+<Callout type="info">
+The term `conversation` is an [Open Telemetry standard](https://opentelemetry.io/docs/specs/semconv/messaging/messaging-spans/#conversations). A common synonym is `thread` which is used by Langchain for example. 
+
+It is different from the concept of:
+- [session](https://opentelemetry.io/docs/specs/semconv/registry/attributes/session/) which usually refer to a **user** session
+- [trace](https://opentelemetry.io/docs/concepts/signals/traces/) (aka **workflow**) that groups together runs linked to a single event. A trace can for example include runs of multiple agents and multiple conversations.
+</Callout>
+
+<Callout type="info">
+Conversations are only available in the chat completion endpoint.
+</Callout>
+
+## Automatic conversation grouping
+
+The key insight is that the OpenAI `/v1/chat/completions` API requires each request to include the **entire conversation history**. WorkflowAI uses this to automatically detect when requests belong to the same conversation.
+
+**The Pattern**: Each new turn includes all previous messages
+
+```
+Turn 1: [System, "Hi, trouble with order #12345"] ──► "I'll help you..."
+        
+Turn 2: [System, "Hi, trouble with order #12345", "I'll help you...", "No tracking number"] ──► "Here's your tracking..."
+        
+Turn 3: [System, "Hi, trouble with order #12345", "I'll help you...", "No tracking number", "Here's your tracking...", "Perfect, thanks!"] ──► "You're welcome..."
+```
+
+**The Magic**: WorkflowAI notices that Turn 2 contains all of Turn 1's messages, and Turn 3 contains all of Turn 2's messages. This shared history is how WorkflowAI groups the messages into the same conversation.
+
+**Simplified view**:
+```
+Turn 1: [S, U1] ──────────► A1
+Turn 2: [S, U1, A1, U2] ──► A2  
+Turn 3: [S, U1, A1, U2, A2, U3] ──► A3
+```
+
+Where: `S` = System, `U` = User messages, `A` = Assistant messages
+  
+
+**How it Works:**
+
+1. **Start of a conversation** If a request does not contain an assistant message, WorkflowAI assumes that the request is the start of a new conversation and assigns a new conversation id (uuid7) to the run.
+
+   ```
+   Step 1: New Conversation Detection
+   ┌──────────────┐    ┌─────────────────┐    ┌──────────────────┐
+   │ Request:     │───►│ No Assistant    │───►│ Generate new     │
+   │ [S, U1]      │    │ message found?  │    │ conversation_id  │
+   └──────────────┘    └─────────────────┘    └──────────────────┘
+   ```
+
+2. **History Hashing** When storing a run, WorkflowAI computes a hash of the full message list, including the messages from the request and the generated message. For example, if the request included the messages `[S, U1]` and the LLM generated a message `A1`, the hash would be computed on the array `[S, U1, A1]`. The hash with the associated run id and conversation id are added to a key value store (Redis).
+
+   ```
+   Step 2: Hash Generation & Storage  
+   ┌──────────────┐    ┌─────────────────┐    ┌──────────────────┐
+   │ Response:    │───►│ Compute hash of │───►│ Store in Redis:  │
+   │ [S, U1, A1]  │    │ [S, U1, A1]     │    │ hash → conv_id   │
+   └──────────────┘    └─────────────────┘    └──────────────────┘
+   ```
+
+3. **Finding a conversation ID for a completion** For each incoming request that includes an assistant message, WorkflowAI computes the hash of the messages up to each assistant message. For example, if a list of message looked like `[S, U1, A1, U2, A2, U3]`, WorkflowAI would compute a hash of `[S, U1, A1]` and `[S, U1, A1, U2, A2]`. If any of the hashes exist in our key value store (we check for the hashes in reverse order, i-e longest list first), the hash is "consumed", meaning that the run will be assigned the conversation id of the previous run and the hash is removed from the store. Otherwise a new conversation ID is generated and assigned to the run.
+
+   ```
+   Step 3: Conversation Matching (Next Turn)
+   ┌──────────────────┐    ┌─────────────────┐    ┌──────────────────┐
+   │ Request:         │───►│ Compute hashes: │───►│ Check Redis for  │
+   │ [S, U1, A1, U2]  │    │ • [S, U1, A1]   │    │ matching hash    │
+   └──────────────────┘    └─────────────────┘    └──────────────────┘
+                                                           │
+                            ┌──────────────────┐           │
+                            │ Found? Use same  │◄──────────┘
+                            │ conversation_id  │
+                            └──────────────────┘
+   ```
+
+4. **Updating the conversation hash** Then step 2 is repeated for the new assistant message.
+
+   ```
+   Step 4: Update Hash Store
+   ┌──────────────────────┐    ┌─────────────────────┐    ┌──────────────────┐
+   │ New Response:        │───►│ Compute new hash:   │───►│ Store in Redis:  │
+   │ [S, U1, A1, U2, A2]  │    │ [S, U1, A1, U2, A2] │    │ hash → conv_id   │
+   └──────────────────────┘    └─────────────────────┘    └──────────────────┘
+   ```
+
+<Callout type="info">
+**Important:** The hash is stored (on Redis) with an **expiry of 1 hour**. This means:
+- Runs that belong to the same conversation will be properly grouped as long as there is not more than 1 hour between 2 consecutive runs. When adding a new message to an existing conversation, the hash is updated and the expiry is extended.
+- If a user returns after 1 hour, their messages will start a new conversation.
+
+This prevents accidental linking of unrelated conversations that happen to have the same message history.
+</Callout>
+
+<Callout type="info">
+When hashing the message history, only the message list is considered. Additional parameters like temperature or model are not, meaning that runs that belong to the same conversation could have been generated by different models for example. If a different behavior is desired, consider using the [manual conversation grouping mechanism](#manual-conversation-grouping).
+</Callout>
+
+This way, subsequent runs that share a message history will be assigned the same conversation id, allowing to group runs together in the UI as one conversation.
+
+**Example: Complete Conversation Flow**
+
+```
+Timeline: How 3 requests become 1 conversation
+
+Request 1: [S, U1] ──────────────────────► Response: A1
+           │                               │
+           └─ New conversation_id: abc123  └─ Store hash([S,U1,A1]) → abc123
+
+Request 2: [S, U1, A1, U2] ──────────────► Response: A2  
+           │                               │
+           ├─ Hash [S,U1,A1] found!        └─ Store hash([S,U1,A1,U2,A2]) → abc123
+           └─ Use conversation_id: abc123   
+
+Request 3: [S, U1, A1, U2, A2, U3] ──────► Response: A3
+           │                               │
+           ├─ Hash [S,U1,A1,U2,A2] found!  └─ Store hash([S,U1,A1,U2,A2,U3,A3]) → abc123
+           └─ Use conversation_id: abc123
+
+Result: All 3 runs grouped under conversation_id: abc123
+┌─────────────────────────────────────────────────────────┐
+│ Conversation abc123                                     │
+├─────────────────────────────────────────────────────────┤
+│ Run 1: [S, U1] → A1                                     │
+│ Run 2: [S, U1, A1, U2] → A2                             │  
+│ Run 3: [S, U1, A1, U2, A2, U3] → A3                     │
+└─────────────────────────────────────────────────────────┘
+```
+
+Automatic conversation grouping does not require any code change.
+
+## Manual conversation grouping
+
+It is possible to manually group runs into conversations by generating and passing a `conversation_id` in the metadata of all your requests. In this case, a hash is not computed and the run is assigned the provided conversation id.
+
+<Callout type="info">
+`conversation_id` should be unique per agent. We internally use a uuid7 but any other unique identifier can be used (as long as the identifier is stable for the duration of the conversation).
+</Callout>
+
+<Tabs items={['Python', 'TypeScript', 'cURL']}>
+<Tab value="Python">
+```python
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=...,
+    metadata={
+        "agent_id": "my-agent-id",
+        "conversation_id": "..."
+    }
+)
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+const response = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    messages: ...,
+    metadata: {
+        agentId: "my-agent-id",
+        conversationId: "..."
+    }
+})
+```
+</Tab>
+<Tab value="cURL">
+```sh
+curl -X POST https://run.workflowai.com/v1/chat/completions \
+-H "Authorization: Bearer $WORKFLOWAI_API_KEY" \
+-H "Content-Type: application/json" \
+-d '{
+    "model": "gpt-4o-mini",
+    "messages": ...,
+    "metadata": {
+        "agent_id": "my-agent-id",
+        "conversation_id": "..."
+    }
+}'
+```
+</Tab>
+</Tabs>
+
+## Accessing a specific conversation
+
+To access a specific conversation, you need the `conversation_id`. There are two ways to obtain the `conversation_id`:
+
+- **Manual conversation grouping**: If you [manually set a `conversation_id`](#manual-conversation-grouping), the `conversation_id` is available immediately in your code
+- **Automatic conversation grouping**: The `conversation_id` is generated during run storage and is not returned in the inference response. You can retrieve the `conversation_id` later using the [runs API endpoints](/observability/runs) (e.g., `/runs/{id}` or `/runs/search`), or in the UI.
+
+Once you have the `conversation_id`, you can view the conversation:
+
+### Using the UI
+
+...
+@anya: add screenshot showing how to navigate to a specific conversation using conversation_id
+
+### Using the API
+
+...
+@guillaume: API endpoint to search runs by conversation_id
+TODO: check with pierre how does the API returns the conversation
+
+### Using MCP
+
+```
+(show text that will trigger the search_run tool)
+```
+
+(using `search_runs` tool with `conversation_id: <conversation_id>`)
+
+## Finding conversations
+
+You can search for conversations based on metadata or other criteria, which is useful when you want to find conversations related to a specific customer, time period, or other attributes.
+
+### Using the UI
+
+...
+@anya: add screenshot showing conversation search with metadata filters like customer_id
+
+### Using the API
+
+...
+TODO[@guillaume]: need to expose runs search with conversation_id metadata filter or add a new endpoint to fetch a conversation by conversation_id
+
+### Using MCP
+
+```
+(show text that will trigger the search_run tool)
+```
+
+(using `search_runs` tool with metadata filters like `conversation_id: <conversation_id>`)
+
+## FAQ
+
+<Accordions>
+<Accordion title="Can I disable automatic conversation grouping?">
+Automatic conversation grouping cannot be disabled directly. However, if you want to prevent runs from being grouped together, you can pass a random `conversation_id` for each request. This will effectively disable the grouping feature since each run will have a unique conversation identifier.
+
+<Tabs items={['Python', 'TypeScript', 'cURL']}>
+<Tab value="Python">
+```python
+import uuid
+
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=...,
+    metadata={
+        "agent_id": "my-agent-id",
+        "conversation_id": str(uuid.uuid4())  # Random ID for each request
+    }
+)
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+import { randomUUID } from 'crypto';
+
+const response = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    messages: ...,
+    metadata: {
+        agentId: "my-agent-id",
+        conversationId: randomUUID()  // Random ID for each request
+    }
+})
+```
+</Tab>
+<Tab value="cURL">
+```sh
+curl -X POST https://run.workflowai.com/v1/chat/completions \
+-H "Authorization: Bearer $WORKFLOWAI_API_KEY" \
+-H "Content-Type: application/json" \
+-d '{
+    "model": "gpt-4o-mini",
+    "messages": ...,
+    "metadata": {
+        "agent_id": "my-agent-id",
+        "conversation_id": "'$(uuidgen)'"
+    }
+}'
+```
+</Tab>
+</Tabs>
+</Accordion>
+</Accordions>
+
+

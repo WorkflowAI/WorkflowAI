@@ -20,10 +20,11 @@ from api.dependencies.task_info import TaskTupleDep
 from api.services import file_storage
 from api.services.analytics import AnalyticsService, analytics_service
 from api.services.api_keys import APIKeyService
-from api.services.feedback_svc import FeedbackTokenGenerator
+from api.services.feedback_svc import FeedbackService, FeedbackTokenGenerator
 from api.services.groups import GroupService
 from api.services.internal_tasks.integration_service import IntegrationService
 from api.services.internal_tasks.internal_tasks_service import InternalTasksService
+from api.services.internal_tasks.meta_agent_service import MetaAgentService
 from api.services.models import ModelsService
 from api.services.payments_service import PaymentService, PaymentSystemService
 from api.services.reviews import ReviewsService
@@ -291,3 +292,33 @@ def integration_service_dependency(
 
 
 IntegrationAgentServiceDep = Annotated[IntegrationService, Depends(integration_service_dependency)]
+
+
+def feedback_service_dependency(storage: StorageDep):
+    return FeedbackService(storage.feedback)
+
+
+FeedbackServiceDep = Annotated[FeedbackService, Depends(feedback_service_dependency)]
+
+
+def meta_agent_service_dependency(
+    storage: StorageDep,
+    event_router: EventRouterDep,
+    runs_service: RunsServiceDep,
+    models_service: ModelsServiceDep,
+    feedback_service: FeedbackServiceDep,
+    versions_service: VersionsServiceDep,
+    reviews_service: ReviewsServiceDep,
+):
+    return MetaAgentService(
+        storage=storage,
+        event_router=event_router,
+        runs_service=runs_service,
+        models_service=models_service,
+        feedback_service=feedback_service,
+        versions_service=versions_service,
+        reviews_service=reviews_service,
+    )
+
+
+MetaAgentServiceDep = Annotated[MetaAgentService, Depends(meta_agent_service_dependency)]

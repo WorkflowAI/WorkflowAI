@@ -89,9 +89,9 @@ class ModelDataSupportsOverride(BaseModel):
     supports_input_pdf: bool | None = None
     supports_input_audio: bool | None = None
     supports_audio_only: bool | None = None
-    support_system_messages: bool | None = None
+    supports_system_messages: bool | None = None
     supports_structured_output: bool | None = None
-    support_input_schema: bool | None = None
+    supports_input_schema: bool | None = None
     supports_output_image: bool | None = None
     supports_output_text: bool | None = None
     supports_tool_calling: bool | None = None

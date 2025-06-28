@@ -1,6 +1,7 @@
 from typing import Any
 
-from core.domain.tool import CustomTool
+from core.domain.tool import CustomTool, Tool
+from core.runners.workflowai.workflowai_runner import WorkflowAIRunner
 from core.storage.backend_storage import BackendStorage
 
 
@@ -22,3 +23,7 @@ class ToolsService:
 
     async def delete_tool(self, id: str) -> None:
         await self.storage.tools.delete_tool(id)
+
+    @classmethod
+    def hosted_tools(cls) -> list[Tool]:
+        return [d.definition for d in WorkflowAIRunner.internal_tools.values()]

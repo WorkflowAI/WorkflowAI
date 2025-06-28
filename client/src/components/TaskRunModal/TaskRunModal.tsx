@@ -9,12 +9,7 @@ import { TASK_RUN_ID_PARAM } from '@/lib/constants';
 import { useFavoriteToggle } from '@/lib/hooks/useFavoriteToggle';
 import { useRedirectWithParams } from '@/lib/queryString';
 import { taskSchemaRoute } from '@/lib/routeFormatter';
-import {
-  useOrFetchCurrentTaskSchema,
-  useOrFetchRunV1,
-  useOrFetchTaskRunTranscriptions,
-  useOrFetchVersion,
-} from '@/store';
+import { useOrFetchRunV1, useOrFetchSchema, useOrFetchTaskRunTranscriptions, useOrFetchVersion } from '@/store';
 import { TaskID, TaskSchemaID, TenantID } from '@/types/aliases';
 import { TaskRunView } from './TaskRunView';
 import { ProxyRunView } from './proxy/ProxyRunView';
@@ -37,7 +32,7 @@ export default function TaskRunModal(props: TaskRunModalProps) {
 
   const taskSchemaId = (taskRun?.task_schema_id ?? taskSchemaIdFromParams) as TaskSchemaID;
 
-  const { taskSchema: schema } = useOrFetchCurrentTaskSchema(tenant, taskId, taskSchemaId);
+  const { taskSchema: schema } = useOrFetchSchema(tenant, taskId, taskSchemaId);
 
   const taskRunIndex = useMemo(() => taskRunIds?.findIndex((id) => id === taskRunId) || 0, [taskRunId, taskRunIds]);
   const runsLength = taskRunIds?.length ?? 0;
@@ -45,12 +40,12 @@ export default function TaskRunModal(props: TaskRunModalProps) {
   const { run: prevTaskRun } = useOrFetchRunV1(tenant, taskId, taskRunIds?.[taskRunIndex - 1]);
   const { run: nextTaskRun } = useOrFetchRunV1(tenant, taskId, taskRunIds?.[taskRunIndex + 1]);
 
-  const {} = useOrFetchCurrentTaskSchema(
+  const {} = useOrFetchSchema(
     tenant,
     taskId,
     !!prevTaskRun?.task_schema_id ? (`${prevTaskRun.task_schema_id}` as TaskSchemaID) : undefined
   );
-  const {} = useOrFetchCurrentTaskSchema(
+  const {} = useOrFetchSchema(
     tenant,
     taskId,
     !!nextTaskRun?.task_schema_id ? (`${nextTaskRun.task_schema_id}` as TaskSchemaID) : undefined
@@ -82,7 +77,7 @@ export default function TaskRunModal(props: TaskRunModalProps) {
     const newTaskRunId = taskRunIds[taskRunIndex - 1];
     if (newTaskRunId) {
       redirectWithParams({
-        params: { taskRunId: newTaskRunId },
+        params: { [TASK_RUN_ID_PARAM]: newTaskRunId },
       });
     }
   }, [taskRunIndex, redirectWithParams, taskRunIds]);
@@ -94,7 +89,7 @@ export default function TaskRunModal(props: TaskRunModalProps) {
     const newTaskRunId = taskRunIds[taskRunIndex + 1];
     if (newTaskRunId) {
       redirectWithParams({
-        params: { taskRunId: newTaskRunId },
+        params: { [TASK_RUN_ID_PARAM]: newTaskRunId },
       });
     }
   }, [taskRunIndex, redirectWithParams, taskRunIds, runsLength]);
@@ -182,7 +177,7 @@ export function useRunIDParam() {
   const setTaskRunId = useCallback(
     (taskRunId: string | undefined) => {
       redirectWithParams({
-        params: { taskRunId: taskRunId },
+        params: { [TASK_RUN_ID_PARAM]: taskRunId },
         scroll: false,
       });
     },
@@ -191,7 +186,7 @@ export function useRunIDParam() {
 
   const clearTaskRunId = useCallback(() => {
     redirectWithParams({
-      params: { taskRunId: undefined },
+      params: { [TASK_RUN_ID_PARAM]: undefined },
       scroll: false,
     });
   }, [redirectWithParams]);

@@ -42,6 +42,34 @@ class TestOpenAIProxyChatCompletionRequest:
         )
         assert payload
 
+    def test_workflowai_internal(self):
+        payload = OpenAIProxyChatCompletionRequest.model_validate(
+            {
+                "model": "gpt-4o-mini",
+                "messages": [],
+                "workflowai_internal": {
+                    "variant_id": "123",
+                    "version_messages": [
+                        {
+                            "role": "system",
+                            "content": [{"type": "text", "text": "You are a helpful assistant"}],
+                        },
+                    ],
+                },
+                "agent_id": "123",
+                "stream": True,
+                "stream_options": {
+                    "valid_json_chunks": True,
+                },
+            },
+        )
+        assert payload
+        assert payload.workflowai_internal is not None
+        assert payload.workflowai_internal.variant_id == "123"
+        assert payload.workflowai_internal.version_messages == [
+            Message.with_text("You are a helpful assistant", role="system"),
+        ]
+
     @pytest.mark.parametrize(
         "extra",
         (
@@ -334,6 +362,7 @@ class TestOpenAIProxyChatCompletionRequestExtractReferences:
         [
             pytest.param({}, None, id="model only"),
             pytest.param({"model": "my-agent/gpt-4o"}, "my-agent", id="model with agent_id"),
+            pytest.param({"model": "my_agent/gpt-4o"}, "my_agent", id="model with agent_id underscores"),
             pytest.param({"metadata": {"agent_id": "my-agent"}}, "my-agent", id="agent id in metadata"),
             pytest.param({"agent_id": "my-agent"}, "my-agent", id="model with agent_id"),
             # Model has a provider prefix but agent_id is provided so it takes precedence
@@ -391,6 +420,13 @@ class TestOpenAIProxyChatCompletionRequestExtractReferences:
                 123,
                 VersionEnvironment.PRODUCTION,
                 id="agent_schema_env_format",
+            ),
+            pytest.param(
+                {"model": "my_agent/#123/production"},
+                "my_agent",
+                123,
+                VersionEnvironment.PRODUCTION,
+                id="agent_id_underscores",
             ),
             pytest.param(
                 {
@@ -761,8 +797,8 @@ class TestDomainTools:
                 "model": "gpt-4o",
                 "tools": [
                     {"type": "function", "function": {"name": "test_tool", "parameters": {}}},
+                    {"type": "function", "function": {"name": "@search-google"}},
                 ],
-                "workflowai_tools": ["@search-google"],
             },
         )
         tools = request.domain_tools()
@@ -787,6 +823,44 @@ class TestDomainTools:
         assert tools is not None
         assert len(tools) == 1
         assert tools[0] == ToolKind.WEB_SEARCH_GOOGLE
+
+    def test_workflowai_tools_in_version_system_message(self):
+        """Test that workflowai_tools are detected in tools"""
+        request = OpenAIProxyChatCompletionRequest.model_validate(
+            {
+                "messages": [
+                    {"role": "user", "content": "Hello, world!"},
+                ],
+                "model": "gpt-4o",
+                "workflowai_internal": {
+                    "variant_id": "123",
+                    "version_messages": [
+                        {"role": "system", "content": [{"text": "Use @search-google to find information"}]},
+                    ],
+                },
+            },
+        )
+        tools = request.domain_tools()
+        assert tools is not None
+        assert len(tools) == 1
+        assert tools[0] == ToolKind.WEB_SEARCH_GOOGLE
+
+    def test_duplicate_tools_in_system_message(self):
+        """Test that duplicate tools are ignored in system message"""
+        request = OpenAIProxyChatCompletionRequest.model_validate(
+            {
+                "model": "gpt-4o",
+                "messages": [
+                    {"role": "system", "content": "Use @search-google to find information"},
+                ],
+                "tools": [
+                    {"type": "function", "function": {"name": "@search-google"}},
+                ],
+            },
+        )
+        tools = request.domain_tools()
+        assert tools is not None
+        assert len(tools) == 1
 
 
 class TestMapModelString:

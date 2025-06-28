@@ -11,7 +11,7 @@ from core.domain.llm_completion import LLMCompletion
 from core.domain.llm_usage import LLMUsage
 from core.domain.message import MessageDeprecated
 from core.domain.models import Model, Provider
-from core.domain.models.model_provider_datas_mapping import GOOGLE_GEMINI_API_PROVIDER_DATA
+from core.domain.models.model_provider_data_mapping import GOOGLE_GEMINI_API_PROVIDER_DATA
 from core.domain.structured_output import StructuredOutput
 from core.providers.base.models import RawCompletion
 from core.providers.base.provider_error import MaxTokensExceededError, ProviderInternalError

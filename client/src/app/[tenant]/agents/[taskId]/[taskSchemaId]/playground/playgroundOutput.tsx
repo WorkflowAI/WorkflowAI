@@ -7,6 +7,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { AIModelCombobox } from '@/components/AIModelsCombobox/aiModelCombobox';
 import { Button } from '@/components/ui/Button';
 import { SimpleTooltip } from '@/components/ui/Tooltip';
+import { TASK_RUN_ID_PARAM } from '@/lib/constants';
 import { useDemoMode } from '@/lib/hooks/useDemoMode';
 import { useRedirectWithParams } from '@/lib/queryString';
 import { useOrFetchOrganizationSettings } from '@/store';
@@ -99,7 +100,7 @@ function ModelOutput(props: ModelOutputProps) {
   const redirectWithParams = useRedirectWithParams();
   const onOpenTaskRun = useCallback(() => {
     redirectWithParams({
-      params: { taskRunId },
+      params: { [TASK_RUN_ID_PARAM]: taskRunId },
       scroll: false,
     });
   }, [taskRunId, redirectWithParams]);

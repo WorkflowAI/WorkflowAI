@@ -715,11 +715,11 @@ class ClickhouseRun(BaseModel):
             case SearchField.EVAL_HASH:
                 return W("eval_hash", operator="=", value=query.operation.value, type="String")
             case SearchField.METADATA:
-                # Making sure the keypath resembles a keypath
-                # to avoid any weird injection
-                query.validate_keypath()
+                # Replace any single quote in the key
+                # this allows single quotes as well as protects against injection
+                escaped_key = query.key_path.replace("'", "''")
                 return clickhouse_query(
-                    f"metadata['{query.key_path}']",
+                    f"metadata['{escaped_key}']",
                     op=query.operation,
                     type="String",
                 )
@@ -754,16 +754,25 @@ class ClickhouseRun(BaseModel):
         return [f for f in cls.model_fields.keys() if f not in exc]
 
     @classmethod
-    def select_in_search(cls) -> list[str]:
+    def select_in_search(
+        cls,
+        include: set[SerializableTaskRunField] | None = None,
+        exclude: set[SerializableTaskRunField] | None = None,
+    ) -> list[str]:
+        if include:
+            return [FIELD_TO_COLUMN[f] for f in include if f in FIELD_TO_COLUMN]
         # A sublist of fields that should be included in search
-        exclude = {
-            "input",
-            "output",
-            "metadata",
-            "tool_calls",
-            *cls.heavy_fields(),
-        }
-        return [f for f in cls.model_fields.keys() if f not in exclude]
+        if exclude:
+            exclude_fields: set[str] = {FIELD_TO_COLUMN[f] for f in exclude if f in FIELD_TO_COLUMN}
+        else:
+            exclude_fields: set[str] = {
+                "input",
+                "output",
+                "metadata",
+                "tool_calls",
+                *cls.heavy_fields(),
+            }
+        return [f for f in cls.model_fields.keys() if f not in exclude_fields]
 
     @classmethod
     def select_not_heavy(cls):

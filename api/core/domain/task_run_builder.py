@@ -96,11 +96,12 @@ class TaskRunBuilder(BaseModel):
         from_cache: bool = False,
         end_time: Optional[float] = None,
         error: Optional[ErrorResponse.Error] = None,
+        force: bool = False,  # whether to ignore a previously built task run
     ) -> AgentRun:
         """
         Builds the task run object
         """
-        if self._task_run:
+        if not force and self._task_run:
             if output and self._task_run.task_output != output.task_output:
                 raise ValueError("Task output has already been set")
             return self._task_run

@@ -12,7 +12,6 @@ from core.domain.llm_usage import LLMUsage
 from core.domain.message import MessageDeprecated
 from core.domain.models import Model
 from core.domain.models.utils import get_model_data
-from core.domain.structured_output import StructuredOutput
 from core.domain.tool_call import ToolCallRequestWithID
 from core.providers.base.abstract_provider import ProviderConfigInterface, RawCompletion
 from core.providers.base.httpx_provider import HTTPXProvider
@@ -33,10 +32,8 @@ from core.providers.google.google_provider_domain import (
     native_tool_name_to_internal,
 )
 from core.providers.openai._openai_utils import get_openai_json_schema_name, prepare_openai_json_schema
-from core.utils.redis_cache import redis_cached
 
 from .openai_domain import (
-    MODEL_NAME_MAP,
     CompletionRequest,
     CompletionResponse,
     JSONResponseFormat,
@@ -63,13 +60,14 @@ _O1_PREVIEW_MODELS = {
 }
 
 _AUDIO_PREVIEW_MODELS = {
-    Model.GPT_40_AUDIO_PREVIEW_2024_10_01,
+    Model.GPT_4O_AUDIO_PREVIEW_2024_10_01,
     Model.GPT_4O_AUDIO_PREVIEW_2024_12_17,
 }
 
+# TODO: use value from model data
 _UNSUPPORTED_TEMPERATURES = {
     Model.O1_2024_12_17_LOW_REASONING_EFFORT,
-    Model.O1_2024_12_17_MEDIUM_REASONING_EFFORT,
+    Model.O1_2024_12_17,
     Model.O1_2024_12_17_HIGH_REASONING_EFFORT,
     Model.O3_MINI_2025_01_31_HIGH_REASONING_EFFORT,
     Model.O3_MINI_2025_01_31_MEDIUM_REASONING_EFFORT,
@@ -87,30 +85,13 @@ _UNSUPPORTED_TEMPERATURES = {
     *_AUDIO_PREVIEW_MODELS,
 }
 
-_REASONING_EFFORT_FOR_MODEL = {
-    Model.O1_2024_12_17_LOW_REASONING_EFFORT: "low",
-    Model.O1_2024_12_17_MEDIUM_REASONING_EFFORT: "medium",
-    Model.O1_2024_12_17_HIGH_REASONING_EFFORT: "high",
-    Model.O3_MINI_2025_01_31_HIGH_REASONING_EFFORT: "high",
-    Model.O3_MINI_2025_01_31_MEDIUM_REASONING_EFFORT: "medium",
-    Model.O3_MINI_2025_01_31_LOW_REASONING_EFFORT: "low",
-    Model.O3_2025_04_16_HIGH_REASONING_EFFORT: "high",
-    Model.O3_2025_04_16_MEDIUM_REASONING_EFFORT: "medium",
-    Model.O3_2025_04_16_LOW_REASONING_EFFORT: "low",
-    # Model.O3_PRO_2025_06_10_HIGH_REASONING_EFFORT: "high",
-    # Model.O3_PRO_2025_06_10_MEDIUM_REASONING_EFFORT: "medium",
-    # Model.O3_PRO_2025_06_10_LOW_REASONING_EFFORT: "low",
-    Model.O4_MINI_2025_04_16_HIGH_REASONING_EFFORT: "high",
-    Model.O4_MINI_2025_04_16_MEDIUM_REASONING_EFFORT: "medium",
-    Model.O4_MINI_2025_04_16_LOW_REASONING_EFFORT: "low",
-}
 
 _OpenAIConfigVar = TypeVar("_OpenAIConfigVar", bound=OpenAIProviderBaseConfig)
 
 
 class OpenAIProviderBase(HTTPXProvider[_OpenAIConfigVar, CompletionResponse], Generic[_OpenAIConfigVar]):
     def _build_request(self, messages: list[MessageDeprecated], options: ProviderOptions, stream: bool) -> BaseModel:
-        model_name = MODEL_NAME_MAP.get(options.model, options.model)
+        model_name = options.model
         is_preview_model = options.model in _O1_PREVIEW_MODELS or options.model in _AUDIO_PREVIEW_MODELS
         model_data = get_model_data(options.model)
 
@@ -132,7 +113,7 @@ class OpenAIProviderBase(HTTPXProvider[_OpenAIConfigVar, CompletionResponse], Ge
             stream_options=StreamOptions(include_usage=True) if stream else None,
             # store=True,
             response_format=self._response_format(options, is_preview_model),
-            reasoning_effort=_REASONING_EFFORT_FOR_MODEL.get(options.model, None),
+            reasoning_effort=options.final_reasoning_effort(model_data.reasoning),
             tool_choice=CompletionRequest.tool_choice_from_domain(options.tool_choice),
             top_p=options.top_p,
             presence_penalty=options.presence_penalty,
@@ -294,7 +275,7 @@ class OpenAIProviderBase(HTTPXProvider[_OpenAIConfigVar, CompletionResponse], Ge
                     # In this case we do not want to store the task run because it is a request error that
                     # does not incur cost
                     # We still bin with max tokens exceeded since it is related
-                    return MaxTokensExceededError(msg=payload.error.message, response=response, store_task_run=False)
+                    return MaxTokensExceededError(msg=payload.error.message, response=response)
                 case "invalid_prompt":
                     if "violating our usage policy" in payload.error.message:
                         return ContentModerationError(msg=payload.error.message, response=response)
@@ -340,38 +321,6 @@ class OpenAIProviderBase(HTTPXProvider[_OpenAIConfigVar, CompletionResponse], Ge
 
     @property
     def is_structured_generation_supported(self) -> bool:
-        return True
-
-    @redis_cached()
-    async def is_schema_supported_for_structured_generation(
-        self,
-        task_name: str,
-        model: Model,
-        schema: dict[str, Any],
-    ) -> bool:
-        # Check if the task schema is actually supported by the OpenAI's implementation of structured generation
-        try:
-            options = ProviderOptions(
-                task_name=task_name,
-                model=model,
-                output_schema=schema,
-                structured_generation=True,  # We are forcing structured generation to be used
-            )
-
-            request, llm_completion = await self._prepare_completion(
-                messages=[MessageDeprecated(content="Generate a test output", role=MessageDeprecated.Role.USER)],
-                options=options,
-                stream=False,
-            )
-            raw_completion = RawCompletion(response="", usage=llm_completion.usage)
-            await self._single_complete(request, lambda x, _: StructuredOutput(json.loads(x)), raw_completion, options)
-        except Exception:
-            # Caught exception is wide because we do not want to impact group creation in any way, and the error is logged.
-            self.logger.exception(
-                "Schema is not supported for structured generation",
-                extra={"schema": schema},
-            )
-            return False
         return True
 
     def _extract_stream_delta(  # noqa: C901

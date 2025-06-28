@@ -83,14 +83,15 @@ async def test_pdf_conversion(test_client: IntegrationTestClient):
 
     test_client.mock_openai_call()
     test_client.httpx_mock.add_response(
-        url="https://hello.com/world.pdf",
+        url="http://hello.com/world.pdf",
         status_code=200,
         content=fixture_bytes("files/MSFT_SEC.pdf"),
+        is_reusable=True,
     )
 
     task_input = {
         "pdf": {
-            "url": "https://hello.com/world.pdf",
+            "url": "http://hello.com/world.pdf",
         },
     }
     res = await test_client.run_task_v1(task, model=Model.GPT_4O_2024_11_20, task_input=task_input)

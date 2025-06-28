@@ -151,6 +151,9 @@ class TaskGroupDocument(BaseDocumentWithID):
                 base["major"] = {"$exists": True}
                 base["$or"] = [{"major": semver.major, "minor": semver.minor} for semver in task_group_query.semvers]
 
+        if task_group_query.ids:
+            base["hash"] = {"$in": list(task_group_query.ids)}
+
         return base
 
     @classmethod

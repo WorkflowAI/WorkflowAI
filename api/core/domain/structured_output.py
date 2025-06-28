@@ -22,6 +22,9 @@ class StructuredOutput(NamedTuple):
 
     delta: str | None = None
 
+    # Whether the output is the final output, used when streaming
+    final: bool = False
+
     @property
     def number_of_images(self) -> int:
         if not self.files:

@@ -6,17 +6,17 @@ async def test_update_evaluations(test_client: IntegrationTestClient):
     task = await test_client.create_task()
 
     # Create a run
-    test_client.mock_openai_call(json_content={"greeting": "Hello James!"})
+    test_client.mock_openai_call(json_content={"greeting": "Hello James!"}, is_reusable=True)
     run1 = await test_client.run_task_v1(task)
     assert run1["id"] is not None, "sanity check"
 
-    test_client.mock_openai_call(json_content={"greeting": "Hello John!"})
+    test_client.mock_openai_call(json_content={"greeting": "Hello John!"}, is_reusable=True)
 
     run2 = await test_client.run_task_v1(task, use_cache="never")
     assert run2["id"] is not None and run2["id"] != run1["id"], "sanity check"
 
     # Send a review
-    test_client.mock_ai_review("unsure")
+    test_client.mock_ai_review("unsure", is_reusable=True)
     await test_client.user_review(task, run1, "positive")
 
     review_calls = test_client.httpx_mock.get_requests(url=test_client.internal_task_url("evaluate-output"))

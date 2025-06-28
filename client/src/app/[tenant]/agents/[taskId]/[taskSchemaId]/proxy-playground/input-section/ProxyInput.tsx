@@ -1,5 +1,5 @@
-import { ChevronDownFilled, ChevronUpFilled, InfoRegular } from '@fluentui/react-icons';
-import { useMemo, useState } from 'react';
+import { Add16Regular, ChevronDownFilled, ChevronUpFilled, InfoRegular } from '@fluentui/react-icons';
+import { useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { SimpleTooltip } from '@/components/ui/Tooltip';
 import { JsonSchema } from '@/types';
@@ -43,15 +43,17 @@ export function ProxyInput(props: Props) {
     return numberOfInputVariblesInInputSchema(inputSchema) > 0;
   }, [inputSchema]);
 
+  const proxyMessagesViewRef = useRef<{ addMessage: (index?: number) => void }>(null);
+
   return (
     <div className='flex flex-col w-full h-full'>
       {!!showInputVariables && (
         <div>
           <div className='flex flex-row h-[48px] w-full justify-between items-center shrink-0 border-b border-gray-200 border-dashed px-4'>
             <div className='flex flex-row items-center gap-1'>
-              <div className='flex w-full items-center font-semibold text-[16px] text-gray-700'>Version Variables</div>
+              <div className='flex w-full items-center font-semibold text-[16px] text-gray-700'>Input</div>
               <SimpleTooltip
-                content={`Version variables are noted in\nversion messages with double curly\nbraces: {{variable_here}}`}
+                content={`Inputs are denoted in\nversion messages with double curly\nbraces: {{variable_here}}`}
                 tooltipClassName='whitespace-pre-line text-center'
                 tooltipDelay={100}
               >
@@ -94,8 +96,19 @@ export function ProxyInput(props: Props) {
 
       <div className='flex flex-row h-[48px] w-full justify-between items-center shrink-0 border-b border-gray-200 border-dashed px-4'>
         <div className='flex w-full items-center font-semibold text-[16px] text-gray-700'>Messages</div>
+        {(!inputMessages || inputMessages.length === 0) && (
+          <Button
+            variant='newDesign'
+            size='sm'
+            icon={<Add16Regular />}
+            onClick={() => proxyMessagesViewRef.current?.addMessage()}
+          >
+            Add Message
+          </Button>
+        )}
       </div>
       <ProxyMessagesView
+        ref={proxyMessagesViewRef}
         messages={inputMessages}
         setMessages={setInputMessages}
         defaultType={getAvaibleMessageTypes('input')[0]}
@@ -104,6 +117,7 @@ export function ProxyInput(props: Props) {
         onMoveToVersion={onMoveToVersion}
         inputVariblesKeys={inputVariblesKeys}
         supportInputVaribles={false}
+        showAddMessageButtonIfNoMessages={false}
       />
     </div>
   );

@@ -1,0 +1,23 @@
+---
+title: Supported Models
+summary: A list of all AI models available through the WorkflowAI platform.
+description: List of all models available through WorkflowAI
+---
+
+import { WorkflowModelsWrapper } from '@/components/workflow-models-wrapper';
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+import { WorkflowModelCount } from '@/components/workflow-model-count';
+
+## Access via MCP
+
+```bash
+list_models
+```
+
+## Access via API
+
+```bash
+curl -X GET "https://run.workflowai.com/v1/models"
+```
+
+<WorkflowModelsWrapper />

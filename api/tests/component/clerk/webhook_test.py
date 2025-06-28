@@ -43,7 +43,7 @@ async def test_clerk_webhook(int_api_client: AsyncClient, patched_broker: InMemo
                 "Authorization": "",
                 "svix-id": "msg_p5jXN8AQM9LWM0D4loKWxJek",
                 "svix-timestamp": f"{time.time()}",
-                "svix-signature": "v1,qN81SydtpztziUhxO6gGMUunG+2gJcoNISG4vxIyXnE=",
+                "svix-signature": "v1,FuxohqHmR0W00p2/Sjbbmh4PTx6XYuzQX5y5JRFd+V4=",
             },
         ),
     )

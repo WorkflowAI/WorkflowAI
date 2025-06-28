@@ -23,7 +23,7 @@ import {
   fromSplattedEditorFieldsToSchema,
 } from '@/lib/schemaEditorUtils';
 import { mergeSchemas } from '@/lib/schemaUtils';
-import { useOrFetchCurrentTaskSchema, useOrFetchVersions, useTasks } from '@/store';
+import { useOrFetchSchema, useOrFetchVersions, useTasks } from '@/store';
 import { ToolCallName, usePlaygroundChatStore } from '@/store/playgroundChatStore';
 import { useTaskSchemas } from '@/store/task_schemas';
 import { JsonSchema } from '@/types';
@@ -87,7 +87,7 @@ export function NewTaskModal() {
   const { tenant, taskId, taskSchemaId } = useTaskSchemaParams();
   const loggedInTenant = useLoggedInTenantID();
 
-  const { taskSchema: currentTaskSchema, isInitialized: taskSchemaInitialized } = useOrFetchCurrentTaskSchema(
+  const { taskSchema: currentTaskSchema, isInitialized: taskSchemaInitialized } = useOrFetchSchema(
     tenant,
     taskId,
     taskSchemaId

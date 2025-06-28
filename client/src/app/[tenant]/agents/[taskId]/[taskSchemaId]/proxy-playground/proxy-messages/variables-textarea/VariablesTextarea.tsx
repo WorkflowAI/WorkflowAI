@@ -15,10 +15,21 @@ type Props = {
   readOnly?: boolean;
   inputVariblesKeys?: string[];
   supportInputVaribles?: boolean;
+  onFocus?: () => void;
+  onBlur?: () => void;
 };
 
 export function VariablesTextarea(props: Props) {
-  const { text, onTextChange, placeholder, readOnly, inputVariblesKeys, supportInputVaribles = true } = props;
+  const {
+    text,
+    onTextChange,
+    placeholder,
+    readOnly,
+    inputVariblesKeys,
+    supportInputVaribles = true,
+    onFocus,
+    onBlur,
+  } = props;
 
   const [tagPosition, setTagPosition] = useState<TagPosition | undefined>(undefined);
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -176,6 +187,8 @@ export function VariablesTextarea(props: Props) {
       <EditorContent
         editor={editor}
         className='flex w-full px-3 text-gray-900 font-normal text-[13px] rounded-t-[2px] whitespace-pre-wrap'
+        onFocus={onFocus}
+        onBlur={onBlur}
       />
       {editor?.isEmpty && placeholder && (
         <div className='absolute top-0 left-3 text-gray-500 text-[13px] pointer-events-none'>{placeholder}</div>

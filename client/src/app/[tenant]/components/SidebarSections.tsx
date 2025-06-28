@@ -72,7 +72,7 @@ type Section = {
 const iconClassName =
   'w-5 h-5 text-gray-500 group-hover:text-indigo-700 transition group-[.selected]:text-indigo-700 shrink-0';
 
-export function generateSections(showActivityIndicator: boolean, isInDemoMode: boolean): Section[] {
+export function generateSections(showActivityIndicator: boolean, isInDemoMode: boolean, isProxy: boolean): Section[] {
   return [
     {
       title: 'ITERATE',
@@ -131,7 +131,7 @@ export function generateSections(showActivityIndicator: boolean, isInDemoMode: b
           isHidden: false,
           style: SectionItemStyle.Link,
         },
-      ],
+      ].filter(Boolean) as SectionItem[],
     },
     {
       title: 'COMPARE',
@@ -148,7 +148,7 @@ export function generateSections(showActivityIndicator: boolean, isInDemoMode: b
           isHidden: false,
           style: SectionItemStyle.Link,
         },
-        {
+        !isProxy && {
           title: 'Reviews',
           icon: <ThumbLikeDislikeRegular className={iconClassName} />,
           iconSelected: <ThumbLikeDislikeFilled className={iconClassName} />,
@@ -159,7 +159,7 @@ export function generateSections(showActivityIndicator: boolean, isInDemoMode: b
           isHidden: false,
           style: SectionItemStyle.Link,
         },
-        {
+        !isProxy && {
           title: 'Benchmarks',
           icon: <DataUsageRegular className={iconClassName} />,
           iconSelected: <DataUsageFilled className={iconClassName} />,
@@ -170,7 +170,7 @@ export function generateSections(showActivityIndicator: boolean, isInDemoMode: b
           isHidden: false,
           style: SectionItemStyle.Link,
         },
-      ],
+      ].filter(Boolean) as SectionItem[],
     },
     {
       title: 'INTEGRATE',
@@ -198,7 +198,7 @@ export function generateSections(showActivityIndicator: boolean, isInDemoMode: b
           isHidden: false,
           style: SectionItemStyle.Link,
         },
-      ],
+      ].filter(Boolean) as SectionItem[],
     },
     {
       title: 'MONITOR',
@@ -235,7 +235,7 @@ export function generateSections(showActivityIndicator: boolean, isInDemoMode: b
           isHidden: false,
           style: SectionItemStyle.Link,
         },
-      ],
+      ].filter(Boolean) as SectionItem[],
     },
   ];
 }

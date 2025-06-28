@@ -3,7 +3,7 @@ import os
 from unittest.mock import patch
 
 from core.domain.models import Model, Provider
-from core.domain.models.model_provider_datas_mapping import AMAZON_BEDROCK_PROVIDER_DATA
+from core.domain.models.model_provider_data_mapping import AMAZON_BEDROCK_PROVIDER_DATA
 from core.providers.amazon_bedrock.amazon_bedrock_config import (
     AmazonBedrockConfig,
     _default_resource_ids,  # pyright: ignore [reportPrivateUsage]

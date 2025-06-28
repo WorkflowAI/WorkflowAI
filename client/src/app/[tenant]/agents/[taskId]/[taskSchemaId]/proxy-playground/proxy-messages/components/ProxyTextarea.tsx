@@ -13,6 +13,8 @@ type ProxyTextareaProps = {
   inputVariblesKeys?: string[];
   supportInputVaribles?: boolean;
   supportObjectViewerIfPossible?: boolean;
+  onFocus?: () => void;
+  onBlur?: () => void;
 };
 
 export function ProxyTextarea(props: ProxyTextareaProps) {
@@ -24,6 +26,8 @@ export function ProxyTextarea(props: ProxyTextareaProps) {
     inputVariblesKeys,
     supportInputVaribles = true,
     supportObjectViewerIfPossible = false,
+    onFocus,
+    onBlur,
   } = props;
 
   const onChange = useCallback(
@@ -42,6 +46,8 @@ export function ProxyTextarea(props: ProxyTextareaProps) {
   if (readOnly && supportObjectViewerIfPossible && !!content?.text) {
     try {
       const output = JSON.parse(content.text);
+      const isString = typeof output === 'string';
+
       if (!!output) {
         return (
           <TaskOutputViewer
@@ -50,11 +56,16 @@ export function ProxyTextarea(props: ProxyTextareaProps) {
             referenceValue={undefined}
             defs={undefined}
             textColor='text-gray-900'
-            className='flex sm:flex-1 w-full border border-gray-200 rounded-[2px] bg-white h-max mx-3 mt-1'
+            className={
+              isString
+                ? 'flex sm:flex-1 w-full h-max'
+                : 'flex sm:flex-1 w-full border border-gray-200 rounded-[2px] bg-white h-max mx-3 mt-1'
+            }
             showTypes={false}
             showDescriptionExamples={undefined}
             showDescriptionPopover={false}
             defaultOpenForSteps={false}
+            hideCopyValue={isString}
           />
         );
       }
@@ -71,6 +82,8 @@ export function ProxyTextarea(props: ProxyTextareaProps) {
       readOnly={readOnly}
       inputVariblesKeys={inputVariblesKeys}
       supportInputVaribles={supportInputVaribles}
+      onFocus={onFocus}
+      onBlur={onBlur}
     />
   );
 }

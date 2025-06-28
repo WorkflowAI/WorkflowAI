@@ -38,6 +38,23 @@
       "justMyCode": false
     },
     {
+      "name": "API (Debug)",
+      "type": "debugpy",
+      "request": "attach",
+      "connect": {
+        "host": "localhost",
+        "port": 5678
+      },
+      "pathMappings": [
+        {
+          "localRoot": "${workspaceFolder}/api",
+          "remoteRoot": "/app"
+        }
+      ],
+      "jinja": true,
+      "justMyCode": false
+    },
+    {
       "name": "Worker",
       "type": "debugpy",
       "request": "launch",

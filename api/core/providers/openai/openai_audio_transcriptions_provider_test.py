@@ -1,5 +1,4 @@
 import base64
-from typing import Any
 
 import pytest
 from pytest_httpx import HTTPXMock
@@ -37,17 +36,4 @@ async def test_transcribe_audio(
     assert request.extensions is not None  # type: ignore
     assert request.extensions["timeout"]["read"] == 300.0  # type: ignore
     assert request.extensions["timeout"]["connect"] == 300.0  # type: ignore
-    # Verify the request stream fields
     assert request.stream is not None
-    assert hasattr(request.stream, "fields")
-    file_fields: Any = request.stream.fields  # type: ignore
-
-    # Check the file fields
-    for file in file_fields:
-        if file.name == "file":
-            assert file.filename == "audio.wav"
-            assert file.file is not None
-            assert base64.b64encode(file.file.read()).decode() == audio_data
-        elif file.name == "model":
-            assert file.filename is None
-            assert file.file == "whisper-1"

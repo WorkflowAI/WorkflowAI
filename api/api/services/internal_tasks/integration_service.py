@@ -156,7 +156,7 @@ class IntegrationService:
 
         try:
             # Makes sure the integration documentation sections are always included
-            integration_documentation_sections = doc_service.get_documentation_by_path(
+            integration_documentation_sections = await doc_service.get_documentation_by_path(
                 integration.documentation_filepaths,
             )
         except Exception as e:
@@ -467,7 +467,7 @@ well organized (by agent) on WorkflowAI (trust me, makes everything easier).
             agent_schema_id=agent.task_schema_id,
             model_used=version.group.properties.model or workflowai.DEFAULT_MODEL,
             version_messages=version_messages,
-            integration_documentations=DocumentationService().get_documentation_by_path(
+            integration_documentations=await DocumentationService().get_documentation_by_path(
                 integration.documentation_filepaths,
             ),
             version_deployment_environment=version.deployments[0].environment if version.deployments else None,

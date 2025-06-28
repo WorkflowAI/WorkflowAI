@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Loader } from '@/components/ui/Loader';
 import { useCompatibleAIModels } from '@/lib/hooks/useCompatibleAIModels';
 import { useOrFetchLatestRun, useOrFetchTask, useOrFetchVersions } from '@/store';
-import { useOrFetchCurrentTaskSchema } from '@/store';
+import { useOrFetchSchema } from '@/store';
 import { TenantID } from '@/types/aliases';
 import { TaskID } from '@/types/aliases';
 import { TaskSchemaID } from '@/types/aliases';
@@ -63,7 +63,7 @@ type Props = {
 export function PlaygroundContentWrapper(props: Props) {
   const { taskId, taskSchemaId, tenant } = props;
 
-  const { taskSchema } = useOrFetchCurrentTaskSchema(tenant, taskId, taskSchemaId);
+  const { taskSchema } = useOrFetchSchema(tenant, taskId, taskSchemaId);
   const [lastTaskSchema, setLastTaskSchema] = useState<TaskSchemaResponseWithSchema | undefined>(undefined);
   useEffect(() => {
     if (taskSchema) {
@@ -87,14 +87,7 @@ export function PlaygroundContentWrapper(props: Props) {
   }
 
   if (isProxy) {
-    return (
-      <ProxyPlayground
-        tenant={tenant}
-        taskId={taskId}
-        schemaId={`${schema.schema_id}` as TaskSchemaID}
-        schema={schema}
-      />
-    );
+    return <ProxyPlayground tenant={tenant} taskId={taskId} schemaId={`${schema.schema_id}` as TaskSchemaID} />;
   }
 
   return (

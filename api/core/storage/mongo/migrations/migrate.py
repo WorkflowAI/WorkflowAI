@@ -57,6 +57,7 @@ from core.storage.mongo.migrations.migrations.m2025_05_01_tools_indices import A
 from core.storage.mongo.migrations.migrations.m2025_05_05_add_org_slack_and_hashed_key_indices import (
     AddOrgSlackAndHashedKeyIndicesMigration,
 )
+from core.storage.mongo.migrations.migrations.m2025_05_06_fix_api_key_id_index import FixAPIKeyIdIndexMigration
 from core.storage.mongo.mongo_storage import MongoStorage
 
 MIGRATIONS: list[type[AbstractMigration]] = [
@@ -93,6 +94,7 @@ MIGRATIONS: list[type[AbstractMigration]] = [
     FixOrgIndexMigration,
     AddToolsIndicesMigration,
     AddOrgSlackAndHashedKeyIndicesMigration,
+    FixAPIKeyIdIndexMigration,
 ]
 
 

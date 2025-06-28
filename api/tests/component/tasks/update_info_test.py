@@ -43,8 +43,12 @@ async def test_update_info_and_schema(
             {
                 "created_at": "2024-08-12T00:00:00Z",
                 "description": None,
+                "input_schema": None,
                 "input_schema_version": "89e6b8a25b640c183f5443e1745efd89",
                 "is_hidden": False,
+                # TODO: that's bad. We should include the field in the response since
+                # It will be none all the time
+                "output_schema": None,
                 "output_schema_version": "7d4f7e6c016e7064623373ab4b5c01be",
                 "schema_id": 1,
                 "variant_id": "ffa888f1b7f2632199fe957f4338e030",

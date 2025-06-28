@@ -1,0 +1,147 @@
+---
+title: Overview
+summary: Introduction to the WorkflowAI documentation. Provides information on what WorkflowAI is and how to get started with building, deploying, and improving AI agents.
+---
+
+import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
+import { Step, Steps } from 'fumadocs-ui/components/steps';
+import { Code2, BookOpen, Wand2, Eye, Network, FileCode, Shield } from 'lucide-react';
+
+## What is WorkflowAI?
+
+WorkflowAI is the [open-source](https://github.com/workflowai/workflowai) platform for AI agents. It provides the developer tools and cloud infrastructure to build, deploy, monitor, evaluate, and improve agentic systems.
+
+<Callout type="info" href="/pricing">
+By using WorkflowAI, you won't pay more than your current inference costs. We price match the providers and make our margin through volume discounts. [Learn more about our pricing](/pricing).
+</Callout>
+
+## Get Started
+
+### MCP 
+
+WorkflowAI is available as a MCP server in the IDEs below.
+
+<Tabs items={['Cursor', 'Claude Code', 'Windsurf']}>
+
+<Tab value="Cursor">
+
+<Callout type="info">**TODO:** Add a direct link to install the MCP.</Callout>
+
+1. Open Cursor
+2. Go to `Settings...`
+3. Navigate to `Cursor Settings`
+4. Select `MCP Tools`
+5. Select `New MCP Server`
+
+Add the following configuration to your MCP servers config:
+
+   ```json
+   {
+     "mcpServers": {
+       "workflowai": {
+         "url": "https://api.workflowai.com/mcp/",
+         "headers": {
+           "Authorization": "Bearer <your_api_key_here>"
+         }
+       }
+     }
+   }
+   ```
+Replace `<your_api_key_here>` with your actual WorkflowAI API token.
+
+Cursor UI should now look like this (note the green indicator and the number of tools enabled displayed):
+
+![Successful Cursor MCP Server Setup](/images/mcp/cursor-setup-ok.png)
+
+</Tab>
+
+<Tab value="Claude Code">
+
+1. Open Claude Code in your preferred terminal (standalone or within your IDE).
+2. Type the following to install:
+
+```bash
+claude mcp add workflowai https://api.workflowai.com/mcp/ --transport http -H "Authorization: Bearer YOUR_API_KEY_HERE"
+```
+
+Replace `YOUR_API_KEY_HERE` with your WorkflowAI API key.
+
+3. Type the following to verify the server is properly connected:
+
+```bash
+claude
+```
+
+Then type:
+```bash
+/mcp 
+```
+
+You should see the WorkflowAI server listed as "connected".
+
+
+</Tab>
+
+<Tab value="Windsurf">
+
+*Coming soon*
+
+</Tab>
+
+</Tabs>
+
+### Build a new agent 
+
+```bash
+Can you write a agent to classify emails as urgent or not?
+```
+
+### Migrate an existing agent
+
+```bash
+Can you migrate the following agent to WorkflowAI?
+```
+
+## Products
+
+### Playground
+
+![header](</images/overview/playground.png>)
+
+<Card
+  title="Playground"
+  description="Our goal is to build the best playground that supports all leading AI models."
+  href="/playground"
+/>
+
+### Inference
+
+![header](</images/overview/inference.png>)
+
+<Callout type="info">
+should we show all the sections from inference, or just the header?
+</Callout>
+
+### Observability
+
+![header](</images/overview/observability.png>)
+
+### Deployments
+
+![header](</images/overview/deployments.png>)
+
+### Agents
+
+![header](</images/overview/agents.png>)
+
+### Evaluations
+
+![header](</images/overview/evaluations.png>)
+
+<Callout type="info">
+**Enterprise Compliance**: SOC2 & GDPR compliant. No training on your data. [Learn more](/compliance).
+</Callout>
+
+## Join the community
+
+If you have questions about WorkflowAI, reach out to our team and community on our [Discord Server](https://discord.com/invite/auuf8DREZh).

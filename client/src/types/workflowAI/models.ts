@@ -1,3 +1,4 @@
+import { JsonSchema } from '../json_schema';
 import { ProxyMessage } from '.';
 
 export type AIReviewer = {
@@ -900,12 +901,20 @@ export type MajorVersion = {
 
 export type MajorVersionProperties = {
   temperature: number;
-  instructions: string;
+  instructions?: string;
   /**
    * The id of the full schema, including versions and examples
    */
   task_variant_id: string | null;
   messages?: ProxyMessage[] | undefined | null;
+
+  top_p?: number | null;
+  max_tokens?: number | null;
+  is_structured_generation_enabled?: boolean | null;
+  has_templated_instructions?: boolean | null;
+  presence_penalty?: number | null;
+  frequency_penalty?: number | null;
+  tool_choice?: string | OpenAIProxyToolChoice | null;
 };
 
 export type MetaAgentChatMessage = {
@@ -1094,6 +1103,13 @@ export type ModelMetadata = {
   quality_index: number;
 };
 
+export type ModelReasoning = {
+  can_be_disabled: boolean;
+  low_effort_reasoning_budget: number;
+  medium_effort_reasoning_budget: number;
+  high_effort_reasoning_budget: number;
+};
+
 export type ModelResponse = {
   id: string;
   name: string;
@@ -1129,6 +1145,8 @@ export type ModelResponse = {
    * The providers that support this model
    */
   providers: Array<Provider>;
+  reasoning?: ModelReasoning | null;
+  max_budget?: number | null;
 };
 
 export type OpenAIConfig = {
@@ -1453,6 +1471,7 @@ export type RunV1 = {
    * Tool calls that should be executed client side.
    */
   tool_call_requests: Array<APIToolCallRequest> | null;
+  metadata?: Record<string, unknown> | null;
 };
 
 export type SearchFields = {
@@ -1869,6 +1888,11 @@ export type TaskGroupProperties_Output = {
    */
   is_structured_generation_enabled?: boolean | null;
   has_templated_instructions?: boolean | null;
+  presence_penalty?: number | null;
+  frequency_penalty?: number | null;
+  tool_choice?: string | OpenAIProxyToolChoice | null;
+  reasoning_effort?: string | null;
+  reasoning_budget?: number | null;
   [key: string]: unknown;
 };
 
@@ -2842,4 +2866,171 @@ export type IntegrationChatMessage = {
   role: 'USER' | 'ASSISTANT';
   content: string;
   message_kind: 'initial_code_snippet' | 'agent_name_definition_code_snippet' | 'non_specific';
+};
+
+export type OpenAIProxyToolChoiceFunction = {
+  name: string;
+};
+
+export type OpenAIProxyFunctionDefinition = {
+  description?: string | null;
+  name: string;
+  parameters: Record<string, unknown>;
+  strict?: boolean | null;
+  [key: string]: unknown;
+};
+
+export type OpenAIProxyPredicatedOutput = {
+  content: string | Array<OpenAIProxyContent>;
+  type: string;
+};
+
+export type OpenAIProxyImageURL = {
+  url: string;
+  detail?: 'low' | 'high' | 'auto' | null;
+  [key: string]: unknown;
+};
+
+export type OpenAIAudioInput = {
+  data: string;
+  format: string;
+};
+
+export type OpenAIProxyContent = {
+  type: string;
+  text?: string | null;
+  image_url?: OpenAIProxyImageURL | null;
+  input_audio?: OpenAIAudioInput | null;
+  [key: string]: unknown;
+};
+
+export type OpenAIProxyResponseFormat = {
+  type: string;
+  json_schema?: JsonSchema | null;
+  [key: string]: unknown;
+};
+
+export type OpenAIProxyStreamOptions = {
+  include_usage?: boolean | null;
+  [key: string]: unknown;
+};
+
+export type OpenAIProxyToolChoice = {
+  type: 'function';
+  function: OpenAIProxyToolChoiceFunction;
+};
+
+export type OpenAIProxyWebSearchOptions = {
+  search_context_size: string;
+  user_location?: Record<string, unknown> | null;
+};
+
+export type OpenAIProxyToolFunction = {
+  description?: string | null;
+  name: string;
+  parameters: Record<string, unknown>;
+  strict?: boolean | null;
+  [key: string]: unknown;
+};
+
+export type OpenAIProxyTool = {
+  type: 'function';
+  function: OpenAIProxyToolFunction;
+  [key: string]: unknown;
+};
+
+export type OpenAIProxyFunctionCall = {
+  name: string;
+  arguments?: string | null;
+  [key: string]: unknown;
+};
+
+export type OpenAIProxyToolCall = {
+  id: string;
+  type?: 'function';
+  function: OpenAIProxyFunctionCall;
+  [key: string]: unknown;
+};
+
+export type OpenAIProxyMessage = {
+  content?: Array<OpenAIProxyContent> | string | null;
+  name?: string | null;
+  role: string;
+  tool_calls?: Array<OpenAIProxyToolCall> | null;
+  function_call?: OpenAIProxyFunctionCall | null;
+  tool_call_id?: string | null;
+  [key: string]: unknown;
+};
+
+export type OpenAIProxyReasoning = {
+  effort?: string | null;
+  budget?: number | null;
+};
+
+export type OpenAIProxyChatCompletionRequest = {
+  /**
+   * An input to template the messages with.This field is not defined by the default OpenAI api.When provided, an input schema is generated and the messages are used as a template.
+   */
+  input?: Record<string, unknown> | null;
+  /**
+   * A specific provider to use for the request. When provided, multi provider fallback is disabled.The attribute is ignored if the provider is not supported.
+   */
+  provider?: string | null;
+  /**
+   * The id of the agent to use for the request. If not provided, the default agent is used.
+   */
+  agent_id?: string | null;
+  /**
+   * A reference to an environment where the agent is deployed. It can also be provided in the model with the format `agent_id/#schema_id/environment`
+   */
+  environment?: string | null;
+  /**
+   * The agent schema id. Required when using a deployment. It can also be provided in the model with the format `agent_id/#schema_id/environment`
+   */
+  schema_id?: number | null;
+  use_cache?: 'auto' | 'always' | 'never' | null;
+  /**
+   * A list of WorkflowAI hosted tools. Possible values are `@search-google`, `@perplexity-sonar`, `@perplexity-sonar-reasoning`, `@perplexity-sonar-pro`, `@browser-text`.When not provided, we attempt to detect tools in the system message.
+   */
+  workflowai_tools?: Array<string> | null;
+  /**
+   * A way to configure the fallback behavior
+   */
+  use_fallback?: 'auto' | 'never' | Array<string> | null;
+  /**
+   * The conversation id to associate with the run. If not provided, WorkflowAI will attempt to match the message history to an existing conversation. If no conversation is found, a new conversation will be created.
+   */
+  conversation_id?: string | null;
+  messages: Array<OpenAIProxyMessage>;
+  model: string;
+  frequency_penalty?: number | null;
+  function_call?: string | OpenAIProxyToolChoiceFunction | null;
+  functions?: Array<OpenAIProxyFunctionDefinition> | null;
+  logit_bias?: Record<string, number> | null;
+  logprobs?: boolean | null;
+  max_completion_tokens?: number | null;
+  max_tokens?: number | null;
+  metadata?: Record<string, unknown> | null;
+  modalities?: Array<'text' | 'audio'> | null;
+  n?: number | null;
+  parallel_tool_calls?: boolean | null;
+  prediction?: OpenAIProxyPredicatedOutput | null;
+  presence_penalty?: number | null;
+  reasoning_effort?: string | null;
+  response_format?: OpenAIProxyResponseFormat | null;
+  seed?: number | null;
+  service_tier?: string | null;
+  stop?: string | Array<string> | null;
+  store?: boolean | null;
+  stream?: boolean | null;
+  stream_options?: OpenAIProxyStreamOptions | null;
+  temperature?: number | null;
+  tool_choice?: string | OpenAIProxyToolChoice | null;
+  tools?: Array<OpenAIProxyTool> | null;
+  top_logprobs?: number | null;
+  top_p?: number | null;
+  user?: string | null;
+  web_search_options?: OpenAIProxyWebSearchOptions | null;
+  reasoning?: OpenAIProxyReasoning | null;
+  [key: string]: unknown;
 };

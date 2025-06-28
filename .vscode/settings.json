@@ -77,5 +77,8 @@
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
   "jest.rootPath": "client",
-  "rust-analyzer.linkedProjects": ["integrations/rust/Cargo.toml"]
+  "rust-analyzer.linkedProjects": ["integrations/rust/Cargo.toml"],
+  "[mdx]": {
+    "editor.defaultFormatter": "unifiedjs.vscode-mdx"
+  }
 }

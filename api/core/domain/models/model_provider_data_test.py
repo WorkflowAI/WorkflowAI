@@ -2,7 +2,7 @@ from datetime import date
 from typing import get_args
 
 from core.domain.models.model_data import MaxTokensData, ModelData, ModelDataSupports, QualityData
-from core.domain.models.model_datas_mapping import MODEL_DATAS, DisplayedProvider
+from core.domain.models.model_data_mapping import MODEL_DATAS, DisplayedProvider
 from core.domain.models.model_provider_data import ModelDataSupportsOverride
 
 
@@ -31,9 +31,9 @@ class TestModelDataSupportsOverride:
             supports_input_pdf=True,
             supports_input_audio=True,
             supports_audio_only=True,
-            support_system_messages=True,
+            supports_system_messages=True,
             supports_structured_output=True,
-            support_input_schema=True,
+            supports_input_schema=True,
             display_name="test",
             icon_url="test",
             max_tokens_data=MaxTokensData(
@@ -54,9 +54,9 @@ class TestModelDataSupportsOverride:
             supports_input_pdf=True,
             supports_input_audio=True,
             supports_audio_only=True,
-            support_system_messages=True,
+            supports_system_messages=True,
             supports_structured_output=True,
-            support_input_schema=True,
+            supports_input_schema=True,
             display_name="test",
             icon_url="test",
             max_tokens_data=MaxTokensData(

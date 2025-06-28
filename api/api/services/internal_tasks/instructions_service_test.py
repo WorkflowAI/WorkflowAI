@@ -81,6 +81,12 @@ def test_get_tools_to_add_nothing_to_add() -> None:
     assert to_add == []
 
 
+def _google_docstring():
+    from core.tools.search.run_google_search import run_google_search
+
+    return run_google_search.__doc__
+
+
 def test_get_tools_to_add_search() -> None:
     instructions = "hello !"
     selected_tools = [ToolKind.WEB_SEARCH_GOOGLE]
@@ -90,14 +96,13 @@ def test_get_tools_to_add_search() -> None:
     assert to_add == [
         Tool(
             name="@search-google",
-            description="Runs a Google search and returns the results in JSON format.",
+            description=_google_docstring(),
             input_schema={"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]},
             output_schema={"type": "string"},
         ),
     ]
 
 
-@pytest.mark.asyncio
 async def test_update_task_instructions(service: InstructionsService) -> None:
     task_variant = SerializableTaskVariant(
         id="test_task",
@@ -141,7 +146,7 @@ async def test_update_task_instructions(service: InstructionsService) -> None:
                 tools_to_add=[
                     TaskInstructionsToolUpdateTaskInput.Tool(
                         handle="@search-google",
-                        description="Runs a Google search and returns the results in JSON format.",
+                        description="Performs a Google web search using Serper.dev API and returns search results including links, snippets, and related information in JSON format.",
                         input_json_schema={
                             "type": "object",
                             "properties": {"query": {"type": "string"}},

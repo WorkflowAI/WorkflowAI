@@ -61,6 +61,8 @@ export function ProxyRunView(props: ProxyRunViewProps) {
     return numberOfInputVariblesInInputSchema(schema.input_schema.json_schema as JsonSchema) > 0;
   }, [schema.input_schema]);
 
+  const inputTitle = !inputAndOutputMessages || inputAndOutputMessages.length <= 1 ? 'Input' : 'Context';
+
   return (
     <div className='flex flex-col h-full max-h-full w-full bg-custom-gradient-1 overflow-hidden'>
       <div className='flex px-4 py-3 border-b border-dashed border-gray-200'>
@@ -87,14 +89,14 @@ export function ProxyRunView(props: ProxyRunViewProps) {
       >
         {showInputVariables && (
           <div className='flex flex-col h-full border-r border-dashed border-gray-200 overflow-hidden'>
-            <ProxyInputVariablesView input={cleanInput} schema={schema} />
+            <ProxyInputVariablesView input={cleanInput} schema={schema} title={inputTitle} />
           </div>
         )}
         <div className='flex flex-col h-full border-r border-dashed border-gray-200'>
           <ProxyRunDetailsMessagesView messages={inputAndOutputMessages} error={run.error ?? undefined} />
         </div>
         <div className='flex flex-col h-full'>
-          <ProxyRunDetailsVersionMessagesView version={version} run={run} tenant={tenant} />
+          <ProxyRunDetailsVersionMessagesView version={version} run={run} />
         </div>
       </PersistantAllotment>
 

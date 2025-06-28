@@ -100,7 +100,7 @@ class TestDumpForInput:
         m = StoredMessages.model_validate(
             {
                 "workflowai.messages": [
-                    Message(role="user", content=[MessageContent(text="Hello, world!")]),
+                    Message(role="user", content=[MessageContent(text="Hello, world!")]).model_dump(exclude_none=True),
                 ],
             },
         )

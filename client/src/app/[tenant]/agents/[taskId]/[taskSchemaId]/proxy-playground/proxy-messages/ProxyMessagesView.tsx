@@ -1,9 +1,10 @@
 import { Add16Regular } from '@fluentui/react-icons';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 import { ProxyMessage } from '@/types/workflowAI';
 import { ProxyMessageView } from './ProxyMessageView';
+import { elementIdForMessage } from './elementIdForMessage';
 import { ExtendedMessageType, allExtendedMessageTypes, cleanMessagesAndAddIDs, createEmptyMessage } from './utils';
 
 type Props = {
@@ -23,9 +24,13 @@ type Props = {
   supportRunDetails?: boolean;
   supportOpeningInPlayground?: boolean;
   scrollToLastMessage?: boolean;
+
+  showAddMessageButtonIfNoMessages?: boolean;
+
+  onAnyTextareaFocusChange?: (isFocused: boolean) => void;
 };
 
-export function ProxyMessagesView(props: Props) {
+export const ProxyMessagesView = forwardRef(function ProxyMessagesView(props: Props, ref) {
   const {
     messages,
     setMessages,
@@ -43,9 +48,11 @@ export function ProxyMessagesView(props: Props) {
     supportRunDetails = false,
     supportOpeningInPlayground,
     scrollToLastMessage = false,
-  } = props;
 
-  const [isHovering, setIsHovering] = useState(false);
+    showAddMessageButtonIfNoMessages = true,
+
+    onAnyTextareaFocusChange,
+  } = props;
 
   const readonly = !setMessages;
 
@@ -58,16 +65,26 @@ export function ProxyMessagesView(props: Props) {
     return !!messages && messages.length > 0;
   }, [messages]);
 
+  const [focusedCount, setFocusedCount] = useState(0);
+  const handleFocus = useCallback(() => setFocusedCount((c) => c + 1), []);
+  const handleBlur = useCallback(() => setFocusedCount((c) => Math.max(0, c - 1)), []);
+
   useEffect(() => {
     if (areMessagesLoaded && scrollToLastMessage) {
+      const lastUserMessageElement = document.getElementById('last-user-message');
       const lastMessageElement = document.getElementById('last-message');
-      if (lastMessageElement) {
+      const messageElement = lastUserMessageElement ?? lastMessageElement;
+      if (messageElement) {
         setTimeout(() => {
-          lastMessageElement.scrollIntoView({ behavior: 'instant', block: 'start' });
+          messageElement.scrollIntoView({ behavior: 'instant', block: 'start' });
         }, 0);
       }
     }
   }, [areMessagesLoaded, scrollToLastMessage]);
+
+  useEffect(() => {
+    onAnyTextareaFocusChange?.(focusedCount > 0);
+  }, [focusedCount, onAnyTextareaFocusChange]);
 
   const onMessageChange = useCallback(
     (message: ProxyMessage | undefined, index: number) => {
@@ -97,11 +114,20 @@ export function ProxyMessagesView(props: Props) {
       }
 
       const lastIndex = !!cleanedMessages && cleanedMessages.length > 0 ? cleanedMessages.length - 1 : 0;
-      const previouseIndex = Math.max(0, index ?? lastIndex);
+      const previouseIndex = Math.max(0, index !== undefined ? index - 1 : lastIndex);
       const previouseMessage = cleanedMessages?.[previouseIndex];
 
       const allMessages = cleanedMessages ?? [];
-      const newMessage = createEmptyMessage(defaultType, previouseMessage);
+
+      let newMessageType = defaultType;
+      if (defaultType === 'system' && index !== undefined && index >= 1) {
+        const previouseMessageType = cleanedMessages?.[index - 1]?.role;
+        if (previouseMessageType === 'user') {
+          newMessageType = 'user';
+        }
+      }
+
+      const newMessage = createEmptyMessage(newMessageType, previouseMessage);
 
       if (index === undefined || index >= allMessages.length) {
         setMessages([...allMessages, newMessage]);
@@ -128,17 +154,17 @@ export function ProxyMessagesView(props: Props) {
   );
 
   const thereAreNoMessages = cleanedMessages?.length === 0 || !cleanedMessages;
-  const showAddMessageButton = (isHovering || thereAreNoMessages) && !readonly;
+  const showAddMessageButton = thereAreNoMessages && !readonly && showAddMessageButtonIfNoMessages;
+
+  useImperativeHandle(ref, () => ({
+    addMessage,
+  }));
 
   return (
-    <div
-      className={cn('flex flex-col gap-2 h-max w-full flex-shrink-0', className)}
-      onMouseEnter={() => setIsHovering(true)}
-      onMouseLeave={() => setIsHovering(false)}
-    >
+    <div className={cn('flex flex-col gap-2 h-max w-full flex-shrink-0', className)}>
       {cleanedMessages?.map((message, index) => (
         <ProxyMessageView
-          id={index === 0 ? 'first-message' : index === cleanedMessages.length - 1 ? 'last-message' : undefined}
+          id={elementIdForMessage(cleanedMessages, index)}
           key={message.internal_id ?? index}
           message={message}
           setMessage={(message) => onMessageChange(message, index)}
@@ -153,15 +179,22 @@ export function ProxyMessagesView(props: Props) {
           supportInputVaribles={supportInputVaribles}
           supportRunDetails={supportRunDetails}
           supportOpeningInPlayground={supportOpeningInPlayground}
+          onTextareaFocus={handleFocus}
+          onTextareaBlur={handleBlur}
         />
       ))}
       {showAddMessageButton && (
         <div className='flex flex-row gap-2 py-2'>
-          <Button variant='newDesign' size='sm' icon={<Add16Regular />} onClick={() => addMessage()}>
+          <Button
+            variant='newDesign'
+            size='sm'
+            icon={<Add16Regular />}
+            onClick={() => addMessage(cleanedMessages?.length ?? 0)}
+          >
             Add Message
           </Button>
         </div>
       )}
     </div>
   );
-}
+});

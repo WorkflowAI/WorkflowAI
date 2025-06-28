@@ -1,4 +1,5 @@
 import datetime
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -21,7 +22,9 @@ class SerializableTask(BaseModel):
         variant_id: str
         description: str | None = None
         input_schema_version: str
+        input_schema: dict[str, Any] | None = None
         output_schema_version: str
+        output_schema: dict[str, Any] | None = None
         # Using default value to account for backwards compatibility
         created_at: datetime.datetime = datetime.datetime(1970, 1, 1, tzinfo=datetime.timezone.utc)
         is_hidden: bool | None = None

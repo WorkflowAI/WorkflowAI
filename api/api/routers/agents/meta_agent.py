@@ -1,52 +1,20 @@
-from typing import Annotated, AsyncIterator
+from typing import AsyncIterator
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from api.dependencies.analytics import UserPropertiesDep
-from api.dependencies.event_router import EventRouterDep
 from api.dependencies.path_params import TaskSchemaID
-from api.dependencies.services import (
-    ModelsServiceDep,
-    ReviewsServiceDep,
-    RunsServiceDep,
-    StorageDep,
-    VersionsServiceDep,
-)
+from api.dependencies.services import MetaAgentServiceDep
 from api.dependencies.task_info import TaskTupleDep
-from api.routers.feedback_v1 import FeedbackServiceDep
 from api.services.internal_tasks.meta_agent_service import (
     MetaAgentChatMessage,
-    MetaAgentService,
     PlaygroundState,
 )
 from core.utils.stream_response_utils import safe_streaming_response
 
-router = APIRouter(prefix="/agents/{task_id}/prompt-engineer-agent")
-
-
-def meta_agent_service_dependency(
-    storage: StorageDep,
-    event_router: EventRouterDep,
-    runs_service: RunsServiceDep,
-    models_service: ModelsServiceDep,
-    feedback_service: FeedbackServiceDep,
-    versions_service: VersionsServiceDep,
-    reviews_service: ReviewsServiceDep,
-):
-    return MetaAgentService(
-        storage=storage,
-        event_router=event_router,
-        runs_service=runs_service,
-        models_service=models_service,
-        feedback_service=feedback_service,
-        versions_service=versions_service,
-        reviews_service=reviews_service,
-    )
-
-
-MetaAgentServiceDep = Annotated[MetaAgentService, Depends(meta_agent_service_dependency)]
+router = APIRouter(prefix="/agents/{agent_id}/prompt-engineer-agent")
 
 
 class MetaAgentChatRequest(BaseModel):
@@ -60,6 +28,11 @@ class MetaAgentChatRequest(BaseModel):
 
     messages: list[MetaAgentChatMessage] = Field(
         description="The list of messages in the conversation, the last message being the most recent one",
+    )
+
+    hosted_tool_update_mode: bool = Field(
+        default=False,
+        description="When true, the agent will generate full updated version messages directly instead of calling another agent",
     )
 
 
@@ -105,6 +78,7 @@ async def get_meta_agent_chat(
             user_email=user_properties.user_email,
             messages=request.messages,
             playground_state=request.playground_state,
+            hosted_tool_update_mode=request.hosted_tool_update_mode,
         ):
             yield MetaAgentChatResponse(messages=messages)
 

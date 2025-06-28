@@ -3,11 +3,12 @@ import { useCallback, useEffect, useMemo } from 'react';
 import { useLocalStorage } from 'usehooks-ts';
 import { useRedirectWithParams } from '@/lib/queryString';
 import { useParsedSearchParams } from '@/lib/queryString';
-import { useOrFetchCurrentTaskSchema } from '@/store/fetchers';
+import { useOrFetchSchema } from '@/store/fetchers';
 import { TaskID, TenantID } from '@/types/aliases';
 import { TaskSchemaID } from '@/types/aliases';
 import { ModelResponse, VersionV1 } from '@/types/workflowAI';
 import { TaskInputDict } from '@/types/workflowAI';
+import { checkSchemaForProxy } from '../proxy-playground/utils';
 import { SideBySideTableHeader } from './SideBySideTableHeader';
 import { SideBySideTableRow } from './SideBySideTableRow';
 import { SideBySideTableStatsRow } from './Stats/SideBySideTableStatsRow';
@@ -80,7 +81,14 @@ export function SideBySideTable(props: SideBySideTableProps) {
   const selectedRightVersion = versions.find((version) => version.id === selectedRightVersionId);
   const selectedRightModel = models?.find((model) => model.id === selectedRightModelId);
 
-  const { taskSchema } = useOrFetchCurrentTaskSchema(undefined, taskId, taskSchemaId);
+  const { taskSchema } = useOrFetchSchema(undefined, taskId, taskSchemaId);
+
+  const isProxy = useMemo(() => {
+    if (!taskSchema) {
+      return false;
+    }
+    return checkSchemaForProxy(taskSchema);
+  }, [taskSchema]);
 
   const deployedVersion = useMemo(() => {
     if (versions.length === 0) {
@@ -231,6 +239,7 @@ export function SideBySideTable(props: SideBySideTableProps) {
           inputs={inputs}
           leftVersion={selectedLeftVersion}
           rightVersion={selectedRightVersion}
+          isProxy={isProxy}
         />
         {!!taskSchema && !!inputs ? (
           <>
@@ -245,6 +254,7 @@ export function SideBySideTable(props: SideBySideTableProps) {
                 tenant={tenant}
                 taskId={taskId}
                 taskSchemaId={taskSchemaId}
+                isProxy={isProxy}
               />
             ))}
           </>

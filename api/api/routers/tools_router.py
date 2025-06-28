@@ -4,7 +4,7 @@ from api.dependencies.services import ToolsServiceDep
 from api.schemas.tools_schema import ToolParamsRequest, ToolResponse
 from core.storage import ObjectNotFoundException
 
-router = APIRouter(prefix="/agents/{task_id}/tools")
+router = APIRouter(prefix="/agents/{agent_id}/tools")
 
 
 @router.get("")

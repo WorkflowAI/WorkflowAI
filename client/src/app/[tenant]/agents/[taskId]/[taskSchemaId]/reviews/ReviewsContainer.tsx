@@ -7,10 +7,10 @@ import { useDemoMode } from '@/lib/hooks/useDemoMode';
 import { useTaskSchemaParams } from '@/lib/hooks/useTaskParams';
 import { useOrFetchTask } from '@/store';
 import {
-  useOrFetchCurrentTaskSchema,
   useOrFetchEvaluation,
   useOrFetchEvaluationInputs,
   useOrFetchLatestRun,
+  useOrFetchSchema,
 } from '@/store/fetchers';
 import { useTaskEvaluation } from '@/store/task_evaluation';
 import { EmptyStateComponent } from './EmptyStateComponent';
@@ -23,7 +23,7 @@ export default function ReviewsContainer() {
 
   const { task, isInitialized: isTaskInitialized } = useOrFetchTask(tenant, taskId);
 
-  const { taskSchema: currentTaskSchema, isInitialized: isTaskSchemaInitialized } = useOrFetchCurrentTaskSchema(
+  const { taskSchema: currentTaskSchema, isInitialized: isTaskSchemaInitialized } = useOrFetchSchema(
     tenant,
     taskId,
     taskSchemaId

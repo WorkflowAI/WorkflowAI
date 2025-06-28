@@ -329,7 +329,7 @@ export function PlaygroundChat(props: Props) {
         />
         <div className='flex flex-col w-full h-full bg-white'>
           <div className='flex flex-row text-[13px] text-gray-500 font-medium px-4 py-2 items-center justify-between border-b border-gray-100'>
-            <div>Agent</div>
+            <div>AI Engineer</div>
             <div className='flex flex-row items-center gap-4'>
               <SimpleTooltip content='Start New Chat' tooltipDelay={0} side='bottom' tooltipClassName='m-1'>
                 <Button

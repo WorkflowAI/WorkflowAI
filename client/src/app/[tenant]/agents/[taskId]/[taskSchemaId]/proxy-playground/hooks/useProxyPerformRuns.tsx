@@ -3,25 +3,44 @@ import { useMap } from 'usehooks-ts';
 import { useAIModels } from '@/store/ai_models';
 import { useOrganizationSettings } from '@/store/organization_settings';
 import { usePlaygroundChatStore } from '@/store/playgroundChatStore';
+import { useProxyChatCompletition } from '@/store/proxyChatCompletition';
 import { useTasks } from '@/store/task';
 import { useTaskSchemas } from '@/store/task_schemas';
-import { useVersions } from '@/store/versions';
 import { TenantID } from '@/types/aliases';
 import { TaskID } from '@/types/aliases';
 import { TaskSchemaID } from '@/types/aliases';
 import { StreamError } from '@/types/errors';
 import { JsonSchema } from '@/types/json_schema';
 import { GeneralizedTaskInput } from '@/types/task_run';
-import { ProxyMessage, RunRequest, TaskGroupProperties_Input, ToolKind, Tool_Output } from '@/types/workflowAI';
+import { ModelResponse, ProxyMessage, ToolKind, Tool_Output } from '@/types/workflowAI';
 import { useFetchTaskRunUntilCreated } from '../../playground/hooks/useFetchTaskRunUntilCreated';
-import { PlaygroundModels } from '../../playground/hooks/utils';
-import { removeInputEntriesNotMatchingSchemaAndKeepMessages } from '../utils';
+import {
+  ProxyPlaygroundModels,
+  cleanChunkOutput,
+  getModelAndReasoning,
+  removeInputEntriesNotMatchingSchemaAndKeepMessages,
+} from '../utils';
+import { AdvancedSettings } from './useProxyPlaygroundSearchParams';
 import { useProxyStreamedChunks } from './useProxyStreamedChunks';
+
+function isModelReasoning(model: string, models: ModelResponse[]): boolean {
+  if (!model) {
+    return false;
+  }
+
+  const matchedModel = models.find((m) => m.id === model);
+  if (!matchedModel) {
+    return false;
+  }
+
+  return matchedModel.reasoning !== undefined;
+}
 
 type Props = {
   tenant: TenantID | undefined;
   taskId: TaskID;
   schemaId: TaskSchemaID;
+  variantId: string | undefined;
   taskRunId1: string | undefined;
   taskRunId2: string | undefined;
   taskRunId3: string | undefined;
@@ -29,15 +48,16 @@ type Props = {
   hiddenModelColumns: number[];
   areThereChangesInInputSchema: boolean;
   extractedInputSchema: JsonSchema | undefined;
-  outputSchema: JsonSchema;
+  outputSchema: JsonSchema | undefined;
   setSchemaId: (schemaId: TaskSchemaID) => void;
   changeURLSchemaId: (schemaId: TaskSchemaID, scrollToBottom?: boolean) => void;
   proxyMessages: ProxyMessage[] | undefined;
   proxyToolCalls: (ToolKind | Tool_Output)[] | undefined;
-  outputModels: PlaygroundModels;
-  temperature: number | undefined;
+  outputModels: ProxyPlaygroundModels;
   input: GeneralizedTaskInput | undefined;
   setScheduledPlaygroundStateMessage: (message: string | undefined) => void;
+  advancedSettings: AdvancedSettings;
+  models: ModelResponse[];
 };
 
 export function useProxyPerformRuns(props: Props) {
@@ -51,6 +71,7 @@ export function useProxyPerformRuns(props: Props) {
     extractedInputSchema,
     outputSchema,
     schemaId,
+    variantId,
     tenant,
     taskId,
     setSchemaId,
@@ -58,10 +79,17 @@ export function useProxyPerformRuns(props: Props) {
     proxyMessages,
     proxyToolCalls,
     outputModels,
-    temperature,
     input,
     setScheduledPlaygroundStateMessage,
+    advancedSettings,
+    models,
   } = props;
+
+  const variantIdRef = useRef<string | undefined>(variantId);
+  variantIdRef.current = variantId;
+  useEffect(() => {
+    variantIdRef.current = variantId;
+  }, [variantId]);
 
   const schemaIdRef = useRef<TaskSchemaID>(schemaId);
   schemaIdRef.current = schemaId;
@@ -69,7 +97,13 @@ export function useProxyPerformRuns(props: Props) {
     schemaIdRef.current = schemaId;
   }, [schemaId]);
 
-  const outputModelsRef = useRef<PlaygroundModels>(outputModels);
+  const outputSchemaRef = useRef<JsonSchema | undefined>(outputSchema);
+  outputSchemaRef.current = outputSchema;
+  useEffect(() => {
+    outputSchemaRef.current = outputSchema;
+  }, [outputSchema]);
+
+  const outputModelsRef = useRef<ProxyPlaygroundModels>(outputModels);
   outputModelsRef.current = outputModels;
   useEffect(() => {
     outputModelsRef.current = outputModels;
@@ -86,12 +120,6 @@ export function useProxyPerformRuns(props: Props) {
   useEffect(() => {
     proxyMessagesRef.current = proxyMessages;
   }, [proxyMessages]);
-
-  const temperatureRef = useRef<number | undefined>(temperature);
-  temperatureRef.current = temperature;
-  useEffect(() => {
-    temperatureRef.current = temperature;
-  }, [temperature]);
 
   const proxyToolCallsRef = useRef<(ToolKind | Tool_Output)[] | undefined>(proxyToolCalls);
   proxyToolCallsRef.current = proxyToolCalls;
@@ -110,6 +138,12 @@ export function useProxyPerformRuns(props: Props) {
   useEffect(() => {
     extractedInputSchemaRef.current = extractedInputSchema;
   }, [extractedInputSchema]);
+
+  const advancedSettingsRef = useRef<AdvancedSettings | undefined>(advancedSettings);
+  advancedSettingsRef.current = advancedSettings;
+  useEffect(() => {
+    advancedSettingsRef.current = advancedSettings;
+  }, [advancedSettings]);
 
   const { streamedChunks, setStreamedChunk } = useProxyStreamedChunks(taskRunId1, taskRunId2, taskRunId3);
   const [inProgressIndexes, setInProgressIndexes] = useState<number[]>([]);
@@ -136,20 +170,19 @@ export function useProxyPerformRuns(props: Props) {
 
   const updateTaskSchema = useTasks((state) => state.updateTaskSchema);
   const fetchTaskSchema = useTaskSchemas((state) => state.fetchTaskSchema);
-  const fetchModels = useAIModels((state) => state.fetchModels);
-  const createVersion = useVersions((state) => state.createVersion);
-  const runTask = useTasks((state) => state.runTask);
+  const fetchModels = useAIModels((state) => state.fetchSchemaModels);
   const fetchTaskRunUntilCreated = useFetchTaskRunUntilCreated();
   const fetchOrganizationSettings = useOrganizationSettings((state) => state.fetchOrganizationSettings);
+  const { performRun: performRunProxy } = useProxyChatCompletition();
 
   const checkAndUpdateSchemaIfNeeded = useCallback(async () => {
-    if (!areThereChangesInInputSchemaRef.current) {
+    if (!areThereChangesInInputSchemaRef.current || !outputSchemaRef.current || !extractedInputSchemaRef.current) {
       return undefined;
     }
 
     const updatedTask = await updateTaskSchema(tenant, taskId, {
       input_schema: extractedInputSchemaRef.current as Record<string, unknown>,
-      output_schema: outputSchema as Record<string, unknown>,
+      output_schema: outputSchemaRef.current as Record<string, unknown>,
     });
 
     const newSchema = `${updatedTask.schema_id}` as TaskSchemaID;
@@ -164,7 +197,7 @@ export function useProxyPerformRuns(props: Props) {
     setSchemaId(newSchema);
 
     return newSchema;
-  }, [outputSchema, updateTaskSchema, tenant, taskId, setSchemaId, fetchTaskSchema, fetchModels]);
+  }, [updateTaskSchema, tenant, taskId, setSchemaId, fetchTaskSchema, fetchModels]);
 
   const abortControllerRun0 = useRef<AbortController | null>(null);
   const abortControllerRun1 = useRef<AbortController | null>(null);
@@ -199,7 +232,19 @@ export function useProxyPerformRuns(props: Props) {
 
   const performRun = useCallback(
     async (index: number) => {
-      const model = outputModelsRef.current[index];
+      const variantId = variantIdRef.current;
+      if (variantId === undefined) {
+        return;
+      }
+
+      const { model, reasoning } = getModelAndReasoning(index, outputModelsRef.current);
+
+      if (!model) {
+        return;
+      }
+
+      const isReasoningModel = isModelReasoning(model, models);
+
       if (model) {
         removeModelError(model);
       }
@@ -210,13 +255,6 @@ export function useProxyPerformRuns(props: Props) {
       const abortController = new AbortController();
       setAbortController(index, abortController);
 
-      const properties: TaskGroupProperties_Input = {
-        model: outputModelsRef.current[index],
-        temperature: temperatureRef.current,
-        enabled_tools: proxyToolCallsRef.current,
-        messages: proxyMessagesRef.current,
-      };
-
       const clean = () => {
         setTaskRunId(index, undefined);
         setStreamedChunk(index, undefined);
@@ -224,45 +262,39 @@ export function useProxyPerformRuns(props: Props) {
       };
 
       try {
-        const { id: versionId } = await createVersion(tenant, taskId, schemaIdRef.current, {
-          properties,
-        });
-
-        if (abortController.signal.aborted) {
-          clean();
-          return;
-        }
-
-        // TODO: remove this once the bug on with the messages when inputs are set are not taken into account is fixed
-        //const useCache = !!temperatureRef.current && temperatureRef.current === 0 ? 'never' : undefined;
-        const useCache = 'never';
-
         const cleanedInput =
           removeInputEntriesNotMatchingSchemaAndKeepMessages(
             inputRef.current as Record<string, unknown> | undefined,
             extractedInputSchemaRef.current
           ) ?? {};
 
-        const request: RunRequest = {
-          task_input: cleanedInput,
-          version: versionId,
-          use_cache: useCache,
-        };
-
-        const { id: runId } = await runTask({
-          tenant,
+        const runId = await performRunProxy(
           taskId,
-          taskSchemaId: schemaIdRef.current,
-          body: request,
-          onMessage: (message) => {
+          variantId,
+          model,
+          isReasoningModel ? reasoning ?? 'medium' : undefined,
+          cleanedInput,
+          proxyMessagesRef.current ?? [],
+          advancedSettingsRef.current,
+          proxyToolCallsRef.current,
+          (runId, output) => {
             if (abortController.signal.aborted) {
               clean();
               return;
             }
-            setStreamedChunk(index, message);
+
+            const cleanedChunkOutput = cleanChunkOutput(output);
+
+            setStreamedChunk(index, {
+              id: runId,
+              task_output: cleanedChunkOutput as Record<string, unknown>,
+              tool_call_requests: null,
+              reasoning_steps: null,
+              tool_calls: null,
+            });
           },
-          signal: abortController.signal,
-        });
+          abortController.signal
+        );
 
         if (abortController.signal.aborted) {
           clean();
@@ -279,7 +311,7 @@ export function useProxyPerformRuns(props: Props) {
           return;
         }
 
-        const model = outputModelsRef.current[index];
+        const { model } = getModelAndReasoning(index, outputModelsRef.current);
         if (error instanceof Error && !!model) {
           setModelError(model, error);
         }
@@ -303,16 +335,16 @@ export function useProxyPerformRuns(props: Props) {
     [
       findAbortController,
       setAbortController,
-      createVersion,
       tenant,
       taskId,
       setTaskRunId,
       setStreamedChunk,
       setInProgress,
-      runTask,
       fetchTaskRunUntilCreated,
       setModelError,
       removeModelError,
+      performRunProxy,
+      models,
     ]
   );
 
@@ -334,6 +366,10 @@ export function useProxyPerformRuns(props: Props) {
 
   const performRuns = useCallback(
     async (indexes?: number[]) => {
+      if (variantIdRef.current === undefined) {
+        return;
+      }
+
       const indexesToRun = indexes ?? defaultIndexes;
 
       if (indexesToRun.length === 0) {
@@ -354,7 +390,10 @@ export function useProxyPerformRuns(props: Props) {
       await fetchOrganizationSettings();
 
       if (newSchema) {
-        changeURLSchemaId(newSchema, true);
+        // Timeout set to prevent blinking when refreashing the inputs
+        setTimeout(() => {
+          changeURLSchemaId(newSchema, true);
+        }, 500);
       }
 
       const message = getScheduledPlaygroundStateMessageToSendAfterRuns();

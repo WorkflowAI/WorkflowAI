@@ -14,7 +14,6 @@ from core.domain.message import MessageDeprecated
 from core.domain.models import Model, Provider
 from core.domain.models.model_data import ModelData
 from core.domain.models.utils import get_model_data
-from core.domain.structured_output import StructuredOutput
 from core.domain.tool_call import ToolCallRequestWithID
 from core.providers.base.httpx_provider import HTTPXProvider
 from core.providers.base.models import RawCompletion, StandardMessage
@@ -46,7 +45,6 @@ from core.providers.google.google_provider_domain import (
 )
 from core.providers.openai.openai_domain import parse_tool_call_or_raise
 from core.runners.workflowai.templates import TemplateName
-from core.utils.redis_cache import redis_cached
 
 _NAME_OVERRIDE_MAP = {
     Model.LLAMA_3_3_70B: "accounts/fireworks/models/llama-v3p3-70b-instruct",
@@ -270,7 +268,6 @@ class FireworksAIProvider(HTTPXProvider[FireworksConfig, CompletionResponse]):
             return MaxTokensExceededError(
                 msg=payload.error.message,
                 response=response,
-                store_task_run=False,
             )
         if "model not found, inaccessible, and/or not deployed" in lower_msg:
             return MissingModelError(
@@ -290,7 +287,6 @@ class FireworksAIProvider(HTTPXProvider[FireworksConfig, CompletionResponse]):
                 response=response,
             )
 
-        store_task_run: bool | None = None
         error_cls = UnknownProviderError
         match payload.error.code:
             case "string_above_max_length" | "context_length_exceeded":
@@ -298,7 +294,6 @@ class FireworksAIProvider(HTTPXProvider[FireworksConfig, CompletionResponse]):
                 # does not incur cost
                 # We still bin with max tokens exceeded since it is related
                 error_cls = MaxTokensExceededError
-                store_task_run = False
 
             case None:
                 if err := self._invalid_request_error(payload, response):
@@ -310,7 +305,6 @@ class FireworksAIProvider(HTTPXProvider[FireworksConfig, CompletionResponse]):
         return error_cls(
             msg=payload.error.message or "Unknown error",
             response=response,
-            store_task_run=store_task_run,
         )
 
     @override
@@ -503,38 +497,6 @@ class FireworksAIProvider(HTTPXProvider[FireworksConfig, CompletionResponse]):
         messages: list[dict[str, Any]],
     ):
         return 0, None
-
-    @redis_cached()
-    async def is_schema_supported_for_structured_generation(
-        self,
-        task_name: str,
-        model: Model,
-        schema: dict[str, Any],
-    ) -> bool:
-        # Check if the task schema is actually supported by the FireworksAI's implementation of structured generation
-        try:
-            options = ProviderOptions(
-                task_name=task_name,
-                model=model,
-                output_schema=schema,
-                structured_generation=True,  # We are forcing structured generation to be used
-            )
-
-            request, llm_completion = await self._prepare_completion(
-                messages=[MessageDeprecated(content="Generate a test output", role=MessageDeprecated.Role.USER)],
-                options=options,
-                stream=False,
-            )
-            raw_completion = RawCompletion(response="", usage=llm_completion.usage)
-            await self._single_complete(request, lambda x, _: StructuredOutput(json.loads(x)), raw_completion, options)
-        except Exception:
-            # Caught exception is wide because we do not want to impact group creation in any way, and the error is logged.
-            self.logger.exception(
-                "Schema is not supported for structured generation",
-                extra={"schema": schema},
-            )
-            return False
-        return True
 
     @override
     def sanitize_template(self, template: TemplateName):

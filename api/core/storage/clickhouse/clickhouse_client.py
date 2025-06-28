@@ -125,9 +125,11 @@ class ClickhouseClient(TaskRunStorage):
         limit: int,
         offset: int,
         timeout_ms: int = 60_000,
+        include: set[SerializableTaskRunField] | None = None,
+        exclude: set[SerializableTaskRunField] | None = None,
         unique_by_conversation: bool = True,
     ):
-        columns = ClickhouseRun.select_in_search()
+        columns = ClickhouseRun.select_in_search(include=include, exclude=exclude)
         where = await self._search_where(task_uid, search_fields)
 
         async with asyncio.timeout(timeout_ms):
@@ -496,6 +498,7 @@ class ClickhouseClient(TaskRunStorage):
         from_date: datetime,
         to_date: datetime | None = None,
         is_active: bool | None = None,
+        agent_uids: set[int] | None = None,
     ) -> AsyncIterator[TaskRunStorage.AgentRunCount]:
         w = (
             W("tenant_uid", type="UInt32", value=self.tenant_uid)
@@ -508,6 +511,9 @@ class ClickhouseClient(TaskRunStorage):
 
         if is_active:
             w &= W("is_active", type="Boolean", value=is_active)
+
+        if agent_uids:
+            w &= W("task_uid", type="UInt32", value=agent_uids)
 
         raw, parameters = w.to_sql_req()
         sql = f"""

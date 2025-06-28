@@ -1,0 +1,9 @@
+{
+  "title": "Evaluations",
+  "icon": "ClipboardCheck",
+  "pages": [
+    "index",
+    "side-by-side",
+    "user-feedback"
+  ]
+} 

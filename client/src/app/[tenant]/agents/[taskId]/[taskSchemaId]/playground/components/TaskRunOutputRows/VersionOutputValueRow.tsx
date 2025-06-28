@@ -18,16 +18,13 @@ export function VersionOutputValueRow(props: VersionOutputValueRowProps) {
   }
 
   return (
-    <BaseOutputValueRow
-      label='Version'
-      value={
-        <TaskVersionBadgeContainer
-          version={version}
-          side={side}
-          showDetails={showTaskIterationDetails}
-          setVersionIdForCode={setVersionIdForCode}
-        />
-      }
-    />
+    <div className='flex items-center justify-center pl-4 pr-1'>
+      <TaskVersionBadgeContainer
+        version={version}
+        side={side}
+        showDetails={showTaskIterationDetails}
+        setVersionIdForCode={setVersionIdForCode}
+      />
+    </div>
   );
 }

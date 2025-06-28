@@ -255,6 +255,11 @@ class PlaygroundState(BaseModel):
         description="The agent runs that were made in the playground",
     )
 
+    version_messages: list[dict[str, Any]] | None = Field(
+        default=None,
+        description="The version messages of the agent",
+    )
+
     class PlaygroundModel(BaseModel):
         id: str = Field(
             description="The id of the model",
@@ -545,6 +550,11 @@ class ProxyMetaAgentOutput(BaseModel):
         description="The generate input request, if any",
     )
 
+    updated_version_messages: list[dict[str, Any]] | None = Field(
+        default=None,
+        description="The directly generated version messages, if any",
+    )
+
 
 class ParsedToolCall(NamedTuple):
     """Result of parsing a tool call from the OpenAI streaming response."""
@@ -557,6 +567,7 @@ class ParsedToolCall(NamedTuple):
     edit_schema_structure_request: EditSchemaStructureToolCallRequest | None = None
     edit_schema_description_and_examples_request: EditSchemaDescriptionAndExamplesToolCallRequest | None = None
     generate_input_request: GenerateAgentInputToolCallRequest | None = None
+    updated_version_messages: list[dict[str, Any]] | None = None
 
 
 def parse_tool_call(tool_call: Any) -> ParsedToolCall:
@@ -569,6 +580,7 @@ def parse_tool_call(tool_call: Any) -> ParsedToolCall:
     - edit_schema_description_and_examples: edit_schema_description_and_examples_request
     - run_agent_on_model: run_trigger_config
     - generate_agent_input: generate_input_request
+    - updated_version_messages: updated_version_messages
     """
     if not tool_call.function or not tool_call.function.arguments:
         return ParsedToolCall()
@@ -579,6 +591,11 @@ def parse_tool_call(tool_call: Any) -> ParsedToolCall:
     if function_name == "update_version_messages":
         return ParsedToolCall(
             improvement_instructions=arguments["improvement_instructions"],
+        )
+
+    if function_name == "update_version_messages_hosted_tools":
+        return ParsedToolCall(
+            updated_version_messages=arguments["messages"],
         )
 
     if function_name == "create_custom_tool":
@@ -625,7 +642,7 @@ def parse_tool_call(tool_call: Any) -> ParsedToolCall:
     return ParsedToolCall()
 
 
-_PROXY_META_AGENT_COMMON_INSTRUCTIONS = """Your WorkflowAI proxy playground agent's role is to make the user succeed in the WorkflowAI platform, having performant and reliable agents.
+_PROXY_META_AGENT_COMMON_INSTRUCTIONS = """You are the WorkflowAI proxy playground agent, your role is to make the user succeed in the WorkflowAI platform, having performant and reliable agents.
 
 Agents can be run in the current playground, or directly from the code. The user can see the "Code" page to see how to run the agent.
 
@@ -687,6 +704,9 @@ IMPORTANT: When communicating with users, always use natural, user-friendly lang
 - Never mention internal tool names (e.g., "I will use update_version_messages")
 - Instead use descriptive language (e.g., "I will update your agent's messages", "I will modify your output schema", "I will run your agent on different models")
 - Keep explanations focused on what you're doing for the user, not the technical implementation
+- Be conversational and reactive rather than proactive - let the user lead the conversation
+- When greeting users or responding to casual messages, keep responses simple and friendly without overwhelming them with suggestions
+- Only offer specific improvements when the user asks for help or indicates they're experiencing issues
 </user_communication_guidelines>
 """
 
@@ -799,7 +819,7 @@ Check in the 'agent_lifecycle_info.deployment_info.deployments' to see if the 'c
 
 You answer MUST include:
 - Before talking about code update explains about how to deploy the agent based on the docs (200 words max.) in 'features/deployments.md'
-- Add a link to https://docs.workflowai.com/features/deployments for the user to read more about deployments.
+- Add a link to https://docs.workflowai.com/deployments for the user to read more about deployments.
 - Then, you can talk about the model parameter update needed:  MODEL_NAME_PREFIX_PLACEHOLDER<current_agent.slug>/#<current_agent.schema_id>/<deployment env (production, staging, dev)>
 ex: model="MODEL_NAME_PREFIX_PLACEHOLDERmy-agent/#1/production" You can explain the format above to the user: (model="MODEL_NAME_PREFIX_PLACEHOLDERmy-agent/#1/production")
 {% if is_using_version_messages %}
@@ -811,6 +831,7 @@ You answer MUST NOT INCLUDE:
 - A repetition of the whole code from previous answers. You ONLY need to show the "model=..." parameters and the "messages=[]".
 """
 
+
 PROPOSE_DEPLOYMENT_INSTRUCTIONS = (
     _PROXY_META_AGENT_COMMON_INSTRUCTIONS
     + """
@@ -821,13 +842,35 @@ PROPOSE_DEPLOYMENT_INSTRUCTIONS = (
     + INSTRUCTIONS_FOOTER
 )
 
+
+_HOSTED_TOOL_UPDATE_INSTRUCTIONS = """
+Ensure the updated version messages maintain coherence and flow with the existing content while accurately reflecting the tool changes.
+DO NOT update any other part of the 'version_messages' that the parts related to 'tools_to_remove' or 'tools_to_add'.
+DO NOT use markdown formatting (**, *, #, etc.), unless markdown is already present in the 'version_messages'.
+DO NOT add any character around tool handles (quotes, etc.) just use @the-tool-handle
+To add / remove hosted tool to the agent's version messages, you must use the 'update_version_messages_hosted_tools' in order to update the version messages directly.
+"""
+
+HOSTED_TOOL_UPDATE_INSTRUCTIONS = (
+    _PROXY_META_AGENT_COMMON_INSTRUCTIONS
+    + """
+# Goal
+
+As the use want to add / update / remove hosted tools from its agent's (see playground_state.version_messages), you MUST use the 'update_version_messages_hosted_tools' tool.
+The hosted tools use in the updated version messages must be the exactly the same (nothing more, nothing less) as the ones requested by the user.
+If the user is asking for no hosted tools to be used, and the current playground_state.version_messages contains hosted tools, you MUST remove the hosted tools from the version messages by using the 'update_version_messages_hosted_tools' tool.
+"""
+    + _HOSTED_TOOL_UPDATE_INSTRUCTIONS
+    + INSTRUCTIONS_FOOTER
+)
+
 GENERIC_INSTRUCTIONS = (
     _PROXY_META_AGENT_COMMON_INSTRUCTIONS
     + """
 <workflowai_user_journey>
-You must always strive to help using the full capabilities of WorkflowAI.
+You should help users leverage WorkflowAI's capabilities when they ask for assistance or encounter issues.
 
-Typical checklist for an optimal user journey:
+Typical user journey includes:
 - creating a new agent
 - integrating the agent in the codebase
 - running the agent
@@ -836,11 +879,12 @@ Typical checklist for an optimal user journey:
 - activate structured output for better output quality
 - deploying the agent to an environment (dev, staging, production) in order to improve the agent 'online' without needind code changes
 - monitoring the agent's performance, using feebacks, benchmark new models, deploy new versions, etc.
+
+Note: This is background context for understanding the platform, not a checklist to proactively push on users.
 </workflowai_user_journey>
 
 <factors_impacting_agent_performance>
-You must always strive to help the user improve its 'current_agent' performance.
-Several factors impact an agent behaviour and performance, here are the most common ones (and how to enhance those factors):
+When users experience issues or ask for help, several factors commonly impact agent behavior and performance:
 
 - The agent's messages: having unclear, missing or incorrect messages is a common reason for an agent to fail. See <improving_agent_messages> for more details.
 - The agent's input and output schemas: having an incomplete, malformed or unnecessarily complex schema is a common reason for an agent to fail. See <improving_agent_input_and_output_schemas> for more details.
@@ -871,8 +915,6 @@ COMMUNICATION RULE: Never mention tool names directly to users (e.g., "I will us
 - Any modifications to input variables or input schema MUST be done through 'update_version_messages' since they are embedded in the version messages.
 {% else %}
 - Agent is NOT using input variables. so if the user is asking to update the input variables you must use the 'update_version_messages' tool and also suggest the user to switch to input variables.
-
-Also suggest the user to switch to input variables any time you find relevant.
 {% endif %}
 </input_variables>
 
@@ -883,8 +925,6 @@ Also suggest the user to switch to input variables any time you find relevant.
 {% else %}
 - Agent is NOT using structured output yet so if the user is asking to update the output structure you must use the 'update_version_messages' tool and also suggest the user to switch to structured output.
 - IMPORTANT: INPUT schema edits must always use 'update_version_messages' regardless of structured output status.
-
-Also suggest the user to switch to structured output any time you find relevant.
 {% endif %}
 </structured_output>
 
@@ -899,8 +939,6 @@ Also suggest the user to switch to structured output any time you find relevant.
 - Agent is deployed, so if the user is trying out other models, etc. you must remind the user to deploy the new version to its environment. See <current_deployments> for more details about current deployments.
 {% else %}
 - Agent is NOT deployed yet so if the user is asking to update the agent you must use the 'update_version_messages' tool and also suggest the user to deploy the agent.
-
-Also suggest the user to deploy the agent to an environment (dev, staging, production) any time you find relevant.
 {% endif %}
 
 Always double check the <current_deployments> because users can get confused about their deployments. See <current_deployments> as the source of truth.
@@ -917,7 +955,7 @@ UX tip: there is a "circled top arrow" icon at the bottom of the run details vie
 """
     + _PROPOSE_NON_OPENAI_MODELS_INSTRUCTIONS
     + """
-- You MUST also offer the user to run the agent in the playground using 'run_agent_on_model'
+- You can also offer the user to run the agent in the playground using 'run_agent_on_model' if they seem interested in testing
 - The actual model picking will depend on the user's request in 'chat_messages'. If now specific criterias are suggested, you can pick one "smart" model and one "cheap" model as mentioned above.
 
 You can use the 'quality_index_ranking' and 'cost_ranking' fields in to quickly find the smartest and cheapest models. But ALWAYS recommend models that are supported by the agent (check 'is_supported_for_agent')
@@ -999,6 +1037,9 @@ You can enhance the agent capabilities by using hosted tools that will run insid
 <available_hosted_tools_description>
 {{available_hosted_tools_description}}
 </available_hosted_tools_description>
+<tips_for_adding_hosted_tools> """
+    + _HOSTED_TOOL_UPDATE_INSTRUCTIONS
+    + """</tips_for_adding_hosted_tools>
 </hosted_tools>
 
 <custom_tools>
@@ -1016,6 +1057,8 @@ Be mindful of subjects that are "over" in the messages, and those who are curren
 Be particularly mindful of the past tool calls that were made. Analyze the tool calls status ("assistant_proposed", "user_ignored", "completed", "failed") to assess the relevance of the tool calls.
 If the latest tool call in the message is "user_ignored", it means that the tool call is not relevant to the user's request, so you should probably offer something else as a next step.
 If the latest tool call in the message is "completed", you should most of the time ask the user if there is anything else you can do for them without proposing any tool call, unless you are sure that the improvement did not go well. Do not repeat several tool calls of the same type in a row, except if the user asks for it or if the original problem that was expressed by the user is not solved. Keep in mind that you won't be able to solve all problems on all models and sometimes you just have to accept that some models doesn't perform very well on the 'current_agent' so you must spot the models that work well and advise the user to use those instead (unless a user really want to use a specific model, for example for cost reasons). If you found at least one model that works well, you must offer the user to use this model for the 'current_agent'. Indeed, if none of the models among the three selected models works well, you can either make another round of improving the version messages / schema or offer to try different models with higher 'quality_index' using the 'run_agent_on_model' tool call.
+
+IMPORTANT: When users say simple greetings like "hello" or casual messages, respond in a friendly, conversational way without immediately offering multiple suggestions or improvements. Let the user express what they need before proposing solutions.
 </overall_discussion_flow>
 
 <input_generation>
@@ -1027,6 +1070,43 @@ You MUST always make an actual 'generate_agent_input' tool call to generate the 
 """
     + INSTRUCTIONS_FOOTER
 )
+
+VERSION_MESSAGES_HOSTED_TOOL_UPDATE_TOOL: ChatCompletionToolParam = {
+    "type": "function",
+    "function": {
+        "name": "update_version_messages_hosted_tools",
+        "description": "Update the version messages of the current agent version by providing instructions for improvement in order to add / remove / update hosted tools",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "messages": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "role": {
+                                "type": "string",
+                                "enum": ["system", "user", "assistant"],
+                            },
+                            "content": {
+                                "type": "string",
+                            },
+                        },
+                        "required": ["role", "content"],
+                        "additionalProperties": False,
+                    },
+                    "description": "The complete list of messages that should replace the current agent's messages.",
+                },
+            },
+            "required": [
+                "messages",
+            ],
+            "additionalProperties": False,
+        },
+        "strict": True,
+    },
+}
+
 
 TOOL_DEFINITIONS: list[ChatCompletionToolParam] = [
     {
@@ -1120,7 +1200,9 @@ TOOL_DEFINITIONS: list[ChatCompletionToolParam] = [
             "strict": True,
         },
     },
+    VERSION_MESSAGES_HOSTED_TOOL_UPDATE_TOOL,
 ]
+
 
 OUTPUT_SCHEMA_EDITION_TOOLS: list[ChatCompletionToolParam] = [
     {
@@ -1164,9 +1246,19 @@ OUTPUT_SCHEMA_EDITION_TOOLS: list[ChatCompletionToolParam] = [
 ]
 
 
-def _pick_tools_to_use(use_tool_calls: bool, agent_has_output_schema: bool) -> list[ChatCompletionToolParam]:
+def _pick_tools_to_use(
+    use_tool_calls: bool,
+    agent_has_output_schema: bool,
+    direct_version_message_update: bool = False,
+) -> list[ChatCompletionToolParam]:
     if not use_tool_calls:
         return []
+
+    # When direct version message update is enabled, only provide that tool
+    if direct_version_message_update:
+        return [VERSION_MESSAGES_HOSTED_TOOL_UPDATE_TOOL]
+
+    # Otherwise use regular tools
     if agent_has_output_schema:
         return TOOL_DEFINITIONS + OUTPUT_SCHEMA_EDITION_TOOLS
     return TOOL_DEFINITIONS
@@ -1182,6 +1274,7 @@ async def proxy_meta_agent(
     agent_has_output_schema: bool,
     use_tool_calls: bool,
     is_agent_deployed: bool,
+    hosted_tool_update_mode: bool = False,
 ) -> AsyncIterator[ProxyMetaAgentOutput]:
     client = AsyncOpenAI(
         api_key=os.environ["WORKFLOWAI_API_KEY"],
@@ -1191,7 +1284,11 @@ async def proxy_meta_agent(
     instructions = instructions.replace("MODEL_NAME_PREFIX_PLACEHOLDER", model_name_prefix)
     instructions = instructions.replace("COMPLETION_CLIENT_PLACEHOLDER", completion_client)
 
-    tools_to_use = _pick_tools_to_use(use_tool_calls=use_tool_calls, agent_has_output_schema=agent_has_output_schema)
+    tools_to_use = _pick_tools_to_use(
+        use_tool_calls=use_tool_calls,
+        agent_has_output_schema=agent_has_output_schema,
+        direct_version_message_update=hosted_tool_update_mode,
+    )
 
     response = await client.chat.completions.create(
         model="proxy-meta-agent/claude-sonnet-4-20250514",
@@ -1270,4 +1367,5 @@ async def proxy_meta_agent(
             edit_schema_structure_request=parsed_tool_call.edit_schema_structure_request,
             edit_schema_description_and_examples_request=parsed_tool_call.edit_schema_description_and_examples_request,
             generate_input_request=parsed_tool_call.generate_input_request,
+            updated_version_messages=parsed_tool_call.updated_version_messages,
         )

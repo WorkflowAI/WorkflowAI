@@ -15,10 +15,11 @@ import { useLoggedInTenantID, useTaskParams } from '@/lib/hooks/useTaskParams';
 import { useParsedSearchParams } from '@/lib/queryString';
 import { landingRoute, taskRoute, taskSchemaRoute, tasksRoute } from '@/lib/routeFormatter';
 import { getNewestSchemaId, isActiveTask } from '@/lib/taskUtils';
-import { CURRENT_TENANT, useOrFetchTask, useOrFetchTasks } from '@/store';
+import { CURRENT_TENANT, useOrFetchSchema, useOrFetchTask, useOrFetchTasks } from '@/store';
 import { TaskID, TaskSchemaID } from '@/types/aliases';
 import { SerializableTask } from '@/types/workflowAI';
 import { TasksSection } from '../../../components/TasksSection/TasksSection';
+import { checkSchemaForProxy } from '../agents/[taskId]/[taskSchemaId]/proxy-playground/utils';
 import { SidebarBottomBar } from './SidebarBottomBar';
 import { SectionBlock, SectionItem, generateSections } from './SidebarSections';
 
@@ -31,6 +32,14 @@ export function Sidebar() {
 
   const { tasks, isInitialized } = useOrFetchTasks(loggedInTenant ?? CURRENT_TENANT);
   const { task: currentTask } = useOrFetchTask(tenant, taskId);
+  const { taskSchema: schema } = useOrFetchSchema(tenant, taskId, taskSchemaId);
+
+  const isProxy = useMemo(() => {
+    if (!schema) {
+      return false;
+    }
+    return checkSchemaForProxy(schema);
+  }, [schema]);
 
   const router = useRouter();
 
@@ -89,8 +98,8 @@ export function Sidebar() {
   }, [currentTask]);
 
   const sections = useMemo(() => {
-    return generateSections(showActivityIndicator, isInDemoMode);
-  }, [showActivityIndicator, isInDemoMode]);
+    return generateSections(showActivityIndicator, isInDemoMode, isProxy);
+  }, [showActivityIndicator, isInDemoMode, isProxy]);
 
   const routeForLogo = useMemo(() => {
     if (isLoggedOut) {

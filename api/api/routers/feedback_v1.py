@@ -1,13 +1,12 @@
 from datetime import datetime
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, Path, Query
+from fastapi import APIRouter, Path, Query
 from pydantic import BaseModel, Field
 
 from api.dependencies.event_router import SystemEventRouterDep
 from api.dependencies.security import RequiredUserDep, SystemStorageDep
-from api.dependencies.services import FeedbackTokenGeneratorDep
-from api.dependencies.storage import StorageDep
+from api.dependencies.services import FeedbackServiceDep, FeedbackTokenGeneratorDep
 from api.dependencies.task_info import TaskTupleDep
 from api.services.feedback_svc import FeedbackService
 from api.tags import RouteTags
@@ -19,13 +18,6 @@ from core.utils.fields import datetime_zero
 # The authentication will be different, since it will rely on a feedback token
 # which is a signed token instead of an API key
 feedback_router = APIRouter(prefix="/v1/feedback", tags=[RouteTags.FEEDBACK])
-
-
-def feedback_service_dependency(storage: StorageDep):
-    return FeedbackService(storage.feedback)
-
-
-FeedbackServiceDep = Annotated[FeedbackService, Depends(feedback_service_dependency)]
 
 
 class CreateFeedbackRequest(BaseModel):
@@ -121,7 +113,7 @@ class FeedbackItem(BaseModel):
         )
 
 
-@router.get("/{tenant}/agents/{task_id}/runs/{run_id}/feedback", response_model_exclude_none=True)
+@router.get("/{tenant}/agents/{agent_id}/runs/{run_id}/feedback", response_model_exclude_none=True)
 async def list_run_feedback(
     task_tuple: TaskTupleDep,
     run_id: str,
@@ -138,7 +130,7 @@ async def list_run_feedback(
     )
 
 
-@router.get("/{tenant}/agents/{task_id}/feedback")
+@router.get("/{tenant}/agents/{agent_id}/feedback")
 async def list_task_feedback(
     task_tuple: TaskTupleDep,
     feedback_service: FeedbackServiceDep,

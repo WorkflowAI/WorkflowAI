@@ -1,0 +1,3 @@
+- try how the new model from OpenAI performs on this agent
+- compare quality, speed, and cost between current and new model
+- decide whether to upgrade the agent to use the new model

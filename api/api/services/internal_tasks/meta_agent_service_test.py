@@ -73,7 +73,7 @@ class TestMetaAgentService:
                     ),
                     workflowai_sections=[],
                     workflowai_documentation_sections=[
-                        DocumentationSection(title="Some title", content="Some content"),
+                        DocumentationSection(file_path="Some title", content="Some content"),
                     ],
                     available_tools_description="Some tools description",
                     playground_state=PlaygroundStateDomain(
@@ -111,7 +111,7 @@ class TestMetaAgentService:
                     ),
                     workflowai_sections=[],
                     workflowai_documentation_sections=[
-                        DocumentationSection(title="Some title", content="Some content"),
+                        DocumentationSection(file_path="Some title", content="Some content"),
                     ],
                     available_tools_description="Some tools description",
                     playground_state=PlaygroundStateDomain(
@@ -184,7 +184,7 @@ class TestMetaAgentService:
                 DocumentationService,
                 "get_relevant_doc_sections",
                 return_value=[
-                    DocumentationSection(title="Some title", content="Some content"),
+                    DocumentationSection(file_path="Some title", content="Some content"),
                 ],
             ) as mock_get_relevant_doc_sections,
         ):
@@ -318,7 +318,7 @@ class TestMetaAgentService:
                         MetaAgentChatMessage(
                             sent_at=datetime.datetime(2025, 4, 17, 12, 56, 41, 413541, tzinfo=datetime.timezone.utc),
                             role="ASSISTANT",
-                            content="Hi, I'm WorkflowAI's agent. How can I help you?",
+                            content="Hi, I'm WorkflowAI's AI Engineer. How can I help you?",
                             kind="non_specific",
                         ),
                     ],
@@ -372,7 +372,7 @@ class TestMetaAgentService:
             messages=[message.to_domain() for message in messages],
             company_context=MetaAgentInput.CompanyContext(),
             workflowai_documentation_sections=[
-                DocumentationSection(title="Some title", content="Some content"),
+                DocumentationSection(file_path="Some title", content="Some content"),
             ],
             workflowai_sections=[],
             available_tools_description="Some tools description",

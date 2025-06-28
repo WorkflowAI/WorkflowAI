@@ -17,7 +17,7 @@ from core.domain.llm_usage import LLMUsage
 from core.domain.message import MessageDeprecated
 from core.domain.models import Model, Provider
 from core.domain.models.model_data import ModelData
-from core.domain.models.model_datas_mapping import MODEL_DATAS
+from core.domain.models.model_data_mapping import MODEL_DATAS
 from core.domain.structured_output import StructuredOutput
 from core.providers.base.abstract_provider import RawCompletion
 from core.providers.base.provider_error import (
@@ -1094,14 +1094,14 @@ class TestComplete:
                 output_factory=lambda x, _: StructuredOutput(json.loads(x)),
             )
 
-            # Successful response from us-east1
-            assert result == StructuredOutput(output={"hello": "world"})
+        # Successful response from us-east1
+        assert result == StructuredOutput(output={"hello": "world"}, final=True)
 
-            requests = httpx_mock.get_requests()
-            assert len(requests) == 2
-            assert "us-central1" in requests[0].url.path
-            assert "us-east1" in requests[1].url.path
-            assert builder_context.get_metadata(_VERTEX_API_EXCLUDED_REGIONS_METADATA_KEY) == "us-central1"
+        requests = httpx_mock.get_requests()
+        assert len(requests) == 2
+        assert "us-central1" in requests[0].url.path
+        assert "us-east1" in requests[1].url.path
+        assert builder_context.get_metadata(_VERTEX_API_EXCLUDED_REGIONS_METADATA_KEY) == "us-central1"
 
     async def test_retry_with_different_region_no_regions_left(
         self,
@@ -1298,7 +1298,7 @@ class TestHandleStatusCode:
             google_provider._handle_error_status_code(mock_response)  # pyright: ignore [reportPrivateUsage]
         assert not e.value.capture
         assert e.value.code == "invalid_file"
-        assert not e.value.store_task_run
+        assert e.value.store_task_run
 
     @pytest.mark.parametrize(
         "message",
@@ -1323,7 +1323,7 @@ class TestHandleStatusCode:
             google_provider._handle_error_status_code(mock_response)  # pyright: ignore [reportPrivateUsage]
         assert not e.value.capture
         assert e.value.code == "invalid_file"
-        assert not e.value.store_task_run
+        assert e.value.store_task_run
 
     def test_file_too_large(self, google_provider: GoogleProvider):
         mock_response = Mock(spec=httpx.Response)
@@ -1340,7 +1340,7 @@ class TestHandleStatusCode:
             google_provider._handle_error_status_code(mock_response)  # pyright: ignore [reportPrivateUsage]
         assert not e.value.capture
         assert e.value.code == "bad_request"
-        assert not e.value.store_task_run
+        assert e.value.store_task_run
 
     @pytest.mark.parametrize(
         "message",

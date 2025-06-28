@@ -64,15 +64,21 @@ class PerplexityResponse(BaseModel):
         return content
 
 
+# NOTE: These functions' docstrings are exposed as public API documentation
+# via the GET /v1/tools/hosted endpoint. Changes to the docstrings will
+# be reflected in external documentation.
 async def run_perplexity_search_default(query: str) -> str:
+    """Performs a web search using Perplexity's Sonar model and returns comprehensive results with citations."""
     return await _run_perplexity_search(query, PerplexityModel.SONAR)
 
 
 async def run_perplexity_search_sonar_reasoning(query: str) -> str:
+    """Performs a web search using Perplexity's Sonar Reasoning model for complex queries requiring deeper analysis."""
     return await _run_perplexity_search(query, PerplexityModel.SONAR_REASONING)
 
 
 async def run_perplexity_search_sonar_pro(query: str) -> str:
+    """Performs a web search using Perplexity's Sonar Pro model for enhanced accuracy and comprehensive results with citations."""
     return await _run_perplexity_search(query, PerplexityModel.SONAR_PRO)
 
 

@@ -1,0 +1,252 @@
+---
+title: Input Variables
+description: Separate your agent instructions from dynamic data to improve debugging, enable deployments, and make your agents more maintainable and testable.
+summary: Documentation on using input variables with agents for better observability and debugging. Covers Jinja2 template syntax, common errors, and best practices.
+---
+
+import { Tabs, Tab } from "fumadocs-ui/components/tabs"
+import { Callout } from "fumadocs-ui/components/callout"
+
+## Overview
+
+Input variables allow you to separate static agent instructions from dynamic data, making your agents more maintainable and observable. They use **Jinja2 template syntax** with double braces `{{variable_name}}` to inject variables into your prompts at runtime.
+
+<Callout type="info">
+**Benefits of Input Variables:**
+- **Better Observability**: Clear separation between static instructions and dynamic data.
+- **Easier Debugging**: Variables are displayed separately in run details.
+- **Deployment Support**: Required for [deployments](/deployments) to be able to edit prompts without a code change.
+</Callout>
+
+## Basic usage
+
+### Providing input variables
+
+Input variables are provided via the `extra_body` parameter in your completion request:
+
+<Tabs items={['Python', 'TypeScript', 'cURL']}>
+<Tab value="Python">
+```python
+completion = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[{
+        "role": "user", 
+        "content": "Analyze this email: {{email_content}}"
+    }],
+    extra_body={
+        "input": {
+            "email_content": "Dear team, please review the quarterly report..."
+        }
+    },
+    metadata={"agent_id": "email-analyzer"}
+)
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+// @ts-expect-error input is specific to the WorkflowAI implementation
+const completion = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    messages: [{
+        role: "user",
+        content: "Analyze this email: {{email_content}}"
+    }],
+    input: {
+        email_content: "Dear team, please review the quarterly report..."
+    },
+    metadata: { agentId: "email-analyzer" }
+});
+```
+</Tab>
+<Tab value="cURL">
+```sh
+curl -X POST https://run.workflowai.com/v1/chat/completions \
+-H "Authorization: Bearer $WORKFLOWAI_API_KEY" \
+-H "Content-Type: application/json" \
+-d '{
+    "model": "gpt-4o-mini",
+    "messages": [{
+        "role": "user",
+        "content": "Analyze this email: {{email_content}}"
+    }],
+    "extra_body": {
+        "input": {
+            "email_content": "Dear team, please review the quarterly report..."
+        }
+    },
+    "metadata": {"agent_id": "email-analyzer"}
+}'
+```
+</Tab>
+</Tabs>
+
+### Template syntax
+
+WorkflowAI uses **Jinja2** templating with these key patterns:
+
+| Pattern | Usage | Example |
+|---------|-------|---------|
+| `{{variable}}` | Simple variable substitution | `{{user_name}}` |
+| `{{object.property}}` | Nested object access | `{{user.email}}` |
+| `{{list[0]}}` | Array element access | `{{messages[0]}}` |
+| `{% if condition %}` | Conditional logic | `{% if is_premium %}...{% endif %}` |
+| `{% for item in list %}` | Loop over arrays | `{% for msg in messages %}...{% endfor %}` |
+
+## Examples
+
+<Tabs items={['Single Variable', 'Multiple Variables', 'Complex Nested']}>
+<Tab value="Single Variable">
+```python
+messages = [{
+    "role": "user",
+    "content": "Summarize this text in {{length}} words: {{text}}"
+}]
+
+extra_body = {
+    "input": {
+        "text": "Long article content here...",
+        "length": 50
+    }
+}
+```
+</Tab>
+<Tab value="Multiple Variables">
+```python
+messages = [{
+    "role": "system",
+    "content": "You are a {{role}} helping {{user_name}} with {{task_type}} tasks."
+}, {
+    "role": "user", 
+    "content": "{{user_query}}"
+}]
+
+extra_body = {
+    "input": {
+        "role": "financial advisor",
+        "user_name": "Alice",
+        "task_type": "investment",
+        "user_query": "Should I invest in tech stocks?"
+    }
+}
+```
+</Tab>
+<Tab value="Complex Nested">
+```python
+messages = [{
+    "role": "system",
+    "content": """Process this customer support ticket:
+    
+Customer: {{ticket.customer.name}} ({{ticket.customer.email}})
+Priority: {{ticket.priority}}
+Category: {{ticket.category}}
+
+Previous interactions:
+{% for interaction in ticket.history %}
+- {{interaction.date}}: {{interaction.summary}}
+{% endfor %}
+
+Current issue: {{ticket.description}}"""
+}]
+
+extra_body = {
+    "input": {
+        "ticket": {
+            "customer": {
+                "name": "John Smith",
+                "email": "john@company.com"
+            },
+            "priority": "high",
+            "category": "billing",
+            "description": "Cannot access premium features",
+            "history": [
+                {
+                    "date": "2024-01-15",
+                    "summary": "Initial signup completed"
+                },
+                {
+                    "date": "2024-01-20", 
+                    "summary": "Upgraded to premium plan"
+                }
+            ]
+        }
+    }
+}
+```
+</Tab>
+</Tabs>
+
+## Observability benefits
+
+### Viewing variables in run details
+
+When you use input variables, WorkflowAI automatically separates them in the run view:
+
+- **Agent Input**: Shows the variables you provided
+- **Agent Output**: Shows the agent's response
+- **Prompt View**: Shows the final rendered prompt with variables substituted
+
+<Callout type="todo">
+**TODO for Anya**: Add screenshot showing the run details view with input variables separated from output, highlighting the Agent Input, Agent Output, and Prompt View sections.
+</Callout>
+
+<Callout type="info">
+**Run View**: In the run details, you'll see a clear separation between your input variables and the agent's output, making debugging much easier.
+</Callout>
+
+This separation makes it much easier to:
+- Debug issues with specific input data
+- Understand what changed between runs
+- Test different variable values while keeping instructions constant
+
+### Searching by variables
+
+You can search for runs using input variable values:
+
+1. Go to the **Runs** section in WorkflowAI
+2. Use the search filters to find runs by:
+   - Specific variable values (e.g., `input.user_id = "12345"`)
+   - Variable existence (e.g., runs that have `input.priority`)
+   - Variable ranges (e.g., `input.score > 0.8`)
+
+<Callout type="todo">
+**TODO for Anya**: Add screenshot of the Runs section showing the search filters interface with examples of searching by input variable values.
+</Callout>
+
+<Callout type="info">
+Learn more about advanced run searching, including using the MCP tool and API, in the [Search documentation](/observability/runs#search-runs).
+</Callout>
+
+## Error handling and debugging
+
+### Common template errors
+
+<Tabs items={['Missing Variable', 'Syntax Error']}>
+<Tab value="Missing Variable">
+**Error message:**
+```
+Template variable 'user_name' is not defined in input variables
+```
+
+**Solution:** Ensure all variables used in templates are provided in `extra_body.input`:
+
+```python
+# ❌ Missing variable
+messages = [{"role": "user", "content": "Hello {{user_name}}"}]
+extra_body = {"input": {}}  # user_name not provided
+
+# ✅ Correct
+messages = [{"role": "user", "content": "Hello {{user_name}}"}] 
+extra_body = {"input": {"user_name": "Alice"}}
+```
+</Tab>
+<Tab value="Syntax Error">
+**Error message:**
+```
+Template syntax error: unexpected character '{' at line 1
+```
+
+**Common causes:**
+- Single braces instead of double: `{variable}` → `{{variable}}`
+- Unmatched braces: `{{variable}` → `{{variable}}`
+</Tab>
+</Tabs>

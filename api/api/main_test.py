@@ -1,9 +1,11 @@
+import re
 from collections.abc import Callable
 from typing import Any, Iterator, cast
 from unittest.mock import Mock
 
 import pytest
 from fastapi import FastAPI, HTTPException
+from fastapi.routing import Mount
 from httpx import AsyncClient
 from starlette.routing import Route
 
@@ -35,6 +37,7 @@ def _include_methods(methods: set[str] | None, exc_methods: set[str] | None) -> 
 # Only GET requests though
 _PUBLIC_ROUTES = {
     "/v1/models",
+    "/v1/models/ids",
     "/probes/health",
     "/probes/readiness",
     "/openapi.json",
@@ -43,7 +46,7 @@ _PUBLIC_ROUTES = {
 }
 
 
-def authenticated_routes(
+def authenticated_routes(  # noqa: C901
     prefix: str = "",
     methods: set[str] | None = None,
     exc_methods: set[str] | None = None,
@@ -64,11 +67,16 @@ def authenticated_routes(
         "/webhooks/helpscout",
         "/webhooks/helpscout/",
         "/v1/chat/completions",  # raises a 422 and not a 403
+        "/v1/tools/hosted",
     }
 
     method_predicate = _include_methods(methods, exc_methods)
 
     for route in app.routes:
+        # TODO: dedicated test for MCP routes auth
+        if isinstance(route, Mount) and (route.path.startswith("/_mcp") or route.path.startswith("/mcp")):
+            continue
+
         assert isinstance(route, Route)
         if not route.methods:
             continue
@@ -156,7 +164,7 @@ class TestModelsEndpoint:
     async def test_models_endpoint_no_auth(self, test_api_client: AsyncClient, mock_tenant_dep: Mock):
         # Making sure we raise if the tenant dep is called
         mock_tenant_dep.side_effect = ValueError("test")
-        res = await test_api_client.get("/v1/models?raw=true")
+        res = await test_api_client.get("/v1/models/ids")
         assert res.status_code == 200, "Expected /models endpoint to be accessible without authentication"
 
         # Add some basic checks to ensure the response contains expected data
@@ -180,11 +188,19 @@ class TestModelsEndpoint:
         assert first_model["object"] == "model"
         assert "supports" in first_model
         assert "parallel_tool_calls" in first_model["supports"]
+        assert "pricing" in first_model
+        pricing = cast(dict[str, Any], first_model["pricing"])
+        assert "input_token_usd" in pricing
+        assert "output_token_usd" in pricing
+
+        assert "release_date" in first_model
+        release_date = cast(str, first_model["release_date"])
+        assert re.match(r"\d{4}-\d{2}-\d{2}", release_date)
 
     async def test_models_endpoint_order_check(self, test_api_client: AsyncClient, mock_tenant_dep: Mock):
         # Making sure we raise if the tenant dep is called
         mock_tenant_dep.side_effect = ValueError("test")
-        res = await test_api_client.get("/v1/models?raw=true")
+        res = await test_api_client.get("/v1/models/ids")
         assert res.status_code == 200, "Expected /models endpoint to be accessible without authentication"
 
         # Add some basic checks to ensure the response contains expected data

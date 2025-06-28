@@ -23,7 +23,7 @@ from core.domain.message import Message, MessageContent, MessageDeprecated, Mess
 from core.domain.metrics import Metric
 from core.domain.models import Model, Provider
 from core.domain.models.model_data import FinalModelData, LatestModel, MaxTokensData, ModelData, QualityData
-from core.domain.models.model_datas_mapping import MODEL_DATAS, DisplayedProvider
+from core.domain.models.model_data_mapping import MODEL_DATAS, DisplayedProvider
 from core.domain.run_output import RunOutput
 from core.domain.structured_output import StructuredOutput
 from core.domain.task_group_properties import FewShotConfiguration, FewShotExample, TaskGroupProperties
@@ -516,7 +516,7 @@ class TestStreamTaskOutputFromMessages:
             StructuredOutput({"1": "a", "2": "b"}),
             StructuredOutput({"1": "a", "2": "b", "3": "c", "output": "hello"}),
             # Last one is validated
-            StructuredOutput({"1": "a", "2": "b", "3": "c", "output": "hello"}),
+            StructuredOutput({"1": "a", "2": "b", "3": "c", "output": "hello"}, final=True),
         )
 
         patched_runner.properties.enabled_tools = []
@@ -1009,7 +1009,7 @@ class TestStreamTaskOutputFromToolCalls:
         mock_provider.is_streamable.return_value = True
         mock_provider.stream.return_value = mock_aiter(
             StructuredOutput({"partial": "test"}),
-            StructuredOutput({"output": "final"}),
+            StructuredOutput({"output": "final"}, final=True),
         )
 
         results = [
@@ -1023,7 +1023,7 @@ class TestStreamTaskOutputFromToolCalls:
 
         assert results == [
             RunOutput({"partial": "test"}),
-            RunOutput({"output": "final"}),
+            RunOutput({"output": "final"}, final=True),
         ]
         mock_provider.stream.assert_called_once()
 
@@ -1039,7 +1039,7 @@ class TestStreamTaskOutputFromToolCalls:
         tool_call = ToolCallRequestWithID(tool_name="test_tool", tool_input_dict={"arg": "value"})
         mock_provider.stream.side_effect = [
             mock_aiter(StructuredOutput({}, [tool_call])),
-            mock_aiter(StructuredOutput({"output": "final"})),
+            mock_aiter(StructuredOutput({"output": "final"}, final=True)),
         ]
 
         # Mock tool call execution
@@ -1059,7 +1059,19 @@ class TestStreamTaskOutputFromToolCalls:
         assert results == [
             # First stream we got the tool call but it has not been executed yet
             RunOutput({}, [ToolCall(tool_name="test_tool", tool_input_dict={"arg": "value"})]),
-            RunOutput({"output": "final"}),
+            RunOutput(
+                {"output": "final"},
+                [
+                    ToolCall(
+                        tool_name="test_tool",
+                        tool_input_dict={"arg": "value"},
+                        id="test_tool_e312bc5d1e6d438ef797c2ad859dc6f4",
+                        result="success",
+                        error=None,
+                    ),
+                ],
+                final=True,
+            ),
         ]
         assert mock_provider.stream.call_count == 2
 
@@ -1113,7 +1125,7 @@ class TestBuildTaskOutputFromMessages:
             [],
         )
 
-        assert result == RunOutput({"output": "test"})
+        assert result == RunOutput({"output": "test"}, final=True)
         mock_provider.complete.assert_called_once()
 
     async def test_with_tool_calls(
@@ -1148,6 +1160,7 @@ class TestBuildTaskOutputFromMessages:
             tool_calls=[
                 ToolCall(tool_name="test_tool", tool_input_dict={"arg": "value"}, result="success"),
             ],
+            final=True,
         )
         assert mock_provider.complete.call_count == 2
 
@@ -1407,13 +1420,11 @@ Total : 650 kcal, 105g de glucides, 28g de protéines, 7g de lipides""",
 
 
 class TestInit:
-    @pytest.mark.parametrize("disable_fallback", [False, True])
-    def test_raises_error_if_provider_does_not_support_model(self, mock_task: Mock, disable_fallback: bool):
+    def test_raises_error_if_provider_does_not_support_model(self, mock_task: Mock):
         with pytest.raises(ProviderDoesNotSupportModelError):
             WorkflowAIRunner(
                 task=mock_task,
                 properties=TaskGroupProperties(model=Model.GPT_4O_MINI_2024_07_18, provider=Provider.GOOGLE),
-                disable_fallback=disable_fallback,
             )
 
     # TODO[models]: this test relies on actual model data. it should be patched instead
@@ -1514,7 +1525,7 @@ class TestBuildTaskOutput:
         )
 
         result = await patched_runner._build_task_output({"input": "test"})  # pyright: ignore[reportPrivateUsage]
-        assert result == RunOutput({"output": "final"})
+        assert result == RunOutput({"output": "final"}, final=True)
 
         patched_provider_factory.google.complete.assert_awaited_once()
         first_opts = patched_provider_factory.google.complete.call_args_list[0].args[1]
@@ -1540,7 +1551,7 @@ class TestBuildTaskOutput:
         ]
 
         result = await patched_runner._build_task_output({"input": "test"})  # pyright: ignore[reportPrivateUsage]
-        assert result == RunOutput({"output": "final"})
+        assert result == RunOutput({"output": "final"}, final=True)
 
         assert patched_provider_factory.openai.complete.await_count == 2
 
@@ -1588,7 +1599,7 @@ class TestBuildTaskOutput:
 
         patched_provider_factory.openai.complete.return_value = StructuredOutput({"output": "final"})
         result = await patched_runner._build_task_output({"input": "test"})  # pyright: ignore[reportPrivateUsage]
-        assert result == RunOutput({"output": "final"})
+        assert result == RunOutput({"output": "final"}, final=True)
 
         assert patched_provider_factory.openai.complete.await_count == 1
 
@@ -1614,7 +1625,7 @@ class TestBuildTaskOutput:
         )
 
         result = await patched_runner._build_task_output({"input": "test"})  # pyright: ignore[reportPrivateUsage]
-        assert result == RunOutput({"output": "final"})
+        assert result == RunOutput({"output": "final"}, final=True)
 
         patched_provider_factory.openai.sanitize_template.assert_called_once()
         messages = patched_provider_factory.openai.complete.call_args_list[0].args[0]
@@ -1652,7 +1663,7 @@ class TestBuildTaskOutput:
                 },
             },
         )
-        assert result == RunOutput({"output": "final"})
+        assert result == RunOutput({"output": "final"}, final=True)
         patched_provider_factory.anthropic.complete.assert_called_once()
         patched_provider_factory.bedrock.complete.assert_not_called()
 
@@ -1665,7 +1676,7 @@ class TestBuildTaskOutput:
         )
 
         result = await patched_runner._build_task_output({"input": "test"})  # pyright: ignore[reportPrivateUsage]
-        assert result == RunOutput({"output": "final"})
+        assert result == RunOutput({"output": "final"}, final=True)
 
         patched_provider_factory.openai.complete.assert_called_once()
         first_opts = patched_provider_factory.openai.complete.call_args_list[0].args[1]
@@ -1696,6 +1707,7 @@ class TestBuildTaskOutput:
             tool_calls=[
                 ToolCall(tool_name="test_tool", tool_input_dict={"input": "test"}, result="success"),
             ],
+            final=True,
         )
 
         mock_tool_fn.assert_called_once_with(input="test")
@@ -2021,11 +2033,11 @@ class TestStreamTaskOutput:
 
         patched_provider_factory.google.stream.side_effect = ProviderInternalError()
         patched_provider_factory.gemini.stream.return_value = mock_aiter(
-            StructuredOutput({"output": "final"}),
+            StructuredOutput({"output": "final"}, final=True),
         )
 
         results = await stream_fn()
-        assert results == [RunOutput({"output": "final"})]
+        assert results == [RunOutput({"output": "final"}, final=True)]
 
         patched_provider_factory.google.stream.assert_called_once()
         first_opts = patched_provider_factory.google.stream.call_args_list[0].args[1]
@@ -2050,12 +2062,12 @@ class TestStreamTaskOutput:
             assert isinstance(args[1], ProviderOptions), "sanity check"
             if args[1].structured_generation is True:
                 raise StructuredGenerationError()
-            return mock_aiter(StructuredOutput({"output": "final"}))
+            return mock_aiter(StructuredOutput({"output": "final"}, final=True))
 
         patched_provider_factory.openai.stream.side_effect = _side_effect
 
         results = await stream_fn()
-        assert results == [RunOutput({"output": "final"})]
+        assert results == [RunOutput({"output": "final"}, final=True)]
 
         assert patched_provider_factory.openai.stream.call_count == 2
 
@@ -2101,11 +2113,11 @@ class TestStreamTaskOutput:
         patched_runner._options.is_structured_generation_enabled = False  # pyright: ignore[reportPrivateUsage]
 
         patched_provider_factory.openai.stream.return_value = mock_aiter(
-            StructuredOutput({"output": "final"}),
+            StructuredOutput({"output": "final"}, final=True),
         )
 
         result = await stream_fn()  # pyright: ignore[reportPrivateUsage]
-        assert result == [RunOutput({"output": "final"})]
+        assert result == [RunOutput({"output": "final"}, final=True)]
 
         assert patched_provider_factory.openai.stream.call_count == 1
 
@@ -2125,17 +2137,17 @@ class TestStreamTaskOutput:
         patched_runner._options.provider = None  # pyright: ignore[reportPrivateUsage]
 
         patched_provider_factory.google.stream.return_value = mock_aiter(
-            StructuredOutput({"output": "final"}),
-            StructuredOutput({"output": "final1"}),
+            StructuredOutput({"output": "final"}, final=False),
+            StructuredOutput({"output": "final1"}, final=True),
         )
         patched_provider_factory.gemini.stream.return_value = mock_aiter(
-            StructuredOutput({"output": "final2"}),
+            StructuredOutput({"output": "final2"}, final=True),
         )
 
         results = await stream_fn()
         assert results == [
             RunOutput({"output": "final"}),
-            RunOutput({"output": "final1"}),
+            RunOutput({"output": "final1"}, final=True),
         ]
 
         patched_provider_factory.google.stream.assert_called_once()

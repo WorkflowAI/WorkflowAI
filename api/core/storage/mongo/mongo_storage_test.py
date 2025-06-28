@@ -428,6 +428,75 @@ class TestFetchTasks:
             ),
         ]
 
+    async def test_fetch_tasks_with_schemas(self, storage: MongoStorage, task_variants_col: AsyncCollection):
+        input_schema = {
+            "type": "object",
+            "properties": {"input": {"type": "string", "description": "Input field"}},
+            "required": ["input"],
+        }
+        output_schema = {
+            "type": "object",
+            "properties": {"output": {"type": "string", "description": "Output field"}},
+            "required": ["output"],
+        }
+
+        await task_variants_col.insert_many(
+            [
+                dump_model(
+                    TaskVariantDocument(
+                        _id=PyObjectID.new(),
+                        version="v1",
+                        tenant=TENANT,
+                        slug="1",
+                        schema_id=1,
+                        name="Task1",
+                        input_schema=TaskIOSchema(version="input_v1", json_schema=input_schema),
+                        output_schema=TaskIOSchema(version="output_v1", json_schema=output_schema),
+                        created_at=datetime.datetime(2024, 4, 16, tzinfo=datetime.timezone.utc),
+                        is_public=True,
+                    ),
+                ),
+                {
+                    "_id": "2",
+                    "version": "v2",
+                    "tenant": TENANT,
+                    "slug": "1",
+                    "schema_id": 2,
+                    "input_schema": {"version": "input_v2", "json_schema": input_schema},
+                    "output_schema": {"version": "output_v2", "json_schema": output_schema},
+                    "is_public": True,
+                },
+            ],
+        )
+
+        tasks = [a async for a in storage.fetch_tasks(with_schemas=True)]
+        assert len(tasks) == 1
+        task = tasks[0]
+
+        assert task.id == "1"
+        assert task.name == "Task1"
+        assert task.is_public is True
+        assert len(task.versions) == 2
+
+        # Check that schemas are included in the response
+        for version in task.versions:
+            assert version.input_schema == input_schema
+            assert version.output_schema == output_schema
+
+        # Verify specific version details
+        v1_version = next(v for v in task.versions if v.variant_id == "v1")
+        v2_version = next(v for v in task.versions if v.variant_id == "v2")
+
+        assert v1_version.schema_id == 1
+        assert v1_version.input_schema_version == "input_v1"
+        assert v1_version.output_schema_version == "output_v1"
+        assert v1_version.created_at == datetime.datetime(2024, 4, 16, tzinfo=datetime.timezone.utc)
+
+        assert v2_version.schema_id == 2
+        assert v2_version.input_schema_version == "input_v2"
+        assert v2_version.output_schema_version == "output_v2"
+        assert v2_version.created_at == datetime.datetime(1970, 1, 1, tzinfo=datetime.timezone.utc)
+
 
 # Even though storage is not used here, adding as a dependency will make sure that
 # it is cleaned up before the fixture is ran
@@ -1140,7 +1209,7 @@ class TestSetTaskDescription:
 
 class TestBuildListTasksPipeline:
     def test_basic_pipeline(self, storage: MongoStorage) -> None:
-        # Test basic pipeline without limit
+        # Test basic pipeline without limit and without schemas
         pipeline = storage._build_list_tasks_pipeline({}, None)  # pyright: ignore[reportPrivateUsage]
 
         expected_pipeline = [
@@ -1170,7 +1239,7 @@ class TestBuildListTasksPipeline:
         assert pipeline == expected_pipeline
 
     def test_pipeline_with_limit(self, storage: MongoStorage) -> None:
-        # Test pipeline with limit
+        # Test pipeline with limit but without schemas
         pipeline = storage._build_list_tasks_pipeline({}, 5)  # pyright: ignore[reportPrivateUsage]
 
         expected_pipeline = [
@@ -1201,7 +1270,7 @@ class TestBuildListTasksPipeline:
         assert pipeline == expected_pipeline
 
     def test_pipeline_with_filter(self, storage: MongoStorage) -> None:
-        # Test pipeline with custom filter
+        # Test pipeline with custom filter but without schemas
         custom_filter = {"name": "test_task"}
         pipeline = storage._build_list_tasks_pipeline(custom_filter, None)  # pyright: ignore[reportPrivateUsage]
 
@@ -1232,7 +1301,7 @@ class TestBuildListTasksPipeline:
         assert pipeline == expected_pipeline
 
     def test_pipeline_with_filter_and_limit(self, storage: MongoStorage) -> None:
-        # Test pipeline with both filter and limit
+        # Test pipeline with both filter and limit but without schemas
         custom_filter = {"is_public": True}
         pipeline = storage._build_list_tasks_pipeline(custom_filter, 10)  # pyright: ignore[reportPrivateUsage]
 
@@ -1259,6 +1328,72 @@ class TestBuildListTasksPipeline:
             },
             {"$sort": {"latest_created_at": -1}},
             {"$limit": 10},
+        ]
+
+        assert pipeline == expected_pipeline
+
+    def test_pipeline_with_schemas(self, storage: MongoStorage) -> None:
+        # Test pipeline with schemas included
+        pipeline = storage._build_list_tasks_pipeline({}, None, with_schemas=True)  # pyright: ignore[reportPrivateUsage]
+
+        expected_pipeline = [
+            {"$match": {"tenant": "test_tenant"}},
+            {
+                "$group": {
+                    "_id": "$slug",
+                    "id": {"$first": "$slug"},
+                    "name": {"$first": "$name"},
+                    "is_public": {"$first": "$is_public"},
+                    "latest_created_at": {"$max": "$created_at"},
+                    "versions": {
+                        "$push": {
+                            "schema_id": "$schema_id",
+                            "variant_id": "$version",
+                            "description": "$description",
+                            "input_schema_version": "$input_schema.version",
+                            "output_schema_version": "$output_schema.version",
+                            "created_at": "$created_at",
+                            "input_schema": "$input_schema.json_schema",
+                            "output_schema": "$output_schema.json_schema",
+                        },
+                    },
+                },
+            },
+            {"$sort": {"latest_created_at": -1}},
+        ]
+
+        assert pipeline == expected_pipeline
+
+    def test_pipeline_with_schemas_filter_and_limit(self, storage: MongoStorage) -> None:
+        # Test pipeline with schemas, filter, and limit
+        custom_filter = {"is_public": True}
+        pipeline = storage._build_list_tasks_pipeline(custom_filter, 5, with_schemas=True)  # pyright: ignore[reportPrivateUsage]
+
+        expected_pipeline = [
+            {"$match": {"is_public": True, "tenant": "test_tenant"}},
+            {
+                "$group": {
+                    "_id": "$slug",
+                    "id": {"$first": "$slug"},
+                    "name": {"$first": "$name"},
+                    "is_public": {"$first": "$is_public"},
+                    "latest_created_at": {"$max": "$created_at"},
+                    "versions": {
+                        "$push": {
+                            "schema_id": "$schema_id",
+                            "variant_id": "$version",
+                            "description": "$description",
+                            "input_schema_version": "$input_schema.version",
+                            "output_schema_version": "$output_schema.version",
+                            "created_at": "$created_at",
+                            "input_schema": "$input_schema.json_schema",
+                            "output_schema": "$output_schema.json_schema",
+                        },
+                    },
+                },
+            },
+            {"$sort": {"latest_created_at": -1}},
+            {"$limit": 5},
         ]
 
         assert pipeline == expected_pipeline

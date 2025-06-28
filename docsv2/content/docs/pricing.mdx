@@ -1,0 +1,78 @@
+---
+title: Pricing
+summary: Documentation on the pay-as-you-go pricing model. Explains the price-match guarantee, what you pay for, and answers common questions about billing and costs.
+---
+
+import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
+
+![Pricing overview](</images/pricing/header.png>)
+
+WorkflowAI offers a pay-as-you-go model, like AWS. There are no fixed costs, minimum spends, or annual commitments. You can start without talking to sales.
+
+## Simple pricing promise
+
+<Callout type="success">
+    WorkflowAI matches the per-token price of all LLM providers, so WorkflowAI **costs the same as using providers directly**.
+</Callout>
+
+### Price per model
+
+[TODO: component with @guillaume]
+
+model | price per 1M input | price per 1M output
+--- | --- | ---
+gpt-4o | $75 | $75
+claude-3-5-sonnet | $75 | $75
+gemini-2.0-flash-exp | $75 | $75
+llama-3.1-8b-instruct | $75 | $75
+mistral-7b-instruct | $75 | $75
+
+### What we charge for
+| **Paid** | **Free** |
+|----------|----------|
+| Tokens used by your agents | Data storage |
+| [Tools](/agents/tools) used by your agents | Number of agents |
+| | Users in your organization |
+| | Bandwidth or CPU usage |
+
+## How we make money
+
+Behind every AI model, there are two ways to pay for inference: buy tokens from providers, or rent GPU capacity directly to run models yourself.
+
+Individual customers typically buy tokens because their usage is sporadic: they can't justify renting GPUs that sit idle most of the time. Even when GPUs aren't processing requests, you're still paying for them.
+
+WorkflowAI pools demand from many customers, creating consistent 24/7 throughput that maximizes GPU utilization. This allows us to rent GPU capacity directly instead of buying tokens, securing much better rates.
+
+We pass the standard token pricing to you while capturing the cost savings from efficient GPU utilization. That's how we match provider prices while staying profitable.
+
+## FAQ
+
+<Accordions>
+<Accordion title="How do you guarantee the same pricing as direct providers?">
+We monitor provider pricing in real-time and automatically match their per-token rates. If you ever find a discrepancy, we'll refund the difference and update our pricing immediately.
+</Accordion>
+
+<Accordion title="Can I use my existing provider credits with WorkflowAI?">
+Yes, you can connect your own API keys from OpenAI, Anthropic, Google, and other providers to use your existing credits while still benefiting from WorkflowAI's tools and infrastructure.
+
+When using your own API keys, WorkflowAI doesn't charge for inference tokens - you pay your provider directly. We only charge for [built-in tools](/agents/tools) that your agents use (like web search, browser, etc.).
+</Accordion>
+
+<Accordion title="How is usage tracked and billed?">
+You're only charged for tokens actually consumed by your agents and any tools they use. We provide detailed [usage analytics](/observability/costs) so you can see exactly what you're paying for. Billing is monthly with no minimums.
+</Accordion>
+
+<Accordion title="What happens if my usage is very high or very low?">
+Our pricing scales linearly with no minimums or commitments. For most customers, our pooled model provides better economics than going direct. 
+
+If you're spending over $25,000/month on LLM usage, you have two options: use your own API keys with WorkflowAI to get your negotiated rates, or contact us to apply volume discounts to your account.
+</Accordion>
+
+<Accordion title="How does this compare to running my own infrastructure?">
+Unless you can maintain 24/7 GPU utilization (which requires significant scale), our pooled model will be more cost-effective than renting your own GPUs while providing better reliability and no infrastructure management overhead.
+</Accordion>
+
+<Accordion title="Is there a free tier?">
+Data storage, unlimited agents, team collaboration, and bandwidth are completely free. You only pay for the AI inference tokens your agents actually use.
+</Accordion>
+</Accordions>

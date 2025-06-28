@@ -12,7 +12,7 @@ from core.domain.consts import WORKFLOWAI_RUN_URL
 from core.domain.errors import ProviderDoesNotSupportModelError
 from core.domain.models import Model, Provider
 from core.domain.models.model_data import DeprecatedModel, LatestModel, ModelData
-from core.domain.models.model_datas_mapping import MODEL_DATAS
+from core.domain.models.model_data_mapping import MODEL_DATAS
 from core.domain.models.model_provider_data import ModelProviderData
 from core.domain.models.utils import get_model_provider_data
 from core.domain.task_typology import TaskTypology
@@ -23,6 +23,27 @@ from core.storage.task_run_storage import TokenCounts
 from core.tools import get_tools_in_instructions
 from core.utils.lru.lru_cache import TLRUCache
 from core.utils.models.dumps import safe_dump_pydantic_model
+
+
+# TODO: remove all the fileds that can be accessed from the model_data
+class ModelForTask(NamedTuple):
+    id: str
+    name: str
+    modes: list[str]
+    icon_url: str
+    is_default: bool
+    release_date: date
+    price_per_input_token_usd: float
+    price_per_output_token_usd: float
+    context_window_tokens: int
+    provider_name: str
+    quality_index: int
+    providers: list[Provider]
+    supports_structured_output: bool
+    model_data: ModelData
+    is_not_supported_reason: str | None = None
+    average_cost_per_run_usd: float | None = None
+    is_latest: bool = False
 
 
 def _token_cache_ttl(_: Any, value: TokenCounts):
@@ -39,9 +60,10 @@ _logger = logging.getLogger(__name__)
 
 
 class ModelsService:
+    # TODO: dynamically exclude reasoning models
     _REASONING_MODELS_CORRECTION = {
         Model.O1_2024_12_17_LOW_REASONING_EFFORT: 0.9,
-        Model.O1_2024_12_17_MEDIUM_REASONING_EFFORT: 1.0,
+        Model.O1_2024_12_17: 1.0,
         Model.O1_2024_12_17_HIGH_REASONING_EFFORT: 1.1,
         Model.O3_MINI_2025_01_31_HIGH_REASONING_EFFORT: 1.1,
         Model.O3_MINI_2025_01_31_MEDIUM_REASONING_EFFORT: 1.0,
@@ -67,7 +89,7 @@ class ModelsService:
     async def _available_models_from_run_endpoint(cls) -> list[Model]:
         try:
             async with httpx.AsyncClient() as client:
-                response = await client.get(f"{WORKFLOWAI_RUN_URL}/v1/models?raw=true")
+                response = await client.get(f"{WORKFLOWAI_RUN_URL}/v1/models/ids")
                 response.raise_for_status()
                 model_json = response.json()
 
@@ -85,24 +107,6 @@ class ModelsService:
         except Exception:
             _logger.exception("Error fetching available models from run endpoint")
             return list(Model)
-
-    class ModelForTask(NamedTuple):
-        id: str
-        name: str
-        modes: list[str]
-        icon_url: str
-        is_default: bool
-        release_date: date
-        price_per_input_token_usd: float
-        price_per_output_token_usd: float
-        context_window_tokens: int
-        provider_name: str
-        quality_index: int
-        providers: list[Provider]
-        supports_structured_output: bool
-        is_not_supported_reason: str | None = None
-        average_cost_per_run_usd: float | None = None
-        is_latest: bool = False
 
     @classmethod
     def _build_model_for_task(
@@ -143,7 +147,7 @@ class ModelsService:
             provider_data: ModelProviderData,
             average_cost_per_run_usd: float | None,
         ):
-            return cls.ModelForTask(
+            return ModelForTask(
                 id=model_id,
                 name=display_name,
                 icon_url=data.icon_url,
@@ -154,6 +158,7 @@ class ModelsService:
                 is_default=is_default,
                 release_date=data.release_date,
                 quality_index=data.quality_index,
+                model_data=data,
                 price_per_input_token_usd=provider_data.text_price.prompt_cost_per_token,
                 price_per_output_token_usd=provider_data.text_price.completion_cost_per_token,
                 context_window_tokens=data.max_tokens_data.max_tokens,
@@ -202,12 +207,38 @@ class ModelsService:
             task.task_schema_id,
         )
 
-        out: list[ModelsService.ModelForTask] = []
+        out: list[ModelForTask] = []
         for model in models:
             if m := self._build_model_for_task(
                 model,
                 task_typology,
                 price_calculator,
+                instructions,
+                requires_tools,
+            ):
+                out.append(m)  # noqa: PERF401
+        return out
+
+    async def model_for_task_typology(
+        self,
+        task_typology: TaskTypology,
+        instructions: str | None = None,
+        requires_tools: bool = False,
+    ) -> list[ModelForTask]:
+        models = await self._available_models_from_run_endpoint()
+
+        async def no_op_price_calculator():
+            def _compute_cost_estimate(model_provider_data: ModelProviderData, model: Model) -> float | None:
+                return None
+
+            return _compute_cost_estimate
+
+        out: list[ModelForTask] = []
+        for model in models:
+            if m := self._build_model_for_task(
+                model,
+                task_typology,
+                await no_op_price_calculator(),
                 instructions,
                 requires_tools,
             ):

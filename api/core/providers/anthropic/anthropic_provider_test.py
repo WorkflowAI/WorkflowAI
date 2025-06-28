@@ -14,7 +14,7 @@ from core.domain.fields.file import File
 from core.domain.llm_usage import LLMUsage
 from core.domain.message import MessageDeprecated
 from core.domain.models import Model
-from core.domain.models.model_provider_datas_mapping import ANTHROPIC_PROVIDER_DATA
+from core.domain.models.model_provider_data_mapping import ANTHROPIC_PROVIDER_DATA
 from core.domain.models.utils import get_model_data
 from core.domain.structured_output import StructuredOutput
 from core.domain.task_group_properties import ToolChoice, ToolChoiceFunction

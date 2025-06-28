@@ -14,7 +14,7 @@ from core.utils.schemas import (
     JsonSchema,
     make_optional,
     remove_extra_keys,
-    remove_optional_nulls_and_empty_strings,
+    sanitize_empty_values,
     strip_metadata,
 )
 
@@ -49,7 +49,7 @@ class SerializableTaskIO(BaseModel):
         obj: Any,
         partial: bool = False,
         strip_extras: bool = False,
-        strip_opt_none_and_empty_strings: bool = False,
+        sanitize_empties: bool = False,
         files_as_strings: bool = False,
     ) -> None:
         """Enforce validates that an object matches the schema. Object is updated in place."""
@@ -64,8 +64,8 @@ class SerializableTaskIO(BaseModel):
             schema = self._add_files_as_strings(schema)
 
         navigators: list[JsonSchema.Navigator] = []
-        if strip_opt_none_and_empty_strings:
-            navigators.append(remove_optional_nulls_and_empty_strings)
+        if sanitize_empties:
+            navigators.append(sanitize_empty_values)
         if strip_extras:
             navigators.append(remove_extra_keys)
 
@@ -82,7 +82,7 @@ class SerializableTaskIO(BaseModel):
         """Duplicate and enforce an object to match the schema"""
         obj = deepcopy(obj)
         # partial to make sure we don't throw if we have missing fields
-        self.enforce(obj, partial=True, strip_extras=True, strip_opt_none_and_empty_strings=True)
+        self.enforce(obj, partial=True, strip_extras=True, sanitize_empties=True)
         return obj
 
     def resolve_ref(self, ref: str, defs: dict[str, Any]) -> dict[str, Any]:
@@ -100,13 +100,13 @@ class SerializableTaskIO(BaseModel):
         return schema
 
     @classmethod
-    def from_json_schema(cls, json_schema: dict[str, Any], streamline: bool = False):
+    def from_json_schema(cls, json_schema: dict[str, Any], streamline: bool = False, use_internal_defs: bool = True):
         try:
             validator_for(json_schema).check_schema(json_schema)  # pyright: ignore [reportUnknownMemberType]
         except (SchemaValidationError, SchemaError) as e:
             raise JSONSchemaValidationError(f"Invalid schema: {e}")
         if streamline:
-            json_schema = streamline_schema(json_schema)
+            json_schema = streamline_schema(json_schema, internal_defs=None if use_internal_defs else {})
         return cls(version=compute_obj_hash(strip_metadata(json_schema)), json_schema=json_schema)
 
     @classmethod

@@ -649,5 +649,4 @@ META_AGENT_INSTRUCTIONS = """You are WorkflowAI's meta-agent. You are responsibl
         max_tokens=1000,
     ),
 )
-async def meta_agent(_: MetaAgentInput) -> MetaAgentOutput:
-    ...
+async def meta_agent(_: MetaAgentInput) -> MetaAgentOutput: ...

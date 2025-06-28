@@ -34,7 +34,7 @@ async def run_task_version_moderation(
     if not variant_id:
         logger.warning(
             "Task variant not found",
-            extra={"task_id": event.task_id, "group_id": event.id},
+            extra={"agent_id": event.task_id, "group_id": event.id},
         )
         return
 

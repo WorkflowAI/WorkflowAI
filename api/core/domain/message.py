@@ -43,6 +43,10 @@ class Message(BaseModel):
     role: MessageRole
     content: list[MessageContent]
     image_options: ImageOptions | None = None
+    run_id: str | None = Field(
+        default=None,
+        description="The id of the run that generated this message. If available.",
+    )
 
     def to_deprecated(self) -> MessageDeprecated:
         # TODO: remove this method

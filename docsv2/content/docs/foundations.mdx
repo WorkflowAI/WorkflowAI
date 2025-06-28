@@ -1,0 +1,176 @@
+---
+title: Foundations
+summary: Essential concepts and architecture of WorkflowAI to get you started with agents, models, deployments, and core features.
+---
+
+## What is WorkflowAI?
+
+Think of WorkflowAI as a drop-in replacement for OpenAI, with primitives added to make it easier to build AI agents.
+
+### Cost 
+
+By using WorkflowAI, you won't pay more than your current inference costs. We price match the providers and make our margin through volume discounts. [Learn more about our pricing](/pricing).
+
+## Primitives
+
+### Inference 
+
+WorkflowAI exposes a compatible OpenAI API endpoint to `/v1/chat/completions`, which means that all SDKs that support OpenAI API will work with WorkflowAI by simply changing the base URL and the API key. The list of models supported can be listed by calling the `list_models` MCP tool, or `curl https://api.workflowai.com/v1/models`.
+
+```python
+import openai
+
+client = openai.OpenAI(
+    base_url="https://api.workflowai.com/v1",
+    api_key="wai-***", # use create_api_key MCP tool to create an API key
+)
+```
+
+The primary benefit of using WorkflowAI's API is gaining access to a unified interface for all AI models across the market. This eliminates the complexity of managing multiple API keys and switching between different provider SDKs - you can seamlessly use any model through a single, consistent API.
+
+Technical details:
+- all requests are proxied by WorkflowAI, then sent to an AI provider.
+
+#### API keys
+
+- Check first if any `WORKFLOWAI_API_KEY` (or similar) is set in the environment variables.
+- To create a new API key, use the `create_api_key` MCP tool.
+
+### Observability
+
+By default, WorkflowAI saves all LLM completions. Observability is critical for building reliable AI agents. LLM observability helps teams improve reliability, reduce costs, debug failures faster, ensure safety, and optimize prompts and models by providing end-to-end visibility into how queries are processed and where issues arise.
+
+Learn more about by reading the [Observability](/observability) section.
+
+### Deployments
+
+Deployments allow you to update an agent's prompt or model without changing the code. Learn more about deployments by reading the [Deployments](/deployments) section.
+
+## `/v1/chat/completions`
+
+### Parameters
+
+Building an AI agent is the process of picking the right value for each parameter of the `/v1/chat/completions` API. Let's go through each parameter one by one.
+
+```python
+completion = client.chat.completions.create(  # or client.beta.chat.completions.parse for structured outputs
+    model="..",
+    messages=[...],
+    metadata={"agent_id": "...", "key": "value"},
+    extra_body={
+        "input": {
+            "variable_name": "variable_value"
+        },
+    },
+    max_tokens=1000,
+)
+```
+
+#### model
+one of the model.id from the `list_models` MCP tool, or `curl https://api.workflowai.com/v1/models`
+WorkflowAI allows non-OpenAI models to be used via a OpenAI SDK.
+each model listed by WorkflowAI includes information about its price, its intelligence (quality_index), its capabilities, its context window.
+
+#### messages
+
+`messages`: The messages to send to the model. The messages are a list of dictionaries, each dictionary containing a role and content. The role can be "user", "assistant", or "system". The content can be a string, or a list of strings.
+
+```json
+messages = [
+    {"role": "user", "content": "Hello, how are you?"}
+]
+```
+
+There are a few differences between the OpenAI API and WorkflowAI API:
+- **[Input variables](/observability/input-variables) (strongly recommended)**: Use Jinja2 template syntax to separate static instructions from dynamic data. This is a best practice that significantly improves observability, debugging, and prompt management.
+
+```json
+messages=[{
+    "role": "user", 
+    "content": "Analyze this email: {{email_content}}"
+}]
+```
+
+See the `input` parameter below on how to pass variables to the LLM. Note that the template rendering is done server-side by WorkflowAI, so the client does not need to render the template.
+
+Learn more about input variables by reading the [Input Variables](/observability/input-variables) section.
+
+- [Deployments](/deployments): When using deployments, the `messages` parameter can be empty because the messages are stored on WorkflowAI directly, and added automatically to the request. `messages = []` is valid. Note that the `messages` parameter is required by OpenAI SDKs, so `messages = None` is not valid.
+
+Learn more about deployments by reading the [Deployments](/deployments) section.
+
+#### metadata
+
+`metadata.agent_id`: (highly recommended) Use a descriptive agent_id to identify the agent in the logs. For example: `email-classifier`, `product-review-sentiment-analyzer`, `customer-support-chatbot`, etc. 
+
+Any key-value pair can be passed to the `metadata` parameter. Runs are searchable by metadata keys (list all the metadata via `get_agent` MCP tool, and then use `search_runs` to search for runs with the desired metadata). For example, "customer_id": "1234567890", "user_email": "john.doe@example.com".
+
+Learn more about metadata by reading the [Metadata](/observability/metadata) section.
+
+#### max_tokens
+
+`max_tokens`: (optional) The maximum number of tokens to generate. If not provided, the model will generate as many tokens as needed. Make sure that `max_tokens` is high enough to generate a complete response.
+
+#### input
+
+`input`: (strongly recommended for most use cases) provides variables to the LLM when using [input variables](/observability/input-variables). **Always use input variables instead of string concatenation** when you have dynamic content - it dramatically improves debugging, observability, and prompt management.
+
+```python
+completion = client.chat.completions.create(
+    messages=[{"role": "user", "content": "Analyze this email: {{email_content}}"}],
+    extra_body={ # input must be wrapped in extra_body because the OpenAI SDK doesn't recognize 'input' as a valid parameter. extra_body passes custom fields directly to the request body.
+        "input": {
+            "email_content": "Dear team, please review the quarterly report..."
+        }
+    }
+)
+```
+
+**Best practice:** Use input variables for any dynamic content rather than concatenating strings in your code. This separates your prompt logic from your application logic and makes debugging much easier.
+
+#### response_format
+
+`response_format`: (optional) ensures AI models generate responses that perfectly match your defined JSON Schema. Instead of hoping the model follows formatting instructions, you get guaranteed compliance with your data structure. Use structured outputs when you need reliable data extraction, classification, or any scenario requiring consistent JSON format.
+
+```python
+from pydantic import BaseModel
+
+class UserInfo(BaseModel):
+    name: str
+    age: int
+    email: str
+
+completion = client.beta.chat.completions.parse(
+    model="gpt-4o-mini",
+    messages=[{"role": "user", "content": "Extract user info: John Doe, 30, john@example.com"}],
+    response_format=UserInfo  # Guarantees valid UserInfo object
+)
+
+user = completion.choices[0].message.parsed  # Direct access to typed object
+```
+
+Learn more about structured outputs in the [Structured Outputs](/inference/structured-outputs) section.
+
+### Response
+
+WorkflowAI returns the same response format as the OpenAI API, ensuring full compatibility with existing code while adding additional fields for enhanced functionality.
+
+```python
+completion = client.chat.completions.create(...)
+content = completion.choices[0].message.content
+
+# for structured outputs
+completion = client.beta.chat.completions.parse(..., response_format=...)
+parsed_output = completion.choices[0].message.parsed
+```
+
+#### cost and latency
+
+WorkflowAI adds cost and latency to the response. Learn more about cost and latency in the [Cost Metadata](/inference/cost) section.
+
+```python
+cost = completion.model_extra.get('cost_usd')
+latency = completion.model_extra.get("duration_seconds")
+print(f"Latency (s): {latency:.2f}")
+print(f"Cost   ($): ${cost:.6f}")
+```

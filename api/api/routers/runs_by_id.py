@@ -14,7 +14,7 @@ from core.storage import ObjectNotFoundException
 
 from ..dependencies.storage import StorageDep
 
-router = APIRouter(prefix="/agents/{task_id}/runs/{run_id}", deprecated=True)
+router = APIRouter(prefix="/agents/{agent_id}/runs/{run_id}", deprecated=True)
 
 
 async def task_run_dependency(

@@ -2,7 +2,7 @@ export PYTHONPATH := $(PWD)/api
 
 .PHONY: api.lock
 api.lock:
-	poetry lock --no-update
+	poetry lock
 
 .PHONY: api.start
 api.start:

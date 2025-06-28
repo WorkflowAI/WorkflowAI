@@ -121,12 +121,12 @@ class GoogleProviderBase(HTTPXProvider[_GoogleConfigVar, CompletionResponse], Ge
     def _convert_messages(
         cls,
         messages: list[MessageDeprecated],
-        support_system_messages: bool,
+        supports_system_messages: bool,
     ) -> tuple[list[GoogleMessage], GoogleSystemMessage | None]:
         user_messages: list[GoogleMessage] = []
         system_message: GoogleSystemMessage | None = None
 
-        if not support_system_messages:
+        if not supports_system_messages:
             # TODO: This feels really weird. We should not need to do this.
             # For now it's only activated on gemini flash 2.0
             merged_message = merge_messages(messages, role=MessageDeprecated.Role.USER)
@@ -151,16 +151,19 @@ class GoogleProviderBase(HTTPXProvider[_GoogleConfigVar, CompletionResponse], Ge
     def _build_request(self, messages: list[MessageDeprecated], options: ProviderOptions, stream: bool) -> BaseModel:
         model_data = get_model_data(model=options.model)
 
-        user_messages, system_message = self._convert_messages(messages, model_data.support_system_messages)
+        user_messages, system_message = self._convert_messages(messages, model_data.supports_system_messages)
 
         # See https://ai.google.dev/gemini-api/docs/thinking
         # Thinking is enabled by default on thinking models so we just need to "turn off" thinking
+
+        budget = options.final_reasoning_budget(model_data.reasoning)
+
         thinking_config = (
-            CompletionRequest.GenerationConfig.ThinkingConfig(
-                thinkingBudget=0,
+            None
+            if budget is None
+            else CompletionRequest.GenerationConfig.ThinkingConfig(
+                thinkingBudget=budget,
             )
-            if model_data.reasoning_level == "none"
-            else None
         )
 
         generation_config = CompletionRequest.GenerationConfig(
@@ -248,7 +251,6 @@ class GoogleProviderBase(HTTPXProvider[_GoogleConfigVar, CompletionResponse], Ge
                         msg="Model returned a malformed function call finish reason",
                         # Capturing so we can see why this happens
                         capture=True,
-                        store_task_run=True,
                     )
                 case _:
                     pass

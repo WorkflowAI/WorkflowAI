@@ -1,0 +1,8 @@
+required_tools:
+  - name: list_models
+assertions:
+  code:
+    - a route was added with an agent using the openai sdk
+    - the openai sdk is used to run the agent
+    - the openai sdk is configured with the correct WorkflowAI base URL (https://run.workflowai.com/v1) and the WORKFLOWAI_API_KEY environment variable
+    - input variables are used to pass the summary to the agent

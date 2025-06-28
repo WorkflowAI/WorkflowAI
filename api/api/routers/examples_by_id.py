@@ -5,7 +5,7 @@ from core.domain.task_example import SerializableTaskExample
 
 from ..dependencies.storage import StorageDep
 
-router = APIRouter(prefix="/agents/{task_id}/examples", deprecated=True, include_in_schema=False)
+router = APIRouter(prefix="/agents/{agent_id}/examples", deprecated=True, include_in_schema=False)
 
 
 @router.get("/{example_id}")

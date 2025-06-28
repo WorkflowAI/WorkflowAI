@@ -410,7 +410,7 @@ class TestDownloadImage:
 
 
 async def test_retry_download_file(httpx_mock: HTTPXMock):
-    httpx_mock.add_exception(httpx.ConnectTimeout("Test exception"))
+    httpx_mock.add_exception(httpx.ConnectTimeout("Test exception"), is_reusable=True)
 
     with pytest.raises(InvalidFileError):
         await download_file(File(url="https://bla.com/file.png"))

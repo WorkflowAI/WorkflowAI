@@ -1,0 +1,4 @@
+- user_id "usr_67890" reports a bug with agent "agent_xyz789"
+- fix this bug for this specific user
+- but first need to implement proper metadata collection
+- then investigate and resolve the user's issue

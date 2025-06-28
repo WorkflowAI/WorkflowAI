@@ -1,3 +1,5 @@
+# pyright: reportPrivateUsage=false
+
 import hashlib
 import secrets
 from datetime import datetime, timezone
@@ -840,6 +842,60 @@ class TestDeleteAPIKeyForOrganization:
         # Verify key is deleted
         keys = await organization_storage.get_api_keys_for_organization()
         assert not any(key.id == doc.id for key in keys)
+
+    async def test_delete_last_api_key_duplicate(
+        self,
+        organization_storage: MongoOrganizationStorage,
+        org_col: AsyncCollection,
+    ) -> None:
+        """Test that reproduces the MongoDB index issue when deleting the last API key on 2 tenants
+
+        With the old index ({"api_keys": {"$exists": True}}), having 2 different tenants delete all their API keys
+        will create a duplicate key error because the index would still match the document even with an
+        empty api_keys array.
+        """
+
+        # Create organizations for both tenants
+        await org_col.insert_one(
+            dump_model(OrganizationDocument(tenant=TENANT, uid=organization_storage._tenant_uid, slug="1")),
+        )
+        await org_col.insert_one(dump_model(OrganizationDocument(tenant="t2", uid=2, slug="2")))
+
+        # Manually instantiate storage for tenant 2
+        tenant2_storage = MongoOrganizationStorage(
+            tenant=("t2", 2),
+            collection=org_col,
+            encryption=organization_storage.encryption,
+        )
+
+        # Create API key for tenant 1 and tenant 2
+        tenant1_key = await organization_storage.create_api_key_for_organization(
+            name="tenant1 key",
+            hashed_key="hashed123",
+            partial_key="sk-123****",
+            created_by=UserIdentifier(user_id="user1", user_email="test@example.com"),
+        )
+
+        tenant2_key = await tenant2_storage.create_api_key_for_organization(
+            name="tenant2 key",
+            hashed_key="hashed456",
+            partial_key="sk-456****",
+            created_by=UserIdentifier(user_id="user2", user_email="test2@example.com"),
+        )
+
+        # Delete the API key for tenant 1
+        result = await organization_storage.delete_api_key_for_organization(key_id=str(tenant1_key.id))
+        assert result is True
+
+        # Delete the API key for tenant 2
+        result = await tenant2_storage.delete_api_key_for_organization(key_id=str(tenant2_key.id))
+        assert result is True
+
+        # Verify no keys remain for either tenant
+        tenant1_keys = await organization_storage.get_api_keys_for_organization()
+        tenant2_keys = await tenant2_storage.get_api_keys_for_organization()
+        assert len(tenant1_keys) == 0
+        assert len(tenant2_keys) == 0
 
 
 class TestFindTenantForAPIKey:

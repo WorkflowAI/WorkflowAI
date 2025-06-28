@@ -44,12 +44,12 @@ class SerializableTaskVariant(BaseModel):
 
     def enforce(self, task_input: dict[str, Any], task_output: dict[str, Any], strip_extras: bool = False) -> None:
         try:
-            self.input_schema.enforce(task_input, strip_extras=strip_extras, strip_opt_none_and_empty_strings=True)
+            self.input_schema.enforce(task_input, strip_extras=strip_extras, sanitize_empties=True)
         except JSONSchemaValidationError as e:
             raise JSONSchemaValidationError(f"Task input does not match schema: {e}")
 
         try:
-            self.output_schema.enforce(task_output, strip_extras=strip_extras, strip_opt_none_and_empty_strings=True)
+            self.output_schema.enforce(task_output, strip_extras=strip_extras, sanitize_empties=True)
         except JSONSchemaValidationError as e:
             raise JSONSchemaValidationError(f"Task output does not match schema: {e}")
 
@@ -71,7 +71,7 @@ class SerializableTaskVariant(BaseModel):
                 input,
                 strip_extras=True,
                 partial=partial,
-                strip_opt_none_and_empty_strings=True,
+                sanitize_empties=True,
             )
             return input
         except JSONSchemaValidationError as e:
@@ -83,7 +83,7 @@ class SerializableTaskVariant(BaseModel):
                 output,
                 strip_extras=strip_extras,
                 partial=partial,
-                strip_opt_none_and_empty_strings=True,
+                sanitize_empties=True,
             )
             return output
         except JSONSchemaValidationError as e:

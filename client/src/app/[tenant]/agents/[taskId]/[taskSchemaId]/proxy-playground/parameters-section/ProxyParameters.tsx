@@ -1,5 +1,5 @@
 import { Loader2 } from 'lucide-react';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { TemperatureSelector } from '@/components/TemperatureSelector/TemperatureSelector';
 import { Button } from '@/components/ui/Button';
 import { SimpleTooltip } from '@/components/ui/Tooltip';
@@ -8,8 +8,10 @@ import { ExtractTempleteError } from '@/store/extract_templete';
 import { MajorVersion, ProxyMessage, ToolKind, Tool_Output, VersionV1 } from '@/types/workflowAI';
 import { MajorVersionCombobox } from '../../playground/components/MajorVersionSelector/MajorVersionSelector';
 import { ProxyImproveMessagesControls } from '../hooks/useProxyImproveMessages';
+import { AdvancedSettings } from '../hooks/useProxyPlaygroundSearchParams';
 import { ProxyMessagesView } from '../proxy-messages/ProxyMessagesView';
 import { getAvaibleMessageTypes } from '../proxy-messages/utils';
+import { AdvancedSettingsView } from './AdvancedSettings/AdvancedSettingsView';
 import { ProxyDiffMessagesView } from './Diffs/ProxyDiffMessagesView';
 import { ProxyDiffsHeader } from './Diffs/ProxyDiffsHeader';
 import { ProxyTools } from './ProxyTools';
@@ -18,8 +20,7 @@ type ProxyParametersProps = {
   messages: ProxyMessage[] | undefined;
   setMessages: (messages: ProxyMessage[] | undefined) => void;
 
-  temperature: number;
-  setTemperature: (temperature: number) => void;
+  advancedSettings: AdvancedSettings;
 
   toolCalls: (ToolKind | Tool_Output)[] | undefined;
   setToolCalls: (toolCalls: (ToolKind | Tool_Output)[] | undefined) => void;
@@ -36,14 +37,15 @@ type ProxyParametersProps = {
   error: ExtractTempleteError | undefined;
 
   improveMessagesControls: ProxyImproveMessagesControls;
+
+  maxTokens: number | undefined;
 };
 
 export function ProxyParameters(props: ProxyParametersProps) {
   const {
     messages,
     setMessages,
-    temperature,
-    setTemperature,
+    advancedSettings,
     toolCalls,
     setToolCalls,
     majorVersions,
@@ -55,6 +57,7 @@ export function ProxyParameters(props: ProxyParametersProps) {
     inputVariblesKeys,
     error,
     improveMessagesControls,
+    maxTokens,
   } = props;
 
   const version = useMemo(() => {
@@ -65,8 +68,16 @@ export function ProxyParameters(props: ProxyParametersProps) {
     return versionsForRuns[keys[0]];
   }, [versionsForRuns]);
 
+  const [isAnyTextareaFocused, setIsAnyTextareaFocused] = useState(false);
+
   return (
     <div className='flex flex-col w-full h-full'>
+      {error && !isAnyTextareaFocused && (
+        <div className='absolute top-[40px] right-0 -translate-x-[88px] translate-y-[4px] bg-red-500 flex rounded-[2px] border border-red-600 shadow-lg py-1 px-2 z-10'>
+          <div className='text-white text-[13px] whitespace-pre-wrap'>{error.message}</div>
+        </div>
+      )}
+
       <div className='flex flex-row h-[48px] w-full justify-between items-center shrink-0 border-b border-gray-200 border-dashed px-4'>
         <div className='flex flex-row items-center gap-2'>
           {improveMessagesControls.isImproving && (
@@ -120,23 +131,30 @@ export function ProxyParameters(props: ProxyParametersProps) {
               className='px-4 py-4 min-h-[100px]'
               allowRemovalOfLastMessage={false}
               inputVariblesKeys={inputVariblesKeys}
+              onAnyTextareaFocusChange={setIsAnyTextareaFocused}
             />
           )}
         </div>
-        {error && (
-          <div className='absolute top-0 right-0 -translate-x-[88px] translate-y-[4px] bg-red-500 rounded-[2px] border border-red-600 shadow-lg py-1 px-2 z-100'>
-            <div className='text-white text-[13px]'>{error.message}</div>
-          </div>
-        )}
       </div>
       <div className='flex flex-col w-full border-t border-gray-200 border-dashed'>
         <div className='flex flex-col gap-1 px-4 pt-2 pb-3 border-b border-gray-200 border-dashed'>
           <div className='flex w-full items-center font-medium text-[13px] text-gray-900'>Tools</div>
-          <ProxyTools toolCalls={toolCalls} setToolCalls={setToolCalls} />
+          <ProxyTools
+            toolCalls={toolCalls}
+            setToolCalls={setToolCalls}
+            messages={messages}
+            onToolsChange={improveMessagesControls.updateToolsInVersionMessages}
+          />
         </div>
-        <div className='flex flex-col gap-1 px-4 pt-3 pb-3'>
-          <div className='flex w-full items-center font-medium text-[13px] text-gray-900'>Temperature</div>
-          <TemperatureSelector temperature={temperature} setTemperature={setTemperature} />
+        <div className='flex flex-row w-full items-center'>
+          <div className='flex flex-col gap-1 px-4 pt-3 pb-3'>
+            <div className='flex w-full items-center font-medium text-[13px] text-gray-900'>Temperature</div>
+            <TemperatureSelector
+              temperature={advancedSettings.temperature ? Number(advancedSettings.temperature) : 0}
+              setTemperature={(temperature) => advancedSettings.setTemperature(String(temperature))}
+            />
+          </div>
+          <AdvancedSettingsView advancedSettings={advancedSettings} maxTokens={maxTokens} />
         </div>
       </div>
     </div>

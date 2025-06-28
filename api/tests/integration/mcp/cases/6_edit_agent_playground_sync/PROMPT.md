@@ -1,0 +1,4 @@
+- open the WorkflowAI playground to edit the agent
+- experiment with different prompts and configurations in the playground
+- find a new version that works better
+- get the updated agent code back into my IDE

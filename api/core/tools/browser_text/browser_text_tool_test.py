@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from pathlib import Path
 from unittest.mock import patch
 
@@ -31,15 +32,18 @@ async def test_fetch_url_content_firecrawl_success(httpx_mock: HTTPXMock) -> Non
         method="POST",
         url="https://api.firecrawl.dev/v1/scrape",
         json=mock_response,
-        match_content=json.dumps(
-            {"url": url, "formats": ["markdown"], "onlyMainContent": False},
-        ).encode(),
     )
 
     result = await _fetch_url_content_firecrawl(url)
     assert isinstance(result, FetchUrlContentResult)
     assert result.error is None
-    assert result.content == json.dumps(mock_response)
+    assert result.content
+    assert json.loads(result.content) == mock_response
+    req = httpx_mock.get_request()
+    assert req
+    assert req.method == "POST"
+    assert req.url == "https://api.firecrawl.dev/v1/scrape"
+    assert json.loads(req.content) == {"url": url, "formats": ["markdown"], "onlyMainContent": False}
 
 
 async def test_fetch_url_content_firecrawl_failure(httpx_mock: HTTPXMock) -> None:
@@ -175,13 +179,18 @@ async def test_browser_text_success_firecrawl(httpx_mock: HTTPXMock) -> None:
     }
 
     httpx_mock.add_response(
+        url=re.compile(r"^https://app\.scrapingbee\.com.*"),
+        status_code=400,
+    )
+
+    httpx_mock.add_response(
         method="POST",
         url="https://api.firecrawl.dev/v1/scrape",
         json=mock_response,
     )
 
     result = await browser_text(url)
-    assert result == json.dumps(mock_response)
+    assert json.loads(result) == mock_response
 
 
 async def test_browser_text_fallback_to_firecrawl(httpx_mock: HTTPXMock) -> None:
@@ -207,7 +216,7 @@ async def test_browser_text_fallback_to_firecrawl(httpx_mock: HTTPXMock) -> None
     )
 
     result = await browser_text(url)
-    assert result == """{"success": true, "data": {"markdown": "# Test Content", "metadata": {"statusCode": 200}}}"""
+    assert json.loads(result) == mock_content
 
 
 async def test_browser_text_all_services_fail(httpx_mock: HTTPXMock) -> None:

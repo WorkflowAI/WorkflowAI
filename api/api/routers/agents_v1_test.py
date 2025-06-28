@@ -38,7 +38,7 @@ class TestExtractTemplate:
             "error": {
                 "code": "bad_request",
                 "status_code": 400,
-                "message": "Invalid template: unexpected '}'",
+                "message": "Invalid template: unexpected '}'. Templates must use Jinja2 formatting.",
                 "details": {
                     "line_number": 1,
                     "unexpected_char": "}",

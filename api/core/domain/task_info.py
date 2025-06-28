@@ -46,3 +46,9 @@ class TaskInfo(BaseModel):
     @property
     def id_tuple(self) -> TaskTuple:
         return (self.task_id, self.uid)
+
+    @property
+    def latest_schema_id(self) -> int:
+        if not self.schema_details:
+            return 0
+        return max(detail.schema_id for detail in self.schema_details)

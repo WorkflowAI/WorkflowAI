@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from api.dependencies.group import TaskGroupDep
-from api.dependencies.path_params import GroupID, TaskID, TaskSchemaID
+from api.dependencies.path_params import AgentID, GroupID, TaskSchemaID
 from api.dependencies.security import UserDep, UserOrganizationDep
 from api.dependencies.services import GroupServiceDep, ModelsServiceDep
 from api.dependencies.storage import StorageDep, TaskGroupStorageDep
@@ -22,7 +22,7 @@ from core.domain.version_reference import VersionReference
 from core.storage import ObjectNotFoundException
 from core.utils.tags import compute_tags
 
-router = APIRouter(prefix="/agents/{task_id}/schemas/{task_schema_id}/groups")
+router = APIRouter(prefix="/agents/{agent_id}/schemas/{task_schema_id}/groups")
 
 _logger = logging.getLogger(__name__)
 
@@ -101,7 +101,7 @@ class CreateTaskGroupRequest(BaseModel):
 
 @router.post("", description="Create an agent group for the agent", response_model_exclude_none=True)
 async def create_group(
-    task_id: TaskID,
+    agent_id: AgentID,
     task_schema_id: TaskSchemaID,
     request: CreateTaskGroupRequest,
     groups_service: GroupServiceDep,
@@ -111,7 +111,7 @@ async def create_group(
 ) -> TaskGroup:
     if request.use_external_runner:
         try:
-            await storage.task_variant_latest_by_schema_id(task_id, task_schema_id)
+            await storage.task_variant_latest_by_schema_id(agent_id, task_schema_id)
         except ObjectNotFoundException:
             raise HTTPException(404, detail="Task not found")
 
@@ -119,9 +119,9 @@ async def create_group(
         properties = request.properties
     else:
         version_ref = VersionReference(properties=request.properties)
-        with prettify_errors(user_org, task_id, task_schema_id, version_ref):
+        with prettify_errors(user_org, agent_id, task_schema_id, version_ref):
             runner, _ = await groups_service.sanitize_groups_for_internal_runner(
-                task_id=task_id,
+                task_id=agent_id,
                 task_schema_id=task_schema_id,
                 reference=version_ref,
                 detect_chain_of_thought=True,
@@ -131,7 +131,7 @@ async def create_group(
         tags = runner.group_tags() if request.tags is None else request.tags
 
     return await storage.get_or_create_task_group(
-        task_id,
+        agent_id,
         task_schema_id,
         properties,
         tags,
@@ -153,16 +153,16 @@ async def group_by_id(group: TaskGroupDep) -> TaskGroup:
 
 @router.patch("/{group_id}", description="Update an agent group", tags=[RouteTags.AGENT_GROUPS])
 async def patch_group_by_id(
-    task_id: TaskID,
+    agent_id: AgentID,
     task_schema_id: TaskSchemaID,
     group_id: GroupID,
     request: TaskGroupUpdate,
     task_group_storage: TaskGroupStorageDep,
     user: UserDep,
 ) -> TaskGroup:
-    # Endpoint: PATCH /tasks/{task_id}/schemas/{task_schema_id}/groups/{group_id}
+    # Endpoint: PATCH /tasks/{agent_id}/schemas/{task_schema_id}/groups/{group_id}
     return await task_group_storage.update_task_group(
-        task_id=task_id,
+        task_id=agent_id,
         task_schema_id=task_schema_id,
         iteration=group_id,
         update=request,

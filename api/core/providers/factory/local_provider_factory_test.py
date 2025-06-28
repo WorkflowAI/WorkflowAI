@@ -2,7 +2,7 @@
 
 import pytest
 
-from core.domain.models.model_provider_datas_mapping import MODEL_PROVIDER_DATAS
+from core.domain.models.model_provider_data_mapping import MODEL_PROVIDER_DATAS
 from core.providers.factory.local_provider_factory import LocalProviderFactory
 
 

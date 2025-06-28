@@ -359,8 +359,27 @@ class MongoStorage(BackendStorage):
     def _tenant_uid_filter(self) -> dict[str, Any]:
         return {"tenant_uid": self._tenant_uid}
 
-    def _build_list_tasks_pipeline(self, filter: dict[str, Any], limit: int | None) -> list[dict[str, Any]]:
+    def _build_list_tasks_pipeline(
+        self,
+        filter: dict[str, Any],
+        limit: int | None,
+        with_schemas: bool = False,
+    ) -> list[dict[str, Any]]:
         match_clause = {"$match": {**filter, **self._tenant_filter()}}
+
+        version_pipeline = {
+            "schema_id": "$schema_id",
+            "variant_id": "$version",
+            "description": "$description",
+            "input_schema_version": "$input_schema.version",
+            "output_schema_version": "$output_schema.version",
+            "created_at": "$created_at",
+        }
+
+        if with_schemas:
+            version_pipeline["input_schema"] = "$input_schema.json_schema"
+            version_pipeline["output_schema"] = "$output_schema.json_schema"
+
         pipeline: list[dict[str, Any]] = [
             match_clause,
             {
@@ -371,14 +390,7 @@ class MongoStorage(BackendStorage):
                     "is_public": {"$first": "$is_public"},
                     "latest_created_at": {"$max": "$created_at"},
                     "versions": {
-                        "$push": {
-                            "schema_id": "$schema_id",
-                            "variant_id": "$version",
-                            "description": "$description",
-                            "input_schema_version": "$input_schema.version",
-                            "output_schema_version": "$output_schema.version",
-                            "created_at": "$created_at",
-                        },
+                        "$push": version_pipeline,
                     },
                 },
             },
@@ -396,8 +408,9 @@ class MongoStorage(BackendStorage):
         self,
         filter: dict[str, Any],
         limit: int | None = None,
+        with_schemas: bool = False,
     ) -> AsyncIterator[SerializableTask]:
-        pipeline = self._build_list_tasks_pipeline(filter, limit)
+        pipeline = self._build_list_tasks_pipeline(filter, limit, with_schemas)
         async for doc in self._task_variants_collection.aggregate(pipeline):
             try:
                 yield SerializableTask.model_validate(doc)
@@ -405,13 +418,13 @@ class MongoStorage(BackendStorage):
                 logger.exception(e, extra={"doc": doc})
 
     @override
-    def fetch_tasks(self, limit: int | None = None) -> AsyncIterator[SerializableTask]:
-        return self._list_tasks_pipeline({}, limit)
+    def fetch_tasks(self, limit: int | None = None, with_schemas: bool = False) -> AsyncIterator[SerializableTask]:
+        return self._list_tasks_pipeline({}, limit, with_schemas)
 
     @override
-    async def get_task(self, task_id: str) -> SerializableTask:
+    async def get_task(self, task_id: str, with_schemas: bool = False) -> SerializableTask:
         task = None
-        async for t in self._list_tasks_pipeline({"slug": task_id}):
+        async for t in self._list_tasks_pipeline({"slug": task_id}, with_schemas=with_schemas):
             task = t
             break
 

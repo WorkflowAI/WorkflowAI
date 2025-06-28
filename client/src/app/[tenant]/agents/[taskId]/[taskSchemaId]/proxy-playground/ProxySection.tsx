@@ -6,9 +6,9 @@ import { GeneralizedTaskInput } from '@/types/task_run';
 import { MajorVersion, ProxyMessage, ToolKind, Tool_Output, VersionV1 } from '@/types/workflowAI';
 import { ProxyImproveMessagesControls } from './hooks/useProxyImproveMessages';
 import { useProxyInputStructure } from './hooks/useProxyInputStructure';
+import { AdvancedSettings } from './hooks/useProxyPlaygroundSearchParams';
 import { ProxyInput } from './input-section/ProxyInput';
 import { ProxyParameters } from './parameters-section/ProxyParameters';
-import { createEmptyMessage } from './proxy-messages/utils';
 import { removeInputEntriesNotMatchingSchema } from './utils';
 
 interface Props {
@@ -23,8 +23,7 @@ interface Props {
   proxyMessages: ProxyMessage[] | undefined;
   setProxyMessages: (proxyMessages: ProxyMessage[] | undefined) => void;
 
-  temperature: number;
-  setTemperature: (temperature: number) => void;
+  advancedSettings: AdvancedSettings;
 
   toolCalls: (ToolKind | Tool_Output)[] | undefined;
   setToolCalls: (toolCalls: (ToolKind | Tool_Output)[] | undefined) => void;
@@ -43,6 +42,8 @@ interface Props {
 
   versionsForRuns: Record<string, VersionV1>;
   improveMessagesControls: ProxyImproveMessagesControls;
+
+  maxTokens: number | undefined;
 }
 
 export function ProxySection(props: Props) {
@@ -53,8 +54,7 @@ export function ProxySection(props: Props) {
     error,
     input,
     setInput,
-    temperature,
-    setTemperature,
+    advancedSettings,
     toolCalls,
     setToolCalls,
     maxHeight,
@@ -69,14 +69,8 @@ export function ProxySection(props: Props) {
     onSaveAllVersions,
     versionsForRuns,
     improveMessagesControls,
+    maxTokens,
   } = props;
-
-  const messagesWithDefaultSystemMessage = useMemo(() => {
-    if (!proxyMessages || proxyMessages?.length === 0) {
-      return [createEmptyMessage('system')];
-    }
-    return proxyMessages;
-  }, [proxyMessages]);
 
   const onMoveToVersion = useCallback(
     (message: ProxyMessage) => {
@@ -136,10 +130,9 @@ export function ProxySection(props: Props) {
       </div>
       <div className='w-1/2'>
         <ProxyParameters
-          messages={messagesWithDefaultSystemMessage}
+          messages={proxyMessages}
           setMessages={setProxyMessages}
-          temperature={temperature}
-          setTemperature={setTemperature}
+          advancedSettings={advancedSettings}
           toolCalls={toolCalls}
           setToolCalls={setToolCalls}
           matchedMajorVersion={matchedMajorVersion}
@@ -151,6 +144,7 @@ export function ProxySection(props: Props) {
           inputVariblesKeys={inputVariblesKeys}
           error={error}
           improveMessagesControls={improveMessagesControls}
+          maxTokens={maxTokens}
         />
       </div>
     </div>

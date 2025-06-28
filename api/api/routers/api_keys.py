@@ -104,16 +104,24 @@ async def delete_api_key(
     Delete an API key for the current organization
     Endpoint : DELETE {tenant}/api/keys/{key_id}
 
+    Note: This endpoint supports both user JWT authentication and API key authentication.
+    When using API key authentication, the user parameter will be None, which is valid.
+
     Raises:
         HTTPException: 404 Not Found
-        HTTPException: 401 Unauthorized
+        HTTPException: 401 Unauthorized (only when user is not authenticated via JWT or API key)
     """
 
+    # Check authorization first before performing any operations
+    # Note: user can be None when using API key authentication, which is valid
+    # The non_anonymous_organization dependency already ensures proper authentication
+    if user is not None and user.user_id == "":
+        raise HTTPException(401, "You are not authorized to delete this API key")
+
+    # Perform the delete operation only after authorization checks pass
     deleted = await api_keys_service.delete_key(key_id)
 
     if not deleted:
         raise HTTPException(404, "API key not found")
-    if not user or user.user_id == "":
-        raise HTTPException(401, "You are not authorized to delete this API key")
 
     return

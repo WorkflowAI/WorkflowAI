@@ -155,6 +155,7 @@ class TestSendPaymentFailureEmail:
             url="https://app.loops.so/api/v1/transactional",
             status_code=200,
             method="POST",
+            is_reusable=True,
         )
 
         await loops_service.send_payment_failure_email("test_tenant")
@@ -241,6 +242,7 @@ class TestSendLowCreditsEmail:
             url="https://app.loops.so/api/v1/transactional",
             status_code=200,
             method="POST",
+            is_reusable=True,
         )
 
         # Sending two emails

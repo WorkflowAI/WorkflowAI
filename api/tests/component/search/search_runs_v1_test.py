@@ -170,6 +170,8 @@ _search_cases = [
     _sc("metadata.provider", "is", ["openai"], [1, 2, 4], "string"),
     _sc("metadata.provider", "is not", ["anthropic"], [0, 1, 2, 3, 4], "string"),
     _sc("metadata.model_release_quarter", "is not", ["Q4 2024"], [0, 1, 2, 3, 4], "string"),
+    _sc("metadata.user-agent", "contains", ["OpenAI"], [0], "string"),
+    _sc("metadata.a key with a space", "contains", ["Ola"], [1], "string"),
     # # Model queries (updated counts)
     _sc("model", "is", ["gemini-1.5-pro-001"], [4], "string"),
     _sc("model", "is not", [Model.CLAUDE_3_5_SONNET_20240620], [3, 4], "string"),
@@ -282,10 +284,12 @@ async def test_search_fields_suggestions(test_client: IntegrationTestClient, sea
     m_field_names = [field["field_name"] for field in metadata_fields]
 
     assert m_field_names == [
+        "metadata.a key with a space",
         "metadata.completion_tokens",
         "metadata.model_release_quarter",
         "metadata.prompt_tokens",
         "metadata.provider",
+        "metadata.user-agent",
     ]
 
     # field = next((field for field in result["fields"] if field["field_name"] == field_name), None)

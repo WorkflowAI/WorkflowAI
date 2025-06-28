@@ -1,20 +1,16 @@
 import logging
-import os
 import re
-from base64 import b64decode
 from typing import Annotated
 
-from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePublicKey
 from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from pydantic import Field
 
 from api.dependencies.encryption import EncryptionDep
 from api.services import storage
 from api.services.analytics import analytics_service
 from api.services.api_keys import APIKeyService
 from api.services.event_handler import system_event_router
-from api.services.security_service import SecurityService
+from api.services.security_service import SecurityService, UserClaims
 from api.utils import set_tenant_slug
 from core.domain.consts import WORKFLOWAI_APP_URL
 from core.domain.errors import InvalidToken
@@ -31,53 +27,16 @@ from core.utils import no_op
 from core.utils.encryption import Encryption
 from core.utils.strings import obfuscate
 
-from ..services.keys import JWK, Claims, KeyRing
+from ..services.keys import KeyRing
 
 logger = logging.getLogger(__name__)
 
 
-def _default_key_ring() -> KeyRing:
-    keys: dict[str, EllipticCurvePublicKey] = {}
-    if "WORKFLOWAI_JWK" in os.environ:
-        # Initialize with a single key
-        try:
-            keys["1"] = JWK.model_validate_json(b64decode(os.environ["WORKFLOWAI_JWK"])).public_key()
-        except ValueError:
-            logger.exception("Invalid JWK in WORKFLOWAI_JWK")
-    return KeyRing(os.getenv("WORKFLOWAI_JWKS_URL", ""), keys=keys)
-
-
-_key_ring = _default_key_ring()
-
-
 async def key_ring_dependency() -> KeyRing:
-    return _key_ring
+    return SecurityService.key_ring
 
 
 KeyRingDep = Annotated[KeyRing, Depends(key_ring_dependency)]
-
-
-class UserClaims(Claims):
-    tenant: str | None = None
-    sub: str | None = None
-    org_id: str | None = Field(default=None, alias="orgId")
-    org_slug: str | None = Field(default=None, alias="orgSlug")
-    user_id: str | None = Field(default=None, alias="userId")
-    # The id for an unknown user
-    unknown_user_id: str | None = Field(default=None, alias="unknownUserId")
-
-    def to_domain(self):
-        final_sub = self.sub or self.unknown_user_id
-        if not final_sub:
-            raise InvalidToken("Token must contain a sub or unknown_user_id")
-        return User(
-            tenant=self.tenant,
-            sub=final_sub,
-            org_id=self.org_id,
-            slug=self.org_slug,
-            user_id=self.user_id,
-            unknown_user_id=self.unknown_user_id,
-        )
 
 
 bearer = HTTPBearer(auto_error=False)
@@ -85,6 +44,7 @@ bearer = HTTPBearer(auto_error=False)
 BearerDep = Annotated[HTTPAuthorizationCredentials | None, Depends(bearer)]
 
 
+# TODO: we should use the security service here instead of the key ring directly
 async def user_auth_dependency(
     keys: KeyRingDep,
     credentials: BearerDep,
@@ -140,12 +100,12 @@ async def _is_different_tenant_allowed(
 ) -> bool:
     # Condition for allowing a tenant different from the token are:
     # - method is GET or (user is authenticated and path is whitelisted)
-    # - task_id is in the path
+    # - agent_id is in the path
     # - the corresponding task is public
     if request.method != "GET" and (not is_authenticated or not _is_path_whitelisted(request.url.path)):
         return False
 
-    if "task_id" not in request.path_params:
+    if "agent_id" not in request.path_params:
         return False
 
     s = storage.storage_for_tenant(
@@ -154,8 +114,8 @@ async def _is_different_tenant_allowed(
         encryption=encryption,
         event_router=no_op.event_router,
     ).tasks
-    task_id = request.path_params["task_id"]
-    return await s.is_task_public(task_id)
+    agent_id = request.path_params["agent_id"]
+    return await s.is_task_public(agent_id)
 
 
 def system_storage(encryption: EncryptionDep) -> SystemBackendStorage:

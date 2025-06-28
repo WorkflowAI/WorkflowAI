@@ -155,6 +155,8 @@ def test_similarity_hash_fields():
         "few_shot",
         "parallel_tool_calls",
         "template_name",
+        "reasoning_effort",
+        "reasoning_budget",
     }
 
     assert all_fields - excluded_fields == _SIMILARITY_HASH_FIELDS

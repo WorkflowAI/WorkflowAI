@@ -1,0 +1,3 @@
+- i want to setup this agent on WorkflowAI.
+- make no changes to the agent, model, keep everything the same.
+- test that the agent is running fine on WorkflowAI.

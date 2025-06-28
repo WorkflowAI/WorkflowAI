@@ -3,6 +3,7 @@ from datetime import date
 from pydantic import BaseModel, Field
 
 from api.services import models
+from core.domain.models.model_data import ModelReasoningBudget
 from core.domain.models.providers import Provider
 
 
@@ -15,7 +16,7 @@ class ModelMetadata(BaseModel):
     quality_index: int = Field(description="The quality index of the model")
 
     @classmethod
-    def from_service(cls, model: "models.ModelsService.ModelForTask"):
+    def from_service(cls, model: "models.ModelForTask"):
         return cls(
             provider_name=model.provider_name,
             price_per_input_token_usd=model.price_per_input_token_usd,
@@ -47,8 +48,51 @@ class ModelResponse(BaseModel):
 
     metadata: ModelMetadata = Field(description="The metadata of the model")
 
+    # TODO: use same models as models_router
+    class Reasoning(BaseModel):
+        """Configuration for reasoning capabilities of the model.
+
+        A mapping from a reasoning effort (disabled, low, medium, high) to a
+        reasoning token budget. The reasoning token budget represents the maximum number
+        of tokens that can be used for reasoning.
+        """
+
+        can_be_disabled: bool = Field(
+            description="Whether the reasoning can be disabled for the model.",
+        )
+        low_effort_reasoning_budget: int = Field(
+            description="The maximum number of tokens that can be used for reasoning at low effort for the model.",
+        )
+        medium_effort_reasoning_budget: int = Field(
+            description="The maximum number of tokens that can be used for reasoning at medium effort for the model.",
+        )
+        high_effort_reasoning_budget: int = Field(
+            description="The maximum number of tokens that can be used for reasoning at high effort for the model.",
+        )
+
+        min_reasoning_budget: int = Field(
+            description="The minimum number of tokens that can be used for reasoning for the model. ",
+        )
+
+        max_reasoning_budget: int = Field(
+            description="The maximum number of tokens that can be used for reasoning for the model.",
+        )
+
+        @classmethod
+        def from_domain(cls, model: ModelReasoningBudget):
+            return cls(
+                can_be_disabled=model.disabled is not None,
+                low_effort_reasoning_budget=model.low or 0,
+                medium_effort_reasoning_budget=model.medium or 0,
+                high_effort_reasoning_budget=model.high or 0,
+                max_reasoning_budget=model.max,
+                min_reasoning_budget=model.min or 0,
+            )
+
+    reasoning: Reasoning | None
+
     @classmethod
-    def from_service(cls, model: "models.ModelsService.ModelForTask"):
+    def from_service(cls, model: "models.ModelForTask"):
         return cls(
             id=model.id,
             name=model.name,
@@ -58,4 +102,5 @@ class ModelResponse(BaseModel):
             metadata=ModelMetadata.from_service(model),
             is_default=model.is_default,
             providers=model.providers,
+            reasoning=cls.Reasoning.from_domain(model.model_data.reasoning) if model.model_data.reasoning else None,
         )

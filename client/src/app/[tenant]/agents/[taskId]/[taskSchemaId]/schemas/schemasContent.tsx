@@ -1,6 +1,7 @@
 'use client';
 
 import { cx } from 'class-variance-authority';
+import { useMemo } from 'react';
 import { ObjectViewer } from '@/components';
 import { TaskOutputViewer } from '@/components/ObjectViewer/TaskOutputViewer';
 import { PersistantAllotment } from '@/components/PersistantAllotment';
@@ -8,7 +9,9 @@ import { TaskSchemaBadgeContainer } from '@/components/TaskSchemaBadge/TaskSchem
 import { Loader } from '@/components/ui/Loader';
 import { CircleCheckbox } from '@/components/v2/Checkbox';
 import { TaskSchemaID } from '@/types/aliases';
+import { JsonSchema } from '@/types/json_schema';
 import { TaskSchemaResponseWithSchema } from '@/types/task';
+import { checkSchemaForProxy } from '../proxy-playground/utils';
 import { SchemasSelector } from './schemasSelector';
 
 type SchemaCellProps = {
@@ -59,6 +62,32 @@ type SchemasContentProps = {
 export function SchemasContent(props: SchemasContentProps) {
   const { taskSchema, isInitialized, visibleSchemaIds, hiddenSchemaIds, activeSchemaIds, currentSchemaId, onSelect } =
     props;
+
+  const isProxy = useMemo(() => {
+    if (!taskSchema) {
+      return false;
+    }
+    return checkSchemaForProxy(taskSchema);
+  }, [taskSchema]);
+
+  const inputSchema: JsonSchema | undefined = useMemo(() => {
+    const result = taskSchema?.input_schema.json_schema;
+    if (result && 'format' in result && result.format === 'messages' && !('properties' in result) && isProxy) {
+      return {
+        format: 'messages',
+        type: 'object',
+        properties: {
+          messages: {
+            type: 'array',
+            items: { type: 'string' },
+          },
+        },
+        $defs: {},
+      };
+    }
+    return result;
+  }, [taskSchema, isProxy]);
+
   return (
     <div className='flex flex-row w-full h-full border-r border-gray-200'>
       <SchemasSelector
@@ -78,12 +107,12 @@ export function SchemasContent(props: SchemasContentProps) {
           className={cx('flex-1 bg-gradient-to-b from-white/60 to-white/0')}
         >
           <div className='flex-1 flex flex-col overflow-hidden h-full'>
-            <SchemasContentHeader title='Input' />
+            <SchemasContentHeader title={isProxy ? 'Input Variables' : 'Input'} />
             <ObjectViewer
               textColor='text-gray-500'
               value={undefined}
-              schema={taskSchema.input_schema.json_schema}
-              defs={taskSchema.input_schema.json_schema?.$defs}
+              schema={inputSchema}
+              defs={inputSchema?.$defs}
               showDescriptionExamples={undefined}
               showTypes={true}
               showDescriptionPopover={false}
@@ -91,7 +120,7 @@ export function SchemasContent(props: SchemasContentProps) {
           </div>
 
           <div className='h-full flex flex-col overflow-hidden border-l border-gray-200/70'>
-            <SchemasContentHeader title='Output' />
+            <SchemasContentHeader title={isProxy ? 'Output Format' : 'Output'} />
             <TaskOutputViewer
               textColor='text-gray-500'
               value={undefined}

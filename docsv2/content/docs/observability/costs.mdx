@@ -1,0 +1,27 @@
+---
+title: Cost Monitoring
+summary: Documentation on cost monitoring features. Covers how to view cost data in the platform and access it programmatically.
+---
+
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+
+While most standard LLM APIs return usage metrics (like input and output token counts), they typically don't provide the actual monetary cost of the request. Developers are often left to calculate this themselves, requiring them to maintain and apply up-to-date pricing information for each model.
+
+WorkflowAI simplifies cost tracking by automatically calculating the estimated cost for each LLM request based on the specific model used and WorkflowAI's current pricing data.
+
+## How to track costs
+
+### Using the Playground
+
+...
+
+### Using the Monitor section
+
+On WorkflowAI, you can track costs in the Cost page from the Monitor section:
+
+![Under MONITOR: Cost](/images/observability/monitoring.png)
+
+### Programmatically
+
+You can also track costs programmatically in the response from the API when running an agent.
+View the [Cost Metadata](/inference/cost) page for more details.

@@ -1,9 +1,12 @@
-from openai.types.chat import ChatCompletion
+from openai.types.chat import ChatCompletion, ChatCompletionChunk
 
 from tests.component.common import IntegrationTestClient
 
 
-async def fetch_run_from_completion(test_client: IntegrationTestClient, completion: ChatCompletion):
+async def fetch_run_from_completion(
+    test_client: IntegrationTestClient,
+    completion: ChatCompletion | ChatCompletionChunk,
+):
     task_id, run_id = completion.id.split("/")
     return await test_client.fetch_run({"id": task_id}, run_id=run_id, v1=True)
 

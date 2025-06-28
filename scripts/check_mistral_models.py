@@ -6,8 +6,8 @@ import httpx
 from dotenv import load_dotenv
 
 from core.domain.models.model_data import ModelData
-from core.domain.models.model_datas_mapping import MODEL_DATAS
-from core.domain.models.model_provider_datas_mapping import MISTRAL_PROVIDER_DATA
+from core.domain.models.model_data_mapping import MODEL_DATAS
+from core.domain.models.model_provider_data_mapping import MISTRAL_PROVIDER_DATA
 from core.domain.models.models import Model
 from core.providers.mistral.mistral_provider import MODEL_MAP
 

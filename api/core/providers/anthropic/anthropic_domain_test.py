@@ -1,14 +1,24 @@
+import pytest
+
 from core.domain.fields.file import File
 from core.domain.message import MessageDeprecated
 from core.domain.tool_call import ToolCall, ToolCallRequestWithID
 from core.providers.anthropic.anthropic_domain import (
     AnthropicMessage,
     DocumentContent,
+    ErrorDetails,
     FileSource,
     ImageContent,
     TextContent,
     ToolResultContent,
     ToolUseContent,
+)
+from core.providers.base.provider_error import (
+    MaxTokensExceededError,
+    ProviderBadRequestError,
+    ProviderError,
+    ProviderInternalError,
+    UnknownProviderError,
 )
 
 
@@ -197,3 +207,38 @@ def test_anthropic_message_from_domain_with_tool_call_error() -> None:
             ),
         ],
     )
+
+
+class TestErrorDetails:
+    @pytest.mark.parametrize(
+        "message, expected_error_cls, expected_capture",
+        [
+            pytest.param("Invalid base64 data", ProviderBadRequestError, True, id="invalid_base64_data"),
+            pytest.param("Image exceeds", ProviderBadRequestError, False, id="image_exceeds"),
+            pytest.param(
+                "Image does not match the provided media type",
+                ProviderBadRequestError,
+                False,
+                id="image_does_not_match_media_type",
+            ),
+            pytest.param("Prompt is too long", MaxTokensExceededError, False, id="prompt_is_too_long"),
+            pytest.param(
+                "Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.",
+                ProviderInternalError,
+                True,
+                id="credit_balance_too_low",
+            ),
+            # Make sure we always default to an unknown provider error
+            pytest.param("whatever blabla", UnknownProviderError, True, id="unknown_error"),
+        ],
+    )
+    def test_invalid_request_error_to_domain(
+        self,
+        message: str,
+        expected_error_cls: type[ProviderError],
+        expected_capture: bool,
+    ) -> None:
+        error_details = ErrorDetails(message=message, type="invalid_request_error")
+        error = error_details.to_domain(None)
+        assert isinstance(error, expected_error_cls)
+        assert error.capture == expected_capture

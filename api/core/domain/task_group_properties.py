@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from core.domain.fields.image_options import ImageOptions
 from core.domain.message import Message
+from core.domain.reasoning_effort import ReasoningEffort
 from core.domain.tool import Tool
 from core.tools import ToolKind
 from core.utils.hash import compute_model_hash, compute_obj_hash
@@ -123,6 +124,10 @@ class TaskGroupProperties(BaseModel):
     )
 
     messages: list[Message] | None = None
+
+    reasoning_effort: ReasoningEffort | None = None
+
+    reasoning_budget: int | None = None
 
     def model_hash(self) -> str:
         # Excluding fields are compiled from other fields
