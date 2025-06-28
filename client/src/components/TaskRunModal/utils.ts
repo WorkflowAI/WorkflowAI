@@ -25,7 +25,7 @@ export function extractTextFromContent(content: unknown) {
       },
       2
     );
-    text = '```json' + text + '```';
+    text = '```json\n' + text + '\n```';
     orginalText = JSON.stringify(content, null, 2);
   } else {
     text = String(content);
