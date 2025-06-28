@@ -110,13 +110,48 @@ export function ComparePriceComponent(props: ComparePriceComponentProps) {
   const langfuse = useMemo(() => {
     const basePrice = 199;
     const includedTraces = 100000;
-    const pricePerBlock = 8;
     const blockSize = 100000;
 
-    const additionalTracesPreYear = Math.max(0, numberOfTraces * 12 - includedTraces * 12);
-    const additionalBlocksPerYear = Math.ceil(additionalTracesPreYear / blockSize);
+    const additionalTracesPerYear = Math.max(0, numberOfTraces * 12 - includedTraces * 12);
 
-    return basePrice * 12 + additionalBlocksPerYear * pricePerBlock;
+    // Calculate tiered pricing based on monthly usage ranges
+    let totalCost = 0;
+    let remainingTraces = additionalTracesPerYear;
+
+    // Tier 1: 0-1M per month (0-12M per year) - $8 per 100k
+    const tier1Limit = 12000000 - includedTraces * 12; // 12M per year minus included
+    if (remainingTraces > 0) {
+      const tier1Usage = Math.min(remainingTraces, tier1Limit);
+      const tier1Blocks = Math.ceil(tier1Usage / blockSize);
+      totalCost += tier1Blocks * 8;
+      remainingTraces -= tier1Usage;
+    }
+
+    // Tier 2: 1-10M per month (12M-120M per year) - $7 per 100k
+    const tier2Limit = 108000000; // 9M * 12 months (10M - 1M = 9M)
+    if (remainingTraces > 0) {
+      const tier2Usage = Math.min(remainingTraces, tier2Limit);
+      const tier2Blocks = Math.ceil(tier2Usage / blockSize);
+      totalCost += tier2Blocks * 7;
+      remainingTraces -= tier2Usage;
+    }
+
+    // Tier 3: 10-50M per month (120M-600M per year) - $6.5 per 100k
+    const tier3Limit = 480000000; // 40M * 12 months (50M - 10M = 40M)
+    if (remainingTraces > 0) {
+      const tier3Usage = Math.min(remainingTraces, tier3Limit);
+      const tier3Blocks = Math.ceil(tier3Usage / blockSize);
+      totalCost += tier3Blocks * 6.5;
+      remainingTraces -= tier3Usage;
+    }
+
+    // Tier 4: 50M+ per month (600M+ per year) - $6 per 100k
+    if (remainingTraces > 0) {
+      const tier4Blocks = Math.ceil(remainingTraces / blockSize);
+      totalCost += tier4Blocks * 6;
+    }
+
+    return basePrice * 12 + totalCost;
   }, [numberOfTraces]);
 
   return (
