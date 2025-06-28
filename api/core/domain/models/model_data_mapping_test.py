@@ -430,9 +430,31 @@ class TestReasoningModel:
         model_data: FinalModelData,
         reasoning: ModelReasoningBudget,
     ):
-        assert reasoning.disabled == 0, f"Model {model_data.model} has no none reasoning"
+        can_disable_reasoning = model_data.model != Model.GEMINI_2_5_PRO
+        if can_disable_reasoning:
+            assert reasoning.disabled == 0, f"Model {model_data.model} has no none reasoning"
+        else:
+            assert reasoning.disabled is None, f"Model {model_data.model} has none reasoning"
+
+        assert reasoning.low
+        assert reasoning.medium
+        assert reasoning.high
 
     @pytest.mark.parametrize(("model_data", "reasoning"), _reasoning_model_data(Provider.X_AI))
-    def test_no_xao_model_supports_medium_reasoning(self, model_data: FinalModelData, reasoning: ModelReasoningBudget):
+    def test_no_xai_model_supports_medium_reasoning(self, model_data: FinalModelData, reasoning: ModelReasoningBudget):
         assert reasoning.disabled is None, f"Model {model_data.model} has none reasoning"
         assert reasoning.medium is None, f"Model {model_data.model} has no medium reasoning"
+
+        assert reasoning.min == reasoning.low, (
+            f"Model {model_data.model} should have the same min and low reasoning budget"
+        )
+
+    @pytest.mark.parametrize(("model_data", "reasoning"), _reasoning_model_data(Provider.OPEN_AI))
+    def test_openai_models(self, model_data: FinalModelData, reasoning: ModelReasoningBudget):
+        assert reasoning.disabled is None, f"Model {model_data.model} has none reasoning"
+        assert reasoning.min == reasoning.low, (
+            f"Model {model_data.model} should have the same min and low reasoning budget"
+        )
+        assert reasoning.low
+        assert reasoning.medium
+        assert reasoning.high
