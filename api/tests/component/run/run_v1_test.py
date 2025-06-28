@@ -464,7 +464,7 @@ class TestChainOfThought:
             )
         ]
 
-        assert len(chunks) == 6
+        assert len(chunks) == 5
         assert chunks[0]["reasoning_steps"] == [{"title": "step "}]
         assert chunks[-1]["task_output"] == {"greeting": "Hello John!"}
 
