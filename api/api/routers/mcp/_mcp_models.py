@@ -432,7 +432,6 @@ class _MajorVersionProperties(BaseModel):
     temperature: float
     instructions: str | None
     messages: list[Message] | None
-    task_variant_id: str | None
 
     @classmethod
     def from_domain(cls, properties: VersionMajor.Properties | TaskGroupProperties):
@@ -440,7 +439,6 @@ class _MajorVersionProperties(BaseModel):
             temperature=properties.temperature or 0.0,
             instructions=properties.instructions,
             messages=properties.messages,
-            task_variant_id=properties.task_variant_id,
         )
 
 
