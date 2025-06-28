@@ -350,7 +350,7 @@ async def test_openai_stream(
 
     await wait_for_completed_tasks(patched_broker)
 
-    assert len(chunks) == 3
+    assert len(chunks) == 2
     assert chunks[0].get("id")
 
     for chunk in chunks[1:]:
@@ -1032,7 +1032,7 @@ async def test_openai_stream_with_audio(
 
     await wait_for_completed_tasks(patched_broker)
 
-    assert len(chunks) == 3
+    assert len(chunks) == 2
     assert chunks[0].get("id")
 
     for chunk in chunks[1:]:

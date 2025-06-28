@@ -470,7 +470,7 @@ class TestConnectErrors:
             ProviderOptions(model=Model.GPT_4O_2024_05_13),
             lambda x, _: StructuredOutput(json.loads(x)),
         )
-        assert output == StructuredOutput(output={"hello": "world"})
+        assert output == StructuredOutput(output={"hello": "world"}, final=True)
 
         requests = httpx_mock.get_requests()
         assert len(requests) == 2

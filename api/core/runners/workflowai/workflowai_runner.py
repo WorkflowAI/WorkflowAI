@@ -1120,10 +1120,10 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
                     # This will be corrected by structured generation with anyOf [TaskOutput, list[ToolCall]], but all models will not support struct gen
                     continue
 
-                # TODO[tools]: add tool calls and tool call requests
                 if output.final and not output.tool_calls:
-                    yield await self._final_run_output(output)
-                    return
+                    # We will stream the final output after the end of the stream.
+                    # This way the provider has time to perform any operation on the context if needed
+                    continue
                 yield RunOutput(task_output=output.output, reasoning_steps=output.reasoning_steps, delta=output.delta)
 
             if not output:
@@ -1131,8 +1131,6 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
                 return
 
             if not output.tool_calls:
-                # That should not happen, it would mean that we did not yield the final output above
-                logger.warning("No tool calls to run, stopping the stream", extra={"task_id": self.task.id})
                 yield await self._final_run_output(output)
                 return
 

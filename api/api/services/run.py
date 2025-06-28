@@ -93,10 +93,7 @@ class RunService:
                     yield _format_model(serialized)
 
             if not streamed_final_chunk:
-                self._logger.warning(
-                    "No final chunk streamed. Likely had no final chunks",
-                    extra={"task_id": builder.task.id},
-                )
+                self._logger.warning("No final chunk streamed. Likely had no final chunks")
                 if run := builder.task_run:
                     if final_chunk := serializer(run):
                         yield _format_model(final_chunk)
