@@ -31,6 +31,7 @@ def create_test_model(
         cost_per_input_token_usd=cost_per_input_token_usd,
         cost_per_output_token_usd=cost_per_output_token_usd,
         release_date=release_date,
+        reasoning=None,
     )
 
 
