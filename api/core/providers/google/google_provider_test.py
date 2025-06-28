@@ -1094,14 +1094,14 @@ class TestComplete:
                 output_factory=lambda x, _: StructuredOutput(json.loads(x)),
             )
 
-            # Successful response from us-east1
-            assert result == StructuredOutput(output={"hello": "world"})
+        # Successful response from us-east1
+        assert result == StructuredOutput(output={"hello": "world"}, final=True)
 
-            requests = httpx_mock.get_requests()
-            assert len(requests) == 2
-            assert "us-central1" in requests[0].url.path
-            assert "us-east1" in requests[1].url.path
-            assert builder_context.get_metadata(_VERTEX_API_EXCLUDED_REGIONS_METADATA_KEY) == "us-central1"
+        requests = httpx_mock.get_requests()
+        assert len(requests) == 2
+        assert "us-central1" in requests[0].url.path
+        assert "us-east1" in requests[1].url.path
+        assert builder_context.get_metadata(_VERTEX_API_EXCLUDED_REGIONS_METADATA_KEY) == "us-central1"
 
     async def test_retry_with_different_region_no_regions_left(
         self,

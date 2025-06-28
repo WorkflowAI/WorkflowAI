@@ -72,7 +72,7 @@ async def test_raw_string_output(test_client: IntegrationTestClient, openai_clie
         aggs.append(chunk["task_output"])
     # TODO: for now we stream the finak output one more time than needed
     # We should fix at some point
-    assert aggs == ["Hello", "Hello world", "Hello world", "Hello world"]
+    assert aggs == ["Hello", "Hello world", "Hello world"]
 
 
 async def test_raw_json_mode(test_client: IntegrationTestClient, openai_client: AsyncOpenAI):
@@ -340,11 +340,11 @@ async def test_stream_raw_string_with_valid_json_chunks(test_client: Integration
     )
 
     chunks = [c async for c in streamer]
-    assert len(chunks) == 4
+    assert len(chunks) == 3
 
     # TODO: fix the extra chunk
     deltas = [c.choices[0].delta.content for c in chunks]
-    assert deltas == ["Hello", "Hello world", "Hello world", "Hello world"]
+    assert deltas == ["Hello", "Hello world", "Hello world"]
 
     await test_client.wait_for_completed_tasks()
 
@@ -364,12 +364,11 @@ async def test_stream_json_with_valid_json_chunks(test_client: IntegrationTestCl
     )
 
     chunks = [c async for c in streamer]
-    assert len(chunks) == 3
+    assert len(chunks) == 2
 
     deltas = [json.loads(c.choices[0].delta.content or "") for c in chunks]
     # TODO: fix the extra chunks
     assert deltas == [
-        {"hello": "world2"},
         {"hello": "world2"},
         {"hello": "world2"},
     ]
@@ -702,6 +701,51 @@ async def test_internal_tools(test_client: IntegrationTestClient, openai_client:
     serper_request = test_client.httpx_mock.get_request(url="https://google.serper.dev/search")
     assert serper_request
     assert json.loads(serper_request.content) == {"q": "bla"}
+
+    # Check the tool calls are properly stored
+    run = await fetch_run_from_completion(test_client, res)
+    assert len(run["tool_calls"]) == 1
+
+
+async def test_internal_tools_streaming(test_client: IntegrationTestClient, openai_client: AsyncOpenAI):
+    # First call will stream the tool call
+    base_tool_call_payload = [
+        {
+            "index": 0,
+            "id": "some_id",
+            "type": "function",
+            "function": {"name": "@search-google", "arguments": '{"query": "bla"}'},
+        },
+    ]
+    test_client.mock_openai_stream(deltas=None, tool_calls_deltas=[base_tool_call_payload])
+    # Second call will return the response
+    test_client.mock_openai_stream(deltas=["Hello, world!"])
+
+    test_client.httpx_mock.add_response(
+        url="https://google.serper.dev/search",
+        text="blabla",
+    )
+
+    res = await openai_client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": "Use @search-google to find information"},
+            {"role": "user", "content": "Hello, world!"},
+        ],
+        stream=True,
+    )
+    chunks = [c async for c in res]
+    assert len(chunks) == 2
+
+    await test_client.wait_for_completed_tasks()
+
+    serper_request = test_client.httpx_mock.get_request(url="https://google.serper.dev/search")
+    assert serper_request
+    assert json.loads(serper_request.content) == {"q": "bla"}
+
+    # Check the tool calls are properly stored
+    run = await fetch_run_from_completion(test_client, chunks[-1])
+    assert len(run["tool_calls"]) == 1
 
 
 @pytest.mark.parametrize("use_deployment", [True, False])

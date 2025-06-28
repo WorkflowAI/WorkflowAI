@@ -335,7 +335,7 @@ class TestDeprecatedRun:
         patched_stream_builder.return_value = mock_aiter(
             RunOutput({"say_hello": "hell"}),
             RunOutput({"say_hello": "hello wo"}),
-            RunOutput({"say_hello": "hello world"}),
+            RunOutput({"say_hello": "hello world"}, final=True),
         )
 
         mock_storage.tasks.get_task_info.return_value = TaskInfo(
@@ -364,7 +364,7 @@ class TestDeprecatedRun:
                 [ToolCall(tool_name="test_tool", tool_input_dict={"arg": "value"})],
             ),
             RunOutput({"say_hello": "hello wo"}),
-            RunOutput({"say_hello": "hello world"}),
+            RunOutput({"say_hello": "hello world"}, final=True),
         )
 
         mock_storage.tasks.get_task_info.return_value = TaskInfo(

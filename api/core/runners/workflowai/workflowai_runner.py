@@ -848,6 +848,7 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
             tool_calls=internal_tools or None,
             tool_call_requests=external_tools or None,
             reasoning_steps=output.reasoning_steps,
+            final=True,
         )
 
     async def _build_task_output_from_messages(
@@ -1119,7 +1120,10 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
                     # This will be corrected by structured generation with anyOf [TaskOutput, list[ToolCall]], but all models will not support struct gen
                     continue
 
-                # TODO[tools]: add tool calls and tool call requests
+                if output.final and not output.tool_calls:
+                    # We will stream the final output after the end of the stream.
+                    # This way the provider has time to perform any operation on the context if needed
+                    continue
                 yield RunOutput(task_output=output.output, reasoning_steps=output.reasoning_steps, delta=output.delta)
 
             if not output:
@@ -1127,7 +1131,7 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
                 return
 
             if not output.tool_calls:
-                # If no tool calls to run, we can stop the stream
+                yield await self._final_run_output(output)
                 return
 
             # Stream empty output to indicate that we are still running tool calls
