@@ -46,7 +46,7 @@ class DummyResponseModel(BaseModel):
 
 
 def _output_factory(x: str, _: bool) -> Any:
-    return json.loads(x)
+    return StructuredOutput(json.loads(x))
 
 
 class MockedProvider(HTTPXProvider[Any, Any]):
@@ -318,7 +318,7 @@ class TestParseResponse:
         raw_completion = RawCompletion(response="", usage=LLMUsage())
 
         output = mocked_provider._parse_response(response, _output_factory, raw_completion=raw_completion, request={})  # pyright: ignore[reportPrivateUsage]
-        assert output == {"hello": "world"}
+        assert output == StructuredOutput(output={"hello": "world"}, final=True)
         assert raw_completion.response == '{"hello": "world"}'
 
         mocked_provider.mock._extract_usage.assert_called_once_with(DummyResponseModel(content='{"hello": "world"}'))
@@ -419,7 +419,7 @@ class TestReadErrors:
             ProviderOptions(model=Model.GPT_4O_2024_05_13),
             lambda x, _: StructuredOutput(json.loads(x)),
         )
-        assert output == StructuredOutput(output={"hello": "world"})
+        assert output == StructuredOutput(output={"hello": "world"}, final=True)
 
         requests = httpx_mock.get_requests()
         assert len(requests) == 2
