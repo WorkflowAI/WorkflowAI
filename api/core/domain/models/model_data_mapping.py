@@ -1424,19 +1424,21 @@ def _finalize_reasoning(model_data: ModelData):
         return None
 
     max_tokens = model_data.max_tokens_data.max_output_tokens or model_data.max_tokens_data.max_tokens
-    min_budget = reasoning.min if "min" in reasoning.model_fields_set else None
+
     max_budget = reasoning.max if "max" in reasoning.model_fields_set else max_tokens
 
     low_budget = reasoning.low if "low" in reasoning.model_fields_set else int(round(0.2 * max_budget))
     medium_budget = reasoning.medium if "medium" in reasoning.model_fields_set else int(round(0.5 * max_budget))
     high_budget = reasoning.high if "high" in reasoning.model_fields_set else int(round(0.8 * max_budget))
 
+    min_budget = reasoning.min if "min" in reasoning.model_fields_set else low_budget
+
     return ModelReasoningBudget(
         disabled=reasoning.disabled,
         low=low_budget,
         medium=medium_budget,
         high=high_budget,
-        min=min_budget,
+        min=min_budget or 1,
         max=max_budget,
     )
 

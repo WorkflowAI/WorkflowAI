@@ -10,7 +10,7 @@ from api.services.models import ModelForTask
 from core.domain.agent_run import AgentRun
 from core.domain.error_response import ErrorResponse
 from core.domain.message import Message
-from core.domain.models.model_data import FinalModelData, ModelData
+from core.domain.models.model_data import FinalModelData, ModelData, ModelReasoningBudget
 from core.domain.models.model_data_supports import ModelDataSupports
 from core.domain.models.models import Model
 from core.domain.models.utils import get_model_data
@@ -64,6 +64,25 @@ class ConciseModelResponse(BaseModel):
     cost_per_output_token_usd: float
     release_date: str
 
+    class Reasoning(BaseModel):
+        min_budget: int = Field(
+            description="The minimum number of tokens that can be used for reasoning for the model.",
+        )
+        max_budget: int = Field(
+            description="The maximum number of tokens that can be used for reasoning for the model.",
+        )
+
+        @classmethod
+        def from_domain(cls, model: ModelReasoningBudget):
+            return cls(
+                min_budget=model.min,
+                max_budget=model.max,
+            )
+
+    reasoning: Reasoning | None = Field(
+        description="Reasoning information for the model, only provided if the model supports reasoning.",
+    )
+
     @classmethod
     def from_model_data(cls, id: str, model: FinalModelData):
         provider_data = model.providers[0][1]
@@ -75,6 +94,7 @@ class ConciseModelResponse(BaseModel):
             cost_per_input_token_usd=provider_data.text_price.prompt_cost_per_token,
             cost_per_output_token_usd=provider_data.text_price.completion_cost_per_token,
             release_date=model.release_date.isoformat(),
+            reasoning=cls.Reasoning.from_domain(model.reasoning) if model.reasoning else None,
         )
 
     @classmethod
@@ -88,6 +108,7 @@ class ConciseModelResponse(BaseModel):
             cost_per_input_token_usd=model.price_per_input_token_usd,
             cost_per_output_token_usd=model.price_per_output_token_usd,
             release_date=model.release_date.isoformat(),
+            reasoning=cls.Reasoning.from_domain(model.model_data.reasoning) if model.model_data.reasoning else None,
         )
 
 
