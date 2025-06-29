@@ -31,9 +31,40 @@ def create_search_documentation_json_schema(available_section_file_paths: list[s
                 "description": "When relevant, output a feedback to explain which documentation sections are missing to fully answer the user's query. Only applies to WorkflowAI related queries.",
                 "default": None,
             },
+            "unsupported_feature_detected": {
+                "type": "object",
+                "properties": {
+                    "is_unsupported": {
+                        "type": "boolean",
+                        "description": "True if the query is asking about a feature or capability that WorkflowAI does not currently support.",
+                    },
+                    "feedback": {
+                        "type": "string",
+                        "description": "Explanation of what unsupported feature the user was asking about and why it's not available in WorkflowAI.",
+                    },
+                },
+                "description": "Detection of queries about features that WorkflowAI doesn't support (distinct from missing documentation).",
+                "default": None,
+            },
         },
         "additionalProperties": False,
     }
+
+
+class UnsupportedFeatureDetection(BaseModel):
+    """Model for detecting unsupported feature queries."""
+
+    is_unsupported: bool = Field(
+        description="True if the query is asking about a feature or capability that WorkflowAI does not currently support.",
+    )
+    feedback: str = Field(
+        description="Explanation of what unsupported feature the user was asking about and why it's not available in WorkflowAI.",
+        examples=[
+            "The user is asking about real-time collaboration features, which WorkflowAI doesn't currently support.",
+            "This query is about video processing capabilities that are not available in WorkflowAI.",
+            "The user wants mobile app development features that WorkflowAI doesn't offer.",
+        ],
+    )
 
 
 class SearchDocumentationOutput(BaseModel):
@@ -50,6 +81,10 @@ class SearchDocumentationOutput(BaseModel):
             "I could not find any documentation section regarding ...",
             "There is no section about ...",
         ],
+    )
+    unsupported_feature_detected: UnsupportedFeatureDetection | None = Field(
+        default=None,
+        description="Detection of queries about features that WorkflowAI doesn't support (distinct from missing documentation).",
     )
 
 
@@ -89,7 +124,9 @@ Given a search query and all available documentation sections, you must:
 1. Analyze the query to understand the user's intent and needs. If the query is not related to the WorkflowAI platform, you should return an empty list of relevant documentation sections
 2. Select the most relevant documentation sections that will help answer the 'Search Query' below. Aim for 1 to 5 of the most relevant sections for the search query.
 3. Prioritize sections that directly address the 'Search Query' below over tangentially related content
-4. Return the picked documentation section file_path(s) in a 'relevant_documentation_file_paths' list and optionally a 'missing_doc_sections_feedback' if you think some documentation sections are missing to fully answer the user's query.
+4. Detect Unsupported Features: Determine if the user is asking about capabilities or features that WorkflowAI fundamentally does not support (distinct from missing documentation)
+5. Return the picked documentation section file_path(s) in a 'relevant_documentation_file_paths' list and optionally a 'missing_doc_sections_feedback' if you think some documentation sections are missing to fully answer the user's query.
+
 'relevant_documentation_file_paths' items MUST ONLY be valid 'file_path' that exist in the 'Available Documentation Sections' sections.
 
 ## Available Documentation Sections:
