@@ -1,0 +1,1 @@
+"""Google search tool configuration."""
