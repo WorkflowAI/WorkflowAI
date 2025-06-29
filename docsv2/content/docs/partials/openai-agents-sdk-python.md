@@ -17,7 +17,7 @@ from pydantic import BaseModel
 
 workflowai_client = AsyncOpenAI(
     base_url="https://api.workflowai.dev/v1/", # keep the trailing slash – the SDK expects it.
-    api_key="wai-ZS387B8BrauAwTa716AaxABJcMd8vSRgTGVHT_gbSMI", # use create_api_key MCP tool
+    api_key="wai-***" # use create_api_key MCP tool
 )
 
 # Make every model call go through WorkflowAI
