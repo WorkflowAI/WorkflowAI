@@ -1,0 +1,18 @@
+---
+title: OpenAI TypeScript Code
+summary: How to use the OpenAI TypeScript SDK with WorkflowAI. WorkflowAI exposes a compatible OpenAI API endpoint. The only changes you need to make are updating the `baseURL` and `apiKey`.
+---
+
+```typescript
+import OpenAI from 'openai';
+
+// setup WorkflowAI client
+const client: OpenAI = new OpenAI({
+  baseURL: 'https://run.workflowai.com/v1', // [!code highlight]
+  apiKey: 'wai-***', // use create_api_key MCP tool // [!code highlight]
+});
+
+const response = await client.chat.completions.create({
+  // your existing code
+});
+``` 
