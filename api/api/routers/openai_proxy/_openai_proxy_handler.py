@@ -20,7 +20,7 @@ from core.domain.models.model_data_mapping import MODEL_COUNT
 from core.domain.task_group_properties import TaskGroupProperties
 from core.domain.task_io import RawJSONMessageSchema, RawMessagesSchema, RawStringMessageSchema, SerializableTaskIO
 from core.domain.task_variant import SerializableTaskVariant
-from core.domain.tenant_data import PublicOrganizationData
+from core.domain.tenant_data import PublicOrganizationData, TenantData
 from core.domain.types import AgentOutput, CacheUsage
 from core.domain.version_reference import VersionReference
 from core.providers.base.provider_error import MissingModelError
@@ -438,7 +438,7 @@ class OpenAIProxyHandler:
         body: OpenAIProxyChatCompletionRequest,
         metadata: dict[str, Any] | None,
         start_time: float,
-        tenant_data: PublicOrganizationData,
+        tenant_data: TenantData,
     ):
         self._check_final_input(
             prepared_run,
@@ -456,7 +456,7 @@ class OpenAIProxyHandler:
             task_id=prepared_run.variant.task_id,
             task_schema_id=prepared_run.variant.task_schema_id,
             reference=VersionReference(properties=prepared_run.properties),
-            provider_settings=None,
+            provider_settings=tenant_data.providers,
             variant=prepared_run.variant,
             stream_deltas=body.stream is True and not aggregate_content,
             use_fallback=parsed_fallback,
@@ -535,7 +535,7 @@ class OpenAIProxyHandler:
         self,
         body: OpenAIProxyChatCompletionRequest,
         request: Request,
-        tenant_data: PublicOrganizationData,
+        tenant_data: TenantData,
     ):
         body.check_supported_fields()
 

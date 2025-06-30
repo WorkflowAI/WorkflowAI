@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 from core.domain.models.models import Model
 from core.domain.models.providers import Provider
 from core.storage.mongo.mongo_types import AsyncCollection
-from tests.component.common import IntegrationTestClient
+from tests.component.common import IntegrationTestClient, openai_endpoint
 from tests.component.openai_proxy.common import fetch_run_from_completion, save_version_from_completion
 from tests.pausable_memory_broker import PausableInMemoryBroker
 from tests.utils import approx
@@ -1100,3 +1100,47 @@ async def test_pydantic_structured_output(test_client: IntegrationTestClient, op
         relevant_doc_sections=["Section 1", "Section 2"],
         missing_docs_feedback=None,
     )
+
+
+async def test_custom_config(test_client: IntegrationTestClient, openai_client: AsyncOpenAI):
+    # Sanity check, first call should go to OpenAI
+    test_client.mock_openai_call(raw_content="Hello, world!")
+    res = await openai_client.chat.completions.create(
+        model="gpt-4.1",
+        messages=[{"role": "user", "content": "Hello, world!"}],
+    )
+    assert res.choices[0].message.content == "Hello, world!"
+
+    req = test_client.httpx_mock.get_request(url="https://api.openai.com/v1/chat/completions")
+    assert req
+
+    # Now set a custom Azure config
+    test_client.mock_openai_call(provider="azure_openai", model=Model.GPT_41_2025_04_14)
+    await test_client.post(
+        "/organization/settings/providers",
+        json={
+            "provider": "azure_openai",
+            "preserve_credits": False,
+            "deployments": {
+                # A bit annoying here, but the URL must match whatever we use for azure in mocking
+                "eastus": {
+                    "api_key": "az-hello",
+                    "url": "https://workflowai-azure-oai-staging-eastus.openai.azure.com/openai/deployments/",
+                    "models": [Model.GPT_41_2025_04_14],
+                },
+            },
+        },
+    )
+    # We should have had a request to the Azure endpoint to validate the config
+    req = test_client.httpx_mock.get_request(
+        url=openai_endpoint("azure_openai", Model.GPT_41_2025_04_14),
+    )
+    assert req, "missing request to validate the config"
+
+    # Now we call the endpoint again, this time it should go to Azure
+    test_client.mock_openai_call(provider="azure_openai", model=Model.GPT_41_2025_04_14, raw_content="Hello, world 2!")
+    res = await openai_client.chat.completions.create(
+        model="gpt-4.1",
+        messages=[{"role": "user", "content": "Hello, world!"}],
+    )
+    assert res.choices[0].message.content == "Hello, world 2!"
