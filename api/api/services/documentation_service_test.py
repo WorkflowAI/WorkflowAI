@@ -473,10 +473,12 @@ async def test_search_documentation_by_query_success(
     class MockSearchResult(NamedTuple):
         relevant_documentation_file_paths: list[str]
         missing_doc_sections_feedback: str | None
+        unsupported_feature_detected: None
 
     mock_search_agent.return_value = MockSearchResult(
         relevant_documentation_file_paths=["reference/api", "guides/authentication"],
         missing_doc_sections_feedback=None,
+        unsupported_feature_detected=None,
     )
 
     query = "How to authenticate with the API?"
@@ -520,10 +522,12 @@ async def test_search_documentation_by_query_empty_results(
     class MockSearchResult(NamedTuple):
         relevant_documentation_file_paths: list[str]
         missing_doc_sections_feedback: str | None
+        unsupported_feature_detected: None
 
     mock_search_agent.return_value = MockSearchResult(
         relevant_documentation_file_paths=[],
         missing_doc_sections_feedback=None,
+        unsupported_feature_detected=None,
     )
 
     query = "How to build a rocket ship?"
@@ -585,7 +589,7 @@ async def test_search_documentation_by_query_agent_error(
     caplog.set_level(logging.ERROR, logger="api.services.documentation_service")
     query = "How to authenticate?"
     usage_context = "Test context for MCP client"
-    result = await documentation_service.search_documentation_by_query(query, usage_context)
+    result, _ = await documentation_service.search_documentation_by_query(query, usage_context)
 
     # Should return empty list when search agent fails
     assert result == []
@@ -614,10 +618,12 @@ async def test_search_documentation_by_query_mode_selection(
     class MockSearchResult(NamedTuple):
         relevant_documentation_file_paths: list[str]
         missing_doc_sections_feedback: str | None
+        unsupported_feature_detected: None
 
     mock_search_agent.return_value = MockSearchResult(
         relevant_documentation_file_paths=["test-section"],
         missing_doc_sections_feedback=None,
+        unsupported_feature_detected=None,
     )
 
     # Test with remote mode
@@ -650,10 +656,12 @@ async def test_search_documentation_by_query_partial_matches(
     class MockSearchResult(NamedTuple):
         relevant_documentation_file_paths: list[str]
         missing_doc_sections_feedback: str | None
+        unsupported_feature_detected: None
 
     mock_search_agent.return_value = MockSearchResult(
         relevant_documentation_file_paths=["existing-section", "non-existent-section", "another-section"],
         missing_doc_sections_feedback=None,
+        unsupported_feature_detected=None,
     )
 
     query = "test query"
