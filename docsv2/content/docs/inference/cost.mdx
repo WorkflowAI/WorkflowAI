@@ -34,10 +34,8 @@ TODO:
       metadata={"agent_id": "sentiment-analysis-agent"}
   )
 
-  cost = getattr(completion.choices[0], 'cost_usd')
-  latency = getattr(completion.choices[0], 'duration_seconds')
-  print(f"Latency (s): {latency:.2f}")
-  print(f"Cost   ($): ${cost:.6f}")
+  cost = getattr(completion.choices[0], 'cost_usd', None)
+  latency = getattr(completion.choices[0], 'duration_seconds', None)
   ```
   </Tab>
   <Tab>

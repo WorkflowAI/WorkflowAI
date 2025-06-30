@@ -122,8 +122,8 @@ def run_processing_agent(model: str, text: str) -> tuple[str, str, float, float]
     return (
         response.id, # identify the run in the logs
         response.choices[0].message.parsed.translation,
-        response.choices[0].cost_usd, # calculated by WorkflowAI
-        response.choices[0].duration_seconds # calculated by WorkflowAI
+        getattr(response.choices[0], 'cost_usd', None), # calculated by WorkflowAI
+        getattr(response.choices[0], 'duration_seconds', None) # calculated by WorkflowAI
     )
 ```
 
@@ -165,8 +165,8 @@ def run_chat_agent(model: str, conversation_history: list, user_message: str) ->
     return (
         response.id,
         response.choices[0].message.content,
-        response.choices[0].cost_usd,
-        response.choices[0].duration_seconds
+        getattr(response.choices[0], 'cost_usd', None),
+        getattr(response.choices[0], 'duration_seconds', None)
     )
 ```
 

@@ -187,8 +187,8 @@ Backend                              Frontend                             Workfl
   # The following will likely raise typing errors since
   # the OpenAI response Pydantic models do not include the fields
   print(f"Feedback token: {res.choices[0].feedback_token}")
-  print(f"Duration: {res.choices[0].duration_seconds} seconds")
-  print(f"Cost of the generation: ${res.choices[0].cost_usd}")
+  duration = getattr(res.choices[0], 'duration_seconds', None)
+  cost = getattr(res.choices[0], 'cost_usd', None)
   ```
   </Tab>
   <Tab>
@@ -202,8 +202,10 @@ Backend                              Frontend                             Workfl
   // "@ts-expect-error - is needed here if using TypeScript since the OpenAI types
   // do not include the fields
   console.log(`Feedback token: ${response.choices[0].feedback_token}`)
-  console.log(`Duration: ${response.choices[0].duration_seconds} seconds`)
-  console.log(`Cost of the generation: $${response.choices[0].cost_usd}`)
+  const duration = response.choices[0]?.duration_seconds;
+  const cost = response.choices[0]?.cost_usd;
+  console.log(`Duration: ${duration !== undefined ? duration + ' seconds' : 'N/A'}`)
+  console.log(`Cost of the generation: $${cost !== undefined ? cost : 'N/A'}`)
   ```
   </Tab>
 </Tabs>
