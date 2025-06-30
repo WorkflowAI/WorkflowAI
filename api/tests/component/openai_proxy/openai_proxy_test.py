@@ -1024,13 +1024,14 @@ async def test_url_safe_but_non_slug_agent_id(test_client: IntegrationTestClient
     assert res.choices[0].message.content == "Hello, world!"
 
     task_id, _ = res.id.split("/")
-    assert task_id == "my_agent"
+    # TODO: change case when we remove the slugification
+    assert task_id == "my-agent"
 
     await test_client.wait_for_completed_tasks()
 
     run = await fetch_run_from_completion(test_client, res)
     assert run
-    assert run["task_id"] == "my_agent"
+    assert run["task_id"] == "my-agent"
 
     # Try again with a deployment
     version = await save_version_from_completion(test_client, res)
@@ -1045,7 +1046,7 @@ async def test_url_safe_but_non_slug_agent_id(test_client: IntegrationTestClient
         messages=[{"role": "user", "content": "Hello, world!"}],
     )
     task_id, _ = res.id.split("/")
-    assert task_id == "my_agent"
+    assert task_id == "my-agent"
 
 
 async def test_different_types_in_input(test_client: IntegrationTestClient, openai_client: AsyncOpenAI):

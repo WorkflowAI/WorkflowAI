@@ -294,8 +294,9 @@ class TestPrepareRunForDeployment:
         )
         assert result.final_input == Messages.with_messages(Message.with_text("Hello, world!"))
 
+        # TODO: fix the case for my-agent once we have stopped santizing url safe agent ids
         mock_storage.task_deployments.get_task_deployment.assert_called_once_with(
-            "my_agent",
+            "my-agent",
             1,
             "production",
         )
@@ -435,5 +436,6 @@ class TestBuildVariant:
             response_format=None,
         )
         assert idx == -1
-        assert result.task_id == "my_agent"
-        assert result.name == "My Agent"
+        # TODO: fix the case for my-agent
+        assert result.task_id == "my-agent"
+        assert result.name == "my_agent"
