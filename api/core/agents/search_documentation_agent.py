@@ -45,9 +45,9 @@ def create_search_documentation_json_schema(available_section_file_paths: list[s
                 },
                 "description": "Detection of queries about features that WorkflowAI doesn't support (distinct from missing documentation).",
                 "default": None,
+                "required": ["is_unsupported", "feedback"],
             },
         },
-        "required": ["is_unsupported", "feedback"],
         "additionalProperties": False,
     }
 
