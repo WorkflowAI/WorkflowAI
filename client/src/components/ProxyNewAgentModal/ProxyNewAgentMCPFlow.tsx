@@ -54,11 +54,7 @@ export function ProxyNewAgentMCPFlow() {
 
   return (
     <div className='flex gap-5 flex-col w-full h-full p-10 overflow-y-auto'>
-      <ProxyNewAgentSectionHeader
-        title='Set up the WorkflowAI MCP Server'
-        description='Set up the WorkflowAI MCP server to access our AI Engineer and build better agents, track agent activity, boost reliability, and more!'
-        number={1}
-      />
+      <ProxyNewAgentSectionHeader title='Set up the WorkflowAI MCP Server' number={1} />
       <div className='flex flex-col bg-gray-50 rounded-[2px] w-full border border-gray-200 shadow-sm'>
         <div className='flex flex-col gap-2 bg-white p-4 shadow-sm'>
           <div className='text-gray-700 text-[13px] font-medium'>Select Your MCP Client</div>
