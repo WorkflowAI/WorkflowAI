@@ -24,4 +24,5 @@ class RunOutput(NamedTuple):
             tool_call_requests=run.tool_call_requests,
             reasoning_steps=run.reasoning_steps,
             delta=delta,
+            final=True,
         )

@@ -408,14 +408,6 @@ class RunService:
             file_storage=file_storage,
         ):
             async for chunk in runner.stream(builder, cache=cache):
-                if chunk.final:
-                    if builder.task_run:
-                        self._logger.warning(
-                            "Task run already built. Likely had multiple final chunks",
-                            extra={"task_id": builder.task.id},
-                        )
-                    # Forcing here, just in case we are in a case where we had final chunks
-                    builder.build(chunk, force=True)
                 yield chunk
         if not chunk:
             return
