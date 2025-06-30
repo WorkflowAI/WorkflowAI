@@ -16,7 +16,7 @@ async def test_review_benchmarks(test_client: IntegrationTestClient):
     task = await test_client.create_task()
 
     # First we create a run
-    test_client.mock_openai_call()
+    test_client.mock_openai_call(is_reusable=True)
     run1 = await test_client.run_task_v1(task)
 
     # Now we send a review
@@ -57,7 +57,11 @@ async def test_review_benchmarks(test_client: IntegrationTestClient):
 
     # Now we add another version, which will trigger runs
     # The output will match the first run, so we should get 2 positive reviews
-    test_client.mock_vertex_call(parts=[{"text": '{"greeting": "Hello James!"}'}], model=Model.GEMINI_1_5_PRO_002)
+    test_client.mock_vertex_call(
+        parts=[{"text": '{"greeting": "Hello James!"}'}],
+        model=Model.GEMINI_1_5_PRO_002,
+        is_reusable=True,
+    )
 
     v = await test_client.create_version(task, {"model": Model.GEMINI_1_5_PRO_002}, autowait=True)
     assert v["iteration"] == 2, "sanity"
@@ -76,8 +80,8 @@ async def test_review_benchmarks(test_client: IntegrationTestClient):
     assert second_result["positive_review_count"] == 1, "no new positive reviews for second version"
 
     # Now we add a third version, with a different output, an AI review should be triggered
-    test_client.mock_vertex_call(model=Model.GEMINI_1_5_FLASH_002)
-    test_client.mock_ai_review(outcome="unsure")
+    test_client.mock_vertex_call(model=Model.GEMINI_1_5_FLASH_002, is_reusable=True)
+    test_client.mock_ai_review(outcome="unsure", is_reusable=True)
     v = await test_client.create_version(task, {"model": Model.GEMINI_1_5_FLASH_002})
 
     await test_client.patch(
@@ -128,7 +132,7 @@ async def test_with_failed_runs(test_client: IntegrationTestClient):
     assert failed_run["group"]["iteration"] == 1, "sanity"
 
     # Create a new run that succeeds
-    test_client.mock_openai_call(model=Model.GPT_4O_2024_11_20)
+    test_client.mock_openai_call(model=Model.GPT_4O_2024_11_20, is_reusable=True)
     run1 = await test_client.run_task_v1(task, model=Model.GPT_4O_2024_11_20)
     successful_run = await test_client.fetch_run(task, run_id=run1["id"])
     assert successful_run["group"]["iteration"] == 2, "sanity"

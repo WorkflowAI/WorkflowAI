@@ -19,7 +19,7 @@ jobs:
         with:
           node-version: 21
           cache: 'yarn'
-      - run: yarn install
+      - run: yarn install --immutable
       - run: yarn prettier-check
       - run: NODE_OPTIONS="--max-old-space-size=4096" yarn workspace workflowai build
       - run: yarn workspace workflowai test

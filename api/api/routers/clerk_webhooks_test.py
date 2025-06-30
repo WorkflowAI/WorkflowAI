@@ -45,7 +45,7 @@ class TestPost:
             headers={
                 "svix-id": "msg_p5jXN8AQM9LWM0D4loKWxJek",
                 "svix-timestamp": f"{time.time()}",
-                "svix-signature": "v1,IwDxTuHgiKJBYEH9kDTMWd9QbejTwRkfYwBZ8ORFh64=",
+                "svix-signature": "v1,QYNrnPzi5IezdgVj+H34VQIArNn+UBXvC34nDKYL754=",
             },
         )
         assert response.status_code == 204

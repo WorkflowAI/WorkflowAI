@@ -1,8 +1,9 @@
 {
-    "recommendations": [
-        "charliermarsh.ruff",
-        "njpwerner.autodocstring",
-        "editorconfig.editorconfig",
-        "ms-python.python",
-    ]
+  "recommendations": [
+    "charliermarsh.ruff",
+    "njpwerner.autodocstring",
+    "editorconfig.editorconfig",
+    "ms-python.python",
+    "unifiedjs.vscode-mdx"
+  ]
 }

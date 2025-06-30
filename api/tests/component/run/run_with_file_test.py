@@ -67,8 +67,9 @@ async def test_run_previews_list_images(test_client: IntegrationTestClient):
         method="GET",
         status_code=200,
         content=b"fhefheziuhfzeuihfeuizhfuezh",
+        is_reusable=True,
     )
-    test_client.mock_openai_call()
+    test_client.mock_openai_call(is_reusable=True)
 
     task_run = await test_client.run_task_v1(
         task=task,
@@ -98,7 +99,7 @@ async def test_run_previews_with_data_url(test_client: IntegrationTestClient):
         },
     )
 
-    test_client.mock_openai_call()
+    test_client.mock_openai_call(is_reusable=True)
 
     task_run = await test_client.run_task_v1(
         task=task,

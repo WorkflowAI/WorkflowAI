@@ -69,8 +69,8 @@ def setup_environment():
             "JOBS_BROKER_URL": "memory://",
             "CLERK_SECRET_KEY": "sk_test_123",
             "LOOPS_API_KEY": "loops-api-key",
-            "PAYMENT_FAILURE_EMAIL_ID": "123",
-            "LOW_CREDITS_EMAIL_ID": "123",
+            "PAYMENT_FAILURE_EMAIL_ID": "",
+            "LOW_CREDITS_EMAIL_ID": "",
             "XAI_API_KEY": "xai-123",
             "AMPLITUDE_API_KEY": "test_api_key",
             "AMPLITUDE_URL": "https://amplitude-mock",
@@ -80,6 +80,9 @@ def setup_environment():
             "PERPLEXITY_API_KEY": "perplexity-api-key",
             "ENRICH_SO_API_KEY": "enrich-so-api-key",
             "REDIS_CONNECTION_STRING": "redis://localhost:6379/10",
+            "SLACK_BOT_TOKEN": "",
+            "SLACK_CUSTOMERS_CHANNEL_ID": "",
+            "CUSTOMER_SERVICE_DISABLED": "true",
         },
         clear=True,
     ):
@@ -96,7 +99,7 @@ async def patched_broker():
 
 @pytest.fixture(scope="function", autouse=True)
 def patched_amplitude(httpx_mock: HTTPXMock, setup_environment: None):
-    httpx_mock.add_response(url=os.environ["AMPLITUDE_URL"], status_code=200)
+    httpx_mock.add_response(url=os.environ["AMPLITUDE_URL"], status_code=200, is_reusable=True, is_optional=True)
     return
 
 
@@ -236,7 +239,12 @@ async def int_api_client(
     from api.main import app
     from tests.component.common import wait_for_completed_tasks
 
-    httpx_mock.add_response(url="https://in.logs.betterstack.com/metrics", status_code=202)
+    httpx_mock.add_response(
+        url="https://in.logs.betterstack.com/metrics",
+        status_code=202,
+        is_reusable=True,
+        is_optional=True,
+    )
 
     """A client used for integration tests. No mocking is done"""
     app.dependency_overrides = {}

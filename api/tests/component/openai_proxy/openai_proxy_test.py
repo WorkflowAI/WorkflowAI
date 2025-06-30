@@ -1,18 +1,20 @@
 import json
 from collections.abc import Awaitable, Callable
-from typing import Any
+from typing import Any, cast
 from unittest import mock
 
 import openai
 import pytest
 from openai import AsyncOpenAI, RateLimitError
 from openai.types.chat.chat_completion_message_tool_call import ChatCompletionMessageToolCall, Function
+from openai.types.chat.chat_completion_stream_options_param import ChatCompletionStreamOptionsParam
+from pydantic import BaseModel, Field
 
 from core.domain.models.models import Model
 from core.domain.models.providers import Provider
 from core.storage.mongo.mongo_types import AsyncCollection
-from tests.component.common import IntegrationTestClient
-from tests.component.openai_proxy.common import save_version_from_completion
+from tests.component.common import IntegrationTestClient, openai_endpoint
+from tests.component.openai_proxy.common import fetch_run_from_completion, save_version_from_completion
 from tests.pausable_memory_broker import PausableInMemoryBroker
 from tests.utils import approx
 
@@ -30,6 +32,7 @@ async def test_raw_string_output(test_client: IntegrationTestClient, openai_clie
     assert res.choices[0].cost_usd > 0  # type: ignore
     assert res.choices[0].duration_seconds  # type: ignore
     assert res.choices[0].feedback_token  # type: ignore
+    assert res.choices[0].url  # type: ignore
 
     await test_client.wait_for_completed_tasks()
 
@@ -69,7 +72,7 @@ async def test_raw_string_output(test_client: IntegrationTestClient, openai_clie
         aggs.append(chunk["task_output"])
     # TODO: for now we stream the finak output one more time than needed
     # We should fix at some point
-    assert aggs == ["Hello", "Hello world", "Hello world", "Hello world"]
+    assert aggs == ["Hello", "Hello world", "Hello world"]
 
 
 async def test_raw_json_mode(test_client: IntegrationTestClient, openai_client: AsyncOpenAI):
@@ -326,6 +329,56 @@ async def test_stream_raw_string(test_client: IntegrationTestClient, openai_clie
     assert run["task_output"] == "Hello world"
 
 
+async def test_stream_raw_string_with_valid_json_chunks(test_client: IntegrationTestClient, openai_client: AsyncOpenAI):
+    test_client.mock_openai_stream(deltas=["Hello", " world"])
+
+    streamer = await openai_client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": "Hello, world!"}],
+        stream=True,
+        stream_options=cast(ChatCompletionStreamOptionsParam, {"valid_json_chunks": True}),
+    )
+
+    chunks = [c async for c in streamer]
+    assert len(chunks) == 3
+
+    # TODO: fix the extra chunk
+    deltas = [c.choices[0].delta.content for c in chunks]
+    assert deltas == ["Hello", "Hello world", "Hello world"]
+
+    await test_client.wait_for_completed_tasks()
+
+    run = await test_client.get("/v1/_/agents/default/runs/latest")
+    assert run["task_output"] == "Hello world"
+
+
+async def test_stream_json_with_valid_json_chunks(test_client: IntegrationTestClient, openai_client: AsyncOpenAI):
+    test_client.mock_openai_stream(deltas=['{"hello": ', '"world2"}'])
+
+    streamer = await openai_client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": "Hello, world!"}],
+        stream=True,
+        response_format={"type": "json_object"},
+        stream_options=cast(ChatCompletionStreamOptionsParam, {"valid_json_chunks": True}),
+    )
+
+    chunks = [c async for c in streamer]
+    assert len(chunks) == 2
+
+    deltas = [json.loads(c.choices[0].delta.content or "") for c in chunks]
+    # TODO: fix the extra chunks
+    assert deltas == [
+        {"hello": "world2"},
+        {"hello": "world2"},
+    ]
+
+    await test_client.wait_for_completed_tasks()
+
+    run = await test_client.get("/v1/_/agents/default/runs/latest")
+    assert run["task_output"] == {"hello": "world2"}
+
+
 async def test_stream_raw_json(test_client: IntegrationTestClient, openai_client: AsyncOpenAI):
     test_client.mock_openai_stream(deltas=['{"hello": ', '"world2"}'])
 
@@ -494,6 +547,11 @@ async def test_list_models(openai_client: AsyncOpenAI):
     assert Model.GPT_41_LATEST in model_ids
     assert Model.GPT_3_5_TURBO_1106 not in model_ids
 
+    first_model = res.data[0]
+    assert first_model.supports and isinstance(first_model.supports, dict)  # type: ignore
+    assert first_model.pricing and isinstance(first_model.pricing, dict)  # type: ignore
+    assert first_model.release_date and isinstance(first_model.release_date, str)  # type: ignore
+
 
 async def test_deployed_version_no_messages(test_client: IntegrationTestClient, openai_client: AsyncOpenAI):
     test_client.mock_openai_call(raw_content="Hello James!")
@@ -642,7 +700,52 @@ async def test_internal_tools(test_client: IntegrationTestClient, openai_client:
 
     serper_request = test_client.httpx_mock.get_request(url="https://google.serper.dev/search")
     assert serper_request
-    assert serper_request.content == b'{"q": "bla"}'
+    assert json.loads(serper_request.content) == {"q": "bla"}
+
+    # Check the tool calls are properly stored
+    run = await fetch_run_from_completion(test_client, res)
+    assert len(run["tool_calls"]) == 1
+
+
+async def test_internal_tools_streaming(test_client: IntegrationTestClient, openai_client: AsyncOpenAI):
+    # First call will stream the tool call
+    base_tool_call_payload = [
+        {
+            "index": 0,
+            "id": "some_id",
+            "type": "function",
+            "function": {"name": "@search-google", "arguments": '{"query": "bla"}'},
+        },
+    ]
+    test_client.mock_openai_stream(deltas=None, tool_calls_deltas=[base_tool_call_payload])
+    # Second call will return the response
+    test_client.mock_openai_stream(deltas=["Hello, world!"])
+
+    test_client.httpx_mock.add_response(
+        url="https://google.serper.dev/search",
+        text="blabla",
+    )
+
+    res = await openai_client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": "Use @search-google to find information"},
+            {"role": "user", "content": "Hello, world!"},
+        ],
+        stream=True,
+    )
+    chunks = [c async for c in res]
+    assert len(chunks) == 2
+
+    await test_client.wait_for_completed_tasks()
+
+    serper_request = test_client.httpx_mock.get_request(url="https://google.serper.dev/search")
+    assert serper_request
+    assert json.loads(serper_request.content) == {"q": "bla"}
+
+    # Check the tool calls are properly stored
+    run = await fetch_run_from_completion(test_client, chunks[-1])
+    assert len(run["tool_calls"]) == 1
 
 
 @pytest.mark.parametrize("use_deployment", [True, False])
@@ -668,11 +771,11 @@ async def test_with_model_fallback_on_rate_limit(
         anthropic_message_count = 1
 
     # Anthropic and bedrock always return a 429 so we will proceed with model fallback
-    test_client.mock_anthropic_call(status_code=429)
-    test_client.mock_bedrock_call(model=Model.CLAUDE_3_5_SONNET_20241022, status_code=429)
+    test_client.mock_anthropic_call(status_code=429, is_reusable=True)
+    test_client.mock_bedrock_call(model=Model.CLAUDE_3_5_SONNET_20241022, status_code=429, is_reusable=True)
 
     # OpenAI returns a 200
-    test_client.mock_openai_call()
+    test_client.mock_openai_call(is_reusable=True)
 
     # Disable fallback -> we will raise
     with pytest.raises(RateLimitError):
@@ -694,7 +797,7 @@ async def test_with_model_fallback_on_rate_limit(
     # And manual fallback can be used to switch to a different model
     res: Any = await openai_client.chat.completions.create(
         **completion_kwargs,
-        extra_body={"use_fallback": [Model.O3_2025_04_16_LOW_REASONING_EFFORT], "use_cache": "never"},
+        extra_body={"use_fallback": [Model.O3_2025_04_16], "use_cache": "never"},
     )
     await test_client.wait_for_completed_tasks()
 
@@ -705,7 +808,7 @@ async def test_with_model_fallback_on_rate_limit(
         # We automatically add a system message for structured gen to anthropic and bedrock
         (Model.CLAUDE_3_5_SONNET_20241022, Provider.ANTHROPIC, anthropic_message_count, None),
         (Model.CLAUDE_3_5_SONNET_20241022, Provider.AMAZON_BEDROCK, anthropic_message_count, None),
-        (Model.O3_2025_04_16_LOW_REASONING_EFFORT, Provider.OPEN_AI, 1, approx((10 * 2 + 11 * 8) / 1_000_000)),
+        (Model.O3_2025_04_16, Provider.OPEN_AI, 1, approx((10 * 2 + 11 * 8) / 1_000_000)),
     ]
 
 
@@ -743,6 +846,52 @@ async def test_with_cache(test_client: IntegrationTestClient, openai_client: Asy
     assert chunks[0].choices[0].delta.content == "Hello, world!"
 
 
+async def test_with_cache_streaming_worflowai_internal(test_client: IntegrationTestClient, openai_client: AsyncOpenAI):
+    test_client.mock_openai_stream(deltas=["hello", " world"])
+
+    agent = await test_client.create_agent_v1(
+        input_schema={"type": "object", "format": "messages"},
+        output_schema={"type": "string", "format": "message"},
+    )
+    extra_body = {
+        "workflowai_internal": {
+            "variant_id": agent["variant_id"],
+            "version_messages": [
+                {"role": "system", "content": [{"text": "Hello"}]},
+            ],
+        },
+        "agent_id": "greet",
+        "use_cache": "always",
+    }
+
+    # Create a first completion
+    res = await openai_client.chat.completions.create(
+        model="gpt-4o-latest",
+        messages=[],
+        stream=True,
+        extra_body=extra_body,
+    )
+    deltas = [c.choices[0].delta.content async for c in res if c.choices[0].delta.content]
+    joined = "".join(deltas)
+    assert joined == "hello world"
+
+    await test_client.wait_for_completed_tasks()
+
+    # Now create a second completion with the same input and use the cache
+    res = await openai_client.chat.completions.create(
+        model="gpt-4o-latest",
+        messages=[],
+        extra_body=extra_body,
+        stream=True,
+    )
+    chunks = [c async for c in res]
+    assert len(chunks) == 1
+    assert chunks[0].choices[0].delta.content == "hello world"
+
+    # Check that we did not make any new calls
+    assert len(test_client.httpx_mock.get_requests(url="https://api.openai.com/v1/chat/completions")) == 1
+
+
 async def test_none_content(test_client: IntegrationTestClient, openai_client: AsyncOpenAI):
     # Check that we return None content when there is no text content
     test_client.mock_openai_call(
@@ -776,11 +925,12 @@ async def test_with_n_value_of_1(test_client: IntegrationTestClient, openai_clie
 
 
 async def test_with_files_in_variables(test_client: IntegrationTestClient, openai_client: AsyncOpenAI):
+    # TODO: figure out why the mock is not needed
     test_client.mock_openai_call(raw_content="Hello, world!")
-    test_client.httpx_mock.add_response(
-        url="https://blabla",
-        content=b"This is a test image",
-    )
+    # test_client.httpx_mock.add_response(
+    #     url="http://blabla",
+    #     content=b"This is a test image",
+    # )
 
     res = await openai_client.chat.completions.create(
         model="greeting/gpt-4o",
@@ -795,7 +945,7 @@ async def test_with_files_in_variables(test_client: IntegrationTestClient, opena
         ],
         extra_body={
             "input": {
-                "image_url": "https://blabla",
+                "image_url": "http://blabla",
             },
         },
     )
@@ -816,4 +966,181 @@ async def test_with_files_in_variables(test_client: IntegrationTestClient, opena
     req = test_client.httpx_mock.get_request(url="https://api.openai.com/v1/chat/completions")
     assert req
     body = json.loads(req.content)
-    assert body["messages"][0]["content"][1]["image_url"]["url"] == "https://blabla"
+    assert body["messages"][0]["content"][1]["image_url"]["url"] == "http://blabla"
+
+
+async def test_hosted_tools_in_version_messages(test_client: IntegrationTestClient, openai_client: AsyncOpenAI):
+    test_client.mock_openai_call(
+        tool_calls_content=[
+            {
+                "id": "1",
+                "type": "function",
+                "function": {"name": "@perplexity-sonar", "arguments": '{"query": "What is the capital of France?"}'},
+            },
+        ],
+        raw_content=None,
+        is_reusable=False,
+    )
+    test_client.mock_openai_call(raw_content="The capital of France is Paris.")
+    test_client.httpx_mock.add_response(
+        url="https://api.perplexity.ai/chat/completions",
+        json={"choices": [{"message": {"content": "Perplexity: The capital of France is Paris."}}]},
+    )
+
+    agent = await test_client.create_agent_v1(
+        input_schema={"type": "object", "format": "messages"},
+        output_schema={"type": "string", "format": "message"},
+    )
+
+    res = await openai_client.chat.completions.create(
+        model="gpt-4.1-latest",
+        messages=[],
+        extra_body={
+            "workflowai_internal": {
+                "variant_id": agent["variant_id"],
+                "version_messages": [
+                    {"role": "system", "content": [{"text": "Use @perplexity-sonar to find information"}]},
+                ],
+            },
+            "agent_id": "greet",
+        },
+    )
+    assert res.choices[0].message.content == "The capital of France is Paris."
+
+    await test_client.wait_for_completed_tasks()
+
+    run = await fetch_run_from_completion(test_client, res)
+    assert run
+
+
+async def test_url_safe_but_non_slug_agent_id(test_client: IntegrationTestClient, openai_client: AsyncOpenAI):
+    """Make sure that we support a URL safe but non slug agent id"""
+    # First run
+    test_client.mock_openai_call(raw_content="Hello, world!")
+    res = await openai_client.chat.completions.create(
+        model="my_agent/gpt-4.1",
+        messages=[{"role": "user", "content": "Hello, world!"}],
+    )
+    assert res.choices[0].message.content == "Hello, world!"
+
+    task_id, _ = res.id.split("/")
+    assert task_id == "my_agent"
+
+    await test_client.wait_for_completed_tasks()
+
+    run = await fetch_run_from_completion(test_client, res)
+    assert run
+    assert run["task_id"] == "my_agent"
+
+    # Try again with a deployment
+    version = await save_version_from_completion(test_client, res)
+    await test_client.post(
+        f"/v1/_/agents/{task_id}/versions/{version['id']}/deploy",
+        json={"environment": "production"},
+    )
+
+    test_client.mock_openai_call(raw_content="Hello, world!")
+    res = await openai_client.chat.completions.create(
+        model="my_agent/#1/production",
+        messages=[{"role": "user", "content": "Hello, world!"}],
+    )
+    task_id, _ = res.id.split("/")
+    assert task_id == "my_agent"
+
+
+async def test_different_types_in_input(test_client: IntegrationTestClient, openai_client: AsyncOpenAI):
+    """Check that passing all json types floats, booleans, etc. works"""
+    test_client.mock_openai_call(raw_content="Hello, world!")
+    res = await openai_client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {
+                "role": "user",
+                "content": "{{ a_number }} {{ a_boolean }} {{ a_array }} {{ a_object }} {{ a_null }} {{ a_string }}",
+            },
+        ],
+        extra_body={
+            "input": {
+                "a_number": 1.0,
+                "a_boolean": True,
+                "a_array": [1, 2, 3],
+                "a_object": {"a": 1, "b": 2},
+                "a_null": None,
+                "a_string": "hello",
+            },
+        },
+    )
+    assert res.choices[0].message.content
+
+
+async def test_pydantic_structured_output(test_client: IntegrationTestClient, openai_client: AsyncOpenAI):
+    """Check that passing a pydantic model as a structured output works."""
+
+    class SearchDocumentationOutput(BaseModel):
+        relevant_doc_sections: list[str] | None = Field(
+            default=None,
+            description="List of documentation section titles that are most relevant to answer the query.",
+        )
+        missing_docs_feedback: str | None = Field(
+            default=None,
+            description="Optional. Feedback when useful documentation appears to be missing or when the query cannot be adequately answered with existing documentation.",
+        )
+
+    # The model will return a missing field since it has no values
+    # But the openai sdk makes all fields required
+    test_client.mock_openai_call(json_content={"relevant_doc_sections": ["Section 1", "Section 2"]})
+
+    res = await openai_client.beta.chat.completions.parse(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": "Hello, world!"}],
+        response_format=SearchDocumentationOutput,
+    )
+    parsed = res.choices[0].message.parsed
+    assert parsed == SearchDocumentationOutput(
+        relevant_doc_sections=["Section 1", "Section 2"],
+        missing_docs_feedback=None,
+    )
+
+
+async def test_custom_config(test_client: IntegrationTestClient, openai_client: AsyncOpenAI):
+    # Sanity check, first call should go to OpenAI
+    test_client.mock_openai_call(raw_content="Hello, world!")
+    res = await openai_client.chat.completions.create(
+        model="gpt-4.1",
+        messages=[{"role": "user", "content": "Hello, world!"}],
+    )
+    assert res.choices[0].message.content == "Hello, world!"
+
+    req = test_client.httpx_mock.get_request(url="https://api.openai.com/v1/chat/completions")
+    assert req
+
+    # Now set a custom Azure config
+    test_client.mock_openai_call(provider="azure_openai", model=Model.GPT_41_2025_04_14)
+    await test_client.post(
+        "/organization/settings/providers",
+        json={
+            "provider": "azure_openai",
+            "preserve_credits": False,
+            "deployments": {
+                # A bit annoying here, but the URL must match whatever we use for azure in mocking
+                "eastus": {
+                    "api_key": "az-hello",
+                    "url": "https://workflowai-azure-oai-staging-eastus.openai.azure.com/openai/deployments/",
+                    "models": [Model.GPT_41_2025_04_14],
+                },
+            },
+        },
+    )
+    # We should have had a request to the Azure endpoint to validate the config
+    req = test_client.httpx_mock.get_request(
+        url=openai_endpoint("azure_openai", Model.GPT_41_2025_04_14),
+    )
+    assert req, "missing request to validate the config"
+
+    # Now we call the endpoint again, this time it should go to Azure
+    test_client.mock_openai_call(provider="azure_openai", model=Model.GPT_41_2025_04_14, raw_content="Hello, world 2!")
+    res = await openai_client.chat.completions.create(
+        model="gpt-4.1",
+        messages=[{"role": "user", "content": "Hello, world!"}],
+    )
+    assert res.choices[0].message.content == "Hello, world 2!"

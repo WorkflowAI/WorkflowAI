@@ -50,8 +50,8 @@ async def analytics_task_properties(
     url_public_org: URLPublicOrganizationDep,
     user_org: UserOrganizationDep,
 ) -> TaskProperties | None:
-    task_id = request.path_params.get("task_id")
-    if not task_id:
+    agent_id = request.path_params.get("agent_id")
+    if not agent_id:
         return None
 
     try:
@@ -60,7 +60,7 @@ async def analytics_task_properties(
     except (ValueError, TypeError, KeyError):
         schema_id = None
 
-    return TaskProperties.build(task_id, schema_id, url_public_org or user_org)
+    return TaskProperties.build(agent_id, schema_id, url_public_org or user_org)
 
 
 AnalyticsTaskPropertiesDep = Annotated[TaskProperties | None, Depends(analytics_task_properties)]

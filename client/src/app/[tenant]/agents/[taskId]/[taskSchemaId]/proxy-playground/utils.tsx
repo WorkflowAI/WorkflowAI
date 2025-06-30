@@ -1,6 +1,47 @@
 import { GeneralizedTaskInput, TaskSchemaResponseWithSchema } from '@/types';
 import { JsonSchema } from '@/types/json_schema';
-import { ProxyMessage, VersionV1 } from '@/types/workflowAI';
+import {
+  CacheUsage,
+  OpenAIProxyToolChoice,
+  ProxyMessage,
+  TaskGroupProperties_Input,
+  ToolKind,
+  VersionV1,
+} from '@/types/workflowAI';
+import { allTools } from '../playground/components/Toolbox/utils';
+import { AdvancedSettings } from './hooks/useProxyPlaygroundSearchParams';
+
+export type ProxyPlaygroundModels = {
+  model1: string | undefined;
+  model2: string | undefined;
+  model3: string | undefined;
+  modelReasoning1: string | undefined;
+  modelReasoning2: string | undefined;
+  modelReasoning3: string | undefined;
+};
+
+export function getModelAndReasoning(
+  index: number,
+  models: ProxyPlaygroundModels | undefined
+): {
+  model: string | undefined;
+  reasoning: string | undefined;
+} {
+  if (!models) {
+    return { model: undefined, reasoning: undefined };
+  }
+
+  switch (index) {
+    case 0:
+      return { model: models.model1, reasoning: models.modelReasoning1 };
+    case 1:
+      return { model: models.model2, reasoning: models.modelReasoning2 };
+    case 2:
+      return { model: models.model3, reasoning: models.modelReasoning3 };
+    default:
+      return { model: undefined, reasoning: undefined };
+  }
+}
 
 export function checkInputSchemaForInputVaribles(inputSchema: JsonSchema | undefined) {
   if (!inputSchema) {
@@ -207,4 +248,223 @@ export function removeInputEntriesNotMatchingSchemaAndKeepMessages(
   }
 
   return { ...cleanedInput, 'workflowai.messages': inputMessages };
+}
+
+export function addAdvencedSettingsToProperties(
+  properties: TaskGroupProperties_Input,
+  advancedSettings: AdvancedSettings | undefined
+): TaskGroupProperties_Input {
+  if (!advancedSettings) {
+    return properties;
+  }
+
+  const {
+    temperature,
+    cache,
+    top_p: topP,
+    max_tokens: maxTokens,
+    presence_penalty,
+    frequency_penalty,
+    tool_choice,
+  } = advancedSettings;
+
+  const result = { ...properties };
+
+  if (temperature !== undefined) {
+    result.temperature = Number(temperature);
+  }
+
+  if (cache !== undefined) {
+    result.use_cache = cache;
+  }
+
+  if (topP !== undefined) {
+    result.top_p = Number(topP);
+  }
+
+  if (maxTokens !== undefined) {
+    result.max_tokens = Number(maxTokens);
+  }
+
+  if (presence_penalty !== undefined) {
+    result.presence_penalty = Number(presence_penalty);
+  }
+
+  if (frequency_penalty !== undefined) {
+    result.frequency_penalty = Number(frequency_penalty);
+  }
+
+  if (tool_choice !== undefined) {
+    result.tool_choice = tool_choice;
+  }
+
+  return result;
+}
+
+export function getUseCache(cache: string | undefined): CacheUsage {
+  if (cache === undefined) {
+    return 'auto' as CacheUsage;
+  }
+
+  switch (cache) {
+    case 'auto':
+      return 'auto' as CacheUsage;
+    case 'always':
+      return 'always' as CacheUsage;
+    case 'never':
+      return 'never' as CacheUsage;
+    case 'when_available':
+      return 'when_available' as CacheUsage;
+    case 'only':
+      return 'only' as CacheUsage;
+    default:
+      return 'auto' as CacheUsage;
+  }
+}
+
+export function defaultValueForAdvencedSetting(name: string): string | undefined {
+  switch (name) {
+    case 'cache':
+      return 'auto';
+    case 'temperature':
+      return '1';
+    case 'top_p':
+      return '1.0';
+    case 'max_tokens':
+      return undefined;
+    case 'presence_penalty':
+      return '0';
+    case 'frequency_penalty':
+      return '0';
+    case 'tool_choice':
+      return undefined;
+    default:
+      return undefined;
+  }
+}
+
+export function advencedSettingNameFromKey(key: string): string {
+  switch (key) {
+    case 'cache':
+      return 'Use cache';
+    case 'temperature':
+      return 'Temperature';
+    case 'top_p':
+      return 'Top P';
+    case 'max_tokens':
+      return 'Max tokens';
+    case 'presence_penalty':
+      return 'Presence Penalty';
+    case 'frequency_penalty':
+      return 'Frequency Penalty';
+    case 'tool_choice':
+      return 'Tool Choice';
+    default:
+      return key;
+  }
+}
+
+export const advencedSettingsVersionPropertiesKeys = [
+  'cache',
+  'top_p',
+  'max_tokens',
+  'presence_penalty',
+  'frequency_penalty',
+  'tool_choice',
+];
+
+export function getToolsFromMessages(messages: ProxyMessage[] | undefined): ToolKind[] | undefined {
+  if (!messages) return undefined;
+  const result = allTools.filter((tool) =>
+    messages.some((message) =>
+      message.content.some((content) => content.text?.toLowerCase().includes(tool.toLowerCase()))
+    )
+  );
+  return result.length > 0 ? result : undefined;
+}
+
+export function generatePromptForToolsUpdate(oldTools: ToolKind[], newTools: ToolKind[]): string | undefined {
+  const toolsRemoved = oldTools.filter((tool) => !newTools.includes(tool));
+  const toolsAdded = newTools.filter((tool) => !oldTools.includes(tool));
+  const toolsNotChanged = oldTools.filter((tool) => newTools.includes(tool));
+
+  const promptParts: string[] = [];
+
+  if (toolsRemoved.length > 0) {
+    promptParts.push(`Remove the tools from the messages: ${toolsRemoved.join(', ')}`);
+  }
+
+  if (toolsAdded.length > 0) {
+    promptParts.push(`Add the tools to the messages: ${toolsAdded.join(', ')}`);
+  }
+
+  if (promptParts.length === 0) {
+    return undefined;
+  }
+
+  if (toolsNotChanged.length > 0) {
+    promptParts.push(
+      `Keep the tools in the messages (make sure you are not removing them by accident): ${toolsNotChanged.join(', ')}`
+    );
+  }
+
+  promptParts.push(
+    'DO NOT use markdown formatting (**, *, #, etc.), unless markdown is already present in the messages'
+  );
+
+  return `${promptParts.join('. ')}.`;
+}
+
+export function cleanChunkOutput(output: Record<string, unknown> | null | undefined) {
+  if (!output || typeof output !== 'object') {
+    return output;
+  }
+  const keys = Object.keys(output);
+  if (keys.length === 1 && keys[0] === 'content' && typeof (output as { content?: unknown }).content === 'string') {
+    return (output as { content: string }).content;
+  }
+  return output;
+}
+
+export function valueFromToolChoice(toolChoice: string | OpenAIProxyToolChoice | null | undefined): string | undefined {
+  if (toolChoice === undefined || toolChoice === null) {
+    return undefined;
+  }
+
+  if (typeof toolChoice === 'string') {
+    return toolChoice;
+  }
+
+  if (typeof toolChoice === 'object' && toolChoice !== null) {
+    try {
+      return JSON.stringify(toolChoice);
+    } catch {
+      return `${toolChoice}`;
+    }
+  }
+
+  return undefined;
+}
+
+export function toolChoiceFromValue(value: string | undefined): string | OpenAIProxyToolChoice | null | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  try {
+    const parsed = JSON.parse(value);
+    if (typeof parsed === 'string') {
+      return parsed;
+    }
+    return parsed;
+  } catch {
+    return value;
+  }
+}
+
+export function parseValidNumber(value: unknown): number | undefined {
+  if (value !== undefined && value !== null && value !== '' && !isNaN(Number(value))) {
+    return Number(value);
+  }
+  return undefined;
 }

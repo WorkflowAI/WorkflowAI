@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field
 
 from core.domain.documentation_section import DocumentationSection
 from core.domain.fields.chat_message import ChatMessage
+from core.domain.models import Model
 
 
 class PickRelevantDocumentationSectionsInput(BaseModel):
@@ -25,14 +26,14 @@ class PickRelevantDocumentationSectionsOutput(BaseModel):
     relevant_doc_sections: list[str] = Field(description="The relevant documentation sections for the agent.")
 
 
-@workflowai.agent(model=workflowai.Model.GEMINI_2_0_FLASH_001)
+@workflowai.agent(model=Model.GEMINI_2_5_FLASH)
 async def pick_relevant_documentation_sections(
     input: PickRelevantDocumentationSectionsInput,
 ) -> PickRelevantDocumentationSectionsOutput:
     """
     You are an expert at picking relevant docucmentation sections for other agents.
 
-    Your goal is to analyze the chat history and the agent's instructions, and pick the needed documentation sections required to answer the user's question, if any.
+    Your goal is to analyze the chat history and the agent's instructions, and pick the needed documentation sections from 'available_doc_sections.title' required to answer the user's question, if any.
     You must avoid picking unnecessary sections, because processing them will cost money and time.
     Unnecessary sections are, for example:
     - things that the agent already knows about based on the 'agent_instructions'
@@ -45,5 +46,7 @@ async def pick_relevant_documentation_sections(
     - picking models
     - generating agent input
     Those cases are very well covered in the "agent_instructions".
+
+    You MUST ONLY return valid 'available_doc_sections.title'
     """
     ...

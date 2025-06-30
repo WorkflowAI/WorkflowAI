@@ -127,6 +127,8 @@ export function FieldViewer(props: FieldViewerProps) {
   const columnLayout = isExpandable || !rest.showTypes;
   const isParentArray = arrayIndex !== undefined;
 
+  const [isHovering, setIsHovering] = useState(false);
+
   const fieldViewerLabel = (
     <FieldViewerLabel
       textColor={textColorToUse}
@@ -153,10 +155,10 @@ export function FieldViewer(props: FieldViewerProps) {
       showDescriptionPopover={rest.showDescriptionPopover !== false}
       onTypeChange={onTypeChange}
       schemaRefName={schemaRefName}
+      isHoveringOverValue={isHovering}
     />
   );
 
-  const [isHovering, setIsHovering] = useState(false);
   const [evaluationEditOn, setEvaluationEditOn] = useState(false);
 
   const showExamples = rest.showDescriptionExamples === 'all';
@@ -167,7 +169,11 @@ export function FieldViewer(props: FieldViewerProps) {
         <ListItemSideline arrayIndex={arrayIndex} isRoot={isRoot} isLast={isLast} showTypes={!!rest.showTypes} />
         <div className='px-3 flex items-start w-full'>
           {columnLayout ? (
-            <div className='flex-1 flex flex-col w-full items-start'>
+            <div
+              className='flex-1 flex flex-col w-full items-start'
+              onMouseEnter={() => setIsHovering(true)}
+              onMouseLeave={() => setIsHovering(false)}
+            >
               {fieldViewerLabel}
               {rest.showDescriptionExamples && (
                 <FieldDescriptionExamples
@@ -192,6 +198,7 @@ export function FieldViewer(props: FieldViewerProps) {
                   isRoot={isRoot}
                   defs={defs}
                   keyPath={fieldKeyPath}
+                  fieldKey={fieldKey}
                   schemaRefName={schemaRefName}
                   defaultExpanded={defaultExpanded}
                   textColor={textColorToUse}
@@ -230,6 +237,7 @@ export function FieldViewer(props: FieldViewerProps) {
                         className='text-[13px]'
                         defs={defs}
                         keyPath={fieldKeyPath}
+                        fieldKey={fieldKey}
                         schemaRefName={schemaRefName}
                         defaultExpanded={defaultExpanded}
                         textColor={textColorToUse}

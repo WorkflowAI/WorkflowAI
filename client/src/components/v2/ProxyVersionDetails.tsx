@@ -11,9 +11,11 @@ import { useIsAllowed } from '@/lib/hooks/useIsAllowed';
 import { useTaskSchemaParams } from '@/lib/hooks/useTaskParams';
 import { taskApiRoute } from '@/lib/routeFormatter';
 import { environmentsForVersion, formatSemverVersion, isVersionSaved } from '@/lib/versionUtils';
+import { getReasoningForVersion } from '@/lib/versionUtils';
 import { useVersions } from '@/store/versions';
 import { TaskSchemaID } from '@/types/aliases';
 import { ProxyMessage, VersionV1 } from '@/types/workflowAI';
+import { AdvencedSettingsDetails } from '../TaskRunModal/proxy/AdvencedSettingsDetails';
 import { Button } from '../ui/Button';
 import { TaskCostBadge } from './TaskCostBadge';
 import { TaskEnvironmentBadge } from './TaskEnvironmentBadge';
@@ -75,7 +77,7 @@ export function ProxyVersionDetails(props: TaskMetadataProps) {
 
   const environments = useMemo(() => environmentsForVersion(version) || [], [version]);
 
-  const { temperature, instructions, provider, few_shot, messages } = properties;
+  const { temperature, instructions, provider, messages } = properties;
   const model = version?.model;
 
   const isSaved = isVersionSaved(version);
@@ -137,7 +139,6 @@ export function ProxyVersionDetails(props: TaskMetadataProps) {
     return null;
   }
 
-  const fewShotCount = few_shot?.count;
   const runCount = version.run_count ?? undefined;
 
   return (
@@ -180,7 +181,12 @@ export function ProxyVersionDetails(props: TaskMetadataProps) {
       )}
       {model && (
         <TaskMetadataSection title='model'>
-          <TaskModelBadge model={model} providerId={provider} />
+          <TaskModelBadge
+            model={model}
+            providerId={provider}
+            reasoning={getReasoningForVersion(version)}
+            allowTooltips={false}
+          />
         </TaskMetadataSection>
       )}
 
@@ -212,7 +218,7 @@ export function ProxyVersionDetails(props: TaskMetadataProps) {
         </div>
       )}
 
-      <div className='grid grid-cols-3 gap-2'>
+      <div className='grid grid-cols-3 gap-2 pb-1'>
         {temperature !== undefined && temperature !== null && (
           <TaskMetadataSection title='temperature'>
             <TaskTemperatureBadge temperature={temperature} />
@@ -228,13 +234,12 @@ export function ProxyVersionDetails(props: TaskMetadataProps) {
         <TaskMetadataSection title='runs'>
           <TaskRunCountBadge runsCount={runCount} onClick={onViewRuns} />
         </TaskMetadataSection>
-
-        {fewShotCount !== undefined && fewShotCount !== null && (
-          <TaskMetadataSection title='few-shot'>
-            {`${fewShotCount} ${fewShotCount > 1 ? 'examples' : 'example'}`}
-          </TaskMetadataSection>
-        )}
       </div>
+
+      <div className='flex w-full px-4'>
+        <AdvencedSettingsDetails version={version} style='single' borderColor='border-gray-200' />
+      </div>
+
       {children}
     </div>
   );

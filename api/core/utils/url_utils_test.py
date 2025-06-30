@@ -53,11 +53,49 @@ from core.utils.url_utils import extract_and_fetch_urls, fetch_urls_content, fin
             "I want to scrape from https://www.agriaffaires.co.uk/used/2/farm-tractor.html'",
             ["https://www.agriaffaires.co.uk/used/2/farm-tractor.html"],
         ),
+        (  # With default no-url-fetch tags
+            "Check https://example.com and <no-url-fetch>ignore https://ignored.com</no-url-fetch> but include https://included.com",
+            ["https://example.com", "https://included.com"],
+        ),
+        (  # Multiple no-url-fetch regions
+            "Visit example.com <no-url-fetch>skip github.com and gitlab.com</no-url-fetch> also check bitbucket.org <no-url-fetch>ignore stackoverflow.com</no-url-fetch>",
+            ["https://example.com", "https://bitbucket.org"],
+        ),
+        (  # Nested content in no-url-fetch tags
+            "Here's a URL: example.com <no-url-fetch>This text contains test.com and other-site.org that should be ignored</no-url-fetch> end with final.com",
+            ["https://example.com", "https://final.com"],
+        ),
     ],
 )
 def test_find_urls_in_text(text: str, expected: list[str]) -> None:
     """Test that URLs are correctly extracted from text."""
     result = find_urls_in_text(text)
+    assert result == expected
+
+
+@pytest.mark.parametrize(
+    "text,ignore_tag,expected",
+    [
+        (
+            "Check https://example.com and <custom-ignore>ignore https://ignored.com</custom-ignore> but include https://included.com",
+            "custom-ignore",
+            ["https://example.com", "https://included.com"],
+        ),
+        (
+            "Visit example.com <skip-url>skip github.com</skip-url> and bitbucket.org",
+            "skip-url",
+            ["https://example.com", "https://bitbucket.org"],
+        ),
+        (
+            "All URLs should be found: example.com github.com",
+            "non-existent-tag",
+            ["https://example.com", "https://github.com"],
+        ),
+    ],
+)
+def test_find_urls_in_text_custom_ignore_tag(text: str, ignore_tag: str, expected: list[str]) -> None:
+    """Test that URLs are correctly extracted with custom ignore tags."""
+    result = find_urls_in_text(text, ignore_tag=ignore_tag)
     assert result == expected
 
 
@@ -211,8 +249,8 @@ async def test_extract_and_fetch_urls(mock_fetch_urls: AsyncMock, mock_find_urls
     # Call the function with some text
     result = await extract_and_fetch_urls("Check these sites: example.com test.org")
 
-    # Verify find_urls_in_text was called with the input text
-    mock_find_urls.assert_called_once_with("Check these sites: example.com test.org")
+    # Verify find_urls_in_text was called with the input text and default ignore_tag
+    mock_find_urls.assert_called_once_with("Check these sites: example.com test.org", ignore_tag="no-url-fetch")
 
     # Verify fetch_urls_content was called with the URLs returned by find_urls_in_text
     mock_fetch_urls.assert_called_once_with(["https://example.com", "https://test.org"])
@@ -227,5 +265,38 @@ async def test_extract_and_fetch_urls(mock_fetch_urls: AsyncMock, mock_find_urls
     assert result[1] == URLContent(
         url="https://test.org",
         content="Content from https://test.org",
+        status=URLStatus.REACHABLE,
+    )
+
+
+@pytest.mark.asyncio
+@patch("core.utils.url_utils.find_urls_in_text")
+@patch("core.utils.url_utils.fetch_urls_content")
+async def test_extract_and_fetch_urls_custom_ignore_tag(mock_fetch_urls: AsyncMock, mock_find_urls: AsyncMock) -> None:
+    """Test that extract_and_fetch_urls passes through custom ignore_tag parameter."""
+    # Set up mocks
+    mock_find_urls.return_value = ["https://example.com"]
+    mock_fetch_urls.return_value = [
+        URLContent(
+            url="https://example.com",
+            content="Content from https://example.com",
+            status=URLStatus.REACHABLE,
+        ),
+    ]
+
+    # Call the function with a custom ignore_tag
+    result = await extract_and_fetch_urls("Check example.com <custom>ignore test.org</custom>", ignore_tag="custom")
+
+    # Verify find_urls_in_text was called with the custom ignore_tag
+    mock_find_urls.assert_called_once_with("Check example.com <custom>ignore test.org</custom>", ignore_tag="custom")
+
+    # Verify fetch_urls_content was called with the URLs returned by find_urls_in_text
+    mock_fetch_urls.assert_called_once_with(["https://example.com"])
+
+    # Verify the result contains the expected URLContent objects
+    assert len(result) == 1
+    assert result[0] == URLContent(
+        url="https://example.com",
+        content="Content from https://example.com",
         status=URLStatus.REACHABLE,
     )

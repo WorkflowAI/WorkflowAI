@@ -9,7 +9,6 @@ from core.domain.tool import Tool
 from core.providers.base.provider_error import InvalidProviderConfig, MissingModelError
 from core.providers.base.utils import get_provider_config_env
 from core.providers.openai.azure_open_ai_provider.azure_openai_config import AzureOpenAIConfig
-from core.providers.openai.openai_domain import MODEL_NAME_MAP
 from core.providers.openai.openai_provider_base import OpenAIProviderBase
 
 _AZURE_API_REGION_METADATA_KEY = "workflowai.azure_openai_api_region"
@@ -44,12 +43,11 @@ class AzureOpenAIProvider(OpenAIProviderBase[AzureOpenAIConfig]):
 
     @override
     def _request_url(self, model: Model, stream: bool) -> str:
-        model_value = MODEL_NAME_MAP.get(model, model.value)
-        region, region_config = self.get_best_region_for_model(model_value)
+        region, region_config = self.get_best_region_for_model(model)
         if not region_config:
             raise ProviderDoesNotSupportModelError(model=model, provider=self.name())
         self._add_metadata(_AZURE_API_REGION_METADATA_KEY, region)
-        return f"{region_config.url}{model_value}/chat/completions?api-version={self._config.api_version}"
+        return f"{region_config.url}{model.value}/chat/completions?api-version={self._config.api_version}"
 
     @override
     @classmethod

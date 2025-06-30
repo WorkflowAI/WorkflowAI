@@ -13,15 +13,7 @@ export function ProxyRunRightActions(props: ProxyRunRightActionsProps) {
   return (
     <div className='flex items-center gap-[8px]'>
       {playgroundFullRoute && (
-        <SimpleTooltip
-          content={
-            <div className='text-center'>
-              Open the playground with the version
-              <br />
-              and input from this run prefilled.
-            </div>
-          }
-        >
+        <SimpleTooltip content='Loads all messages and version' tooltipDelay={0}>
           <Button toRoute={playgroundFullRoute} icon={<Play16Regular />} variant='newDesign'>
             Load In Playground
           </Button>

@@ -1,5 +1,6 @@
 import asyncio
 import json
+import os
 from collections.abc import Callable
 from typing import Any, Literal
 from unittest.mock import AsyncMock, Mock, patch
@@ -145,6 +146,7 @@ async def test_decrement_credits(test_client: IntegrationTestClient, mock_stripe
             "prompt_tokens": int(round(4 * 1 / 0.000_002_5)),  # prompt count for $4 on GPT_4O_2024_11_20
             "completion_tokens": 0,
         },
+        is_reusable=True,
     )
 
     # First run should succeed but consume all credits
@@ -333,18 +335,22 @@ async def test_automatic_payment_success(
 def _prepare_organization_payment_failure_emails(test_client: IntegrationTestClient):
     test_client.httpx_mock.add_response(
         url=f"{CLERK_BASE_URL}/organizations/{test_client.org['org_id']}/memberships?role=org:admin&limit=5",
+        is_reusable=True,
         json=fixtures_json("clerk/membership_list.json"),
     )
     test_client.httpx_mock.add_response(
         url=f"{CLERK_BASE_URL}/users?user_ids=user_1,user_2",
         json=fixtures_json("clerk/user_list.json"),
+        is_reusable=True,
     )
     test_client.httpx_mock.add_response(
         url=LOOPS_TRANSACTIONAL_URL,
         status_code=200,
+        is_reusable=True,
     )
 
 
+@patch.dict(os.environ, {"PAYMENT_FAILURE_EMAIL_ID": "1234", "LOW_CREDITS_EMAIL_ID": "12345"})
 async def test_automatic_payment_failure_with_retry(
     test_client: IntegrationTestClient,
     mock_stripe: Mock,
@@ -422,6 +428,7 @@ async def test_automatic_payment_failure_with_retry(
     assert org["current_credits_usd"] == approx(10, abs=0.01)
 
 
+@patch.dict(os.environ, {"PAYMENT_FAILURE_EMAIL_ID": "1234", "LOW_CREDITS_EMAIL_ID": "12345"})
 async def test_automatic_payment_failure_with_retry_single_user(
     test_client: IntegrationTestClient,
     mock_stripe: Mock,
@@ -448,10 +455,12 @@ async def test_automatic_payment_failure_with_retry_single_user(
     test_client.httpx_mock.add_response(
         url=f"{CLERK_BASE_URL}/users/user_1234",
         json=fixtures_json("clerk/user.json"),
+        is_reusable=True,
     )
     test_client.httpx_mock.add_response(
         url=LOOPS_TRANSACTIONAL_URL,
         status_code=200,
+        is_reusable=True,
     )
 
     # Deplete credits which should trigger payments
@@ -782,6 +791,7 @@ async def _setup_an_automatic_payment_failure(
     assert org["payment_failure"]["failure_code"] == "payment_failed"
 
 
+@patch.dict(os.environ, {"PAYMENT_FAILURE_EMAIL_ID": "1234", "LOW_CREDITS_EMAIL_ID": "12345"})
 async def test_automatic_payment_failure_manual_credit_addition(
     test_client: IntegrationTestClient,
     mock_stripe: Mock,
@@ -809,6 +819,7 @@ async def test_automatic_payment_failure_manual_credit_addition(
     assert org["current_credits_usd"] == approx(10, abs=0.01)
 
 
+@patch.dict(os.environ, {"PAYMENT_FAILURE_EMAIL_ID": "1234", "LOW_CREDITS_EMAIL_ID": "12345"})
 async def test_automatic_payment_failure_then_add_payment_method(
     test_client: IntegrationTestClient,
     mock_stripe: Mock,
@@ -840,6 +851,7 @@ async def test_automatic_payment_failure_then_add_payment_method(
     assert org.get("payment_failure") is None
 
 
+@patch.dict(os.environ, {"PAYMENT_FAILURE_EMAIL_ID": "1234", "LOW_CREDITS_EMAIL_ID": "12345"})
 async def test_automatic_payment_failure_then_add_payment_method_but_auto_payment_disabled(
     test_client: IntegrationTestClient,
     mock_stripe: Mock,

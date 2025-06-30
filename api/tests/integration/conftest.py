@@ -17,8 +17,16 @@ _CLICKHOUSE_TEST_CONNECTION_STRING = "clickhouse://default:admin@localhost:8123/
 _WORKFLOWAI_MONGO_INT_CONNECTION_STRING = f"mongodb://admin:admin@localhost:27017/{_INT_DB_NAME}"
 
 
+@pytest.fixture(scope="session")
+def workflowai_api_key():
+    # This API key is a JWT built to match the test JWK.
+    # By providing a JWT instead of an API Key we make sure the tenant is automatically created
+    # when needed
+    return "eyJhbGciOiJFUzI1NiJ9.eyJ0ZW5hbnQiOiJjaGllZm9mc3RhZmYuYWkiLCJzdWIiOiJndWlsbGF1bWVAY2hpZWZvZnN0YWZmLmFpIiwib3JnSWQiOiJvcmdfMmlQbGZKNVg0THdpUXliTTlxZVQwMFlQZEJlIiwib3JnU2x1ZyI6InRlc3QtMjEiLCJpYXQiOjE3MTU5ODIzNTEsImV4cCI6MTgzMjE2NjM1MX0.QH1D8ppCYT4LONE0XzR11mvyZ7n4Ljc9MC0eJYM2FBtqSoGnr4_GCdcMEZb3NZZI5dKXbjTUk_8kRU1vrn7n2A"
+
+
 @pytest.fixture(scope="session", autouse=True)
-def setup_environment():
+def setup_environment(workflowai_api_key: str):
     with patch.dict(
         os.environ,
         {
@@ -34,7 +42,8 @@ def setup_environment():
             # WorkflowAI API, points to a local instance of the WorkflowAI API
             "WORKFLOWAI_API_URL": "http://0.0.0.0:8000",
             # A JWT that is ok with the JWK below
-            "WORKFLOWAI_API_KEY": "eyJhbGciOiJFUzI1NiJ9.eyJ0ZW5hbnQiOiJjaGllZm9mc3RhZmYuYWkiLCJzdWIiOiJndWlsbGF1bWVAY2hpZWZvZnN0YWZmLmFpIiwib3JnSWQiOiJvcmdfMmlQbGZKNVg0THdpUXliTTlxZVQwMFlQZEJlIiwib3JnU2x1ZyI6InRlc3QtMjEiLCJpYXQiOjE3MTU5ODIzNTEsImV4cCI6MTgzMjE2NjM1MX0.QH1D8ppCYT4LONE0XzR11mvyZ7n4Ljc9MC0eJYM2FBtqSoGnr4_GCdcMEZb3NZZI5dKXbjTUk_8kRU1vrn7n2A",
+            "WORKFLOWAI_API_KEY": workflowai_api_key,
+            # A test JSON Web Key to use for signature verification. do not use in production.
             "WORKFLOWAI_JWK": "eyJrdHkiOiJFQyIsIngiOiJLVUpZYzd2V0R4Um55NW5BdC1VNGI4MHRoQ1ZuaERUTDBzUmZBRjR2cDdVIiwieSI6IjM0dWx1VDgyT0RFRFJXVU9KNExrZzFpanljclhqMWc1MmZRblpqeFc5cTAiLCJjcnYiOiJQLTI1NiIsImlkIjoiMSJ9Cg==",
             # S3 Storage
             "WORKFLOWAI_STORAGE_CONNECTION_STRING": "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;",

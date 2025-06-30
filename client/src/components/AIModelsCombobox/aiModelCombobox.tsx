@@ -14,12 +14,13 @@ import {
 } from '@/components/ui/Command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/Popover';
 import { ScrollArea } from '@/components/ui/ScrollArea';
+import { embedReasoningInModelID } from '@/lib/modelUtils';
 import { Model, TaskID } from '@/types/aliases';
 import { ModelResponse } from '@/types/workflowAI';
 import { MysteryModelIcon } from '../icons/models/mysteryModelIcon';
 import { SimpleTooltip } from '../ui/Tooltip';
 import { SortButton } from './SortButton';
-import { formatAIModel, formatAIModels } from './labels/ModelLabel';
+import { ComboboxModelEntry, formatAIModel, formatAIModels } from './entry/ComboboxModelEntry';
 import { AIModelComboboxOption, modelComparator } from './utils';
 
 type TriggerContentProps = {
@@ -41,12 +42,19 @@ function TriggerContent(props: TriggerContentProps) {
     );
   }
   if (selectedOption) {
-    return selectedOption.renderLabel({
-      isSelected: true,
-      showCheck: false,
-      isProxy: isProxy,
-      taskId: taskId,
-    });
+    return (
+      <ComboboxModelEntry
+        isSelected={true}
+        showCheck={false}
+        model={selectedOption.model}
+        dropdownOpen={undefined}
+        information='price'
+        allIntelligenceScores={undefined}
+        isProxy={isProxy}
+        taskId={taskId}
+        mode='selected'
+      />
+    );
   }
   return defaultLabel;
 }
@@ -64,6 +72,8 @@ export type AIModelComboboxProps = {
   setOpen?: (open: boolean) => void;
   isProxy?: boolean;
   taskId?: TaskID;
+  spreadReasoning?: boolean;
+  reasoningEffort?: string;
 };
 
 export function AIModelCombobox(props: AIModelComboboxProps) {
@@ -74,12 +84,14 @@ export function AIModelCombobox(props: AIModelComboboxProps) {
     onModelChange,
     models,
     placeholder: placeholderFromParameters,
-    value,
+    value: rawValue,
     fitToContent = true,
     open: propsOpen,
     setOpen: propsSetOpen,
     isProxy = false,
     taskId,
+    spreadReasoning,
+    reasoningEffort,
   } = props;
   const [internalOpen, setInternalOpen] = React.useState(false);
 
@@ -92,7 +104,7 @@ export function AIModelCombobox(props: AIModelComboboxProps) {
 
   const [isReverted, setIsReverted] = useLocalStorage<boolean>('aiModelComboboxOrder', false);
 
-  const modelOptions = useMemo(() => formatAIModels(models, 'price'), [models]);
+  const modelOptions = useMemo(() => formatAIModels(models, spreadReasoning ?? false), [models, spreadReasoning]);
 
   const placeholder = useMemo(() => {
     if (placeholderFromParameters) {
@@ -109,13 +121,20 @@ export function AIModelCombobox(props: AIModelComboboxProps) {
     return modelOptions.filter((option) => option.label.toLowerCase().includes(search.toLowerCase()));
   }, [modelOptions, search]);
 
+  const value = useMemo(() => {
+    if (reasoningEffort && spreadReasoning) {
+      return embedReasoningInModelID(rawValue, reasoningEffort);
+    }
+    return rawValue;
+  }, [rawValue, reasoningEffort, spreadReasoning]);
+
   const selectedOption = useMemo(() => {
     const option = modelOptions.find((option) => option.value === value);
     if (option) {
-      return formatAIModel(option.model, models, 'price');
+      return formatAIModel(option.model);
     }
     return undefined;
-  }, [modelOptions, value, models]);
+  }, [modelOptions, value]);
 
   const sortedModelOptions = useMemo(() => {
     const comparator = modelComparator(sort, isReverted);
@@ -245,12 +264,16 @@ export function AIModelCombobox(props: AIModelComboboxProps) {
                     onSelect={() => onSelect(option.value, option.disabled)}
                     className='text-[13px] font-normal font-lato'
                   >
-                    {option.renderLabel({
-                      isSelected: value === option.value,
-                      dropdownOpen: open,
-                      isProxy: isProxy,
-                      taskId: taskId,
-                    })}
+                    <ComboboxModelEntry
+                      model={option.model}
+                      information='price'
+                      allIntelligenceScores={undefined}
+                      isSelected={value === option.value}
+                      dropdownOpen={open}
+                      isProxy={isProxy}
+                      taskId={taskId}
+                      mode='popover'
+                    />
                   </CommandItem>
                 ))}
               </CommandGroup>

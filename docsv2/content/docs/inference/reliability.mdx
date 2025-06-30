@@ -1,0 +1,197 @@
+---
+title: Reliability and fallback
+summary: Documentation on reliability features. Covers intelligent fallback systems, resilient infrastructure, and how to configure provider and model fallbacks.
+description: How WorkflowAI is designed to provide 100% uptime for your agents.
+---
+
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
+import StatusMonitor from '@/components/status-monitor';
+
+## Goal
+
+We are committed to delivering 100% uptime for the API endpoints that power your agents, including:
+- `https://run.workflowai.com/v1/chat/completions` (compatible with OpenAI SDKs)
+- `https://run.workflowai.com/v1/[org-id]/tasks/[agent-id]/schemas/[schema-id]/run` (for WorkflowAI SDKs)
+
+### Current system status
+
+<StatusMonitor />
+
+[TODO: add status monitor showing uptime metrics and tokens processed per day](https://blocks.tremor.so/blocks/status-monitoring)
+<Accordions>
+<Accordion title="How can I access the status page via RSS feed?">
+
+You can access the WorkflowAI status page via RSS feed at:
+
+**RSS Feed URL:** `https://status.workflowai.com/feed.rss`
+
+This RSS feed provides real-time updates about system status, scheduled maintenance, and any service disruptions.
+
+</Accordion>
+</Accordions>
+
+
+## Intelligent fallback systems
+
+WorkflowAI implements multiple layers of fallback mechanisms to ensure your agents continue running even when individual components fail. These systems work together to provide seamless operation across different failure scenarios.
+
+### Provider fallback (automatic)
+
+![reliability-provider-fallback](/images/inference/reliability/provider-fallback.png)
+
+WorkflowAI continuously monitors the health and performance of all integrated AI providers. When a provider experiences downtime or degraded performance, our system automatically switches to a healthy alternative provider without any manual intervention.
+
+For example, all OpenAI models are also available through Azure OpenAI Service. If the OpenAI API becomes unavailable, WorkflowAI will automatically failover to Azure OpenAI within one second. This seamless transition ensures your agent runs continue without interruption, and you don't need to make any changes to your code.
+
+This intelligent routing between providers happens behind the scenes, maintaining consistent response times and reliability for your applications even during provider outages.
+
+### Model fallback (configurable)
+
+![reliability-model-fallback](/images/inference/reliability/model-fallback.png)
+
+Sometimes using the exact same model on a different provider won't ensure 100% uptime. Common scenarios include:
+- The model doesn't have provider redundancy and the unique provider is having issues
+- All providers for a given model are down, or rate limits are exceeded on all providers
+- The completion failed due to model limitations (content moderation errors, failed structured outputs)
+
+In these cases, falling back to a different AI model can ensure the completion succeeds.
+
+#### Configuration options
+
+Configure model fallback using the `use_fallback` argument in the completion endpoint:
+
+| Option | Value | Behavior |
+|--------|-------|----------|
+| **Automatic** (default) | `"auto"` | Uses a different model based on the error type. See [automatic fallback logic](#automatic-fallback-logic) below. |
+| **Disable** | `"never"` | Disables fallback entirely. Useful when consistency matters more than success. |
+| **Custom** | `["model-1", "model-2"]` | Allows passing a list of models to try in order when the initial model fails. |
+
+<Callout type="info">
+Configuring model fallback is only available through code for now.
+</Callout>
+
+#### Automatic fallback logic
+
+The default fallback algorithm (i.e. when `use_fallback` is not provided or when `use_fallback="auto"`) assigns each model a fallback model based on the type of error that occurred:
+- for rate limit errors, we use a model of the same category (similar price and speed) that is supported by a different provider
+- structured generation errors can occur for models without native structured output. In this case, we use a model at the same price point that supports native structured output. For example, `GPT 4.1 Nano` would be used as a fallback for models like `Llama 4 Scout` and `Gemini 2.0 Flash`.
+- for content moderation errors, we use a model that has been historically more permissive. For example,  Llama 4 Maveric on Groq seems to be on the stricter side whereas non preview Gemini models on Vertex are often more permissive.
+
+<Callout type="info">
+The exhaustive fallback definitions are visible in the [codebase](https://github.com/WorkflowAI/WorkflowAI/blob/main/api/core/domain/models/model_data_mapping.py) 
+</Callout>
+
+#### Code examples
+
+##### OpenAI SDK
+
+<Tabs items={['Python', 'TypeScript', 'cURL']}>
+<Tab value="Python">
+```python
+completion = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[{"role": "user", "content": "Extract the name and email"}],
+    extra_body={
+        "model_fallback": ["gpt-4o-mini", "claude-3-5-haiku-20241022"]
+    },
+    metadata={"agent_id": "user-extraction"}
+)
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+const completion = await openai.chat.completions.create({
+    model: "gpt-4o",
+    messages: [{"role": "user", "content": "Extract the name and email"}],
+    // @ts-ignore
+    model_fallback: ["gpt-4o-mini", "claude-3-5-haiku-20241022"],
+    metadata: {"agent_id": "user-extraction"}
+});
+```
+</Tab>
+<Tab value="cURL">
+```sh
+curl -X POST https://run.workflowai.com/v1/chat/completions \
+-H "Authorization: Bearer $WORKFLOWAI_API_KEY" \
+-H "Content-Type: application/json" \
+-d '{
+    "model": "gpt-4o",
+    "messages": [{"role": "user", "content": "Extract the name and email"}],
+    "model_fallback": ["gpt-4o-mini", "claude-3-5-haiku-20241022"],
+    "metadata": {"agent_id": "user-extraction"}
+}'
+```
+</Tab>
+</Tabs>
+
+##### WorkflowAI SDK
+
+<Tabs items={["Python", "TypeScript", "cURL"]}>
+  <Tab>
+  ```python
+  @workflowai.agent(id="user-extraction", version="production", use_fallback=["gemini-2.0-flash-001", "o3-mini-latest-medium"])
+  def user_extraction(_: UserExtractionInput) -> UserExtractionOutput:
+      ...
+  ```
+  </Tab>
+  <Tab>
+  ```typescript
+  const extractUser= workflowAI.agent<UserExtractionInput, UserExtractionOutput>({
+    id: 'user-extraction',
+    schemaId: 1,
+    version: 'production',
+    useFallback: ['gemini-2.0-flash-001', 'o3-mini-latest-medium'],
+  });
+  ```
+  </Tab>
+  <Tab>
+  ```sh
+  curl -X POST https://run.workflowai.com/v1/agents/user-extraction/schemas/1/run \
+  -H "Authorization: Bearer $WORKFLOWAI_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+      "version": "production",
+      "use_fallback": ["gemini-2.0-flash-001", "o3-mini-latest-medium"],
+      "task_input": ...
+  }'
+  ```
+  </Tab>
+</Tabs>
+
+## Infrastructure resilience
+
+Our infrastructure is designed with multiple layers of redundancy to ensure continuous operation even during various failure scenarios.
+
+### Application layer
+
+We've designed our application architecture for maximum resilience:
+
+- **Isolated inference endpoints**: Our inference API `run.workflowai.com` runs in separate containers, isolated from other API endpoints. This allows independent scaling and deployment of the inference API.
+- **Canary deployments**: New API versions are deployed to a small subset of users first, then gradually rolled out. This allows us to catch issues early and roll back if needed.
+- **Health monitoring**: Continuous monitoring of service health enables automatic failover and issue detection.
+
+### Database layer
+
+We use MongoDB Atlas for our primary database infrastructure, ensuring high availability through a distributed architecture with a [99.995% SLA](https://www.mongodb.com/cloud/atlas/reliability). Our database deployment includes 7 replicas across 3 Azure regions:
+- 3 replicas in East US2
+- 2 replicas in Iowa
+- 2 replicas in California
+
+These replicas automatically synchronize data, ensuring that if one database instance or even an entire region fails, others can immediately take over without data loss. MongoDB Atlas offers automatic failover capabilities, where if the primary node becomes unavailable, a secondary replica is automatically promoted to primary, typically within seconds.
+
+<Callout type="info">
+For storing run history and analytics data, we use Clickhouse, which excels at handling large volumes of data efficiently. While Clickhouse powers our analytics and observability features, it's not required for core agent execution. The process that stores run history is completely isolated from the critical run path, ensuring agents continue running normally even if Clickhouse experiences temporary unavailability.
+</Callout>
+
+### Network & datacenter layer
+
+We use [Azure Front Door](https://azure.microsoft.com/en-us/products/frontdoor) as our global load balancer to ensure high availability across multiple regions. Our infrastructure is deployed in both East US and Central US datacenters, providing geographic redundancy.
+
+Azure Front Door continuously monitors the health of our backend services in each region. If one datacenter experiences an outage or performance degradation, Azure Front Door automatically redirects traffic to the healthy region within approximately 30 seconds. This intelligent routing happens without manual intervention, ensuring minimal disruption to your API calls.
+
+This multi-region architecture allows us to maintain high availability even during regional cloud provider outages, helping us achieve our goal of 100% uptime for the WorkflowAI API.
+
+<Callout type="info">
+If you have any questions about our architecture, please [contact us](mailto:team@workflowai.support).
+</Callout>

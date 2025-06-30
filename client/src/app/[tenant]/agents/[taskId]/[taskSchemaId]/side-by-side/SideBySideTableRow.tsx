@@ -6,6 +6,7 @@ import { TaskSchemaID } from '@/types/aliases';
 import { TaskSchemaResponseWithSchema } from '@/types/task';
 import { CreateVersionRequest, TaskInputDict } from '@/types/workflowAI';
 import { ModelResponse, VersionV1 } from '@/types/workflowAI';
+import { ProxySideBySideTableRowInput } from './ProxySideBySideTableRowInput';
 import { SideBySideTableRowInput } from './SideBySideTableRowInput';
 import { SideBySideTableRowOutput } from './SideBySideTableRowOutput';
 import { useSideBySideRowStatsEffect } from './useSideBySideRowStatsEffect';
@@ -19,6 +20,7 @@ type SideBySideTableRowProps = {
   selectedLeftVersion: VersionV1 | undefined;
   selectedRightVersion: VersionV1 | undefined;
   selectedRightModel: ModelResponse | undefined;
+  isProxy?: boolean;
 };
 
 export function SideBySideTableRow(props: SideBySideTableRowProps) {
@@ -31,6 +33,7 @@ export function SideBySideTableRow(props: SideBySideTableRowProps) {
     tenant,
     taskId,
     taskSchemaId,
+    isProxy,
   } = props;
 
   const inputSchema = taskSchema.input_schema;
@@ -84,7 +87,11 @@ export function SideBySideTableRow(props: SideBySideTableRowProps) {
   return (
     <div className='flex items-stretch w-full border-b border-gray-100 last:border-transparent'>
       <div className='flex flex-col w-[20%] border-r border-gray-100'>
-        <SideBySideTableRowInput input={input} inputSchema={inputSchema} />
+        {isProxy ? (
+          <ProxySideBySideTableRowInput input={input} inputSchema={inputSchema} />
+        ) : (
+          <SideBySideTableRowInput input={input} inputSchema={inputSchema} />
+        )}
       </div>
       <div className='flex flex-col items-start w-[40%] border-r border-gray-100 p-4'>
         <SideBySideTableRowOutput
@@ -98,6 +105,7 @@ export function SideBySideTableRow(props: SideBySideTableRowProps) {
           versionId={selectedLeftVersion?.id}
           modelId={undefined}
           stats={leftStats}
+          isProxy={isProxy}
         />
       </div>
       <div className='flex flex-col items-start w-[40%] p-4'>
@@ -112,6 +120,7 @@ export function SideBySideTableRow(props: SideBySideTableRowProps) {
           versionId={selectedRightVersion?.id}
           modelId={selectedRightModel?.id}
           stats={rightStats}
+          isProxy={isProxy}
         />
       </div>
     </div>

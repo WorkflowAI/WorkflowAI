@@ -159,7 +159,7 @@ def test_build_tools_str_for_prompt() -> None:
     expected_str = """<tools_list>
     <tool>
         <tool_name>@browser-text</tool_name>
-        <tool_description>Browses the URL passed as argument and extracts the web page content in markdown format.</tool_description>
+        <tool_description>Extracts and converts web page content from the given URL into clean, readable markdown format. This is a text-only browser tool that cannot see images, click elements, interact with JavaScript, or perform any dynamic actions - it only parses and returns the static text content of web pages.</tool_description>
         <tool_input_schema>
         ```json
         {"type": "object", "properties": {"url": {"type": "string"}}, "required": ["url"]}
@@ -173,7 +173,7 @@ def test_build_tools_str_for_prompt() -> None:
     </tool>
     <tool>
         <tool_name>@search-google</tool_name>
-        <tool_description>Runs a Google search and returns the results in JSON format.</tool_description>
+        <tool_description>Performs a Google web search using Serper.dev API and returns search results including links, snippets, and related information in JSON format.</tool_description>
         <tool_input_schema>
         ```json
         {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}

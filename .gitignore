@@ -261,3 +261,9 @@ install-state.gz
 junit
 openapi_fixed.json
 .ignored
+.source
+
+.playground/
+# Can be used as a symbolic link to map to the docsv2 folder so that 
+# It's in the same location as when running in docker
+api/docsv2

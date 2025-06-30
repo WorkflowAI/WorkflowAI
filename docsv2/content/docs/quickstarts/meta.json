@@ -1,0 +1,5 @@
+{
+  "title": "Quickstarts",
+  "defaultOpen": true,
+  "pages": ["openai-python", "openai-javascript-typescript", "instructor-python"]
+}

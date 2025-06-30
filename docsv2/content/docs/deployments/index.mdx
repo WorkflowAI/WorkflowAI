@@ -1,0 +1,291 @@
+---
+title: Overview
+summary: Documentation on using deployments to manage and update AI agents. Covers separating prompts from code, managing environments, and versioning with schemas.
+description: This guide walks you through using deployments to update an agent's prompt or model without changing any code. Deployments allow you to separate your code from your AI configuration, enabling faster iteration and non-technical team members to make changes.
+---
+
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+## Overview
+
+When using deployments, you:
+
+<Steps>
+<Step>
+Store your prompt/instructions in WorkflowAI (with or without input variables)
+</Step>
+<Step>
+Deploy a version (prompt + model) to an **environment** (development, staging, production)
+</Step>
+<Step>
+Update your code to point to the deployed version instead of hardcoded prompts
+</Step>
+</Steps>
+
+## Why use deployments?
+
+Teams typically use deployments when they want:
+- **Non-technical users** to make prompt and model changes without code deployments
+- **Faster feedback loops** by avoiding engineering bottlenecks for prompt iterations
+- **Cost optimization** by switching to newer, cheaper models without code changes
+- **Real-time improvements** based on user feedback without redeploying code
+
+## Step-by-step guide
+
+Let's walk through two common scenarios for setting up deployments.
+
+### Scenario 1: Data extraction agent (with input variables)
+
+This example shows an agent that extracts event details from emails using input variables.
+
+#### Step 1: Start with a basic agent
+
+Here's our initial agent with a hardcoded prompt:
+
+<Callout type="info">
+This agent is using Structured Outputs. Learn more about [Structured Outputs](/inference/structured-outputs).
+</Callout>
+
+```python
+from pydantic import BaseModel
+
+class EventDetails(BaseModel):
+    event_name: str
+    event_date: str
+    event_location: str
+    event_description: str
+
+completion = client.beta.chat.completions.parse(
+    model="llama4-maverick-instruct-fast",
+    messages=[{
+        "role": "user",
+        "content": "Extract the event details from the following email: " + email_content
+    }],
+    response_format=EventDetails,
+    metadata={
+        "agent_id": "event-extractor"
+    }
+)
+
+print(completion.choices[0].message.parsed)
+```
+
+#### Step 2: Add input variables to your prompt
+
+Replace the hardcoded parts of your prompt with input variables using `{variable_name}` syntax:
+
+```python
+completion = client.beta.chat.completions.parse(
+    model="llama4-maverick-instruct-fast",
+    messages=[{
+        "role": "user",
+        "content": "Extract the event details from the following email: {{email}}" # [!code highlight]
+    }],
+    response_format=EventDetails,
+    extra_body={ # [!code highlight]
+        "input": { # [!code highlight]
+            "email": email_content# [!code highlight]
+        } # [!code highlight]
+    }, # [!code highlight]
+    metadata={
+        "agent_id": "event-extractor"
+    }
+)
+```
+
+<Callout type="info">
+**Why input variables?**
+
+Input variables help WorkflowAI understand which parts of your prompt are dynamic (change with each request) versus static (part of the prompt template). This separation allows anyone to modify the static template without affecting the dynamic data your code provides.
+
+Learn more about input variables, including template syntax and examples, in the [Input Variables documentation](/observability/input-variables).
+</Callout>
+
+#### Step 3: Deploy the version and update code
+
+After deploying in the WorkflowAI dashboard:
+
+```python
+completion = client.beta.chat.completions.parse(
+    model="#1/production", # [!code highlight]
+    messages=[],  # Empty because prompt is now stored in WorkflowAI # [!code highlight]
+    response_format=EventDetails,
+    extra_body={ # [!code highlight]
+        "input": { # [!code highlight]
+            "email": email_content # [!code highlight]
+        } # [!code highlight]
+    }, # [!code highlight]
+    metadata={
+        "agent_id": "event-extractor",
+        "version": "#1/production" # [!code highlight]
+    }
+)
+```
+
+### Scenario 2: Chatbot agent (no input variables needed)
+
+This example shows a chatbot where all instructions are stored as the system message in WorkflowAI.
+
+#### Step 1: Start with a basic chatbot
+
+Here's a chatbot with hardcoded system instructions:
+
+```python
+completion = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[
+        {
+            "role": "system", 
+            "content": "You are a helpful customer support agent for TechCorp. Always be polite, provide accurate information about our products, and escalate complex issues to human agents."
+        },
+        {
+            "role": "user", 
+            "content": user_message
+        }
+    ],
+    metadata={
+        "agent_id": "customer-support-bot"
+    }
+)
+
+print(completion.choices[0].message.content)
+```
+
+#### Step 2: Deploy and update code
+
+The system message becomes the "prompt" stored in WorkflowAI. After deploying:
+
+```python
+completion = client.chat.completions.create(
+    model="#1/production",
+    messages=[ # system message is now stored in WorkflowAI [!code highlight]
+        {
+            "role": "user", 
+            "content": user_message
+        }
+    ],
+    metadata={
+        "agent_id": "customer-support-bot",
+        "version": "#1/production" # [!code highlight]
+    }
+)
+
+print(completion.choices[0].message.content)
+```
+
+**Key difference**: No `extra_body.input` needed since there are no input variables. The user message is still provided normally in the messages array, but the system message (instructions) comes from the deployed prompt.
+
+## Deploying a version
+
+### Using the UI
+
+<div style={{ position: 'relative', paddingTop: '56.25%' }}>
+  <iframe
+    src="https://customer-turax1sz4f7wbpuv.cloudflarestream.com/58dfabcb7b91f2a57d99602876dc98f1/iframe?autoplay=false&muted=false&controls=true"
+    style={{ 
+      border: 'none', 
+      position: 'absolute', 
+      top: 0, 
+      left: 0,
+      height: '100%', 
+      width: '100%' 
+    }}
+    allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
+    allowFullScreen={true}
+  ></iframe>
+</div>
+
+For both scenarios, the deployment process is the same:
+
+1. Go to the **Deployments** section in the WorkflowAI dashboard
+2. Select your target environment: `development`, `staging`, or `production`
+3. Click **Deploy Version**
+4. Choose the version (prompt + model combination) you want to deploy
+5. Click **Deploy**
+
+The deployment will be associated with a schema number that defines:
+- **Input variables** your code must provide (if any)
+- **Output format** (`response_format`) your code expects (when using [Structured Outputs](/inference/structured-outputs))
+
+You can view all schemas in the **Schemas** section of the WorkflowAI dashboard.
+
+Additionally, if you're using the Playground to run your agent, you can deploy a version from the Playground directly:.
+
+1. Select the **Deploy** button (circled arrow icon) in the output column:
+   - Top of the column (next to model name)
+   - Info section (below output)
+2. Select the environment to deploy to from the options on the screen: `development`, `staging`, or `production`
+3. If this is the first time you deploy a version of this agent, you will need to update your code. This can be done in two ways:
+    - **(Recommended)** Use the WorkflowAI MCP in Cursor to automatically update your code to reflect the deployment. 
+    - Manually update your code by navigating to the Code page and copying the generated code. 
+
+TODO: add a video of this process
+
+### Using the API
+
+TODO: @guillaume
+
+## Understanding the model parameter format
+
+When using deployments, your model parameter follows this format:
+`"agent-name/#schema-number/environment"`
+
+- **agent-name** = your agent name
+- **#schema-number** = schema number (defines input/output contract)
+- **environment** = `development`, `staging`, or `production`
+
+<Callout type="warning">
+**Important**: The OpenAI SDK requires a `messages` parameter to be present. When using deployments:
+- **With input variables** (Scenario 1): Pass an empty array `messages=[]` because the prompt is stored in WorkflowAI
+- **Without input variables** (Scenario 2): Pass your user message normally in the `messages` array, but the system message comes from the deployment
+
+Never omit the `messages` parameter entirely as this will cause SDK errors.
+</Callout>
+
+## Understanding schemas
+
+Schemas define the "contract" between your code and the deployment. A schema includes:
+- **Input variables** that must be provided in `extra_body.input` (if using input variables)
+- **Output format** structure (your `response_format`, if using structured outputs)
+
+**Schemas are automatically created by WorkflowAI** when you make changes to input variables or output formats. You don't manually create or manage schema numbers - WorkflowAI detects incompatible changes and assigns new schema numbers automatically.
+
+### When schema numbers are automatically incremented
+
+WorkflowAI automatically creates a new schema number when you change:
+- Input variable names, add new ones, or remove existing ones
+- The structure of your `response_format` (add/remove fields, change types)
+
+### Schema migration workflow
+
+When you need to change the schema:
+1. Create a new version with updated input variables or output format in WorkflowAI
+2. **WorkflowAI automatically detects the changes and assigns a new schema number** (like `#2`)
+3. Deploy the new version to your target environment
+4. Update your code to use the new schema number: `"agent-name/#2/production"`
+5. Test thoroughly before deploying to production
+
+This ensures backward compatibility - existing code using `#1` continues working while new code uses `#2`.
+
+You can view all automatically generated schemas in the **Schemas** section of the WorkflowAI dashboard.
+
+## Error handling
+
+{/* TODO @guillaume: Document specific error types and messages returned when:
+- Input variables are missing from extra_body.input
+- Input variable names don't match the deployed schema  
+- response_format doesn't match the deployed schema
+- Schema number doesn't exist
+- Environment doesn't have a deployment */}
+
+When there's a mismatch between your code and the deployed schema (missing input variables or incompatible response_format), the API will return an error. 
+
+## Important notes
+
+- **Agent-specific**: Deployments work with named agents only, not the `default` agent. Learn how to [identify your agent](/inference/models#identifying-your-agent).
+- **Environment isolation**: Each environment (development/staging/production) has independent deployments.
+- **Schema independence**: You can have different deployments for each schema without affecting each other.
+- **Input variables optional**: Not all agents need input variables: simple chatbots can store all instructions in the deployed prompt.
+
+{/* TODO: Add link to agent identification section when available */}

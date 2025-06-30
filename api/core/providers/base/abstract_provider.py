@@ -28,7 +28,7 @@ from core.domain.models.model_provider_data import (
     ModelProviderData,
     TextPricePerToken,
 )
-from core.domain.models.model_provider_datas_mapping import MODEL_PROVIDER_DATAS
+from core.domain.models.model_provider_data_mapping import MODEL_PROVIDER_DATAS
 from core.domain.models.utils import get_model_data, get_model_provider_data, get_provider_data_by_model
 from core.domain.structured_output import StructuredOutput
 from core.domain.tool import Tool
@@ -134,15 +134,6 @@ class AbstractProvider(ABC, Generic[ProviderConfigVar, ProviderRequestVar]):
 
     @property
     def is_structured_generation_supported(self) -> bool:
-        return False
-
-    async def is_schema_supported_for_structured_generation(
-        self,
-        task_name: str,
-        model: Model,
-        schema: dict[str, Any],
-    ) -> bool:
-        # Check if the task schema is actually supported by the provider's implementation of structured generation
         return False
 
     @classmethod

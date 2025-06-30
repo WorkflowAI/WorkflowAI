@@ -1,7 +1,7 @@
 import { DismissFilled, ErrorCircle24Filled, List16Regular } from '@fluentui/react-icons';
 import { cx } from 'class-variance-authority';
 import { PlusCircle, Trash2 } from 'lucide-react';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Badge } from '@/components/ui/Badge';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/HoverCard';
 import { SimpleTooltip } from '@/components/ui/Tooltip';
@@ -40,6 +40,7 @@ type FieldViewerLabelProps = {
   showDescriptionPopover: boolean;
   onTypeChange?: (keyPath: string, newType: string) => void;
   schemaRefName: string | undefined;
+  isHoveringOverValue?: boolean;
 };
 
 export function FieldViewerLabel(props: FieldViewerLabelProps) {
@@ -67,6 +68,7 @@ export function FieldViewerLabel(props: FieldViewerLabelProps) {
     showDescriptionPopover,
     onTypeChange,
     schemaRefName,
+    isHoveringOverValue,
   } = props;
 
   // This is a side effect that updates the position of the field key in the parent component
@@ -90,16 +92,21 @@ export function FieldViewerLabel(props: FieldViewerLabelProps) {
   }, [isArrayObject, showTypes, editable, fieldKey, onlyShowDescriptionsAndExamplesAndHideTypes]);
   const NullToggleIcon = isNull ? PlusCircle : Trash2;
 
+  const [isHoveringOverLabel, setIsHoveringOverLabel] = useState(false);
+
   const showTypeChangeButtons = useMemo(() => {
-    return (
+    if (
       !!onTypeChange &&
       (subSchemaFieldType === 'undefined' ||
         subSchemaFieldType === 'audio' ||
         subSchemaFieldType === 'document' ||
         subSchemaFieldType === 'image' ||
         subSchemaFieldType === 'string')
-    );
-  }, [onTypeChange, subSchemaFieldType]);
+    ) {
+      return isHoveringOverLabel || isHoveringOverValue;
+    }
+    return false;
+  }, [onTypeChange, subSchemaFieldType, isHoveringOverLabel, isHoveringOverValue]);
 
   const realFieldType: FieldType | undefined = useMemo(() => {
     if (schemaRefName) {
@@ -121,6 +128,8 @@ export function FieldViewerLabel(props: FieldViewerLabelProps) {
         'w-full': isArrayObject || !!onTypeChange,
       })}
       ref={fieldRef}
+      onMouseEnter={() => setIsHoveringOverLabel(true)}
+      onMouseLeave={() => setIsHoveringOverLabel(false)}
     >
       <div
         className={cx(

@@ -16,6 +16,7 @@ async def test_run_with_custom_provider_v1(test_client: IntegrationTestClient):
     test_client.mock_openai_call(
         provider="azure_openai",
         usage={"prompt_tokens": 10000, "completion_tokens": 10000, "total_tokens": 200000},
+        is_reusable=True,
     )
 
     # Create a custom azure provider

@@ -13,6 +13,9 @@ class RunOutput(NamedTuple):
     reasoning_steps: list[InternalReasoningStep] | None = None
     delta: str | None = None
 
+    # Whether the output is the final output, used when streaming
+    final: bool = False
+
     @classmethod
     def from_run(cls, run: AgentRun, delta: str | None = None):
         return cls(

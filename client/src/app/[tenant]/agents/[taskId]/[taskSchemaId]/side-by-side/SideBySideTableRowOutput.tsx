@@ -26,10 +26,12 @@ type SideBySideTableRowOutputProps = {
   versionId: string | undefined;
   modelId: string | undefined;
   stats: SideBySideRowStats;
+  isProxy?: boolean;
 };
 
 export function SideBySideTableRowOutput(props: SideBySideTableRowOutputProps) {
-  const { outputSchema, body, input, tenant, taskId, taskSchemaId, inputHash, versionId, modelId, stats } = props;
+  const { outputSchema, body, input, tenant, taskId, taskSchemaId, inputHash, versionId, modelId, stats, isProxy } =
+    props;
 
   const {
     isCreatingVersion,
@@ -90,7 +92,7 @@ export function SideBySideTableRowOutput(props: SideBySideTableRowOutputProps) {
         <div className='flex flex-row gap-1 items-center'>
           {!isLoading && !!runId && <SideBySideTableRowOutputStats stats={stats} />}
           {isLoading && <Loader2 className='w-3 h-3 animate-spin text-gray-600' />}
-          {!!runId && !isLoading && (
+          {!!runId && !isLoading && !isProxy && (
             <AIEvaluationReview
               runId={runMessage.id}
               tenant={tenant}

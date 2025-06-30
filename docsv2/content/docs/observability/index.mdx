@@ -1,0 +1,81 @@
+---
+title: Overview
+summary: Overview of observability tools for AI applications. Explains how to automatically monitor, analyze, and optimize agent performance.
+description: Monitor, analyze, and optimize your AI applications
+---
+
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+
+![Observability overview](</images/observability/header.png>)
+
+## What is observability?
+
+explain why...
+- AI is non-deterministic, so you need a way to debug what's happening.
+
+## Setup
+
+<Steps>
+<Step>
+
+### Go through the Quickstart
+
+Because inference requests are going through WorkflowAI, observability is enabled automatically as soon you have completed the [Quickstart](/quickstarts).
+
+</Step>
+
+<Step>
+
+### Observability is enabled automatically
+
+Once you've completed the quickstart and made your first request through WorkflowAI, observability features are automatically activated for your agent. This includes:
+
+- **Request tracking**: Every API call is logged and tracked
+- **Performance metrics**: Latency, cost, and token usage are automatically calculated
+- **Error monitoring**: Failed requests and their reasons are captured
+- **Usage analytics**: Detailed insights into your agent's performance over time
+
+You don't need to install any additional packages or configure logging - it all works out of the box.
+
+</Step>
+
+<Step>
+
+### Identify your agent
+
+To properly organize your observability data, you can identify your agent using the `metadata` parameter:
+
+```python
+response = client.completions.create(
+    model="gpt-4o",
+    messages=[...],
+    metadata={
+      "agent_id": "my-agent-id", # [!code highlight]
+    }
+)
+```
+
+<Callout type="info">
+You can also set the agent ID by prefixing the `model` parameter with your agent ID and a slash `/`. This is useful when you cannot modify the `metadata` parameter directly, such as when using third-party libraries or frameworks that don't expose metadata configuration.
+</Callout>
+
+```python
+response = client.completions.create(
+    model="my-agent-id/gpt-4o", # [!code highlight]
+    messages=[...],
+)
+```
+
+<Callout type="info">
+  Runs for un-named agents will be visible in the "Default" agent.
+</Callout>
+
+</Step>
+</Steps>
+
+![List agents](</images/observability/list-agents.png>)
+
+## Next
+
+![Observability overview](</images/observability/overview.png>)

@@ -14,7 +14,7 @@ from core.domain.llm_usage import LLMUsage
 from core.domain.message import MessageDeprecated
 from core.domain.models import Model, Provider
 from core.domain.models.model_data import MaxTokensData, ModelData, QualityData
-from core.domain.models.model_datas_mapping import DisplayedProvider
+from core.domain.models.model_data_mapping import DisplayedProvider
 from core.domain.structured_output import StructuredOutput
 from core.domain.tool import Tool
 from core.providers.base.models import RawCompletion
@@ -287,6 +287,7 @@ class TestComplete:
             url="https://api.groq.com/openai/v1/chat/completions",
             json=fixtures_json("groq", "failed_generation.json"),
             status_code=400,
+            is_reusable=True,
         )
 
         with pytest.raises(FailedGenerationError):
@@ -305,6 +306,7 @@ class TestComplete:
             url="https://api.groq.com/openai/v1/chat/completions",
             json=fixtures_json("groq", "content_moderation.json"),
             status_code=200,
+            is_reusable=True,  # TODO: figure out why it needs to be reusable
         )
 
         with pytest.raises(ContentModerationError):

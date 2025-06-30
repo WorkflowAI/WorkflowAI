@@ -1,0 +1,182 @@
+---
+title: Models
+summary: Documentation for using and switching between different AI models. Covers how to list available models and manage versions for agents.
+description: WorkflowAI connects you to 100+ models from leading AI providers including OpenAI, Anthropic, Google, Meta, DeepSeek, Mistral, and more — all through a single, unified API.
+---
+
+import { WorkflowModelsWrapper } from '@/components/workflow-models-wrapper';
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+import { WorkflowModelCount } from '@/components/workflow-model-count';
+
+
+
+## Switching between models
+
+To use a specific model, simply change the `model` parameter in your API call.
+
+<Callout type="info">
+  To properly organize your observability data, you can identify your agent by adding `agent_id` to your metadata (preferred method) or by using an agent prefix in the model parameter when metadata editing isn't possible. This helps you track and debug runs for specific agents. Learn more about [identifying your agent](/observability#identify-your-agent).
+</Callout>
+
+<Tabs items={["Python", "JavaScript", "curl"]}>
+  <Tab>
+  ```python
+  import openai
+
+  client = openai.OpenAI(
+      api_key="YOUR_WORKFLOWAI_API_KEY",
+      base_url="https://run.workflowai.com/v1"
+  )
+
+  # Using GPT-4
+  response = client.chat.completions.create(
+      model="gpt-4o",
+      messages=[{"role": "user", "content": "Hello!"}],
+      metadata={"agent_id": "my-agent"} # [!code highlight]
+  )
+
+  # Switching to Claude
+  response = client.chat.completions.create(
+      model="claude-3-7-sonnet-latest",
+      messages=[{"role": "user", "content": "Hello!"}],
+      metadata={"agent_id": "my-agent"} # [!code highlight]
+  )
+
+  # Using Llama
+  response = client.chat.completions.create(
+      model="llama4-maverick-instruct-fast",
+      messages=[{"role": "user", "content": "Hello!"}],
+      metadata={"agent_id": "my-agent"} # [!code highlight]
+  )
+  ```
+  </Tab>
+  <Tab>
+  ```javascript
+  import OpenAI from 'openai';
+
+  const client = new OpenAI({
+    apiKey: 'YOUR_WORKFLOWAI_API_KEY',
+    baseURL: 'https://run.workflowai.com/v1',
+  });
+
+  // Using GPT-4
+  let response = await client.chat.completions.create({
+    model: 'gpt-4o',
+    messages: [{ role: 'user', content: 'Hello!' }],
+    metadata: { agent_id: 'my-agent' } // [!code highlight]
+  });
+
+  // Switching to Claude
+  response = await client.chat.completions.create({
+    model: 'claude-3-7-sonnet-latest',
+    messages: [{ role: 'user', content: 'Hello!' }],
+    metadata: { agent_id: 'my-agent' } // [!code highlight]
+  });
+
+  // Using Llama
+  response = await client.chat.completions.create({
+    model: 'llama4-maverick-instruct-fast',
+    messages: [{ role: 'user', content: 'Hello!' }],
+    metadata: { agent_id: 'my-agent' } // [!code highlight]
+  });
+  ```
+  </Tab>
+  <Tab>
+  ```bash
+  # Using GPT-4
+  curl https://run.workflowai.com/v1/chat/completions \
+    -H "Authorization: Bearer YOUR_WORKFLOWAI_API_KEY" \
+    -H "Content-Type: application/json" \
+    -d '{
+      "model": "gpt-4o",
+      "messages": [{"role": "user", "content": "Hello!"}],
+      "metadata": {"agent_id": "my-agent"} // [!code highlight]
+    }'
+
+  # Switching to Claude
+  curl https://run.workflowai.com/v1/chat/completions \
+    -H "Authorization: Bearer YOUR_WORKFLOWAI_API_KEY" \
+    -H "Content-Type: application/json" \
+    -d '{
+      "model": "claude-3-7-sonnet-latest",
+      "messages": [{"role": "user", "content": "Hello!"}],
+      "metadata": {"agent_id": "my-agent"} // [!code highlight]
+    }'
+  ```
+  </Tab>
+</Tabs>
+
+TODO: check with @guillaume to confirm `agentID`, `agent_id` or `agentId` in Typescript.
+
+## Supported models
+
+### Using the API
+
+You can access the [list of models](https://run.workflowai.com/v1/models) and their `id` via our API:
+- without any authentication
+- in a format compatible with the OpenAI API.
+
+<Tabs items={["curl", "Python", "TypeScript"]}>
+  <Tab>
+  ```bash
+  curl -X GET "https://run.workflowai.com/v1/models"
+  ```
+  </Tab>
+  <Tab>
+  ```python
+  import openai
+
+  client = openai.OpenAI(api_key="YOUR_API_KEY", base_url="https://run.workflowai.com/v1")
+
+  models = client.models.list()
+
+  for model in models:
+      print(model.id)
+  ```
+  </Tab>
+  <Tab>
+  ```typescript
+  import OpenAI from 'openai';
+
+  const client = new OpenAI({
+    apiKey: 'YOUR_API_KEY',
+    baseURL: 'https://run.workflowai.com/v1',
+  });
+
+  const models = await client.models.list();
+
+  models.data.forEach((model) => {
+    console.log(model.id);
+  });
+  ```
+  </Tab>
+</Tabs>
+
+### Using MCP
+
+```bash
+list_models
+```
+
+### List
+
+<Callout type="warning">
+We will need to adjust the layout here:
+- Add pricing information.
+- Show "price match info"
+- remove the support for image, audio... takes too much space.
+</Callout>
+
+![Supported Models](/images/reference/supported-models/tmp-playground-preview-model.png)
+
+<WorkflowModelsWrapper />
+
+## Requesting a new model
+
+<Callout type="info">
+  If you don't see the model you are looking for, you can request it by [contacting us](mailto:team@workflowai.support).
+</Callout>
+
+## Deprecated models
+
+Explain with @guillaume that deprecated models are still available, and requests are routed to similar active models.

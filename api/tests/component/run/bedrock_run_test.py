@@ -17,6 +17,8 @@ async def test_content_moderation_failed_generation_wrapper(test_client: Integra
         url="https://bedrock-runtime.us-west-2.amazonaws.com/model/us.anthropic.claude-3-opus-20240229-v1:0/converse-stream",
         status_code=200,
         stream=IteratorStream(fixtures_stream_hex("bedrock", "stream_content_moderation.txt")),
+        # TODO: check why this needs to be reusable
+        is_reusable=True,
     )
 
     task_run = test_client.stream_run_task_v1(
@@ -41,6 +43,8 @@ async def test_content_moderation_failed_generation_wrapper_with_completion(test
         url="https://bedrock-runtime.us-west-2.amazonaws.com/model/us.anthropic.claude-3-opus-20240229-v1:0/converse",
         status_code=200,
         json=fixtures_json("bedrock", "completion_fixture_content_moderation.json"),
+        # TODO: check why this needs to be reusable
+        is_reusable=True,
     )
 
     with pytest.raises(HTTPStatusError) as e:

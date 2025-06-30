@@ -58,3 +58,7 @@ class MongoTaskVariantsStorage(PartialStorage[TaskVariantDocument]):
         if doc:
             return TaskVariantDocument.model_validate(doc).to_resource()
         raise ObjectNotFoundException(f"Task variant with uid {task_uid} not found")
+
+    async def variants_iterator(self, agent_id: str, variant_ids: set[str]):
+        async for doc in self._find(filter={"slug": agent_id, "version": {"$in": list(variant_ids)}}):
+            yield doc.to_resource()

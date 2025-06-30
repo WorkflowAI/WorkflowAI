@@ -300,14 +300,9 @@ async def import_task_run(
     return res.json()
 
 
-async def wait_for_completed_tasks(broker: InMemoryBroker, max_retries: int = 10):
+async def _wait_for_broker_tasks(broker: InMemoryBroker, max_retries: int = 10):
     if isinstance(broker, PausableInMemoryBroker):
         await broker.resume()
-
-    from api.services.analytics._amplitude_analytics_service import AmplitudeAnalyticsService
-
-    with contextlib.suppress(Exception):
-        await AmplitudeAnalyticsService.batched_amplitude.flush()
 
     """Sleep for intervals of 100 until all tasks are completed or max_retries is reached."""
     running = []
@@ -318,6 +313,18 @@ async def wait_for_completed_tasks(broker: InMemoryBroker, max_retries: int = 10
         if not running:
             return
     raise TimeoutError(f"Tasks did not complete {[task for task in running]}")
+
+
+async def _flush_amplitude():
+    from api.services.analytics._amplitude_analytics_service import AmplitudeAnalyticsService
+
+    with contextlib.suppress(Exception):
+        await AmplitudeAnalyticsService.batched_amplitude.flush()
+
+
+async def wait_for_completed_tasks(broker: InMemoryBroker, max_retries: int = 10):
+    await _wait_for_broker_tasks(broker, max_retries)
+    await _flush_amplitude()
 
 
 def _task_id(task: dict[str, Any]):
@@ -410,6 +417,8 @@ def mock_openai_call(
     model: str = "gpt-4o-2024-11-20",
     provider: Literal["openai", "azure_openai"] = "openai",
     raw_content: Any | None = -1,
+    is_reusable: bool = False,
+    url: str | None = None,
 ):
     default_usage = {
         "prompt_tokens": 10,
@@ -434,6 +443,7 @@ def mock_openai_call(
     httpx_mock.add_response(
         url=url,
         status_code=status_code,
+        is_reusable=is_reusable,
         json=(
             json
             or {
@@ -569,7 +579,7 @@ async def create_organization_via_clerk(
                     "Authorization": "",
                     "svix-id": "msg_p5jXN8AQM9LWM0D4loKWxJek",
                     "svix-timestamp": f"{time.time()}",
-                    "svix-signature": "v1,/fIaJ/NmgVmJFQwJmEUI4ZI45BfTsMmENHHBha7/y4U=",
+                    "svix-signature": "v1,6K9hu/N3WmYci+BL3HFcB1pILyhtj5QkC/Ps1DFXCkY=",
                 },
             ),
         )
@@ -633,6 +643,7 @@ def mock_vertex_call(
     url: str | re.Pattern[str] | None = None,
     status_code: int = 200,
     latency: float | None = None,
+    is_reusable: bool = False,
 ):
     response = json or {
         "candidates": [
@@ -661,6 +672,7 @@ def mock_vertex_call(
         _response,
         url=url
         or f"https://{region}-aiplatform.googleapis.com/v1/projects/worfklowai/locations/{region}/publishers/{publisher}/models/{model_str}:generateContent",
+        is_reusable=is_reusable,
     )
 
 
@@ -729,35 +741,35 @@ class IntegrationTestClient:
         for patcher in self._patches:
             patcher.stop()
 
+    def _assert_all_responses_were_requested(self):
+        """Check that all httpx mock were requested"""
+        callbacks_not_executed = [
+            matcher
+            for matcher, _ in self.httpx_mock._callbacks  # pyright: ignore[reportPrivateUsage]
+            if matcher.should_have_matched()
+        ]
+        matchers_description = "\n".join(
+            [f"- {matcher}" for matcher in callbacks_not_executed],
+        )
+        assert not callbacks_not_executed, (
+            "The following responses are mocked but not requested:\n"
+            f"{matchers_description}\n"
+            "\n"
+            "If this is on purpose, refer to https://github.com/Colin-b/pytest_httpx/blob/master/README.md#allow-to-register-more-responses-than-what-will-be-requested"
+        )
+
     def reset_httpx_mock(self, assert_all_responses_were_requested: bool = True):
-        _AMPLITUDE_URL = "https://amplitude-mock"
-        _BETTERSTACK_URL = "https://in.logs.betterstack.com/metrics"
-        # We are also skipping the agent creation request, depending on how it's imported we could have
-        # missing calls when running multiple tests at once.
-        _CREATE_AGENT_URL = "http://0.0.0.0:8000/v1/_/agents"
-        try:
-            self.httpx_mock.reset(assert_all_responses_were_requested=assert_all_responses_were_requested)
-        except AssertionError as e:
-            # As of now, httpx mock does not support excluding specific responses from the reset
-            # So we do this by hand
-            def _extract_missing_responses(e: AssertionError):
-                lines = str(e).splitlines()
-                assert "The following responses are mocked but not requested" in lines[0], "sanity"
-                assert "assert not" in lines[-1], "sanity"
-                return [
-                    line
-                    for line in lines[1:-1]
-                    if _AMPLITUDE_URL not in line and _BETTERSTACK_URL not in line and _CREATE_AGENT_URL not in line
-                ]
+        if assert_all_responses_were_requested:
+            self._assert_all_responses_were_requested()
+        self.httpx_mock.reset()
 
-            missing_responses = _extract_missing_responses(e)
-            if missing_responses:
-                raise AssertionError(
-                    f"The following responses are mocked but not requested:\n{'\n'.join(missing_responses)}",
-                )
-
-        self.httpx_mock.add_response(url="https://in.logs.betterstack.com/metrics", status_code=202)
-        self.httpx_mock.add_response(url="https://amplitude-mock", status_code=200)
+        self.httpx_mock.add_response(
+            url="https://in.logs.betterstack.com/metrics",
+            status_code=202,
+            is_optional=True,
+            is_reusable=True,
+        )
+        self.httpx_mock.add_response(url="https://amplitude-mock", status_code=200, is_optional=True, is_reusable=True)
 
     async def create_task(
         self,
@@ -804,6 +816,8 @@ class IntegrationTestClient:
         task_id: str,
         task_output: dict[str, Any],
         create_agent: bool = True,
+        is_reusable: bool = False,
+        is_optional: bool = False,
     ):
         if create_agent:
             self.httpx_mock.add_response(
@@ -813,6 +827,9 @@ class IntegrationTestClient:
                     "schema_id": 1,
                     "variant_id": "variant_id",
                 },
+                # This has to be optional, if running multiple tests in the same session
+                # the agent is not reset so the call is not made
+                is_optional=True,
             )
 
         self.httpx_mock.add_response(
@@ -822,6 +839,8 @@ class IntegrationTestClient:
                 "version": {"properties": {"model": "gpt-4o-2024-11-20"}},
                 "task_output": task_output,
             },
+            is_reusable=is_reusable,
+            is_optional=is_optional,
         )
 
     def mock_ai_review(
@@ -830,6 +849,7 @@ class IntegrationTestClient:
         confidence_score: float | None = None,
         positive_aspects: list[str] | None = None,
         negative_aspects: list[str] | None = None,
+        is_reusable: bool = False,
     ):
         self.mock_internal_task(
             "evaluate-output",
@@ -839,6 +859,7 @@ class IntegrationTestClient:
                 "positive_aspects": positive_aspects,
                 "negative_aspects": negative_aspects,
             },
+            is_reusable=is_reusable,
         )
 
     def mock_openai_call(
@@ -853,6 +874,7 @@ class IntegrationTestClient:
         model: str | Model = "gpt-4o-2024-11-20",
         provider: Literal["openai", "azure_openai"] = "openai",
         raw_content: Any | None = -1,
+        is_reusable: bool = False,
     ):
         mock_openai_call(
             self.httpx_mock,
@@ -866,6 +888,7 @@ class IntegrationTestClient:
             model.value if isinstance(model, Model) else model,
             provider,
             raw_content,
+            is_reusable,
         )
 
     async def run_task_v1(
@@ -946,6 +969,7 @@ class IntegrationTestClient:
         url: str | re.Pattern[str] | None = None,
         status_code: int = 200,
         latency: float | None = None,
+        is_reusable: bool = False,
     ):
         if url:
             mock_vertex_call(
@@ -958,6 +982,7 @@ class IntegrationTestClient:
                 url=url,
                 status_code=status_code,
                 latency=latency,
+                is_reusable=is_reusable,
             )
             return
 
@@ -976,6 +1001,7 @@ class IntegrationTestClient:
                 url,
                 status_code,
                 latency=latency,
+                is_reusable=is_reusable,
             )
 
     async def wait_for_completed_tasks(self):
@@ -1205,10 +1231,12 @@ class IntegrationTestClient:
         raw_content: str | None = None,
         model: Model = Model.CLAUDE_3_5_SONNET_20241022,
         usage: dict[str, Any] | None = None,
+        is_reusable: bool = False,
     ):
         self.httpx_mock.add_response(
             url=self.ANTHROPIC_URL,
             status_code=status_code,
+            is_reusable=is_reusable,
             json={
                 "id": "msg_011FfbzF4F72Gc1rzSvvDCnR",
                 "type": "message",
@@ -1240,10 +1268,12 @@ class IntegrationTestClient:
         status_code: int = 200,
         body: dict[str, Any] | None = None,
         json_text: dict[str, Any] | None = None,
+        is_reusable: bool = False,
     ):
         self.httpx_mock.add_response(
             url=bedrock_endpoint(model),
             status_code=status_code,
+            is_reusable=is_reusable,
             json=body
             or {
                 "metrics": {

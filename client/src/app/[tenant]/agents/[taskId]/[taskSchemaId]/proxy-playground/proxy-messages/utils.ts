@@ -154,11 +154,11 @@ export function getTextAndIconFotContentType(type: ContentType): { text: string;
 export function getTitleForType(type: ExtendedMessageType) {
   switch (type) {
     case 'user':
-      return 'User Message';
+      return 'User';
     case 'system':
-      return 'System Message';
+      return 'System';
     case 'assistant':
-      return 'Assistant Message';
+      return 'Assistant';
     case 'toolCallResult':
       return 'Tool Call Result';
     case 'toolCallRequest':
@@ -409,4 +409,28 @@ export function createAssistantMessageFromRun(run: RunV1): ProxyMessage {
     run_id: run.id,
     content: [...content, { text: assistantText }],
   };
+}
+
+function getTextFromContentToCopy(message: ProxyMessageContent): string | undefined {
+  if (message.text) {
+    return message.text;
+  }
+
+  if (message.tool_call_result) {
+    return formatResponseToText(message.tool_call_result.result);
+  }
+
+  if (message.tool_call_request) {
+    return formatResponseToText(message.tool_call_request.tool_input_dict);
+  }
+
+  if (message.file) {
+    return message.file.url ?? message.file.data ?? undefined;
+  }
+
+  return undefined;
+}
+
+export function getContentToCopy(message: ProxyMessage): string {
+  return message.content.map((content) => getTextFromContentToCopy(content)).join('\n');
 }

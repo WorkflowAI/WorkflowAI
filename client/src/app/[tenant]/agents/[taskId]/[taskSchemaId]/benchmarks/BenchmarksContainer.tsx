@@ -20,9 +20,9 @@ import { useRedirectWithParams } from '@/lib/queryString';
 import { Params, taskApiRoute, taskRunsRoute, taskSchemaRoute } from '@/lib/routeFormatter';
 import { environmentsForVersion } from '@/lib/versionUtils';
 import {
-  useOrFetchAllAiModels,
   useOrFetchEvaluationInputs,
   useOrFetchReviewBenchmark,
+  useOrFetchSchemaAIModels,
   useOrFetchTask,
   useOrFetchVersions,
 } from '@/store';
@@ -222,7 +222,7 @@ export function BenchmarksContainer() {
     setNewGroupModalOpen(false);
   }, []);
 
-  const { findIconURLForModel } = useOrFetchAllAiModels({
+  const { findIconURLForModel } = useOrFetchSchemaAIModels({
     tenant,
     taskId,
     taskSchemaId,

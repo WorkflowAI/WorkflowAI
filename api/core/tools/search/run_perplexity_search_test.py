@@ -44,7 +44,6 @@ def mock_env() -> Generator[None, None, None]:
         yield
 
 
-@pytest.mark.asyncio
 async def test_run_perplexity_search_success(httpx_mock: HTTPXMock, mock_env: None) -> None:
     """Test successful Perplexity API call."""
     httpx_mock.add_response(
@@ -76,7 +75,6 @@ Citations:
     }
 
 
-@pytest.mark.asyncio
 async def test_run_perplexity_search_validation_error(httpx_mock: HTTPXMock) -> None:
     """Test handling of invalid API response."""
     invalid_response = {"invalid": "response"}
@@ -87,10 +85,9 @@ async def test_run_perplexity_search_validation_error(httpx_mock: HTTPXMock) -> 
     )
 
     result = await _run_perplexity_search("test query", PerplexityModel.SONAR)
-    assert result == json.dumps(invalid_response)
+    assert json.loads(result) == invalid_response
 
 
-@pytest.mark.asyncio
 async def test_run_perplexity_search_api_error(httpx_mock: HTTPXMock) -> None:
     """Test handling of API error response."""
     error_response = {"error": "API error"}
@@ -109,7 +106,6 @@ async def test_run_perplexity_search_api_error(httpx_mock: HTTPXMock) -> None:
     )
 
 
-@pytest.mark.asyncio
 async def test_run_perplexity_search_no_citations(httpx_mock: HTTPXMock) -> None:
     """Test response formatting when there are no citations."""
     response_without_citations = {**MOCK_PERPLEXITY_RESPONSE, "citations": []}

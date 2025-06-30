@@ -12,7 +12,7 @@ from api.routers.openai_proxy._openai_proxy_models import (
     OpenAIProxyChatCompletionRequest,
     OpenAIProxyMessage,
     OpenAIProxyTool,
-    OpenAIProxyToolFunction,
+    OpenAIProxyToolDefinition,
 )
 from api.services.feedback_svc import FeedbackTokenGenerator
 from core.domain.consts import INPUT_KEY_MESSAGES
@@ -66,7 +66,7 @@ class TestPrepareRun:
         completion_request.tools = [
             OpenAIProxyTool(
                 type="function",
-                function=OpenAIProxyToolFunction(
+                function=OpenAIProxyToolDefinition(
                     name="my_function",
                     parameters={},
                     strict=True,
@@ -83,7 +83,7 @@ class TestPrepareRun:
         mock_storage.task_version_resource_by_id.return_value = test_models.task_variant(
             input_io=RawMessagesSchema,
         )
-        result = await proxy_handler._prepare_run(completion_request, PublicOrganizationData())
+        result = await proxy_handler.prepare_run(completion_request, PublicOrganizationData())
         assert result.properties.enabled_tools == [
             Tool(name="my_function", input_schema={}, output_schema={}, strict=True),
         ]
@@ -112,7 +112,7 @@ class TestPrepareRun:
             input_io=RawMessagesSchema,
         )
         with pytest.raises(BadRequestError) as e:
-            await proxy_handler._prepare_run(completion_request, PublicOrganizationData())
+            await proxy_handler.prepare_run(completion_request, PublicOrganizationData())
         assert "You send input variables but the deployment you are trying to use does not expect any" in str(e.value)
 
     @pytest.mark.skip(reason="Fix the error message")
@@ -139,7 +139,7 @@ class TestPrepareRun:
         )
 
         with pytest.raises(BadRequestError) as e:
-            await proxy_handler._prepare_run(completion_request, PublicOrganizationData())
+            await proxy_handler.prepare_run(completion_request, PublicOrganizationData())
         assert "Your deployment on schema #1 expects input variables" in str(e.value)
 
     async def test_with_deployment_and_non_slug_agent_id(
@@ -162,7 +162,7 @@ class TestPrepareRun:
             ),
         )
         mock_storage.task_version_resource_by_id.return_value = test_models.task_variant(input_io=RawMessagesSchema)
-        await proxy_handler._prepare_run(completion_request, PublicOrganizationData())
+        await proxy_handler.prepare_run(completion_request, PublicOrganizationData())
 
         mock_storage.task_deployments.get_task_deployment.assert_called_once_with(
             "my-agent",
@@ -188,9 +188,56 @@ class TestPrepareRun:
         completion_request.input = None
         mock_storage.store_task_resource.side_effect = lambda x: (x, True)  # type: ignore
 
-        prepared = await proxy_handler._prepare_run(completion_request, PublicOrganizationData())
+        prepared = await proxy_handler.prepare_run(completion_request, PublicOrganizationData())
         assert prepared.variant.task_id == "my-agent"
         assert prepared.variant.name == "my agent"
+
+    async def test_workflowai_internal(
+        self,
+        proxy_handler: OpenAIProxyHandler,
+        mock_storage: Mock,
+    ):
+        """Check that the workflowai_internal path works correctly"""
+
+        completion_request = OpenAIProxyChatCompletionRequest(
+            model="gpt-4o",
+            messages=[],  # Empty messages as required for workflowai_internal
+            agent_id="my-test-agent",
+            input={"name": "John", "age": 30},
+            workflowai_internal=OpenAIProxyChatCompletionRequest.WorkflowAIInternal(
+                variant_id="my-variant-id",
+                version_messages=[
+                    Message.with_text("You are a helpful assistant", role="system"),
+                    Message.with_text("Hello {{name}}, you are {{age}} years old!", role="user"),
+                ],
+            ),
+        )
+
+        mock_variant = test_models.task_variant(
+            id="my-variant-id",
+            task_id="my-test-agent",
+            input_io=RawMessagesSchema,
+            output_io=RawStringMessageSchema,
+        )
+        mock_storage.task_version_resource_by_id.return_value = mock_variant
+
+        result = await proxy_handler.prepare_run(completion_request, PublicOrganizationData())
+
+        # Verify that it called _prepare_for_variant_id correctly
+        mock_storage.task_version_resource_by_id.assert_called_once_with(
+            "my-test-agent",
+            "my-variant-id",
+        )
+
+        # Verify the result structure
+        assert result.variant == mock_variant
+        assert result.properties.model == "gpt-4o"
+        assert result.properties.messages == [
+            Message.with_text("You are a helpful assistant", role="system"),
+            Message.with_text("Hello {{name}}, you are {{age}} years old!", role="user"),
+        ]
+        assert result.properties.task_variant_id == "my-variant-id"
+        assert result.final_input == {"name": "John", "age": 30}
 
 
 class TestCheckForDuplicateMessages:
@@ -227,6 +274,31 @@ class TestPrepareRunForDeployment:
             response_format=None,
         )
         assert result.final_input == Messages.with_messages(Message.with_text("Hello, world!"))
+
+    async def test_with_agent_id_with_underscores(self, proxy_handler: OpenAIProxyHandler, mock_storage: Mock):
+        """Check that we slugify the agent id if it's not a slug"""
+        mock_storage.task_deployments.get_task_deployment.return_value = test_models.task_deployment(
+            properties=TaskGroupProperties(
+                model="gpt-4o",
+                task_variant_id="my-variant",  # type: ignore
+                # No messages
+            ),
+        )
+        mock_storage.task_version_resource_by_id.return_value = test_models.task_variant(task_id="my_agent")
+        result = await proxy_handler._prepare_for_deployment(
+            agent_ref=EnvironmentRef(agent_id="my_agent", schema_id=1, environment=VersionEnvironment.PRODUCTION),
+            tenant_data=PublicOrganizationData(),
+            messages=Messages.with_messages(Message.with_text("Hello, world!")),
+            input=None,
+            response_format=None,
+        )
+        assert result.final_input == Messages.with_messages(Message.with_text("Hello, world!"))
+
+        mock_storage.task_deployments.get_task_deployment.assert_called_once_with(
+            "my_agent",
+            1,
+            "production",
+        )
 
 
 class TestPrepareRunForModel:
@@ -354,3 +426,14 @@ class TestBuildVariant:
 
         assert result.task_id == "lagent-de-la-mere"
         assert result.name == "L'agent de la mère"
+
+    def test_build_variant_with_agent_id_with_underscores(self):
+        result, idx = OpenAIProxyHandler._build_variant(
+            messages=Messages.with_messages(Message.with_text("Hello, world!", role="user")),
+            agent_slug="my_agent",
+            input=None,
+            response_format=None,
+        )
+        assert idx == -1
+        assert result.task_id == "my_agent"
+        assert result.name == "My Agent"

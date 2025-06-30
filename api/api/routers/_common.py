@@ -2,9 +2,11 @@ import logging
 import os
 import time
 from contextvars import ContextVar
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Annotated, Any, Optional, TypeVar
 
 from pydantic import BaseModel, Field, model_validator
+from pydantic.json_schema import AnyType
+from pydantic.json_schema import SkipJsonSchema as PydanticSkipJsonSchema
 
 from core.domain.errors import BadRequestError
 from core.domain.task_group_properties import TaskGroupProperties
@@ -17,6 +19,26 @@ INCLUDE_PRIVATE_ROUTES = os.getenv("ENV_NAME", "") != "prod"
 PRIVATE_TAGS = ["Private"]
 
 PRIVATE_KWARGS: Any = {"include_in_schema": INCLUDE_PRIVATE_ROUTES, "tags": PRIVATE_TAGS}
+
+_T = TypeVar("_T")
+
+
+def _skipJsonSchemaAnnotation(include_private: bool) -> Any:
+    if include_private:
+
+        class _IdentityAnnotation:
+            def __class_getitem__(cls, item: AnyType) -> AnyType:
+                return Annotated[item, cls()]  # type: ignore
+
+        return _IdentityAnnotation
+
+    return PydanticSkipJsonSchema
+
+
+if TYPE_CHECKING:
+    SkipJsonSchema = Annotated[AnyType, ...]
+else:
+    SkipJsonSchema = _skipJsonSchemaAnnotation(INCLUDE_PRIVATE_ROUTES)
 
 
 _request_start_time_context = ContextVar[float]("request_start_time_context")

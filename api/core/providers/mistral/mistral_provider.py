@@ -170,7 +170,7 @@ class MistralAIProvider(HTTPXProvider[MistralAIConfig, CompletionResponse]):
         match error_type:
             case "invalid_request_error":
                 if error_message and "too large for model" in error_message:
-                    return MaxTokensExceededError(msg=error_message, response=response, store_task_run=False)
+                    return MaxTokensExceededError(msg=error_message, response=response)
             case "value_error":
                 # We store here for debugging purposes
                 return ProviderBadRequestError(error_message or "Unknown error", response=response)

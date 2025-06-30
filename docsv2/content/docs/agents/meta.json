@@ -1,0 +1,9 @@
+{
+  "title": "Agents",
+  "icon": "UserGroup",
+  "pages": [
+    "index",
+    "tools",
+    "memory"
+  ]
+}

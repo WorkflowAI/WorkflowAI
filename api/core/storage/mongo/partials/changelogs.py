@@ -1,7 +1,6 @@
 import logging
 from typing import Any
 
-from api.dependencies.path_params import TaskID, TaskSchemaID
 from core.domain.changelogs import VersionChangelog
 from core.storage import TenantTuple
 from core.storage.mongo.models.changelog import ChangeLogDocument
@@ -20,7 +19,7 @@ class MongoChangeLogStorage(PartialStorage[ChangeLogDocument]):
         res = await self._insert_one(doc)
         return res.to_domain()
 
-    async def list_changelogs(self, task_id: TaskID, task_schema_id: TaskSchemaID | None):
+    async def list_changelogs(self, task_id: str, task_schema_id: int | None):
         filter: dict[str, Any] = {"task_id": task_id}
         if task_schema_id:
             filter["task_schema_id"] = task_schema_id

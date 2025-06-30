@@ -1,6 +1,7 @@
 import { enableMapSet, produce } from 'immer';
-import { orderBy, sortBy } from 'lodash';
+import { orderBy } from 'lodash';
 import { create } from 'zustand';
+import { sortTasks } from '@/app/[tenant]/agents/tasks/utils';
 import { client } from '@/lib/api';
 import { Method, SSEClient } from '@/lib/api/client';
 import { TaskID, TaskSchemaID, TenantID } from '@/types/aliases';
@@ -131,11 +132,11 @@ export const useTasks = create<TasksState>((set, get) => ({
       // in the JWT
       const { items } = await client.get<Page_SerializableTask_>(rootTaskPath(tenant));
 
-      const sortedTasksByName = sortBy(items, 'name');
-      const sortedTasksWithSortedVersions = sortedTasksByName.map((task) => ({
+      const tasksWithSortedVersions = items.map((task) => ({
         ...task,
         versions: orderBy(task.versions, 'schema_id', 'desc'),
       }));
+      const sortedTasksWithSortedVersions = sortTasks(tasksWithSortedVersions);
       set(
         produce((state: TasksState) => {
           state.tasksByTenant.set(tenant, sortedTasksWithSortedVersions);

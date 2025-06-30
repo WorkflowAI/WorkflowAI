@@ -158,3 +158,13 @@ export function getEnvironmentsForMajorVersion(majorVersion: MajorVersion): Vers
 
   return uniqueEnvironments.length > 0 ? sortEnvironmentsInOrderOfImportance(uniqueEnvironments) : undefined;
 }
+
+export function getReasoningForVersion(version: VersionV1): string | undefined {
+  if (version.properties.reasoning_effort !== undefined && version.properties.reasoning_effort !== null) {
+    return version.properties.reasoning_effort;
+  }
+  if (version.properties.reasoning_budget !== undefined && version.properties.reasoning_budget !== null) {
+    return version.properties.reasoning_budget.toString();
+  }
+  return undefined;
+}

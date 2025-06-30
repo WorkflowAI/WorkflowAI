@@ -1,0 +1,212 @@
+---
+title: Reasoning Models
+summary: Documentation on using reasoning models. Explains how to enable and configure reasoning mode to get step-by-step thought processes from supported AI models.
+description: Enable reasoning on capable models and retrieve the reasoning content.
+---
+
+import { Tabs, Tab } from 'fumadocs-ui/components/tabs';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+## What is reasoning?
+
+Reasoning mode is a capability available in certain AI models that allows them to engage in explicit step-by-step reasoning before providing their final answer. When reasoning mode is enabled, the model generates internal "thoughts" that show its reasoning process, problem-solving steps, and decision-making logic.
+
+Reasoning mode can unlock better inference capabilities in complex use cases; however, it can add extra cost and latency, since the **reasoning content** is generated prior to the response and count towards the used tokens. It is important to consider the trade-off when enabling reasoning mode.
+
+## Configuration
+
+All providers have a different way of configuring reasoning mode or returning the reasoning content:
+- [OpenAI](https://platform.openai.com/docs/guides/reasoning) and [xAI](https://docs.x.ai/docs/guides/reasoning) expose a **reasoning effort** parameter (`low`, `medium`, `high`).
+- [Anthropic](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking) and [Google](https://ai.google.dev/gemini-api/docs/thinking) allow providing a thinking budget, limiting the number of tokens used for thinking.
+- Fireworks does not support configuring reasoning mode
+
+To reconcile differences between providers, WorkflowAI converts back and forth between a reasoning effort and a reasoning budget (also called thinking budget).
+
+Each reasoning effort level corresponds to a reasoning budget that allocates a specific percentage of the model's maximum output tokens.
+
+| Reasoning Effort | Maximum Token Budget |
+|------------------|---------------------|
+| `disabled` | Disables reasoning when possible |
+| `low` | **20%** of maximum output tokens |
+| `medium` | **50%** of maximum output tokens |
+| `high` | **80%** of maximum output tokens |
+
+In the inverse, the reasoning budget is converted to a reasoning effort:
+
+| Token Budget Range | Converted to Effort |
+|-------------------|-------------------|
+| `0`% | `disabled` (disables reasoning when possible) |
+| Up to **20%** of max tokens | `low` |
+| **20%** - **50%** of max tokens | `medium` |
+| Above **50%** of max tokens | `high` |
+
+Reasoning can be configured via the `reasoning` request parameter which is an object with the following fields:
+- `budget`: integer, the reasoning budget in tokens
+- `effort`: string, the reasoning effort, one of `disabled`, `low`, `medium`, `high`
+
+<Tabs items={["Budget", "Effort"]}>
+  <Tab>
+  ```json
+  {
+    "reasoning": {
+      "budget": 10000
+    }
+  }
+  ```
+  </Tab>
+  <Tab>
+  ```json
+  {
+    "reasoning": {
+      "effort": "medium"
+    }
+  }
+  ```
+  </Tab>
+</Tabs>
+
+Either `budget` or `effort` can be provided, but not both.
+
+<Callout type="error">
+TODO: add table about reasoning effort and budget for each provider by calling the /v1/models endpoint
+</Callout>
+
+
+<Callout type="info">
+As explained above, the way providers allow configuring reasoning is different. The same value can be sent differently to each provider. For example, given a reasoning budget of `50k tokens`, WorkflowAI will send:
+- a reasoning effort of `medium` if using o3, since o3 has max output tokens of 100k
+- a thinking budget of `50k` if using claude 4 sonnet
+- nothing if using deepseek r1, since fireworks does not support configuring reasoning
+</Callout>
+
+<Callout type="info">
+OpenAI completion API exposes a `reasoning_effort` (`low`, `medium`, `high`) parameter. It is also supported by WorkflowAI but does not allow configuring a granular thinking budget or disabling reasoning.
+</Callout>
+
+## Usage
+
+### Completion API
+
+As explained above, the reasoning effort can be passed as a parameter to the completion API. Thoughts can then be retrieved from the choice object via a WorkflowAI specific field `reasoning_content`.
+
+<Callout type="warning">
+As the `reasoning_content` field is not part of the OpenAI API response, it will likely throw a typing issue when accessed.
+</Callout>
+
+<Callout type="info">
+For now, since WorkflowAI relies on the OpenAI completion API which does not return the reasoning content, the reasoning content will not be available on OpenAI models.
+</Callout>
+
+<Tabs items={["Python", "TypeScript", "JSON"]}>
+  <Tab>
+  ```python
+  res = openai.chat.completions.create(
+    model="claude-4-sonnet",
+    messages=[{"role": "user", "content": "What is the meaning of life?"}],
+    extra_body={
+      "reasoning": {
+        "budget": 10000,
+        # or "effort": "low",
+      }
+    }
+  )
+  # Access the reasoning content
+  print(res.choices[0].message.reasoning_content) # type: ignore
+  # Access the reasoning tokens
+  print(res.usage.completion_tokens_details.reasoning_tokens)
+  ```
+  </Tab>
+  <Tab>
+  ```typescript
+  const res = await openai.chat.completions.create({
+    model: "claude-4-sonnet",
+    messages: [{ role: "user", content: "What is the meaning of life?" }],
+    extra_body: {
+      reasoning: {
+        budget: 10000,
+        // or "effort": "low",
+      }
+    }
+  });
+  // Access the reasoning content
+  // @ts-expect-error - reasoning_content is not part of the OpenAI API
+  console.log(res.choices[0].message.reasoning_content); 
+  // Access the reasoning tokens usage
+  console.log(res.usage.completion_tokens_details.reasoning_tokens);
+  ```
+  </Tab>
+  <Tab>
+  ```json
+  {
+    "model": "claude-4-sonnet",
+    "messages": [
+      {
+        "role": "user", 
+        "content": "What is the meaning of life?"
+      }
+    ],
+    "reasoning": {
+      "budget": 10000,
+      // or "effort": "low",
+    }
+  }
+  ```
+  </Tab>
+</Tabs>
+
+
+When streaming, the reasoning content deltas are also returned at the same level as the content field.
+
+<Tabs items={["Python", "TypeScript"]}>
+  <Tab>
+  ```python
+  print(res.choices[0].delta.reasoning_content)
+  print(res.choices[0].delta.content)
+  ```
+  </Tab>
+  <Tab>
+  ```typescript
+  console.log(res.choices[0].delta.reasoning_content); 
+  console.log(res.choices[0].delta.content); 
+  ```
+  </Tab>
+</Tabs>
+
+### Viewing reasoning models
+
+The [WorkflowAI models endpoint](https://run.workflowai.com/v1/models) exposes the parameter `supports.reasoning`.
+
+```json
+{
+  "data": [
+    {
+      "id": "claude-4-sonnet",
+      ...,
+      "supports": {
+        "reasoning": true
+      }
+    },
+    ...
+  ]
+}
+```
+
+It is also possible to filter for reasoning models via the `reasoning` query parameter.
+
+<Tabs items={["Python", "Curl"]}>
+<Tab>
+```python
+models = openai.models.list(extra_query={"reasoning": True})
+# The supports field is ignored by the OpenAI SDK so it is not accessible
+print(models.data)
+```
+</Tab>
+<Tab>
+```sh 
+curl https://run.workflowai.com/v1/models?reasoning=true
+```
+</Tab>
+</Tabs>
+
+
+

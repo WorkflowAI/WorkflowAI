@@ -1,0 +1,20 @@
+# API Errors
+
+This guide covers the errors you may encounter when using the WorkflowAI API.
+
+> TODO: check with @guillaume
+
+The errors listed are returned when using:
+- `/v1/chat/completions` endpoints 
+- WorkflowAI Typescript and Python SDKs
+- `/../run` endpoints.
+- WorkflowAI API
+
+| CODE | OVERVIEW |
+|------|----------|
+| 400  | Bad request or failed generation, see error code for details |
+| 429  | Rate limit |
+| 413  | Max context exceeded |
+| 408  | Provider request timeout |
+| 422  | Error in validating the request payload |
+| 424  | Provider issue (overloaded, returned a 500, etc.) |

@@ -25,7 +25,7 @@ export function extractTextFromContent(content: unknown) {
       },
       2
     );
-    text = '```json' + text + '```';
+    text = '```json\n' + text + '\n```';
     orginalText = JSON.stringify(content, null, 2);
   } else {
     text = String(content);
@@ -44,13 +44,13 @@ export function prepareMessageForDisplay(message: Record<string, unknown>): Mess
 
   switch (role) {
     case 'user':
-      title = 'User Message';
+      title = 'User';
       break;
     case 'system':
-      title = 'System Message';
+      title = 'System';
       break;
     case 'assistant':
-      title = 'Assistant Message';
+      title = 'Assistant';
       break;
     default:
       title = 'Message';

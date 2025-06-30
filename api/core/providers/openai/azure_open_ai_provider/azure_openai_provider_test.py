@@ -12,6 +12,7 @@ from core.domain.fields.file import File
 from core.domain.llm_usage import LLMUsage
 from core.domain.message import MessageDeprecated
 from core.domain.models import Model, Provider
+from core.domain.reasoning_effort import ReasoningEffort
 from core.domain.structured_output import StructuredOutput
 from core.providers.base.models import RawCompletion, StandardMessage
 from core.providers.base.provider_error import (
@@ -129,7 +130,7 @@ class TestBuildRequest:
                     MessageDeprecated(role=MessageDeprecated.Role.SYSTEM, content="Hello 1"),
                     MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello"),
                 ],
-                options=ProviderOptions(model=Model.O1_PREVIEW_2024_09_12, max_tokens=10, temperature=0),
+                options=ProviderOptions(model=Model.GPT_4O_AUDIO_PREVIEW_2025_06_03, max_tokens=10, temperature=0),
                 stream=False,
             ),
         )
@@ -144,37 +145,18 @@ class TestBuildRequest:
                 "content": "Hello",
             },
         ]
-        assert request.temperature == 1.0
+        assert request.temperature is None
 
-    def test_build_request_with_reasoing_effort_high(self, azure_openai_provider: AzureOpenAIProvider):
-        request = cast(
-            CompletionRequest,
-            azure_openai_provider._build_request(  # pyright: ignore [reportPrivateUsage]
-                messages=[MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello")],
-                options=ProviderOptions(model=Model.O1_2024_12_17_HIGH_REASONING_EFFORT, max_tokens=10, temperature=0),
-                stream=False,
-            ),
-        )
-        # We can exclude None values because the HTTPxProvider does the same
-        assert request.model_dump(include={"messages", "reasoning_effort"}, exclude_none=True) == {
-            "messages": [
-                {
-                    "role": "user",
-                    "content": "Hello",
-                },
-            ],
-            "reasoning_effort": "high",
-        }
-
-    def test_build_request_with_reasoing_effort_medium(self, azure_openai_provider: AzureOpenAIProvider):
+    def test_build_request_with_reasoning_effort(self, azure_openai_provider: AzureOpenAIProvider):
         request = cast(
             CompletionRequest,
             azure_openai_provider._build_request(  # pyright: ignore [reportPrivateUsage]
                 messages=[MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello")],
                 options=ProviderOptions(
-                    model=Model.O1_2024_12_17_MEDIUM_REASONING_EFFORT,
+                    model=Model.O3_2025_04_16,
                     max_tokens=10,
                     temperature=0,
+                    reasoning_effort=ReasoningEffort.MEDIUM,
                 ),
                 stream=False,
             ),
@@ -188,26 +170,6 @@ class TestBuildRequest:
                 },
             ],
             "reasoning_effort": "medium",
-        }
-
-    def test_build_request_with_reasoing_effort_low(self, azure_openai_provider: AzureOpenAIProvider):
-        request = cast(
-            CompletionRequest,
-            azure_openai_provider._build_request(  # pyright: ignore [reportPrivateUsage]
-                messages=[MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello")],
-                options=ProviderOptions(model=Model.O1_2024_12_17_LOW_REASONING_EFFORT, max_tokens=10, temperature=0),
-                stream=False,
-            ),
-        )
-        # We can exclude None values because the HTTPxProvider does the same
-        assert request.model_dump(include={"messages", "reasoning_effort"}, exclude_none=True) == {
-            "messages": [
-                {
-                    "role": "user",
-                    "content": "Hello",
-                },
-            ],
-            "reasoning_effort": "low",
         }
 
 
@@ -280,7 +242,7 @@ class TestSingleStream:
                 options=ProviderOptions(model=Model.GPT_4O_2024_11_20, max_tokens=10, temperature=0),
             )
             [chunk.output async for chunk in raw_chunks]
-        assert e.value.store_task_run is False
+        assert e.value.store_task_run
 
 
 class TestStream:
@@ -484,7 +446,7 @@ class TestComplete:
                 output_factory=_output_factory,
             )
 
-        assert e.value.store_task_run is False
+        assert e.value.store_task_run
         assert len(httpx_mock.get_requests()) == 1
 
 
@@ -581,140 +543,6 @@ class TestRequiresDownloadingFile:
     )
     def test_does_not_require_downloading_file(self, file: FileWithKeyPath):
         assert not AzureOpenAIProvider.requires_downloading_file(file, Model.GPT_4O_MINI_2024_07_18)
-
-
-class TestIsSchemaSupported:
-    async def test_schema_supported(self, httpx_mock: HTTPXMock, azure_openai_provider: AzureOpenAIProvider):
-        httpx_mock.add_response(
-            url="https://workflowai-azure-oai-staging-eastus.openai.azure.com/openai/deployments/gpt-4o-2024-11-20/chat/completions?api-version=2024-12-01-preview",
-            json=fixtures_json("azure", "response.json"),
-        )
-
-        schema = fixtures_json("jsonschemas", "schema_1.json")
-
-        with patch("redis.asyncio.Redis.get") as mock_cache:
-            mock_cache.get.return_value = None
-            is_supported = await azure_openai_provider.is_schema_supported_for_structured_generation(
-                task_name="test",
-                model=Model.GPT_4O_2024_11_20,
-                schema=schema,
-            )
-
-        assert is_supported
-        request = httpx_mock.get_requests()[0]
-        body = json.loads(request.read().decode())
-        assert body == {
-            # "max_tokens": 16_384,
-            "messages": [
-                {"content": "Generate a test output", "role": "user"},
-            ],
-            "model": "gpt-4o-2024-11-20",
-            "response_format": {
-                "type": "json_schema",
-                "json_schema": {
-                    "name": "test_6332b35b347573206791b5e07ead9edf",
-                    "strict": True,
-                    "schema": {
-                        "description": 'The expected output of the EmailToCalendarProcessor. Each attribute corresponds to a question asked to the processor.\n\nThis class will be dynamically injected in the prompt as a "schema" for the LLM to enforce.',
-                        "$defs": {
-                            "CalendarEventCategory": {
-                                "enum": [
-                                    "UNSPECIFIED",
-                                    "IN_PERSON_MEETING",
-                                    "REMOTE_MEETING",
-                                    "FLIGHT",
-                                    "TO_DO",
-                                    "BIRTHDAY",
-                                ],
-                                "type": "string",
-                            },
-                            "MeetingProvider": {
-                                "enum": ["ZOOM", "GOOGLE_MEET", "MICROSOFT_TEAMS", "SKYPE", "OTHER"],
-                                "type": "string",
-                            },
-                        },
-                        "properties": {
-                            "is_email_thread_about_an_event": {"type": "boolean"},
-                            "is_event_confirmed": {"anyOf": [{"type": "boolean"}, {"type": "null"}]},
-                            "event_category": {
-                                "anyOf": [{"$ref": "#/$defs/CalendarEventCategory"}, {"type": "null"}],
-                            },
-                            "is_event_all_day": {"type": "boolean"},
-                            "is_event_start_datetime_defined": {"anyOf": [{"type": "boolean"}, {"type": "null"}]},
-                            "event_start_datetime": {
-                                "anyOf": [{"description": "format: date-time", "type": "string"}, {"type": "null"}],
-                            },
-                            "event_start_date": {
-                                "anyOf": [{"description": "format: date", "type": "string"}, {"type": "null"}],
-                            },
-                            "is_event_end_datetime_defined": {"anyOf": [{"type": "boolean"}, {"type": "null"}]},
-                            "event_end_datetime": {
-                                "anyOf": [{"description": "format: date-time", "type": "string"}, {"type": "null"}],
-                            },
-                            "event_end_date": {
-                                "anyOf": [{"description": "format: date", "type": "string"}, {"type": "null"}],
-                            },
-                            "event_title": {"anyOf": [{"type": "string"}, {"type": "null"}]},
-                            "remote_meeting_provider": {
-                                "anyOf": [{"$ref": "#/$defs/MeetingProvider"}, {"type": "null"}],
-                            },
-                            "event_location_details": {"anyOf": [{"type": "string"}, {"type": "null"}]},
-                            "event_participants_emails_addresses": {
-                                "anyOf": [{"items": {"type": "string"}, "type": "array"}, {"type": "null"}],
-                            },
-                        },
-                        "required": [
-                            "is_email_thread_about_an_event",
-                            "is_event_confirmed",
-                            "event_category",
-                            "is_event_all_day",
-                            "is_event_start_datetime_defined",
-                            "event_start_datetime",
-                            "event_start_date",
-                            "is_event_end_datetime_defined",
-                            "event_end_datetime",
-                            "event_end_date",
-                            "event_title",
-                            "remote_meeting_provider",
-                            "event_location_details",
-                            "event_participants_emails_addresses",
-                        ],
-                        "type": "object",
-                        "additionalProperties": False,
-                    },
-                },
-            },
-            "stream": False,
-            "temperature": 0.0,
-        }
-
-    async def test_schema_not_supported_error(self, httpx_mock: HTTPXMock):
-        provider = AzureOpenAIProvider()
-        schema = {"type": "invalid_schema"}
-
-        with patch("core.utils.redis_cache.get_redis_client") as mock_cache:
-            mock_cache.get.return_value = None
-            is_supported = await provider.is_schema_supported_for_structured_generation(
-                task_name="test",
-                model=Model.GPT_4O_2024_11_20,
-                schema=schema,
-            )
-
-        assert not is_supported
-
-    async def test_schema_not_supported_exception(self, httpx_mock: HTTPXMock):
-        provider = AzureOpenAIProvider()
-        schema = {"type": "object"}
-
-        with patch("core.utils.redis_cache.get_redis_client") as mock_cache:
-            mock_cache.get.return_value = None
-            is_supported = await provider.is_schema_supported_for_structured_generation(
-                task_name="test",
-                model=Model.GPT_4O_2024_11_20,
-                schema=schema,
-            )
-
-        assert not is_supported
 
 
 class TestPrepareCompletion:

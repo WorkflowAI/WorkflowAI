@@ -38,6 +38,7 @@ type SimpleTooltipProps = {
   tooltipClassName?: string;
   tooltipDelay?: number;
   forceShowing?: boolean;
+  triggerClassName?: string;
 };
 
 function SimpleTooltip({
@@ -51,6 +52,7 @@ function SimpleTooltip({
   tooltipClassName,
   tooltipDelay,
   forceShowing = false,
+  triggerClassName,
 }: SimpleTooltipProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isOpenFromClick, setIsOpenFromClick] = useState(false);
@@ -86,6 +88,7 @@ function SimpleTooltip({
           data-testid='tooltip-trigger'
           asChild={asChild}
           onClick={supportClick ? () => setIsOpenFromClick(!isOpenFromClick) : undefined}
+          className={triggerClassName}
         >
           {children}
         </TooltipTrigger>

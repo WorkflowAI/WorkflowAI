@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 
 from core.domain.errors import ProviderDoesNotSupportModelError
 from core.domain.models import Model, Provider
+from core.domain.reasoning_effort import ReasoningEffort
 from core.domain.task_typology import TaskTypology
 
 from ._sourced_base_model import SourcedBaseModel
@@ -160,6 +161,74 @@ class ModelFallback(BaseModel):
         )
 
 
+class ModelReasoningBudget(BaseModel):
+    """
+    A reasoning effort to reasoning budget mapping
+    If the reasoning budget in the final model data is None, it means that the corresponding reasoning
+    effort is not supported.
+    For example, reasoning openai models do not support "none" reasoning effort or grok reasoning does not support
+    "medium" reasoning effort.
+
+    If a non supported reasoning effort is requested, the provider makes the decision to throw or fallback.
+    - If a reasoning effort is provided in the version but the provider requires a reasoning budget, the corresponding
+    value is used
+    - if a reasoning budget is provided but the provider requires a reasoning effort, the highest supported
+    reasoning effort that has a budget lower or equal to the provided budget is used. For example,
+    if low = 100 and medium = 200 and the provided budget is 150, the "low" reasoning effort is used.
+
+    For example, if the model data has a "low" reasoning budget, but the provider requires a reasoning effort,
+    the "low" reasoning effort is used.
+
+    If the model data has a "medium" reasoning budget, but the provider requires a reasoning effort, the "medium"
+    reasoning effort is used.
+    """
+
+    # There is some magic happening at build time here to fill missing unset values
+    # explicitly if needed.
+    disabled: Literal[0] | None = Field(
+        description="If 0, the model supports reasoning effort 'none'",
+        default=None,
+    )
+    # Defaults are not validated so we can set to -1 to indicate that the reasoning effort is unset before build time
+    low: int | None = Field(gt=0, default=-1)  # Default: 20% of the max reasoning budget
+    medium: int | None = Field(gt=0, default=-1)  # Default: 50% of the max reasoning budget
+    high: int | None = Field(gt=0, default=-1)  # Default: 80% of the max reasoning budget
+
+    min: int = Field(
+        description="The minimum number of tokens that can be used for reasoning for the model while reasoning "
+        "is enabled. Note that it should not be 0 since it would disable reasoning.",
+        gt=0,
+        default=-1,  # -1 default value is overriden at build time. Pydantic does not validate defaults so it's ok here
+        # Defaults to the "low" reasoning effort if not set
+    )
+    max: int = Field(
+        description="The maximum number of tokens that can be used for reasoning for the model.",
+        gt=0,
+        default=-1,  # -1 default value is overriden at build time. Pydantic does not validate defaults so it's ok here
+    )
+
+    def __getitem__(self, key: ReasoningEffort) -> int | None:
+        return getattr(self, key)
+
+    def corresponding_effort(self, budget: int) -> ReasoningEffort | None:
+        highest_matching_effort: ReasoningEffort | None = None
+        if budget == 0 and self.disabled is not None:
+            return ReasoningEffort.DISABLED
+
+        for effort in list(ReasoningEffort)[1:]:
+            value = self[effort]
+            if value is None:
+                continue
+            if value > budget and highest_matching_effort:
+                return highest_matching_effort
+            highest_matching_effort = effort
+
+        return highest_matching_effort
+
+    def corresponding_budget(self, effort: ReasoningEffort) -> int | None:
+        return getattr(self, effort, None)
+
+
 class ModelData(ModelDataSupports):
     display_name: str = Field(description="The display name of the model, that will be used in the UIs, etc.")
     icon_url: str = Field(description="The icon url of the model")
@@ -186,9 +255,10 @@ class ModelData(ModelDataSupports):
         description="The name of the provider for the model",
     )
 
-    # TODO: most thinking models don't use that value yet
-    # Use none for models to deactivate reasoning on thinking models
-    reasoning_level: Literal["none", "low", "medium", "high"] | None = None
+    reasoning: ModelReasoningBudget | None = Field(
+        description="Reasoning configuration for the model. None if the model does not support reasoning.",
+        default=None,
+    )
 
     aliases: list[str] | None = None
     fallback: ModelFallback | None = Field(
@@ -278,6 +348,9 @@ class LatestModel(BaseModel):
 class DeprecatedModel(BaseModel):
     replacement_model: Model
     aliases: list[str] | None = None
+    # We used to have different model ids per reasoning levels
+    # That's no longer the case but we need to allow converting an old model id to the corresponding reasoning level
+    reasoning_effort: ReasoningEffort | None = None
 
 
 ModelDataMapping: TypeAlias = dict[Model, FinalModelData | LatestModel | DeprecatedModel]

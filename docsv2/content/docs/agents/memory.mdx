@@ -1,0 +1,81 @@
+---
+title: Memory
+summary: Explains how to manage conversational memory using `reply_to_run_id`. This feature maintains chat history for stateful, multi-turn interactions.
+description: ...
+---
+
+## Chat history
+
+When building a chatbot agent with multiple back and forths, you previously needed to keep track of the conversation history, since LLM requires the full context of the conversation to generate a response.
+
+To make it easier to manage the chat history, WorkflowAI provides a managed storage for all chat agents, so you can only pass the last message to WorkflowAI along with a `reply_to_run_id` parameter, and the previous messages of the conversation will be added by WorkflowAI automatically.
+
+### How it Works
+
+When WorkflowAI receives a request containing `reply_to_run_id`, it performs these steps before calling the underlying LLM:
+
+1.  Looks up the run associated with the provided `reply_to_run_id`.
+2.  Retrieves the complete `messages` array (including system, user, and assistant turns) from that historical run.
+3.  Prepends these historical messages to the `messages` array sent in the current request.
+4.  Sends the combined message list to the target language model.
+
+### Benefits
+
+- **Simplified State Management:** Offloads the burden of storing and transmitting potentially long conversation histories from your client application.
+- **Reduced Payload Size:** Your client only needs to send the latest user message(s), significantly reducing the size of the API request payload for long conversations.
+- **Seamless Agent/Chatbot Development:** Makes building multi-turn conversational agents much easier, as WorkflowAI handles the context continuity.
+
+This feature effectively turns the stateless chat completion endpoint into a stateful one, managed by WorkflowAI based on the run history.
+
+### Example
+
+#### Simple example
+
+```python
+response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "Hello, how are you?"},
+    ]
+)
+
+# get the conversation id
+conversation_id = response.id
+
+# send a new message to the conversation
+response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[
+        {"role": "user", "content": "My name is John."}
+    ],
+    extra_body={
+        "reply_to_run_id": conversation_id
+    }
+)
+```
+
+#### Using deployments
+
+You can combine the Deployments feature with the stateful conversation feature (`reply_to_run_id`) to easily manage conversational context while using server-managed model configurations.
+
+**Mechanism:**
+
+Make an API call specifying:
+
+1.  The target deployment in the `model` parameter: `model="<agent-name>/#<schema_id>/<deployment-id>"`
+2.  The previous run ID in the `extra_body`: `extra_body={"reply_to_run_id": "chatcmpl-xxxx"}`
+3.  Typically, only the *new* user message(s) in the `messages` array.
+
+**How it Works:**
+
+When both are provided, WorkflowAI performs the following:
+
+1.  Retrieves the full message history from the run specified by `reply_to_run_id`.
+2.  Identifies the **model** associated with the `<agent-name>/#<schema_id>/<deployment-id>` from your Deployment configurations.
+3.  Prepends the retrieved history to the new message(s) provided in the current request's `messages` array.
+4.  Sends the combined message list to the **model specified by the Deployment**.
+
+**Important Interaction Note:** In this specific scenario (using both `reply_to_run_id` and a Deployment ID), the prompt template defined within the Deployment configuration is **not applied**. The message history fetched via `reply_to_run_id` provides the necessary context, and the Deployment ID primarily serves to select the correct model for the next turn in the conversation. Any `input` variables in `extra_body` will apply to templates within the *new* message(s) provided in the current call.
+
+**Benefit:** This allows you to maintain conversation state effortlessly using `reply_to_run_id` while ensuring that the appropriate, environment-specific model (managed via Deployments) is used for generating the next response.

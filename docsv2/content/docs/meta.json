@@ -1,0 +1,30 @@
+{
+  "title": "Documentation",
+  "icon": "BookOpen",
+  "pages": [
+    "---GET STARTED---",
+    "index",
+    "why-workflowai",
+    "pricing",
+    "inference/reliability",
+    "compliance",
+    "---PRODUCTS---",
+    "playground",
+    "inference",
+    "observability",
+    "deployments",
+    "agents",
+    "evaluations",
+    "---GUIDES---",
+    "use-cases",
+    "organizations",
+    "---RESOURCES---",
+    "reference",
+    "glossary",
+    "changelog",
+    "---SUPPORT---",
+    "[System Status](https://status.workflowai.com)",
+    "[Github](https://github.com/workflowai/workflowai)",
+    "[Discord](https://discord.com/invite/auuf8DREZh)"
+  ]
+}

@@ -56,7 +56,7 @@ class TestSendMetrics:
         ]
 
     async def test_send_metrics_retries(self, betterstack_client: BetterStackClient, httpx_mock: HTTPXMock):
-        httpx_mock.reset(False)
+        httpx_mock.reset()
         httpx_mock.add_response(
             method="POST",
             url="https://in.logs.betterstack.com/metrics",
@@ -82,7 +82,7 @@ class TestSendMetrics:
         assert len(httpx_mock.get_requests()) == 2
 
     async def test_send_metrics_retry_connect_error(self, betterstack_client: BetterStackClient, httpx_mock: HTTPXMock):
-        httpx_mock.reset(False)
+        httpx_mock.reset()
         httpx_mock.add_exception(httpx.ConnectError("test"))
         httpx_mock.add_response(
             method="POST",
@@ -94,8 +94,8 @@ class TestSendMetrics:
         assert len(httpx_mock.get_requests()) == 2
 
     async def test_send_metrics_max_retry(self, betterstack_client: BetterStackClient, httpx_mock: HTTPXMock):
-        httpx_mock.reset(False)
-        httpx_mock.add_exception(httpx.ConnectError("test"))
+        httpx_mock.reset()
+        httpx_mock.add_exception(httpx.ConnectError("test"), is_reusable=True)
 
         with pytest.raises(httpx.ConnectError):
             await betterstack_client.send_metrics([], tags={"e": "test"})

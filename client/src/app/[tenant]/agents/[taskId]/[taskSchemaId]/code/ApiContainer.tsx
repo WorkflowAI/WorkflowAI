@@ -7,7 +7,7 @@ import { Loader } from '@/components/ui/Loader';
 import { API_URL, RUN_URL } from '@/lib/constants';
 import {
   useOrFetchApiKeys,
-  useOrFetchCurrentTaskSchema,
+  useOrFetchSchema,
   useOrFetchTaskRuns,
   useOrFetchVersion,
   useOrFetchVersions,
@@ -102,7 +102,7 @@ export function ApiContainer(props: Props) {
 
   const taskSchemaId = selectedVersion?.schema_id as TaskSchemaID | undefined;
 
-  const { taskSchema } = useOrFetchCurrentTaskSchema(tenant, taskId, taskSchemaId);
+  const { taskSchema } = useOrFetchSchema(tenant, taskId, taskSchemaId);
 
   const [isProxy, setIsProxy] = useState(false);
   useEffect(() => {

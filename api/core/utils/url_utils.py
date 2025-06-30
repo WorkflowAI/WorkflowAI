@@ -14,10 +14,21 @@ EMAIL_REGEX = r"[a-zA-Z0-9._%+-]+@([a-zA-Z0-9][-a-zA-Z0-9]*[a-zA-Z0-9]\.[a-zA-Z0
 # Updated regex that handles paths correctly
 URL_REGEX = r"(https?:\/\/|www\.)?([a-zA-Z0-9][-a-zA-Z0-9]*[a-zA-Z0-9]\.[a-zA-Z0-9.]{2,})(?:\/[^\s'\"]*)?"
 
+DEFAULT_IGNORE_TAG = "no-url-fetch"
 
-def find_urls_in_text(text: str) -> list[str]:
+IGNORE_URL_START_TAG = f"<{DEFAULT_IGNORE_TAG}>"
+IGNORE_URL_END_TAG = f"</{DEFAULT_IGNORE_TAG}>"
+
+
+def find_urls_in_text(text: str, ignore_tag: str = DEFAULT_IGNORE_TAG) -> list[str]:
     if text == "":
         return []
+
+    # Find regions that should be ignored for URL extraction
+    no_url_pattern = f"<{ignore_tag}>(.*?)</{ignore_tag}>"
+    no_url_regions: list[tuple[int, int]] = [
+        (match.start(), match.end()) for match in re.finditer(no_url_pattern, text, re.DOTALL)
+    ]
 
     # First, find all email domains to exclude
     email_domains = set(re.findall(EMAIL_REGEX, text))
@@ -27,6 +38,19 @@ def find_urls_in_text(text: str) -> list[str]:
 
     cleaned_urls: list[str] = []
     for match in url_matches:
+        # Check if this URL is within a no-url region
+        url_start = match.start()
+        url_end = match.end()
+
+        is_in_no_url_region = False
+        for region_start, region_end in no_url_regions:
+            if region_start <= url_start and url_end <= region_end:
+                is_in_no_url_region = True
+                break
+
+        if is_in_no_url_region:
+            continue
+
         url = match.group(0)
         domain = match.group(2)
 
@@ -108,9 +132,9 @@ async def _fetch_single_url_content(url: str) -> URLContent:
         )
 
 
-async def extract_and_fetch_urls(text: str) -> list[URLContent]:
+async def extract_and_fetch_urls(text: str, ignore_tag: str = "no-url-fetch") -> list[URLContent]:
     # Extract URLs from the text
-    urls = find_urls_in_text(text)
+    urls = find_urls_in_text(text, ignore_tag=ignore_tag)
 
     # Fetch content for each URL
     return await fetch_urls_content(urls)

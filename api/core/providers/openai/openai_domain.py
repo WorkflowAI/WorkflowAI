@@ -42,24 +42,6 @@ AUDIO_MIME_TO_FORMAT_MAP = TwoWayDict[str, str](
     ("audio/x-mpeg", "mp3"),
 )
 
-MODEL_NAME_MAP = {
-    Model.O1_2024_12_17_HIGH_REASONING_EFFORT: "o1-2024-12-17",
-    Model.O1_2024_12_17_MEDIUM_REASONING_EFFORT: "o1-2024-12-17",
-    Model.O1_2024_12_17_LOW_REASONING_EFFORT: "o1-2024-12-17",
-    Model.O3_MINI_2025_01_31_HIGH_REASONING_EFFORT: "o3-mini-2025-01-31",
-    Model.O3_MINI_2025_01_31_MEDIUM_REASONING_EFFORT: "o3-mini-2025-01-31",
-    Model.O3_MINI_2025_01_31_LOW_REASONING_EFFORT: "o3-mini-2025-01-31",
-    Model.O4_MINI_2025_04_16_HIGH_REASONING_EFFORT: "o4-mini-2025-04-16",
-    Model.O4_MINI_2025_04_16_MEDIUM_REASONING_EFFORT: "o4-mini-2025-04-16",
-    Model.O4_MINI_2025_04_16_LOW_REASONING_EFFORT: "o4-mini-2025-04-16",
-    Model.O3_2025_04_16_HIGH_REASONING_EFFORT: "o3-2025-04-16",
-    Model.O3_2025_04_16_MEDIUM_REASONING_EFFORT: "o3-2025-04-16",
-    Model.O3_2025_04_16_LOW_REASONING_EFFORT: "o3-2025-04-16",
-    # Model.O3_PRO_2025_06_10_HIGH_REASONING_EFFORT: "o3-pro-2025-06-10",
-    # Model.O3_PRO_2025_06_10_MEDIUM_REASONING_EFFORT: "o3-pro-2025-06-10",
-    # Model.O3_PRO_2025_06_10_LOW_REASONING_EFFORT: "o3-pro-2025-06-10",
-}
-
 
 class TextContent(BaseModel):
     type: Literal["text"] = "text"
@@ -269,9 +251,10 @@ class OpenAIMessage(BaseModel):
 
     @classmethod
     def from_domain(cls, message: MessageDeprecated, is_system_allowed: bool):
-        role = role_to_openai_map[message.role]
-        if not is_system_allowed and role == "system":
+        if not is_system_allowed and message.role == "system":
             role = "user"
+        else:
+            role = role_to_openai_map[message.role]
 
         if not message.files and not message.tool_call_requests:
             return cls(content=message.content, role=role)
@@ -398,7 +381,7 @@ class OAIToolFunctionChoice(BaseModel):
 
 
 class CompletionRequest(BaseModel):
-    temperature: float
+    temperature: float | None
     max_completion_tokens: int | None
     model: str
     messages: list[OpenAIMessage | OpenAIToolMessage]

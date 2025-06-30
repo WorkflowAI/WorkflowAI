@@ -33,7 +33,7 @@ class TestLLMCompletionToMessages:
             usage=LLMUsage(),
         )
 
-        messages = completion.to_messages()
+        messages = completion.to_deprecated_messages()
         assert len(messages) == 2
         assert messages[0].role == MessageDeprecated.Role.USER
         assert messages[0].content == "Hello world"
@@ -47,7 +47,7 @@ class TestLLMCompletionToMessages:
             usage=LLMUsage(),
         )
 
-        messages = completion.to_messages()
+        messages = completion.to_deprecated_messages()
         assert len(messages) == 2
         assert messages[0].role == MessageDeprecated.Role.SYSTEM
         assert messages[0].content == "System prompt"
@@ -74,7 +74,7 @@ class TestLLMCompletionToMessages:
             provider=Provider.OPEN_AI,
         )
 
-        messages = completion.to_messages()
+        messages = completion.to_deprecated_messages()
         assert len(messages) == 2
         assert messages[0].role == MessageDeprecated.Role.USER
         assert messages[0].content == "First line\nSecond line"
@@ -92,7 +92,7 @@ class TestLLMCompletionToMessages:
             tool_calls=[ToolCallRequestWithID(id="1", tool_name="test_tool", tool_input_dict={"arg1": "value1"})],
         )
 
-        messages = completion.to_messages()
+        messages = completion.to_deprecated_messages()
         assert messages == [
             MessageDeprecated(content="Hello world", role=MessageDeprecated.Role.USER),
             MessageDeprecated(

@@ -8,7 +8,7 @@ from pytest_httpx import HTTPXMock, IteratorStream
 from taskiq import InMemoryBroker
 
 from core.domain.models import Model, Provider
-from core.domain.models.model_provider_datas_mapping import OPENAI_PROVIDER_DATA
+from core.domain.models.model_provider_data_mapping import OPENAI_PROVIDER_DATA
 from core.utils.ids import id_uint32
 from tests.component.common import (
     LEGACY_TEST_JWT,
@@ -396,6 +396,7 @@ async def test_run_schema_insufficient_credits(
             "prompt_tokens": 6 * tokens_for_one_dollar,
             "completion_tokens": 0,  # No completion tokens
         },
+        is_reusable=True,
     )
 
     # Create and run a task that consumes $6 worth of prompt tokens

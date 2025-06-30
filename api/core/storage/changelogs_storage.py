@@ -1,6 +1,5 @@
 from typing import AsyncIterator, Protocol
 
-from api.dependencies.path_params import TaskID, TaskSchemaID
 from core.domain.changelogs import VersionChangelog
 
 
@@ -9,6 +8,6 @@ class ChangeLogStorage(Protocol):
 
     def list_changelogs(
         self,
-        task_id: TaskID,
-        task_schema_id: TaskSchemaID | None,
+        task_id: str,
+        task_schema_id: int | None,
     ) -> AsyncIterator[VersionChangelog]: ...

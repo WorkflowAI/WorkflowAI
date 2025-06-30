@@ -22,6 +22,7 @@ from core.providers.base.models import (
 from core.providers.base.provider_error import (
     MaxTokensExceededError,
     ProviderBadRequestError,
+    ProviderInternalError,
     ServerOverloadedError,
     UnknownProviderError,
 )
@@ -110,7 +111,9 @@ class ErrorDetails(BaseModel):
         if not self.message:
             return None
 
-        error_cls = ProviderBadRequestError
+        # By default we want all the fallback mechanic that is provided by UnknownProviderError
+        # We can't instantiate a provider bad request error here
+        error_cls = UnknownProviderError
         message = self.message
         capture = True
 
@@ -118,18 +121,24 @@ class ErrorDetails(BaseModel):
             case msg if "invalid base64 data" in msg:
                 # We are still capturing this error, it should be caught upstream
                 # and not sent to the provider
-                pass
+                error_cls = ProviderBadRequestError
             case msg if "image exceeds" in msg:
                 # Not capturing since the umage is just too large
                 capture = False
                 message = "Image exceeds the maximum size"
+                error_cls = ProviderBadRequestError
             case msg if "image does not match the provided media type" in msg:
                 # Not capturing since the image is just too large
                 capture = False
                 message = "Image does not match the provided media type"
+                error_cls = ProviderBadRequestError
             case msg if "prompt is too long" in msg:
                 error_cls = MaxTokensExceededError
                 capture = False
+            case msg if "credit balance is too low" in msg:
+                # Our Anthropic provider is running out of credits
+                error_cls = ProviderInternalError
+                capture = True
             case _:
                 pass
         return error_cls(
