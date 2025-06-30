@@ -41,22 +41,6 @@ def create_search_documentation_json_schema(available_section_file_paths: list[s
     }
 
 
-class UnsupportedFeatureDetection(BaseModel):
-    """Model for detecting unsupported feature queries."""
-
-    is_unsupported: bool = Field(
-        description="True if the query is asking about a feature or capability that WorkflowAI does not currently support.",
-    )
-    feedback: str = Field(
-        description="Explanation of what unsupported feature the user was asking about and why it's not available in WorkflowAI.",
-        examples=[
-            "The user is asking about real-time collaboration features, which WorkflowAI doesn't currently support.",
-            "This query is about video processing capabilities that are not available in WorkflowAI.",
-            "The user wants mobile app development features that WorkflowAI doesn't offer.",
-        ],
-    )
-
-
 class SearchDocumentationOutput(BaseModel):
     """Base model for search documentation output."""
 
