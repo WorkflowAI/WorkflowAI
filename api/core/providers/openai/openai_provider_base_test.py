@@ -4,6 +4,7 @@ from typing import Any, cast
 
 import pytest
 from httpx import Response
+from pydantic import BaseModel
 
 from core.domain.llm_usage import LLMUsage
 from core.domain.message import Message, MessageContent, Messages
@@ -17,13 +18,17 @@ from core.providers.base.streaming_context import StreamingContext
 from core.providers.openai.openai_domain import (
     ChoiceDelta,
     CompletionRequest,
+    JSONResponseFormat,
+    JSONSchemaResponseFormat,
     OpenAIError,
     StreamedResponse,
     StreamedToolCall,
     StreamedToolCallFunction,
+    TextResponseFormat,
     Usage,
 )
 from core.providers.openai.openai_provider_base import OpenAIProviderBase, OpenAIProviderBaseConfig
+from tests import models as test_models
 from tests.utils import fixtures_json
 
 
@@ -726,3 +731,39 @@ def test_invalid_request_error_too_many_images() -> None:
     # Verify it returns ProviderInvalidFileError
     assert isinstance(result, ProviderInvalidFileError)
     assert "Too many images in request" in str(result)
+
+
+class TestResponseFormat:
+    @pytest.fixture()
+    def base_options(self) -> ProviderOptions:
+        return ProviderOptions(
+            model=Model.GPT_4O_2024_08_06,
+            output_schema={"type": "object"},
+            structured_generation=True,
+        )
+
+    @pytest.mark.parametrize(
+        ("supports_structured_output", "supports_json_mode", "expected_cls"),
+        [
+            pytest.param(True, True, JSONSchemaResponseFormat, id="structured_output_json_mode"),
+            pytest.param(True, False, JSONSchemaResponseFormat, id="json_mode_unsupported"),
+            pytest.param(False, True, JSONResponseFormat, id="json_mode"),
+            pytest.param(False, False, TextResponseFormat, id="text_mode"),
+        ],
+    )
+    async def test_with_structured_output(
+        self,
+        base_provider: _TestOpenAIProviderBase,
+        base_options: ProviderOptions,
+        supports_structured_output: bool,
+        supports_json_mode: bool,
+        expected_cls: type[BaseModel],
+    ):
+        format = base_provider._response_format(
+            options=base_options,
+            supports=test_models.model_data(
+                supports_structured_output=supports_structured_output,
+                supports_json_mode=supports_json_mode,
+            ),
+        )
+        assert isinstance(format, expected_cls)

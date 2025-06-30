@@ -236,7 +236,8 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
         Model.GPT_4_1106_VISION_PREVIEW: DeprecatedModel(replacement_model=Model.GPT_4O_2024_11_20),
         Model.GPT_4O_AUDIO_PREVIEW_2025_06_03: ModelData(
             display_name="GPT-4o (Audio Preview 2025-06-03)",
-            supports_json_mode=True,
+            supports_json_mode=False,
+            supports_structured_output=False,
             supports_input_image=False,
             supports_input_pdf=False,
             supports_input_schema=False,

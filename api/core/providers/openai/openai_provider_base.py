@@ -11,6 +11,7 @@ from core.domain.fields.file import File
 from core.domain.llm_usage import LLMUsage
 from core.domain.message import MessageDeprecated
 from core.domain.models import Model
+from core.domain.models.model_data_supports import ModelDataSupports
 from core.domain.models.utils import get_model_data
 from core.domain.tool_call import ToolCallRequestWithID
 from core.providers.base.abstract_provider import ProviderConfigInterface, RawCompletion
@@ -77,7 +78,7 @@ class OpenAIProviderBase(HTTPXProvider[_OpenAIConfigVar, CompletionResponse], Ge
             stream=stream,
             stream_options=StreamOptions(include_usage=True) if stream else None,
             # store=True,
-            response_format=self._response_format(options),
+            response_format=self._response_format(options, supports=model_data),
             reasoning_effort=options.final_reasoning_effort(model_data.reasoning),
             tool_choice=CompletionRequest.tool_choice_from_domain(options.tool_choice),
             top_p=options.top_p if model_data.supports_top_p else None,
@@ -94,11 +95,14 @@ class OpenAIProviderBase(HTTPXProvider[_OpenAIConfigVar, CompletionResponse], Ge
     def _response_format(
         self,
         options: ProviderOptions,
+        supports: ModelDataSupports,
     ) -> TextResponseFormat | JSONResponseFormat | JSONSchemaResponseFormat:
-        if options.output_schema is None:
+        if options.output_schema is None or (
+            not supports.supports_json_mode and not supports.supports_structured_output
+        ):
             return TextResponseFormat()
 
-        if not options.output_schema or not options.structured_generation:
+        if not supports.supports_structured_output or not options.output_schema or not options.structured_generation:
             return JSONResponseFormat()
 
         task_name = options.task_name or ""
