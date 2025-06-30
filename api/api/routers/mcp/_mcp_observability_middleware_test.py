@@ -99,7 +99,7 @@ class TestMCPObservabilityMiddleware:
 
             result = await middleware._get_or_create_session("test-session", mock_tenant)
 
-            assert result == mock_session
+            assert result == (mock_session, False)
             mock_get_or_create.assert_called_once_with("test-session", mock_tenant)
 
     @pytest.mark.parametrize(
@@ -188,9 +188,9 @@ class TestMCPObservabilityMiddleware:
         ):
             mock_session = Mock()
             mock_session.session_id = "session-123"
-            mock_get_session.return_value = mock_session
+            mock_get_session.return_value = (mock_session, False)
 
-            result = await middleware._setup_session_and_validate_request(mock_request)
+            result = await middleware._setup_session_and_validate_request(mock_request, None)
 
             assert result is not None
             tenant_info, session_state, request_data = result
@@ -210,7 +210,7 @@ class TestMCPObservabilityMiddleware:
             "api.routers.mcp._mcp_observability_middleware.get_tenant_from_context",
             side_effect=HTTPException(status_code=401, detail="Invalid bearer token"),
         ):
-            result = await middleware._setup_session_and_validate_request(mock_request)
+            result = await middleware._setup_session_and_validate_request(mock_request, None)
             assert result is None
 
     @pytest.mark.asyncio
@@ -256,7 +256,7 @@ class TestMCPObservabilityMiddleware:
         ):
             mock_session = Mock()
             mock_session.session_id = "session-123"
-            mock_get_session.return_value = mock_session
+            mock_get_session.return_value = (mock_session, False)
 
             response = await middleware.dispatch(mock_request, mock_call_next)
 
@@ -288,7 +288,7 @@ class TestMCPObservabilityMiddleware:
             mock_session.session_id = "session-123"
             mock_session.tool_calls = []
             mock_session.register_tool_call = AsyncMock()
-            mock_get_session.return_value = mock_session
+            mock_get_session.return_value = (mock_session, False)
 
             response = await middleware.dispatch(mock_request, mock_call_next)
 
@@ -322,7 +322,7 @@ class TestMCPObservabilityMiddleware:
         ):
             mock_session = Mock()
             mock_session.session_id = "session-123"
-            mock_get_session.return_value = mock_session
+            mock_get_session.return_value = (mock_session, False)
 
             with pytest.raises(Exception, match="Request processing failed"):
                 await middleware.dispatch(mock_request, mock_call_next)
@@ -338,7 +338,7 @@ class TestMCPObservabilityMiddleware:
         ):
             mock_session = Mock()
             mock_session.session_id = "session-123"
-            mock_get_session.return_value = mock_session
+            mock_get_session.return_value = (mock_session, False)
 
             response = await middleware.dispatch(mock_request, mock_call_next)
 
