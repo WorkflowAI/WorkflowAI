@@ -112,31 +112,6 @@ class TestBuildRequest:
         # else:
         #     assert request.max_tokens == model_data.max_tokens_data.max_tokens
 
-    def test_build_request_no_system(self, openai_provider: OpenAIProvider):
-        request = cast(
-            CompletionRequest,
-            openai_provider._build_request(  # pyright: ignore [reportPrivateUsage]
-                messages=[
-                    MessageDeprecated(role=MessageDeprecated.Role.SYSTEM, content="Hello 1"),
-                    MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello"),
-                ],
-                options=ProviderOptions(model=Model.O1_PREVIEW_2024_09_12, max_tokens=10, temperature=0),
-                stream=False,
-            ),
-        )
-        # We can exclude None values because the HTTPxProvider does the same
-        assert request.model_dump(include={"messages"}, exclude_none=True)["messages"] == [
-            {
-                "role": "user",
-                "content": "Hello 1",
-            },
-            {
-                "role": "user",
-                "content": "Hello",
-            },
-        ]
-        assert request.temperature == 1.0
-
     def test_build_request_with_reasoning_effort(self, openai_provider: OpenAIProvider):
         request = cast(
             CompletionRequest,

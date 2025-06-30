@@ -476,6 +476,3 @@ def test_o_models_do_not_support_temperature(model: Model):
     assert not model_data.supports_top_p, f"Model {model} supports top_p"
     assert not model_data.supports_presence_penalty, f"Model {model} supports presence_penalty"
     assert not model_data.supports_frequency_penalty, f"Model {model} supports frequency_penalty"
-    assert not model_data.supports_top_p, f"Model {model} supports temperature"
-    assert not model_data.supports_presence_penalty, f"Model {model} supports temperature"
-    assert not model_data.supports_frequency_penalty, f"Model {model} supports temperature"
