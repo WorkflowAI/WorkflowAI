@@ -319,6 +319,8 @@ class MajorVersion(BaseModel):
                     model=minor.properties.model,
                     provider=minor.properties.provider,
                     temperature=minor.properties.temperature,
+                    reasoning_budget=getattr(minor.properties, "reasoning_budget", None),
+                    reasoning_effort=getattr(minor.properties, "reasoning_effort", None),
                 ),
                 model=minor.properties.model,
                 deployments=[VersionDeploymentMetadata.from_domain(d) for d in minor.deployments]
