@@ -418,6 +418,7 @@ def mock_openai_call(
     provider: Literal["openai", "azure_openai"] = "openai",
     raw_content: Any | None = -1,
     is_reusable: bool = False,
+    url: str | None = None,
 ):
     default_usage = {
         "prompt_tokens": 10,

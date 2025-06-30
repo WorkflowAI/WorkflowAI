@@ -52,7 +52,7 @@ from core.domain.task_group import TaskGroup, TaskGroupQuery
 from core.domain.task_group_properties import TaskGroupProperties
 from core.domain.task_info import TaskInfo
 from core.domain.task_variant import SerializableTaskVariant
-from core.domain.tenant_data import PublicOrganizationData
+from core.domain.tenant_data import TenantData
 from core.storage import ObjectNotFoundException
 from core.storage.backend_storage import BackendStorage
 from core.storage.task_run_storage import TaskRunStorage
@@ -79,7 +79,7 @@ class MCPService:
         models_service: ModelsService,
         task_deployments_service: TaskDeploymentsService,
         user_email: str | None,
-        tenant: PublicOrganizationData,
+        tenant: TenantData,
         event_router: EventRouter,
     ):
         self.storage = storage
