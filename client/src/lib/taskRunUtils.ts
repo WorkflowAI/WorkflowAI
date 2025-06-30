@@ -43,11 +43,16 @@ export function getContextWindowInformation(
   }
 
   const usage = maxUsageCompletion.usage;
-  const percentage = (usage.prompt_token_count! + usage.completion_token_count!) / usage.model_context_window_size!;
+
+  if (!usage.prompt_token_count || !usage.completion_token_count || !usage.model_context_window_size) {
+    return undefined;
+  }
+
+  const percentage = (usage.prompt_token_count + usage.completion_token_count) / usage.model_context_window_size;
 
   return {
-    inputTokens: formatTokenCount(usage.prompt_token_count!),
-    outputTokens: formatTokenCount(usage.completion_token_count!),
+    inputTokens: formatTokenCount(usage.prompt_token_count),
+    outputTokens: formatTokenCount(usage.completion_token_count),
     percentage: `${Math.round(percentage * 100)}%`,
   };
 }
