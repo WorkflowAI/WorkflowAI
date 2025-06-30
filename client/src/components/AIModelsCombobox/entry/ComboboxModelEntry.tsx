@@ -1,4 +1,4 @@
-import { BrainCircuitRegular, Copy16Regular } from '@fluentui/react-icons';
+import { Copy16Regular } from '@fluentui/react-icons';
 import { cx } from 'class-variance-authority';
 import { Check } from 'lucide-react';
 import Image from 'next/image';
@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { displaySuccessToaster } from '@/components/ui/Sonner';
 import { formatDate } from '@/lib/date';
 import { useAutoScrollRef } from '@/lib/hooks/useAutoScrollRef';
+import { embedReasoningInModelID } from '@/lib/modelUtils';
 import { cn } from '@/lib/utils';
 import { TaskID } from '@/types/aliases';
 import { ModelResponse } from '@/types/workflowAI';
@@ -139,7 +140,17 @@ export function ComboboxModelEntry(props: ComboboxModelEntryProps) {
   );
 }
 
-export function formatAIModels(aiModels: ModelResponse[]): AIModelComboboxOption[] {
+function addReasoningToModel(name: string, id: string, reasoning: string, response: ModelResponse) {
+  const newID = embedReasoningInModelID(id, reasoning);
+  const newName = `${name} (${reasoning} reasoning)`;
+  return {
+    value: newID,
+    label: newName,
+    model: { ...response, name: newName, id: newID },
+  };
+}
+
+export function formatAIModels(aiModels: ModelResponse[], spreadReasoning: boolean): AIModelComboboxOption[] {
   const allIntelligenceScores: number[] = [];
 
   aiModels.forEach((model) => {
@@ -149,32 +160,43 @@ export function formatAIModels(aiModels: ModelResponse[]): AIModelComboboxOption
     }
   });
 
-  return aiModels.map((model) => ({
-    model: model,
-    value: model.id,
-    label: model.name,
-    disabled: !!model.is_not_supported_reason,
-    isLatest: model.is_latest ?? true,
-  }));
+  const options: AIModelComboboxOption[] = [];
+  for (const model of aiModels) {
+    const base = { disabled: !!model.is_not_supported_reason, isLatest: model.is_latest ?? true };
+    if (!spreadReasoning || !model.reasoning) {
+      options.push({
+        value: model.id,
+        label: model.name,
+        model,
+        ...base,
+      });
+      continue;
+    }
+
+    if (model.reasoning.can_be_disabled) {
+      options.push({ ...base, ...addReasoningToModel(model.name, model.id, 'disabled', model) });
+    }
+    // 0 would mean that the corresponding reasoning is not available
+    if (model.reasoning.low_effort_reasoning_budget) {
+      options.push({ ...base, ...addReasoningToModel(model.name, model.id, 'low', model) });
+    }
+    if (model.reasoning.medium_effort_reasoning_budget) {
+      options.push({ ...base, ...addReasoningToModel(model.name, model.id, 'medium', model) });
+    }
+    if (model.reasoning.high_effort_reasoning_budget) {
+      options.push({ ...base, ...addReasoningToModel(model.name, model.id, 'high', model) });
+    }
+  }
+
+  return options;
 }
 
-export function formatAIModel(model: ModelResponse, allModels: ModelResponse[]): AIModelComboboxOption {
-  const allIntelligenceScores: number[] = [];
-
-  allModels.forEach((model) => {
-    const intelligence = model.metadata?.quality_index;
-    if (intelligence !== null && intelligence !== undefined) {
-      allIntelligenceScores.push(intelligence);
-    }
-  });
-
-  const result: AIModelComboboxOption = {
+export function formatAIModel(model: ModelResponse): AIModelComboboxOption {
+  return {
     model: model,
     value: model.id,
     label: model.name,
     disabled: !!model.is_not_supported_reason,
     isLatest: model.is_latest ?? true,
   };
-
-  return result;
 }
