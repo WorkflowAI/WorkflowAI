@@ -31,21 +31,10 @@ def create_search_documentation_json_schema(available_section_file_paths: list[s
                 "description": "When relevant, output a feedback to explain which documentation sections are missing to fully answer the user's query. Only applies to WorkflowAI related queries.",
                 "default": None,
             },
-            "unsupported_feature_detected": {
-                "type": "object",
-                "properties": {
-                    "is_unsupported": {
-                        "type": "boolean",
-                        "description": "True if the query is asking about a feature or capability that WorkflowAI does not currently support.",
-                    },
-                    "feedback": {
-                        "type": "string",
-                        "description": "Explanation of what unsupported feature the user was asking about and why it's not available in WorkflowAI.",
-                    },
-                },
-                "description": "Detection of queries about features that WorkflowAI doesn't support (distinct from missing documentation).",
+            "unsupported_feature_feedback": {
+                "type": "string",
+                "description": "When relevant, output a feedback to explain which documentation sections are missing to fully answer the user's query. Only applies to WorkflowAI related queries.",
                 "default": None,
-                "required": ["is_unsupported", "feedback"],
             },
         },
         "additionalProperties": False,
@@ -83,9 +72,12 @@ class SearchDocumentationOutput(BaseModel):
             "There is no section about ...",
         ],
     )
-    unsupported_feature_detected: UnsupportedFeatureDetection | None = Field(
+    unsupported_feature_feedback: str | None = Field(
         default=None,
-        description="Detection of queries about features that WorkflowAI doesn't support (distinct from missing documentation).",
+        description="When relevant, output a feedback to explain which feature in the user query is not supported by the platform. Only applies to WorkflowAI related queries.",
+        examples=[
+            "... is not supported by the platform.",
+        ],
     )
 
 

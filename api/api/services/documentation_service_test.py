@@ -483,7 +483,7 @@ async def test_search_documentation_by_query_success(
 
     query = "How to authenticate with the API?"
     usage_context = "Test context for MCP client"
-    result, _ = await documentation_service.search_documentation_by_query(query, usage_context)
+    result = await documentation_service.search_documentation_by_query(query, usage_context)
 
     # Should return only the relevant sections
     expected_sections = [
@@ -532,7 +532,7 @@ async def test_search_documentation_by_query_empty_results(
 
     query = "How to build a rocket ship?"
     usage_context = "Test context for MCP client"
-    result, _ = await documentation_service.search_documentation_by_query(query, usage_context)
+    result = await documentation_service.search_documentation_by_query(query, usage_context)
 
     assert result == []
     mock_get_all_sections.assert_called_once_with("local")
@@ -561,7 +561,7 @@ async def test_search_documentation_by_query_none_result(
 
     query = "test query"
     usage_context = "Test context for MCP client"
-    result, _ = await documentation_service.search_documentation_by_query(query, usage_context)
+    result = await documentation_service.search_documentation_by_query(query, usage_context)
 
     assert result == []
     mock_get_all_sections.assert_called_once_with("local")
@@ -589,7 +589,7 @@ async def test_search_documentation_by_query_agent_error(
     caplog.set_level(logging.ERROR, logger="api.services.documentation_service")
     query = "How to authenticate?"
     usage_context = "Test context for MCP client"
-    result, _ = await documentation_service.search_documentation_by_query(query, usage_context)
+    result = await documentation_service.search_documentation_by_query(query, usage_context)
 
     # Should return empty list when search agent fails
     assert result == []
@@ -666,7 +666,7 @@ async def test_search_documentation_by_query_partial_matches(
 
     query = "test query"
     usage_context = "Test context for MCP client"
-    result, _ = await documentation_service.search_documentation_by_query(query, usage_context)
+    result = await documentation_service.search_documentation_by_query(query, usage_context)
 
     # Should only return sections that actually exist
     expected_sections = [

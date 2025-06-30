@@ -4,6 +4,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Query
 from pydantic import BaseModel, Field, model_validator
+from typing_extensions import Literal
 
 from api.dependencies.event_router import EventRouterDep
 from api.dependencies.security import RequiredUserOrganizationDep
@@ -194,3 +195,44 @@ async def extract_template(request: ExtractTemplateRequest) -> ExtractTemplateRe
             details=e.serialize_details(),
         )
     return ExtractTemplateResponse(json_schema=json_schema, last_templated_index=last_templated_index)
+
+
+class BuildAgentMessage(BaseModel):
+    content: str
+    role: Literal["USER", "ASSISTANT"]
+
+    class AgentSchema(BaseModel):
+        agent_name: str = Field(description="The name of the agent in Title Case", serialization_alias="agent_name")
+        output_json_schema: dict[str, Any] | None = Field(
+            default=None,
+            description="The JSON schema of the agent output",
+        )
+
+    agent_schema: AgentSchema | None = Field(
+        default=None,
+        description="The agent schema returned as of the message",
+    )
+
+
+class BuildAgentRequest(BaseModel):
+    messages: list[BuildAgentMessage] | None = Field(
+        default=None,
+        description="The previous messages of the agent builder process",
+    )
+    new_user_message: str | None = Field(
+        default=None,
+        description="The new user message to react to",
+    )
+
+
+class BuildAgentResponse(BaseModel):
+    message: BuildAgentMessage
+
+
+@router.post(
+    "/schemas/iterate",
+    description="Build a new agent based on natural language, allowing for multiple iterations",
+)
+async def generate_via_chat(
+    request: BuildAgentRequest,
+) -> BuildAgentResponse: ...

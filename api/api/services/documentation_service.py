@@ -10,7 +10,6 @@ from core.agents.pick_relevant_documentation_categories import (
     pick_relevant_documentation_sections,
 )
 from core.agents.search_documentation_agent import (
-    UnsupportedFeatureDetection,
     search_documentation_agent,
 )
 from core.domain.documentation_section import DocumentationSection
@@ -261,7 +260,7 @@ class DocumentationService:
         query: str,
         usage_context: str | None = None,
         mode: DocModeEnum = DEFAULT_DOC_MODE,
-    ) -> tuple[list[DocumentationSection], UnsupportedFeatureDetection | None]:
+    ) -> list[DocumentationSection]:
         all_doc_sections: list[DocumentationSection] = await self.get_all_doc_sections(mode)
 
         # TODO: have a static list of the most relevant docs as a fallback ?
@@ -279,7 +278,7 @@ class DocumentationService:
                     "search_documentation_agent did not return any parsed result",
                     extra={"query": query},
                 )
-                return fallback_docs_sections, None
+                return fallback_docs_sections
 
             relevant_doc_sections: list[str] = (
                 result.relevant_documentation_file_paths if result and result.relevant_documentation_file_paths else []
@@ -294,6 +293,15 @@ class DocumentationService:
                     },
                 )
 
+            # Log warning for cases where the agent has reported an unsupported feature
+            if result and result.unsupported_feature_feedback:
+                _logger.warning(
+                    "Documentation search agent has reported an unsupported feature",
+                    extra={
+                        "unsupported_feature_feedback": result.unsupported_feature_feedback,
+                    },
+                )
+
             # If agent did not report any missing doc sections but no relevant doc sections were found, we log a warning too
             if result and not result.missing_doc_sections_feedback and not result.relevant_documentation_file_paths:
                 _logger.warning(
@@ -303,10 +311,10 @@ class DocumentationService:
 
         except Exception as e:
             _logger.exception("Error in search documentation agent", exc_info=e)
-            return fallback_docs_sections, None
+            return fallback_docs_sections
 
         return [
             document_section
             for document_section in all_doc_sections
             if document_section.file_path in relevant_doc_sections
-        ], result.unsupported_feature_detected
+        ]
