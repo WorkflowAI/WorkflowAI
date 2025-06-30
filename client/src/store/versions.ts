@@ -249,7 +249,7 @@ export const useVersions = create<VersionsState>((set, get) => ({
     try {
       const response = await client.post<CreateVersionRequest, CreateVersionResponse>(
         taskSchemaSubPath(tenant, taskId, taskSchemaId, `/versions`, true),
-        body
+        spreadReasoning(body)
       );
 
       set(
