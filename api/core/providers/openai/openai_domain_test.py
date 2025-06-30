@@ -176,7 +176,7 @@ class TestOpenAIMessageFromDomain:
             ],
             role=MessageDeprecated.Role.USER,
         )
-        openai_message = OpenAIMessage.from_domain(message)
+        openai_message = OpenAIMessage.from_domain(message, is_system_allowed=True)
         assert isinstance(openai_message.content, list)
         assert len(openai_message.content) == 3
         assert isinstance(openai_message.content[0], TextContent)

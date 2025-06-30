@@ -242,6 +242,7 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             supports_input_schema=False,
             supports_input_audio=True,
             supports_audio_only=True,
+            supports_system_messages=False,
             max_tokens_data=MaxTokensData(
                 max_tokens=128_000,
                 max_output_tokens=16384,

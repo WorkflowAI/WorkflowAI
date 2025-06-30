@@ -67,7 +67,7 @@ class OpenAIProviderBase(HTTPXProvider[_OpenAIConfigVar, CompletionResponse], Ge
             if m.tool_call_results:
                 message.extend(OpenAIToolMessage.from_domain(m))
             else:
-                message.append(OpenAIMessage.from_domain(m))
+                message.append(OpenAIMessage.from_domain(m, is_system_allowed=model_data.supports_system_messages))
 
         completion_request = CompletionRequest(
             messages=message,

@@ -250,8 +250,11 @@ class OpenAIMessage(BaseModel):
     tool_calls: list[ToolCall] | None = None
 
     @classmethod
-    def from_domain(cls, message: MessageDeprecated):
-        role = role_to_openai_map[message.role]
+    def from_domain(cls, message: MessageDeprecated, is_system_allowed: bool):
+        if not is_system_allowed and message.role == "system":
+            role = "user"
+        else:
+            role = role_to_openai_map[message.role]
 
         if not message.files and not message.tool_call_requests:
             return cls(content=message.content, role=role)

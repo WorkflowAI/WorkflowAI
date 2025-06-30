@@ -122,6 +122,31 @@ class TestBuildRequest:
         ]
         assert request.temperature == 0
 
+    def test_build_request_no_system(self, azure_openai_provider: AzureOpenAIProvider):
+        request = cast(
+            CompletionRequest,
+            azure_openai_provider._build_request(  # pyright: ignore [reportPrivateUsage]
+                messages=[
+                    MessageDeprecated(role=MessageDeprecated.Role.SYSTEM, content="Hello 1"),
+                    MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello"),
+                ],
+                options=ProviderOptions(model=Model.GPT_4O_AUDIO_PREVIEW_2025_06_03, max_tokens=10, temperature=0),
+                stream=False,
+            ),
+        )
+        # We can exclude None values because the HTTPxProvider does the same
+        assert request.model_dump(include={"messages"}, exclude_none=True)["messages"] == [
+            {
+                "role": "user",
+                "content": "Hello 1",
+            },
+            {
+                "role": "user",
+                "content": "Hello",
+            },
+        ]
+        assert request.temperature is None
+
     def test_build_request_with_reasoning_effort(self, azure_openai_provider: AzureOpenAIProvider):
         request = cast(
             CompletionRequest,
