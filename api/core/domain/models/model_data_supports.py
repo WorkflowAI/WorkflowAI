@@ -40,3 +40,19 @@ class ModelDataSupports(ModelDataIOSupports):
     supports_tool_calling: bool = Field(
         description="Whether the model supports tool calling",
     )
+    supports_temperature: bool = Field(
+        default=True,
+        description="Whether the model supports temperature",
+    )
+    supports_top_p: bool = Field(
+        default=True,
+        description="Whether the model supports top_p",
+    )
+    supports_presence_penalty: bool = Field(
+        default=True,
+        description="Whether the model supports presence penalty",
+    )
+    supports_frequency_penalty: bool = Field(
+        default=True,
+        description="Whether the model supports frequency penalty",
+    )
