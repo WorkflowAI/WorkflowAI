@@ -65,7 +65,7 @@ MCP session ID: {{mcp_session_id}}"""
     # TODO: add some mcp-session_id to be able to fetch the full MCP conversation too
 
     response = await client.beta.chat.completions.parse(
-        model="gpt-4.1-mini-latest",  # Cheap, large context window, native structured generation.
+        model="gpt-4.1-latest",  # Large context window (1M) and native structured generation.
         messages=[
             {"role": "system", "content": system_message},
             {"role": "user", "content": user_message},
