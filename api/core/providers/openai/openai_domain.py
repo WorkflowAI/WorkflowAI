@@ -250,10 +250,8 @@ class OpenAIMessage(BaseModel):
     tool_calls: list[ToolCall] | None = None
 
     @classmethod
-    def from_domain(cls, message: MessageDeprecated, is_system_allowed: bool):
+    def from_domain(cls, message: MessageDeprecated):
         role = role_to_openai_map[message.role]
-        if not is_system_allowed and role == "system":
-            role = "user"
 
         if not message.files and not message.tool_call_requests:
             return cls(content=message.content, role=role)
@@ -380,7 +378,7 @@ class OAIToolFunctionChoice(BaseModel):
 
 
 class CompletionRequest(BaseModel):
-    temperature: float
+    temperature: float | None
     max_completion_tokens: int | None
     model: str
     messages: list[OpenAIMessage | OpenAIToolMessage]

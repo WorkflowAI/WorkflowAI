@@ -1,6 +1,6 @@
 # pyright: reportPrivateUsage=false
 
-from typing import Any
+from typing import Any, cast
 
 import pytest
 from httpx import Response
@@ -16,6 +16,7 @@ from core.providers.base.provider_options import ProviderOptions
 from core.providers.base.streaming_context import StreamingContext
 from core.providers.openai.openai_domain import (
     ChoiceDelta,
+    CompletionRequest,
     OpenAIError,
     StreamedResponse,
     StreamedToolCall,
@@ -678,6 +679,24 @@ class TestBuildRequest:
                 "tool_call_id": "call_ucYQgwUMFhWu2e91vA9FgRCj",
             },
         ]
+
+    async def test_with_unsupported_temperature(self, base_provider: _TestOpenAIProviderBase):
+        messages = Messages.with_messages(
+            Message(
+                role="system",
+                content=[MessageContent(text="Be concise, reply with one sentence.")],
+            ),
+        )
+        req = cast(
+            CompletionRequest,
+            base_provider._build_request(
+                messages.to_deprecated(),
+                # O3 mini does not support temperature
+                ProviderOptions(model=Model.O3_MINI_2025_01_31, temperature=0.5),
+                False,
+            ),
+        )
+        assert req.temperature is None
 
 
 def test_invalid_request_error_too_many_images() -> None:
