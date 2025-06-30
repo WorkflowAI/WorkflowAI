@@ -33,7 +33,7 @@ def create_search_documentation_json_schema(available_section_file_paths: list[s
             },
             "unsupported_feature_feedback": {
                 "type": "string",
-                "description": "When relevant, output a feedback to explain which documentation sections are missing to fully answer the user's query. Only applies to WorkflowAI related queries.",
+                "description": "When relevant, output a feedback to explain which feature in the user query is not supported by the platform. Only applies to WorkflowAI related queries.",
                 "default": None,
             },
         },
