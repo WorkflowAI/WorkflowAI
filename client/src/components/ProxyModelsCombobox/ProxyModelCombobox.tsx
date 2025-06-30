@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/Command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/Popover';
 import { ScrollArea } from '@/components/ui/ScrollArea';
+import { flexibleStringMatch } from '@/lib/searchUtils';
 import { Model, TaskID } from '@/types/aliases';
 import { ModelResponse } from '@/types/workflowAI';
 import { MysteryModelIcon } from '../icons/models/mysteryModelIcon';
@@ -123,7 +124,7 @@ export function ProxyModelCombobox(props: ProxyModelComboboxProps) {
       // By default we only return models that have the is_latest flag
       return modelOptions.filter((model) => model.isLatest);
     }
-    return modelOptions.filter((option) => option.label.toLowerCase().includes(search.toLowerCase()));
+    return modelOptions.filter((option) => flexibleStringMatch(search, option.label));
   }, [modelOptions, search]);
 
   const selectedOption = useMemo(() => {
