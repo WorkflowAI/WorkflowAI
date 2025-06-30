@@ -104,7 +104,7 @@ Given a search query and all available documentation sections, you must:
 4. Detect Unsupported Features: Determine if the user is asking about capabilities or features that WorkflowAI fundamentally does not support (distinct from missing documentation)
 5. Return the picked documentation section file_path(s) in a 'relevant_documentation_file_paths' list
 6. Optionally, return a 'missing_doc_sections_feedback' if you think some documentation sections are missing to fully answer the user's query.
-7. Optionally, return a 'unsupported_feature_detected' if you think the user is asking about a feature that WorkflowAI does not support.
+7. Optionally, return a 'unsupported_feature_feedback' if you think the user is asking about a feature that WorkflowAI does not support.
 
 'relevant_documentation_file_paths' items MUST ONLY be valid 'file_path' that exist in the 'Available Documentation Sections' sections.
 
