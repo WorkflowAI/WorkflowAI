@@ -442,7 +442,11 @@ class TestChainOfThought:
             {"title": "step title", "step": "step explaination"},
         ]
 
-    async def test_stream_with_steps(self, test_client: IntegrationTestClient):
+    async def test_stream_with_steps(
+        self,
+        test_client: IntegrationTestClient,
+        caplog: pytest.LogCaptureFixture,
+    ):
         task, iteration = await self.setup_task_and_version(test_client, model="gpt-4o-2024-11-20")
 
         test_client.mock_openai_stream(
@@ -483,15 +487,14 @@ class TestChainOfThought:
             )
         ]
 
-        assert len(chunks) == 2
-        assert chunks[0]["task_output"] == chunks[-1]["task_output"] == {"greeting": "Hello John!"}
-        assert (
-            chunks[0]["reasoning_steps"]
-            == chunks[-1]["reasoning_steps"]
-            == [
-                {"title": "step title", "step": "step explaination"},
-            ]
-        )
+        assert len(chunks) == 1
+        assert chunks[0]["task_output"] == {"greeting": "Hello John!"}
+        assert chunks[0]["reasoning_steps"] == [
+            {"title": "step title", "step": "step explaination"},
+        ]
+
+        warnings = [r for r in caplog.records if r.levelname == "WARNING" or r.levelname == "ERROR"]
+        assert not warnings, "should not have any warnings or errors"
 
     async def test_run_without_steps(self, test_client: IntegrationTestClient):
         task, iteration = await self.setup_task_and_version(test_client, should_use_chain_of_thought=False)
