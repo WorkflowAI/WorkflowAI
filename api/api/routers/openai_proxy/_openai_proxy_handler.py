@@ -27,7 +27,7 @@ from core.providers.base.provider_error import MissingModelError
 from core.storage import ObjectNotFoundException
 from core.storage.backend_storage import BackendStorage
 from core.utils.schemas import schema_from_data
-from core.utils.strings import is_url_safe, slugify, to_pascal_case
+from core.utils.strings import slugify, to_pascal_case
 from core.utils.templates import InvalidTemplateError
 
 from ._openai_proxy_models import (
@@ -573,6 +573,8 @@ To list all models programmatically: {_curl_command}""",
 
 
 def _sanitize_agent_id(agent_id: str) -> str:
-    if not is_url_safe(agent_id):
-        return slugify(agent_id)
-    return agent_id
+    # TODO: only slugify the agent_id if needed
+    return slugify(agent_id)
+    # if not is_url_safe(agent_id):
+    #     return slugify(agent_id)
+    # return agent_id
