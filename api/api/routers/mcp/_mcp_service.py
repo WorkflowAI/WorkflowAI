@@ -404,7 +404,7 @@ Your primary purpose is to help developers find the most relevant WorkflowAI doc
             sections = await documentation_service.get_documentation_by_path(["foundations"])
             query_results.append(
                 SearchResponse.QueryResult(
-                    content_snippet=sections[0].content,
+                    content_snippet=sections[0].content if sections else "",
                     source_page="foundations.mdx",
                 ),
             )
