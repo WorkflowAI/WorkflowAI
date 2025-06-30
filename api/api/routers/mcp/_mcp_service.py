@@ -40,8 +40,10 @@ from api.services.versions import VersionsService
 from core.agents.mcp_feedback_processing_agent import (
     mcp_feedback_processing_agent,
 )
+from core.agents.search_documentation_agent import UnsupportedFeatureDetection
 from core.domain.agent_run import AgentRun
 from core.domain.consts import INPUT_KEY_MESSAGES
+from core.domain.documentation_section import DocumentationSection
 from core.domain.events import EventRouter
 from core.domain.message import Messages
 from core.domain.models.model_data import FinalModelData, LatestModel
@@ -375,6 +377,25 @@ class MCPService:
             error="Invalid parameters provided",
         )
 
+    def _get_search_documentation_by_query_message(
+        self,
+        relevant_sections: list[DocumentationSection],
+        unsupported_feature_detected: UnsupportedFeatureDetection | None,
+    ) -> str:
+        if len(relevant_sections) > 0:
+            agent_answer = f"Successfully found relevant documentation sections: {[section.file_path for section in relevant_sections]}."
+        else:
+            agent_answer = "No relevant documentation sections found for your query. Please check the 'foundations' page for general information about WorkflowAI."
+
+        # Add warning about unsupported feature if detected
+        if unsupported_feature_detected:
+            agent_answer = (
+                agent_answer
+                + f" The query is about a feature that WorkflowAI does not currently support: '{unsupported_feature_detected.feedback}'"
+            )
+
+        return agent_answer
+
     async def _search_documentation_by_query(self, query: str) -> MCPToolReturn[SearchResponse]:
         """Search documentation using query and return snippets."""
 
@@ -383,7 +404,10 @@ class MCPService:
 
 Your primary purpose is to help developers find the most relevant WorkflowAI documentation sections to answer their specific queries about building, deploying, and using AI agents.
 """
-        relevant_sections = await documentation_service.search_documentation_by_query(query, usage_context)
+        relevant_sections, unsupported_feature_detected = await documentation_service.search_documentation_by_query(
+            query,
+            usage_context,
+        )
 
         # Convert to SearchResult format with content snippets
         query_results = [
@@ -404,16 +428,10 @@ Your primary purpose is to help developers find the most relevant WorkflowAI doc
             ),
         )
 
-        if len(query_results) == 0:
-            return MCPToolReturn(
-                success=True,
-                message=f"No relevant documentation sections found for query: {query}",
-            )
-
         return MCPToolReturn(
             success=True,
             data=SearchResponse(query_results=query_results),
-            message=f"Successfully found relevant documentation sections: {[section.file_path for section in relevant_sections]}",
+            message=self._get_search_documentation_by_query_message(relevant_sections, unsupported_feature_detected),
         )
 
     async def _get_documentation_page(self, page: str) -> MCPToolReturn[SearchResponse]:

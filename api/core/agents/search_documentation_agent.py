@@ -125,7 +125,9 @@ Given a search query and all available documentation sections, you must:
 2. Select the most relevant documentation sections that will help answer the 'Search Query' below. Aim for 1 to 5 of the most relevant sections for the search query.
 3. Prioritize sections that directly address the 'Search Query' below over tangentially related content
 4. Detect Unsupported Features: Determine if the user is asking about capabilities or features that WorkflowAI fundamentally does not support (distinct from missing documentation)
-5. Return the picked documentation section file_path(s) in a 'relevant_documentation_file_paths' list and optionally a 'missing_doc_sections_feedback' if you think some documentation sections are missing to fully answer the user's query.
+5. Return the picked documentation section file_path(s) in a 'relevant_documentation_file_paths' list
+6. Optionally, return a 'missing_doc_sections_feedback' if you think some documentation sections are missing to fully answer the user's query.
+7. Optionally, return a 'unsupported_feature_detected' if you think the user is asking about a feature that WorkflowAI does not support.
 
 'relevant_documentation_file_paths' items MUST ONLY be valid 'file_path' that exist in the 'Available Documentation Sections' sections.
 
