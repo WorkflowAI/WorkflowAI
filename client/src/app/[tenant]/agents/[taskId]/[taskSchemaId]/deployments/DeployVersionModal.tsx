@@ -111,12 +111,38 @@ export function DeployVersionModal(props: DeployVersionModalProps) {
   const environmentToUse = envSchemaIteration?.environment;
 
   const filteredFavoriteVersions = useMemo(() => {
-    return favoriteVersions.filter((version) => `${version.schema_id}` === schemaIdToUse);
-  }, [favoriteVersions, schemaIdToUse]);
+    return favoriteVersions.filter((version) => {
+      // Filter by schema ID
+      if (`${version.schema_id}` !== schemaIdToUse) return false;
+
+      // Filter out already deployed version for this environment
+      if (
+        envSchemaIteration?.currentIteration &&
+        version.iteration.toString() === envSchemaIteration.currentIteration
+      ) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [favoriteVersions, schemaIdToUse, envSchemaIteration?.currentIteration]);
 
   const filteredAllVersions = useMemo(() => {
-    return allVersions.filter((version) => `${version.schema_id}` === schemaIdToUse);
-  }, [allVersions, schemaIdToUse]);
+    return allVersions.filter((version) => {
+      // Filter by schema ID
+      if (`${version.schema_id}` !== schemaIdToUse) return false;
+
+      // Filter out already deployed version for this environment
+      if (
+        envSchemaIteration?.currentIteration &&
+        version.iteration.toString() === envSchemaIteration.currentIteration
+      ) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [allVersions, schemaIdToUse, envSchemaIteration?.currentIteration]);
 
   const handleSchemaIdChange = useCallback(
     (schemaId: TaskSchemaID) => {
