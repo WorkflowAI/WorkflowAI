@@ -31,17 +31,18 @@ SortOrder: TypeAlias = Literal["asc", "desc"]
 
 
 class ConciseLatestModelResponse(BaseModel):
-    id: str
-    currently_points_to: str
+    id: str = Field(description="The id of the model")
+    currently_points_to: str = Field(
+        description="The id of the model that the latest version of the agent is currently pointing to",
+    )
 
 
 class ConciseModelSupports(BaseModel):
-    input_image: bool
-    input_pdf: bool
-    input_audio: bool
-    audio_only: bool
-    tool_calling: bool
-    reasoning: bool
+    input_image: bool = Field(description="Whether the model supports image inputs")
+    input_pdf: bool = Field(description="Whether the model supports PDF document inputs")
+    input_audio: bool = Field(description="Whether the model supports audio inputs")
+    tool_calling: bool = Field(description="Whether the model supports tool/function calling")
+    reasoning: bool = Field(description="Whether the model supports reasoning")
 
     @classmethod
     def from_domain(cls, model_data: ModelData):
@@ -49,20 +50,19 @@ class ConciseModelSupports(BaseModel):
             input_image=model_data.supports_input_image,
             input_pdf=model_data.supports_input_pdf,
             input_audio=model_data.supports_input_audio,
-            audio_only=model_data.supports_audio_only,
             tool_calling=model_data.supports_tool_calling,
             reasoning=model_data.reasoning is not None,
         )
 
 
 class ConciseModelResponse(BaseModel):
-    id: str
-    display_name: str
-    supports: ConciseModelSupports
-    quality_index: int
-    cost_per_input_token_usd: float
-    cost_per_output_token_usd: float
-    release_date: str
+    id: str = Field(description="The id of the model")
+    display_name: str = Field(description="The display name of the model")
+    supports: ConciseModelSupports = Field(description="The features supported by the model")
+    quality_index: int = Field(description="The quality index of the model. A higher index means a smarter model.")
+    cost_per_input_token_usd: float = Field(description="The cost per input token in USD")
+    cost_per_output_token_usd: float = Field(description="The cost per output token in USD")
+    release_date: str = Field(description="The release date of the model")
 
     class Reasoning(BaseModel):
         min_budget: int = Field(
@@ -614,9 +614,9 @@ class StandardModelResponse(BaseModel):
 
 
 class Error(BaseModel):
-    code: str
-    message: str
-    details: dict[str, Any] | None
+    code: str = Field(description="The error code")
+    message: str = Field(description="The error message")
+    details: dict[str, Any] | None = Field(description="The error details")
 
     @classmethod
     def from_domain(cls, error: ErrorResponse.Error):
@@ -628,15 +628,14 @@ class Error(BaseModel):
 
 
 class AgentVersion(BaseModel):
-    id: str
-    model: str
-    temperature: float | None
-    messages: list[Message] | None
-    instructions: str | None
-    top_p: float | None
-    max_tokens: int | None
-    frequency_penalty: float | None
-    presence_penalty: float | None
+    id: str = Field(description="The version id of the agent")
+    model: str = Field(description="The model (id) used by the version")
+    temperature: float | None = Field(description="The temperature setting of the version")
+    messages: list[Message] | None = Field(description="The messages that are part of the version")
+    top_p: float | None = Field(description="The top_p parameter of the version")
+    max_tokens: int | None = Field(description="The max_tokens setting of the version")
+    frequency_penalty: float | None = Field(description="The frequency_penalty parameter of the version")
+    presence_penalty: float | None = Field(description="The presence_penalty parameter of the version")
 
     @classmethod
     def from_domain(cls, version: TaskGroup):
@@ -644,8 +643,8 @@ class AgentVersion(BaseModel):
             id=version.displayed_id,  # TODO: make sure the MCP is capable of retrieving a version by its Semver
             model=version.properties.model or "",  # there is always a model
             temperature=version.properties.temperature,
+            # TODO: map instructions to system messages ?
             messages=version.properties.messages,
-            instructions=version.properties.instructions,
             top_p=version.properties.top_p,
             max_tokens=version.properties.max_tokens,
             frequency_penalty=version.properties.frequency_penalty,
@@ -656,30 +655,32 @@ class AgentVersion(BaseModel):
 class MCPRun(BaseModel):
     """A run as returned by the MCP Server"""
 
-    id: str
-    conversation_id: str
-    agent_id: str
-    agent_schema_id: int
-    agent_version: AgentVersion
+    id: str = Field(description="The id of the run")
+    conversation_id: str = Field(description="The id of the conversation that the run belongs to")
+    agent_id: str = Field(description="The id of the agent that the run belongs to")
+    agent_schema_id: int = Field(description="The id of the agent schema that the run belongs to")
+    agent_version: AgentVersion = Field(description="The version of the agent that the run belongs to")
     status: Literal[
         "success",
         "error",
-    ]
-    agent_input: dict[str, Any] | None
+    ] = Field(description="The status of the run (success or error)")
+    input_variables: dict[str, Any] | None = Field(
+        description="The input variables included in the completion request. Used to template the version messages.",
+    )
     messages: list[Message] = Field(description="The exchanged messages, including the returned assistant message")
-    duration_seconds: float | None
-    cost_usd: float | None
-    created_at: datetime
+    duration_seconds: float | None = Field(description="The duration of the run in seconds")
+    cost_usd: float | None = Field(description="The cost of the run in USD")
+    created_at: datetime = Field(description="The creation timestamp of the run")
     environment: VersionEnvironment | None = Field(
         description="The environment that was used to trigger the run, if any",
     )
-    metadata: dict[str, Any] | None
+    metadata: dict[str, Any] | None = Field(description="The metadata set by the user")
     response_json_schema: dict[str, Any] | None = Field(
         description="Only present when using structured outputs. The JSON schema that the model was asked to respect",
     )
     error: Error | None = Field(description="An error returned by the model")
 
-    url: str
+    url: str = Field(description="URL of the run on WorkflowAI web app")
 
     @classmethod
     def from_domain(
@@ -698,7 +699,7 @@ class MCPRun(BaseModel):
             # See https://linear.app/workflowai/issue/WOR-4485/stop-storing-non-saved-versions-and-attach-them-to-runs-instead
             agent_version=AgentVersion.from_domain(version) if version else AgentVersion.from_domain(run.group),
             status="success" if run.status == "success" else "error",
-            agent_input={k: v for k, v in run.task_input.items() if k != "workflowai.messages"}
+            input_variables={k: v for k, v in run.task_input.items() if k != "workflowai.messages"}
             if run.task_input
             else None,
             messages=run.messages,
@@ -720,8 +721,8 @@ class SearchResponse(BaseModel):
     )
 
     class QueryResult(BaseModel):
-        content_snippet: str
-        source_page: str
+        content_snippet: str = Field(description="The snippet of the content of the page that matches the query")
+        source_page: str = Field(description="The page from which the content snippet was extracted")
 
     query_results: list[QueryResult] | None = Field(
         default=None,

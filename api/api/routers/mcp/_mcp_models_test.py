@@ -1,13 +1,10 @@
 # pyright: reportPrivateUsage=false
-from datetime import date, datetime
-from typing import Any
-from unittest.mock import Mock
+from datetime import datetime
 
 import pytest
 
 from api.routers.mcp._mcp_models import MCPRun
 from core.domain.error_response import ErrorResponse
-from core.domain.models import Provider
 from core.domain.models.model_provider_data import ModelProviderData, TextPricePerToken
 from tests import models as test_models
 
@@ -26,33 +23,6 @@ def mock_text_price() -> TextPricePerToken:
 def mock_provider_data(mock_text_price: TextPricePerToken) -> ModelProviderData:
     """Create a mock ModelProviderData for testing"""
     return ModelProviderData(text_price=mock_text_price)
-
-
-@pytest.fixture
-def mock_final_model_data(mock_provider_data: ModelProviderData) -> Any:
-    """Create a mock FinalModelData for testing"""
-    model_data = Mock()
-    model_data.providers = [(Provider.OPEN_AI, mock_provider_data)]
-    model_data.provider_name = "OpenAI"
-    model_data.display_name = "GPT-4"
-    model_data.release_date = date(2024, 1, 15)
-    model_data.quality_index = 100
-
-    # Mock model_dump to return supports fields - only whitelisted ones will be included
-    model_data.model_dump.return_value = {
-        "supports_tool_calling": True,
-        "supports_input_image": True,
-        "supports_input_pdf": True,
-        "supports_input_audio": True,
-        "supports_audio_only": False,  # False value should be ignored
-        "supports_json_mode": True,  # Not in whitelist, should be ignored
-        "supports_structured_output": True,  # Not in whitelist, should be ignored
-        "supports_system_messages": True,  # Not in whitelist, should be ignored
-        "supports_parallel_tool_calls": True,  # Not in whitelist, should be ignored
-        "other_field": "value",  # Should be ignored
-    }
-
-    return model_data
 
 
 class TestMCPRunFromDomain:

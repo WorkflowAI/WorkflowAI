@@ -23,7 +23,6 @@ def create_test_model(
             input_image=False,
             input_pdf=False,
             input_audio=False,
-            audio_only=False,
             tool_calling=True,
             reasoning=False,
         ),
