@@ -47,6 +47,7 @@ def create_search_documentation_json_schema(available_section_file_paths: list[s
                 "default": None,
             },
         },
+        "required": ["is_unsupported", "feedback"],
         "additionalProperties": False,
     }
 
