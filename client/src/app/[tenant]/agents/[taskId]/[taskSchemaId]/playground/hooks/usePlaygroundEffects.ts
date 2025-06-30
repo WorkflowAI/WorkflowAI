@@ -2,12 +2,13 @@
 
 import { isEqual } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { embedReasoningInModelID } from '@/lib/modelUtils';
 import { useRedirectWithParams } from '@/lib/queryString';
 import { SchemaNodeType } from '@/lib/schemaUtils';
 import { useOrFetchRunV1, useOrFetchTaskRun } from '@/store';
 import { GeneralizedTaskInput, TaskRun } from '@/types';
 import { Model, ModelOptional, TaskID, TenantID } from '@/types/aliases';
-import { ModelResponse, RunV1, VersionV1 } from '@/types/workflowAI';
+import { ModelResponse, RunV1, VersionV1, VersionV1Properties } from '@/types/workflowAI';
 import { useDefaultModels } from './useDefaultModels';
 import { GeneratePlaygroundInputParams } from './usePlaygroundPersistedState';
 import { PlaygroundModels } from './utils';
@@ -19,6 +20,14 @@ function isTaskRunOnSameModel(taskRun: TaskRun | undefined, taskModel: ModelOpti
   const modelID = taskModel;
   const taskRunGroupProperties = taskRun.group?.properties;
   return modelID === taskRunGroupProperties?.model;
+}
+
+function modelFromProperties(properties: VersionV1Properties, spreadReasoning: boolean): Model {
+  if (!spreadReasoning || !properties.reasoning_effort) {
+    // @ts-expect-error we should fix the type of version properties
+    return properties.model;
+  }
+  return embedReasoningInModelID(properties.model ?? '', properties.reasoning_effort);
 }
 
 type Props = {
@@ -46,6 +55,7 @@ type Props = {
   tenant: TenantID | undefined;
   voidInput: Record<string, unknown> | SchemaNodeType[] | undefined;
   persistedVersionId: string | undefined;
+  spreadReasoning?: boolean;
 };
 
 export function usePlaygroundEffects(props: Props) {
@@ -75,6 +85,7 @@ export function usePlaygroundEffects(props: Props) {
     tenant,
     voidInput,
     persistedVersionId,
+    spreadReasoning,
   } = props;
 
   const {
@@ -269,11 +280,12 @@ export function usePlaygroundEffects(props: Props) {
     const currentVersionProperties = currentVersion?.properties;
     const currentVersionInstructions = currentVersionProperties?.instructions;
     const currentVersionTemperature = currentVersionProperties?.temperature;
-    // @ts-expect-error we should fix the type of version properties
-    const currentVersionModel: Model = currentVersion?.model ?? '';
-    if (currentVersionInstructions) {
-      setInstructions(currentVersionInstructions);
-    }
+
+    const currentVersionModel = modelFromProperties(currentVersionProperties);
+    if (currentVersionProperties)
+      if (currentVersionInstructions) {
+        setInstructions(currentVersionInstructions);
+      }
     if (currentVersionTemperature) {
       setTemperature(currentVersionTemperature);
     }

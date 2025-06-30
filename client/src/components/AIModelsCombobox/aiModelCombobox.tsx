@@ -104,7 +104,7 @@ export function AIModelCombobox(props: AIModelComboboxProps) {
 
   const [isReverted, setIsReverted] = useLocalStorage<boolean>('aiModelComboboxOrder', false);
 
-  const modelOptions = useMemo(() => formatAIModels(models, spreadReasoning ?? false), [models, spreadReasoning]);
+  const modelOptions = useMemo(() => formatAIModels(models), [models]);
 
   const placeholder = useMemo(() => {
     if (placeholderFromParameters) {

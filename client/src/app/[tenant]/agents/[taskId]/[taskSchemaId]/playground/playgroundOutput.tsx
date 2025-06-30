@@ -106,10 +106,12 @@ function ModelOutput(props: ModelOutputProps) {
   }, [taskRunId, redirectWithParams]);
 
   const currentModel = models[index];
+
   const currentAIModel = useMemo(
     () => aiModels.find((model) => model.id === taskRun?.version.properties?.model),
     [aiModels, taskRun?.version.properties?.model]
   );
+
   const minimumCostAIModel = useMemo(
     () => aiModels.find((model) => model.id === minimumCostTaskRun?.version.properties?.model),
     [aiModels, minimumCostTaskRun?.version.properties?.model]

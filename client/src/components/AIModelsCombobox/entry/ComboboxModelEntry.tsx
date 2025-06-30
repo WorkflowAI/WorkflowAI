@@ -140,55 +140,16 @@ export function ComboboxModelEntry(props: ComboboxModelEntryProps) {
   );
 }
 
-function addReasoningToModel(name: string, id: string, reasoning: string, response: ModelResponse) {
-  const newID = embedReasoningInModelID(id, reasoning);
-  const newName = `${name} (${reasoning} reasoning)`;
-  return {
-    value: newID,
-    label: newName,
-    model: { ...response, name: newName, id: newID },
-  };
-}
-
-export function formatAIModels(aiModels: ModelResponse[], spreadReasoning: boolean): AIModelComboboxOption[] {
-  const allIntelligenceScores: number[] = [];
-
-  aiModels.forEach((model) => {
-    const intelligence = model.metadata?.quality_index;
-    if (intelligence !== null && intelligence !== undefined) {
-      allIntelligenceScores.push(intelligence);
-    }
+export function formatAIModels(aiModels: ModelResponse[]): AIModelComboboxOption[] {
+  return aiModels.map((model) => {
+    return {
+      value: model.id,
+      label: model.name,
+      model,
+      disabled: !!model.is_not_supported_reason,
+      isLatest: model.is_latest ?? true,
+    };
   });
-
-  const options: AIModelComboboxOption[] = [];
-  for (const model of aiModels) {
-    const base = { disabled: !!model.is_not_supported_reason, isLatest: model.is_latest ?? true };
-    if (!spreadReasoning || !model.reasoning) {
-      options.push({
-        value: model.id,
-        label: model.name,
-        model,
-        ...base,
-      });
-      continue;
-    }
-
-    if (model.reasoning.can_be_disabled) {
-      options.push({ ...base, ...addReasoningToModel(model.name, model.id, 'disabled', model) });
-    }
-    // 0 would mean that the corresponding reasoning is not available
-    if (model.reasoning.low_effort_reasoning_budget) {
-      options.push({ ...base, ...addReasoningToModel(model.name, model.id, 'low', model) });
-    }
-    if (model.reasoning.medium_effort_reasoning_budget) {
-      options.push({ ...base, ...addReasoningToModel(model.name, model.id, 'medium', model) });
-    }
-    if (model.reasoning.high_effort_reasoning_budget) {
-      options.push({ ...base, ...addReasoningToModel(model.name, model.id, 'high', model) });
-    }
-  }
-
-  return options;
 }
 
 export function formatAIModel(model: ModelResponse): AIModelComboboxOption {

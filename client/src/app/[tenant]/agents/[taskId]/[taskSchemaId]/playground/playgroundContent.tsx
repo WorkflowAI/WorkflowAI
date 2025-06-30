@@ -19,6 +19,7 @@ import { useCopyCurrentUrl } from '@/lib/hooks/useCopy';
 import { useDemoMode } from '@/lib/hooks/useDemoMode';
 import { useIsAllowed } from '@/lib/hooks/useIsAllowed';
 import { useIsMobile } from '@/lib/hooks/useIsMobile';
+import { embedReasoningInModelID } from '@/lib/modelUtils';
 import { useParsedSearchParams, useRedirectWithParams } from '@/lib/queryString';
 import { requiresFileSupport } from '@/lib/schemaFileUtils';
 import { InitInputFromSchemaMode, initInputFromSchema } from '@/lib/schemaUtils';
@@ -146,10 +147,43 @@ function triggerFetchOfLatestTaskRunOfPreviousTaskSchema(
   return undefined;
 }
 
+function addReasoningToModel(name: string, id: string, reasoning: string, response: ModelResponse): ModelResponse {
+  const newID = embedReasoningInModelID(id, reasoning);
+  const newName = `${name} (${reasoning} reasoning)`;
+  return { ...response, name: newName, id: newID };
+}
+
+// For the legacy playground, we create duplicate entries for models with different reasoning
+function spreadReasoning(aiModels: ModelResponse[]): ModelResponse[] {
+  const options: ModelResponse[] = [];
+  for (const model of aiModels) {
+    if (!model.reasoning) {
+      options.push(model);
+      continue;
+    }
+
+    if (model.reasoning.can_be_disabled) {
+      options.push(addReasoningToModel(model.name, model.id, 'disabled', model));
+    }
+    // 0 would mean that the corresponding reasoning is not available
+    if (model.reasoning.low_effort_reasoning_budget) {
+      options.push(addReasoningToModel(model.name, model.id, 'low', model));
+    }
+    if (model.reasoning.medium_effort_reasoning_budget) {
+      options.push(addReasoningToModel(model.name, model.id, 'medium', model));
+    }
+    if (model.reasoning.high_effort_reasoning_budget) {
+      options.push(addReasoningToModel(model.name, model.id, 'high', model));
+    }
+  }
+
+  return options;
+}
+
 export function PlaygroundContent(props: PlaygroundContentBodyProps) {
   const {
-    aiModels,
-    allAIModels,
+    aiModels: rawAIModels,
+    allAIModels: rawAllAIModels,
     latestRun,
     versions,
     taskId,
@@ -160,6 +194,9 @@ export function PlaygroundContent(props: PlaygroundContentBodyProps) {
     task,
     isTaskInitialized,
   } = props;
+
+  const aiModels = useMemo(() => spreadReasoning(rawAIModels), [rawAIModels]);
+  const allAIModels = useMemo(() => spreadReasoning(rawAllAIModels), [rawAllAIModels]);
 
   const [scheduledPlaygroundStateMessage, setScheduledPlaygroundStateMessage] = useState<string | undefined>(undefined);
 
