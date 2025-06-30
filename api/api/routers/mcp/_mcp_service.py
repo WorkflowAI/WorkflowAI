@@ -420,13 +420,15 @@ Your primary purpose is to help developers find the most relevant WorkflowAI doc
 
         # Always add foundations page
         # TODO: try to return the foundations page only once, per chat, but might be difficult since `mcp-session-id` is probably not scoped to a chat (for example, on CursorAI, multiple chat tabs can be open at the same time, using (probably) the same `mcp-session-id`)
-        sections = await documentation_service.get_documentation_by_path(["foundations"])
-        query_results.append(
-            SearchResponse.QueryResult(
-                content_snippet=sections[0].content,
-                source_page="foundations.mdx",
-            ),
-        )
+
+        if "foundations" not in [section.file_path for section in relevant_sections]:
+            sections = await documentation_service.get_documentation_by_path(["foundations"])
+            query_results.append(
+                SearchResponse.QueryResult(
+                    content_snippet=sections[0].content,
+                    source_page="foundations.mdx",
+                ),
+            )
 
         return MCPToolReturn(
             success=True,
