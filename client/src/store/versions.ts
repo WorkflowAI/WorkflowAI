@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import { create } from 'zustand';
 import { client } from '@/lib/api';
 import { RequestError } from '@/lib/api/client';
+import { extractReasoningFromModelID } from '@/lib/modelUtils';
 import { formatSemverVersion, sortEnvironmentsInOrderOfImportance } from '@/lib/versionUtils';
 import { Page } from '@/types';
 import { TaskID, TaskSchemaID, TenantID } from '@/types/aliases';
@@ -182,6 +183,22 @@ interface VersionsState {
   ) => Promise<VersionV1 | undefined>;
 }
 
+function spreadReasoning(body: CreateVersionRequest) {
+  const { model, reasoning_effort } = body.properties;
+  if (reasoning_effort || !model) {
+    // Not touching, reasoning effort is already correctly set
+    return body;
+  }
+
+  const [actualModel, reasoning] = extractReasoningFromModelID(model);
+  if (!reasoning) {
+    // Not touching, reasoning effort is already correctly set
+    return body;
+  }
+
+  return { ...body, properties: { ...body.properties, model: actualModel, reasoning_effort: reasoning } };
+}
+
 export const useVersions = create<VersionsState>((set, get) => ({
   versionsByScope: new Map(),
   isLoadingVersionsByScope: new Map(),
@@ -204,7 +221,7 @@ export const useVersions = create<VersionsState>((set, get) => ({
   ) => {
     const response = await client.post<CreateVersionRequest, CreateVersionResponse>(
       taskSchemaSubPath(tenant, taskId, taskSchemaId, `/versions`, true),
-      body
+      spreadReasoning(body)
     );
     return response;
   },

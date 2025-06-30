@@ -161,6 +161,8 @@ function ModelOutput(props: ModelOutputProps) {
             setOpen={setOpenModelCombobox}
             isProxy={isProxy}
             taskId={taskId}
+            spreadReasoning
+            reasoningEffort={version?.properties.reasoning_effort ?? undefined}
           />
           <CreateTaskRunButton
             taskRunner={taskRunner}
