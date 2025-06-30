@@ -127,13 +127,6 @@ class ImprovePromptToolCallResult(BaseResult, ImprovePromptToolCallRequest):
     pass
 
 
-class EditSchemaDescriptionAndExamplesToolCallRequest(BaseToolCallRequest):
-    description_and_examples_edition_request_message: str | None = Field(
-        default=None,
-        description="The message to edit the agent schema's fields description and examples with.",
-    )
-
-
 class RunCurrentAgentOnModelsToolCallRequest(BaseToolCallRequest):
     class RunConfig(BaseModel):
         run_on_column: Literal["column_1", "column_2", "column_3"] | None = Field(
@@ -528,11 +521,6 @@ class ProxyMetaAgentOutput(BaseModel):
         description="The run trigger config to use for the agent, if any",
     )
 
-    edit_schema_description_and_examples_request: EditSchemaDescriptionAndExamplesToolCallRequest | None = Field(
-        default=None,
-        description="The schema description and examples editing request, if any",
-    )
-
     generate_input_request: GenerateAgentInputToolCallRequest | None = Field(
         default=None,
         description="The generate input request, if any",
@@ -552,7 +540,6 @@ class ParsedToolCall(NamedTuple):
     tool_description: str | None = None
     tool_parameters: dict[str, Any] | None = None
     run_trigger_config: ProxyMetaAgentOutput.RunTriggerConfig | None = None
-    edit_schema_description_and_examples_request: EditSchemaDescriptionAndExamplesToolCallRequest | None = None
     generate_input_request: GenerateAgentInputToolCallRequest | None = None
     updated_version_messages: list[dict[str, Any]] | None = None
 
@@ -563,8 +550,6 @@ def parse_tool_call(tool_call: Any) -> ParsedToolCall:
     Returns a ParsedToolCall with the parsed tool data. Fields are populated based on tool type:
     - update_version_messages: updated_version_messages, example_input
     - create_custom_tool: tool_name, tool_description, tool_parameters
-    - edit_schema_structure: edit_schema_structure_request
-    - edit_schema_description_and_examples: edit_schema_description_and_examples_request
     - run_agent_on_model: run_trigger_config
     - generate_agent_input: generate_input_request
     - updated_version_messages: updated_version_messages
@@ -590,16 +575,6 @@ def parse_tool_call(tool_call: Any) -> ParsedToolCall:
             tool_name=arguments["name"],
             tool_description=arguments["description"],
             tool_parameters=arguments["parameters"],
-        )
-
-    if function_name == "edit_output_schema_description_and_examples":
-        return ParsedToolCall(
-            edit_schema_description_and_examples_request=EditSchemaDescriptionAndExamplesToolCallRequest(
-                description_and_examples_edition_request_message=arguments.get(
-                    "description_and_examples_edition_request_message",
-                ),
-                ask_user_confirmation=arguments.get("ask_user_confirmation"),
-            ),
         )
 
     if function_name == "run_agent_on_model":
@@ -1171,32 +1146,8 @@ TOOL_DEFINITIONS: list[ChatCompletionToolParam] = [
 ]
 
 
-OUTPUT_SCHEMA_EDITION_TOOLS: list[ChatCompletionToolParam] = [
-    {
-        "type": "function",
-        "function": {
-            "name": "edit_output_schema_description_and_examples",
-            "description": "Edit the descriptions and examples of fields in the agent's OUTPUT schema ONLY without changing the structure. IMPORTANT: This tool is exclusively for output schema modifications - input schema changes must use 'update_version_messages'. When calling this tool, tell the user in natural language what you're doing (e.g., 'I will improve your output schema descriptions') rather than mentioning the tool name.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "description_and_examples_edition_request_message": {
-                        "type": "string",
-                        "description": "The message describing the description and example changes to make to the agent OUTPUT schema fields (e.g., 'Update the description of the name field to be more specific', 'Add examples to the email field', 'Improve the description of the confidence field').",
-                    },
-                },
-                "required": ["description_and_examples_edition_request_message"],
-                "additionalProperties": False,
-            },
-            "strict": True,
-        },
-    },
-]
-
-
 def _pick_tools_to_use(
     use_tool_calls: bool,
-    agent_has_output_schema: bool,
     direct_version_message_update: bool = False,
 ) -> list[ChatCompletionToolParam]:
     if not use_tool_calls:
@@ -1206,9 +1157,6 @@ def _pick_tools_to_use(
     if direct_version_message_update:
         return [VERSION_MESSAGES_HOSTED_TOOL_UPDATE_TOOL]
 
-    # Otherwise use regular tools
-    if agent_has_output_schema:
-        return TOOL_DEFINITIONS + OUTPUT_SCHEMA_EDITION_TOOLS
     return TOOL_DEFINITIONS
 
 
@@ -1234,7 +1182,6 @@ async def proxy_meta_agent(
 
     tools_to_use = _pick_tools_to_use(
         use_tool_calls=use_tool_calls,
-        agent_has_output_schema=agent_has_output_schema,
         direct_version_message_update=hosted_tool_update_mode,
     )
 
@@ -1312,7 +1259,6 @@ async def proxy_meta_agent(
             if parsed_tool_call.tool_name and parsed_tool_call.tool_description and parsed_tool_call.tool_parameters
             else None,
             run_trigger_config=parsed_tool_call.run_trigger_config,
-            edit_schema_description_and_examples_request=parsed_tool_call.edit_schema_description_and_examples_request,
             generate_input_request=parsed_tool_call.generate_input_request,
             updated_version_messages=parsed_tool_call.updated_version_messages,
         )

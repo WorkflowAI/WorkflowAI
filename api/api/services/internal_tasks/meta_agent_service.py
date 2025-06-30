@@ -48,7 +48,6 @@ from core.agents.meta_agent_proxy import (
     PROPOSE_INPUT_VARIABLES_INSTRUCTIONS_NO_VERSION_MESSAGES,
     PROPOSE_NON_OPENAI_MODELS_INSTRUCTIONS,
     PROPOSE_STRUCTURED_OUTPUT_INSTRUCTIONS,
-    EditSchemaDescriptionAndExamplesToolCallRequest,
     GenerateAgentInputToolCallRequest,
     ProxyMetaAgentInput,
     ProxyMetaAgentOutput,
@@ -1545,7 +1544,6 @@ class MetaAgentService:
         improvement_instructions: str | None,
         new_tool: ProxyMetaAgentOutput.NewTool | None,
         run_trigger_config: ProxyMetaAgentOutput.RunTriggerConfig | None,
-        edit_schema_description_and_examples_request: EditSchemaDescriptionAndExamplesToolCallRequest | None,
         generate_input_request: GenerateAgentInputToolCallRequest | None,
         updated_version_messages: list[dict[str, Any]] | None = None,
     ) -> MetaAgentToolCallType | None:
@@ -1589,11 +1587,6 @@ class MetaAgentService:
                     ),
                 )
             tool_call_to_return = RunCurrentAgentOnModelsToolCall(run_configs=run_configs)
-
-        if edit_schema_description_and_examples_request:
-            tool_call_to_return = EditSchemaToolCall(
-                edition_request_message=edit_schema_description_and_examples_request.description_and_examples_edition_request_message,
-            )
 
         if generate_input_request:
             tool_call_to_return = GenerateAgentInputToolCall(
@@ -1946,9 +1939,6 @@ Please double check:
         improvement_instructions_chunk: str | None = None
         new_tool: ProxyMetaAgentOutput.NewTool | None = None
         run_trigger_config: ProxyMetaAgentOutput.RunTriggerConfig | None = None
-        edit_schema_description_and_examples_request_chunk: EditSchemaDescriptionAndExamplesToolCallRequest | None = (
-            None
-        )
         generate_input_request_chunk: GenerateAgentInputToolCallRequest | None = None
         updated_version_messages_chunk: list[dict[str, Any]] | None = None
         tool_call_to_return: MetaAgentToolCallType | None = None
@@ -1990,7 +1980,6 @@ Please double check:
             if chunk.run_trigger_config:
                 run_trigger_config = chunk.run_trigger_config
             # Capture the schema edit requests from the chunk
-            edit_schema_description_and_examples_request_chunk = chunk.edit_schema_description_and_examples_request
             if chunk.generate_input_request:
                 generate_input_request_chunk = chunk.generate_input_request
             if chunk.updated_version_messages:
@@ -2000,7 +1989,6 @@ Please double check:
             improvement_instructions_chunk,
             new_tool,
             run_trigger_config,
-            edit_schema_description_and_examples_request_chunk,
             generate_input_request_chunk,
             updated_version_messages_chunk,
         )
