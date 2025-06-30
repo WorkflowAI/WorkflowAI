@@ -14,7 +14,7 @@ from core.domain.llm_usage import LLMUsage
 from core.domain.message import MessageDeprecated
 from core.domain.models import Model, Provider
 from core.domain.models.model_data import MaxTokensData, ModelData, QualityData
-from core.domain.models.model_datas_mapping import DisplayedProvider
+from core.domain.models.model_data_mapping import DisplayedProvider
 from core.domain.structured_output import StructuredOutput
 from core.domain.tool import Tool
 from core.providers.base.models import RawCompletion

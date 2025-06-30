@@ -21,6 +21,11 @@ class Model(StrEnum):
     # OpenAI Models
     # --------------------------------------------------------------------------
 
+    GPT_41_2025_04_14 = "gpt-4.1-2025-04-14"
+    GPT_41_MINI_LATEST = "gpt-4.1-mini-latest"
+    GPT_41_MINI_2025_04_14 = "gpt-4.1-mini-2025-04-14"
+    GPT_41_NANO_LATEST = "gpt-4.1-nano-latest"
+    GPT_41_NANO_2025_04_14 = "gpt-4.1-nano-2025-04-14"
     GPT_4O_LATEST = "gpt-4o-latest"
     GPT_4O_2024_11_20 = "gpt-4o-2024-11-20"
     GPT_4O_2024_08_06 = "gpt-4o-2024-08-06"
@@ -28,45 +33,56 @@ class Model(StrEnum):
     GPT_4O_MINI_LATEST = "gpt-4o-mini-latest"
     GPT_4O_MINI_2024_07_18 = "gpt-4o-mini-2024-07-18"
     GPT_IMAGE_1 = "gpt-image-1"
+
+    O1_2024_12_17 = "o1-2024-12-17"
+
+    O3_LATEST = "o3-latest"
+    O3_2025_04_16 = "o3-2025-04-16"
+
+    O3_MINI_LATEST = "o3-mini-latest"
+    O3_MINI_2025_01_31 = "o3-mini-2025-01-31"
+
+    O4_MINI_LATEST = "o4-mini-latest"
+    O4_MINI_2025_04_16 = "o4-mini-2025-04-16"
+
+    GPT_4O_AUDIO_PREVIEW_2025_06_03 = "gpt-4o-audio-preview-2025-06-03"
+
+    # Deprecated models
     O3_LATEST_HIGH_REASONING_EFFORT = "o3-latest-high"
     O3_LATEST_MEDIUM_REASONING_EFFORT = "o3-latest-medium"
     O3_LATEST_LOW_REASONING_EFFORT = "o3-latest-low"
     O3_2025_04_16_HIGH_REASONING_EFFORT = "o3-2025-04-16-high"
     O3_2025_04_16_MEDIUM_REASONING_EFFORT = "o3-2025-04-16-medium"
     O3_2025_04_16_LOW_REASONING_EFFORT = "o3-2025-04-16-low"
-    # O3_PRO_LATEST_HIGH_REASONING_EFFORT = "o3-pro-latest-high"
-    # O3_PRO_LATEST_MEDIUM_REASONING_EFFORT = "o3-pro-latest-medium"
-    # O3_PRO_LATEST_LOW_REASONING_EFFORT = "o3-pro-latest-low"
-    # O3_PRO_2025_06_10_HIGH_REASONING_EFFORT = "o3-pro-2025-06-10-high"
-    # O3_PRO_2025_06_10_MEDIUM_REASONING_EFFORT = "o3-pro-2025-06-10-medium"
-    # O3_PRO_2025_06_10_LOW_REASONING_EFFORT = "o3-pro-2025-06-10-low"
+
     O3_MINI_LATEST_HIGH_REASONING_EFFORT = "o3-mini-latest-high"
     O3_MINI_LATEST_MEDIUM_REASONING_EFFORT = "o3-mini-latest-medium"
     O3_MINI_LATEST_LOW_REASONING_EFFORT = "o3-mini-latest-low"
     O3_MINI_2025_01_31_HIGH_REASONING_EFFORT = "o3-mini-2025-01-31-high"
     O3_MINI_2025_01_31_MEDIUM_REASONING_EFFORT = "o3-mini-2025-01-31-medium"
     O3_MINI_2025_01_31_LOW_REASONING_EFFORT = "o3-mini-2025-01-31-low"
+
     O4_MINI_LATEST_HIGH_REASONING_EFFORT = "o4-mini-latest-high"
     O4_MINI_LATEST_MEDIUM_REASONING_EFFORT = "o4-mini-latest-medium"
     O4_MINI_LATEST_LOW_REASONING_EFFORT = "o4-mini-latest-low"
     O4_MINI_2025_04_16_HIGH_REASONING_EFFORT = "o4-mini-2025-04-16-high"
     O4_MINI_2025_04_16_MEDIUM_REASONING_EFFORT = "o4-mini-2025-04-16-medium"
     O4_MINI_2025_04_16_LOW_REASONING_EFFORT = "o4-mini-2025-04-16-low"
+
     O1_2024_12_17_HIGH_REASONING_EFFORT = "o1-2024-12-17-high"
-    O1_2024_12_17_MEDIUM_REASONING_EFFORT = "o1-2024-12-17"
+    # We did not append the -medium suffix in the original enum
+    # O1_2024_12_17_MEDIUM_REASONING_EFFORT = "o1-2024-12-17"
     O1_2024_12_17_LOW_REASONING_EFFORT = "o1-2024-12-17-low"
+
     O1_PREVIEW_2024_09_12 = "o1-preview-2024-09-12"
     O1_MINI_LATEST = "o1-mini-latest"
     O1_MINI_2024_09_12 = "o1-mini-2024-09-12"
-    GPT_41_2025_04_14 = "gpt-4.1-2025-04-14"
-    GPT_41_MINI_LATEST = "gpt-4.1-mini-latest"
-    GPT_41_MINI_2025_04_14 = "gpt-4.1-mini-2025-04-14"
-    GPT_41_NANO_LATEST = "gpt-4.1-nano-latest"
-    GPT_41_NANO_2025_04_14 = "gpt-4.1-nano-2025-04-14"
+
     GPT_45_PREVIEW_2025_02_27 = "gpt-4.5-preview-2025-02-27"
-    GPT_4O_AUDIO_PREVIEW_2025_06_03 = "gpt-4o-audio-preview-2025-06-03"
+
     GPT_4O_AUDIO_PREVIEW_2024_12_17 = "gpt-4o-audio-preview-2024-12-17"
-    GPT_40_AUDIO_PREVIEW_2024_10_01 = "gpt-4o-audio-preview-2024-10-01"
+    GPT_4O_AUDIO_PREVIEW_2024_10_01 = "gpt-4o-audio-preview-2024-10-01"
+
     GPT_4_TURBO_2024_04_09 = "gpt-4-turbo-2024-04-09"
     GPT_4_0125_PREVIEW = "gpt-4-0125-preview"
     GPT_4_1106_PREVIEW = "gpt-4-1106-preview"
@@ -208,6 +224,11 @@ class Model(StrEnum):
     # --------------------------------------------------------------------------
     GROK_3_BETA = "grok-3-beta"
     GROK_3_FAST_BETA = "grok-3-fast-beta"
+
+    GROK_3_MINI_BETA = "grok-3-mini-beta"
+    GROK_3_MINI_FAST_BETA = "grok-3-mini-fast-beta"
+
+    # Deprecated
     GROK_3_MINI_BETA_LOW_REASONING_EFFORT = "grok-3-mini-beta-low"
     GROK_3_MINI_BETA_HIGH_REASONING_EFFORT = "grok-3-mini-beta-high"
     GROK_3_MINI_FAST_BETA_LOW_REASONING_EFFORT = "grok-3-mini-fast-beta-low"

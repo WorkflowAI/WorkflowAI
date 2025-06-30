@@ -52,12 +52,18 @@ def _list_cases():
 # For now, it looks like passing a wildcard `mcp__{_MCP_NAME}__` in allowed tools
 # does not work so we need to manually list the tools...
 _WAI_TOOLS = [
-    "list_available_models",
+    "list_models",
     "list_agents",
+    "get_agent",
     "fetch_run_details",
     "get_agent_versions",
-    "ask_ai_engineer",
-    "deploy_agent_version",
+    "search_runs",
+    "get_deployment_confirmation_url",
+    "send_feedback",
+    "create_api_key",
+    "list_hosted_tools",
+    "search_documentation",
+    "create_completion",
 ]
 
 

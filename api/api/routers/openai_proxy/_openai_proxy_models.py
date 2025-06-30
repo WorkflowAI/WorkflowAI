@@ -5,7 +5,7 @@ import time
 from collections.abc import Callable, Iterator, Mapping
 from typing import Any, Literal, NamedTuple, TypeAlias
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
 from pydantic.alias_generators import to_camel, to_pascal
 from workflowai import CacheUsage
 
@@ -20,11 +20,13 @@ from core.domain.message import (
     MessageContent,
     MessageRole,
 )
-from core.domain.models.model_datas_mapping import MODEL_ALIASES
+from core.domain.models.model_data_mapping import MODEL_ALIASES
 from core.domain.models.models import Model
 from core.domain.models.providers import Provider
+from core.domain.reasoning_effort import ReasoningEffort
 from core.domain.run_output import RunOutput
 from core.domain.task_group_properties import TaskGroupProperties, ToolChoice, ToolChoiceFunction
+from core.domain.tenant_data import PublicOrganizationData
 from core.domain.tool import Tool
 from core.domain.tool_call import ToolCall, ToolCallRequestWithID
 from core.domain.types import AgentOutput
@@ -418,8 +420,21 @@ class _OpenAIProxyExtraFields(BaseModel):
     )
 
 
+class OpenAIProxyReasoning(BaseModel):
+    """A custom reasoning object that allows setting an effort or a budget"""
+
+    effort: ReasoningEffort | None = None
+    budget: int | None = None
+
+    @model_validator(mode="after")
+    def validate_effort_or_budget(self):
+        if self.effort is None and self.budget is None:
+            raise ValueError("Either effort or budget must be set")
+        return self
+
+
 class OpenAIProxyChatCompletionRequest(_OpenAIProxyExtraFields):
-    messages: list[OpenAIProxyMessage]
+    messages: list[OpenAIProxyMessage] = Field(default_factory=list)
     model: str
     frequency_penalty: float | None = None
     function_call: str | OpenAIProxyToolChoiceFunction | None = None
@@ -461,6 +476,8 @@ class OpenAIProxyChatCompletionRequest(_OpenAIProxyExtraFields):
 
     # Not in extra fields because we don't want to expose them or add an alias
     workflowai_internal: SkipJsonSchema[WorkflowAIInternal | None] = None
+
+    reasoning: OpenAIProxyReasoning | None = None
 
     model_config = ConfigDict(extra="allow")
 
@@ -751,6 +768,20 @@ class OpenAIProxyChatCompletionRequest(_OpenAIProxyExtraFields):
             properties.max_tokens = max_tokens
         if tools := self.domain_tools():
             properties.enabled_tools = tools
+        if self.reasoning:
+            properties.reasoning_effort = self.reasoning.effort
+            properties.reasoning_budget = self.reasoning.budget
+        elif self.reasoning_effort:
+            try:
+                properties.reasoning_effort = ReasoningEffort(self.reasoning_effort)
+            except ValueError:
+                # Using the default reasoning effort
+                # TODO: remove warning since it could be a customer issue
+                # We should likely just reject the request
+                _logger.warning(
+                    "Client provided an invalid reasoning effort",
+                    extra={"reasoning_effort": self.reasoning_effort},
+                )
 
     def domain_messages(self) -> Iterator[Message]:
         previous_message: Message | None = None
@@ -820,6 +851,7 @@ class _ExtraChoiceAttributes(BaseModel):
     feedback_token: str = Field(
         description="WorkflowAI Specific, a token to send feedback from client side without authentication",
     )
+    url: str = Field(description="The URL of the run")
 
 
 class OpenAIProxyChatCompletionChoice(_ExtraChoiceAttributes):
@@ -834,6 +866,7 @@ class OpenAIProxyChatCompletionChoice(_ExtraChoiceAttributes):
         output_mapper: Callable[[AgentOutput], str | None],
         deprecated_function: bool,
         feedback_generator: Callable[[str], str],
+        org: PublicOrganizationData,
     ):
         msg = OpenAIProxyMessage.from_run(run, output_mapper, deprecated_function)
         if run.tool_call_requests:
@@ -848,6 +881,7 @@ class OpenAIProxyChatCompletionChoice(_ExtraChoiceAttributes):
             duration_seconds=run.duration_seconds,
             feedback_token=feedback_generator(run.id),
             cost_usd=run.cost_usd,
+            url=org.app_run_url(run.task_id, run.id),
         )
 
 
@@ -872,6 +906,7 @@ class OpenAIProxyChatCompletionResponse(BaseModel):
         deprecated_function: bool,
         # feedback_generator should take a run id and return a feedback token
         feedback_generator: Callable[[str], str],
+        org: PublicOrganizationData,
     ):
         return cls(
             id=f"{run.task_id}/{run.id}",
@@ -881,6 +916,7 @@ class OpenAIProxyChatCompletionResponse(BaseModel):
                     output_mapper,
                     deprecated_function,
                     feedback_generator,
+                    org,
                 ),
             ],
             created=int(run.created_at.timestamp()),
@@ -973,6 +1009,7 @@ class OpenAIProxyChatCompletionChunkChoiceFinal(OpenAIProxyChatCompletionChunkCh
         deprecated_function: bool,
         feedback_generator: Callable[[str], str],
         aggregate_content: bool | None,
+        org: PublicOrganizationData,
     ):
         """Compute the final choice chunk from a run"""
 
@@ -986,6 +1023,7 @@ class OpenAIProxyChatCompletionChunkChoiceFinal(OpenAIProxyChatCompletionChunkCh
             cost_usd=run.cost_usd,
             duration_seconds=run.duration_seconds,
             feedback_token=feedback_generator(run.id),
+            url=org.app_run_url(run.task_id, run.id),
         )
 
 
@@ -1057,6 +1095,7 @@ class OpenAIProxyChatCompletionChunk(BaseModel):
         output_mapper: Callable[[AgentOutput], str | None],
         feedback_generator: Callable[[str], str],
         aggregate_content: bool | None,
+        org: PublicOrganizationData,
     ):
         # Builds the final chunk containing the usage and feedback token
         def _serializer(run: AgentRun):
@@ -1066,6 +1105,7 @@ class OpenAIProxyChatCompletionChunk(BaseModel):
                 deprecated_function,
                 feedback_generator,
                 aggregate_content,
+                org,
             )
             if not choice:
                 # This is mostly for typing reasons, it should never happen

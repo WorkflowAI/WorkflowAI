@@ -165,7 +165,7 @@ export function PlaygroundContent(props: PlaygroundContentBodyProps) {
 
   const redirectWithParams = useRedirectWithParams();
   const {
-    taskRunId,
+    [TASK_RUN_ID_PARAM]: taskRunId,
     taskRunId1,
     taskRunId2,
     taskRunId3,
@@ -329,7 +329,7 @@ export function PlaygroundContent(props: PlaygroundContentBodyProps) {
     skipCheckingProxyMessages: true,
   });
 
-  const fetchModels = useAIModels((state) => state.fetchModels);
+  const fetchModels = useAIModels((state) => state.fetchSchemaModels);
 
   const [errorForModels, { set: setModelError, remove: removeModelError }] = useMap<string, Error>(
     new Map<string, Error>()
@@ -777,7 +777,7 @@ export function PlaygroundContent(props: PlaygroundContentBodyProps) {
 
   const onClose = useCallback(() => {
     redirectWithParams({
-      params: { taskRunId: undefined },
+      params: { [TASK_RUN_ID_PARAM]: undefined },
       scroll: false,
     });
   }, [redirectWithParams]);
@@ -983,7 +983,9 @@ export function PlaygroundContent(props: PlaygroundContentBodyProps) {
   const useParametersFromMajorVersion = useCallback(
     (version: MajorVersion) => {
       onResetTaskRunIds();
-      setInstructions(version.properties.instructions);
+      if (version.properties.instructions) {
+        setInstructions(version.properties.instructions);
+      }
       setTemperature(version.properties.temperature);
       setVariantId(!!version.properties.task_variant_id ? version.properties.task_variant_id : undefined);
       setUserSelectedMajor(version.major);

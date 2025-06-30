@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field
 
 from core.domain.documentation_section import DocumentationSection
 from core.domain.fields.chat_message import ChatMessage
+from core.domain.models import Model
 
 
 class PickRelevantDocumentationSectionsInput(BaseModel):
@@ -25,7 +26,7 @@ class PickRelevantDocumentationSectionsOutput(BaseModel):
     relevant_doc_sections: list[str] = Field(description="The relevant documentation sections for the agent.")
 
 
-@workflowai.agent(model=workflowai.Model.GEMINI_2_0_FLASH_001)
+@workflowai.agent(model=Model.GEMINI_2_5_FLASH)
 async def pick_relevant_documentation_sections(
     input: PickRelevantDocumentationSectionsInput,
 ) -> PickRelevantDocumentationSectionsOutput:

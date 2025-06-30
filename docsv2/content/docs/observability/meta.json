@@ -4,6 +4,8 @@
   "pages": [
     "index",
     "runs",
+    "metadata",
+    "input-variables",
     "conversations",
     "versions",
     "costs",
@@ -11,4 +13,4 @@
     "search",
     "reports"
   ]
-} 
+}

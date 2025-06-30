@@ -1,9 +1,10 @@
 import json
+import logging
 from collections.abc import Iterator
 from datetime import datetime, timezone
 from typing import Any, Literal, Optional, Protocol, cast
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, ValidationError, model_validator
 
 from core.domain.consts import (
     METADATA_KEY_DEPLOYMENT_ENVIRONMENT,
@@ -12,11 +13,12 @@ from core.domain.consts import (
 from core.domain.error_response import ErrorResponse
 from core.domain.fields.internal_reasoning_steps import InternalReasoningStep
 from core.domain.llm_completion import LLMCompletion
-from core.domain.message import MessageContent
+from core.domain.message import Message, MessageContent, Messages
 from core.domain.review import Review
 from core.domain.task_group import TaskGroup
 from core.domain.tool_call import ToolCall, ToolCallRequestWithID
 from core.domain.utils import compute_eval_hash
+from core.domain.version_environment import VersionEnvironment
 
 AIReview = Literal["in_progress", "positive", "negative", "unsure"]
 
@@ -129,16 +131,30 @@ class AgentRun(AgentRunBase):
     conversation_id: str | None = None
 
     @property
-    def used_environment(self) -> str | None:
+    def used_environment(self) -> VersionEnvironment | None:
         if not self.metadata:
             return None
 
-        if METADATA_KEY_DEPLOYMENT_ENVIRONMENT in self.metadata:
-            return str(self.metadata[METADATA_KEY_DEPLOYMENT_ENVIRONMENT])
+        try:
+            if METADATA_KEY_DEPLOYMENT_ENVIRONMENT in self.metadata:
+                return VersionEnvironment(self.metadata[METADATA_KEY_DEPLOYMENT_ENVIRONMENT])
 
-        if METADATA_KEY_DEPLOYMENT_ENVIRONMENT_DEPRECATED in self.metadata:
-            return str(self.metadata[METADATA_KEY_DEPLOYMENT_ENVIRONMENT_DEPRECATED]).removeprefix("environment=")
+            if METADATA_KEY_DEPLOYMENT_ENVIRONMENT_DEPRECATED in self.metadata:
+                return VersionEnvironment(
+                    self.metadata[METADATA_KEY_DEPLOYMENT_ENVIRONMENT_DEPRECATED].removeprefix(
+                        "environment=",
+                    ),
+                )
+        except ValueError:
+            logging.getLogger(__name__).exception("error parsing used environment", extra={"run_id": self.id})
+            pass
         return None
+
+    @property
+    def filtered_metadata(self) -> dict[str, Any] | None:
+        if not self.metadata:
+            return None
+        return {k: v for k, v in self.metadata.items() if not k.startswith("workflowai.")}
 
     @model_validator(mode="after")
     def post_validate(self):
@@ -187,6 +203,28 @@ class AgentRun(AgentRunBase):
         if self.tool_calls:
             for tool_call in self.tool_calls:
                 yield MessageContent(tool_call_result=tool_call)
+
+    @property
+    def messages(self) -> list[Message]:
+        # TODO: This should be a stored property, not computed
+        # see https://linear.app/workflowai/issue/WOR-4914/expose-the-full-list-of-computed-messages-and-store-as-is
+        if self.llm_completions:
+            # When completions are available, we use the last completion to get the messages
+            # It's closer to the actual messages that were sent to the model
+            return self.llm_completions[-1].to_messages()
+
+        try:
+            # Extract the added messages from the task input
+            # This will only extract additional messages for now
+            added_messages = Messages.model_validate(self.task_input)
+            messages = added_messages.messages
+        except ValidationError:
+            logging.getLogger(__name__).exception("error validating messages for task run", extra={"run_id": self.id})
+            messages = []
+
+        # Add the assistant message
+        messages.append(Message(role="assistant", content=list(self.message_content_iterator())))
+        return messages
 
 
 class TaskRunIO(Protocol):

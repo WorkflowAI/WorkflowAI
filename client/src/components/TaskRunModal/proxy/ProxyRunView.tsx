@@ -96,7 +96,7 @@ export function ProxyRunView(props: ProxyRunViewProps) {
           <ProxyRunDetailsMessagesView messages={inputAndOutputMessages} error={run.error ?? undefined} />
         </div>
         <div className='flex flex-col h-full'>
-          <ProxyRunDetailsVersionMessagesView version={version} run={run} tenant={tenant} />
+          <ProxyRunDetailsVersionMessagesView version={version} run={run} />
         </div>
       </PersistantAllotment>
 

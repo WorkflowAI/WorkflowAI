@@ -1,0 +1,87 @@
+---
+title: Python (OpenAI SDK)
+summary: Quickstart guide for integrating existing OpenAI (Python) agents with WorkflowAI. Shows how to connect to the platform to use its observability and deployment features.
+description: Learn how to integrate OpenAI's Python SDK with WorkflowAI to access 100+ models, observe your agents' behavior in real-time, and update prompts through deployments without changing code.
+icon: Python
+---
+
+import { Step, Steps } from 'fumadocs-ui/components/steps';
+import { BarChart3, UploadCloud, Columns3, Eye, PlugZap, ListChecks, Globe, ShieldCheck } from 'lucide-react';
+import { Accordions, Accordion } from 'fumadocs-ui/components/accordion';
+import { WorkflowModelCount } from '@/components/workflow-model-count';
+
+## Get Started
+
+<Steps>
+<Step>
+
+### Get an API Key
+
+Go to [workflowai.com/keys](https://workflowai.com/keys) to sign up for free and get your API key.
+</Step>
+
+<Step>
+
+### Integrate with your existing code
+
+The only changes you need to make are updating the `base_url` and `api_key`.
+
+<include>../partials/openai-python-code.mdx</include>
+
+</Step>
+
+<Step>
+### Run your agent once
+
+Execute your code to start making requests through WorkflowAI. Your agent will automatically appear in the WorkflowAI dashboard once it makes its first request.
+
+<Callout type="success">
+  You're done! <a href="https://workflowai.com" target="_blank" rel="noopener">Go to workflowai.com to see your agent.</a>
+</Callout>
+
+</Step>
+
+<Step>
+
+### You're done!
+
+All the features below are now automatically enabled for your agent.
+
+<include>../partials/features-cards.mdx</include>
+
+</Step>
+
+</Steps>
+
+## Troubleshooting
+
+<include>../partials/troubleshooting.mdx</include>
+
+## Need help?
+
+- Ask our AI or join our [Discord](https://discord.com/invite/auuf8DREZh)
+
+## Next steps
+
+<Card 
+  title="Setup Deployments" 
+  description="Update your prompts without changing your code"
+  href="/deployments" 
+  icon={<UploadCloud />}
+/>
+<br />
+
+<Card 
+  title="Setup Evaluations" 
+  description="Compare prompts and models"
+  href="/evaluations" 
+  icon={<BarChart3 />}
+/>
+<br />
+
+<Card 
+  title="Setup Structured Outputs" 
+  description="Learn how to get type-safe, validated responses with Pydantic schemas"
+  href="/inference/structured-outputs" 
+  icon={<ListChecks />}
+/>

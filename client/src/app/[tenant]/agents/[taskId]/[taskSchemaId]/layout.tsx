@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import { useMemo } from 'react';
 import { DeployVersionModal } from '@/components/DeployIterationModal/DeployVersionModal';
 import { NotFound, NotFoundForNotMatchingTenant } from '@/components/NotFound';
+import { IsProxyContextProvider } from '@/components/contexts/IsProxyContext';
 import { Loader } from '@/components/ui/Loader';
 import { useTaskParams } from '@/lib/hooks/useTaskParams';
 import { useIsSameTenant } from '@/lib/hooks/useTaskParams';
@@ -29,10 +30,12 @@ export default function Layout({ children }: Readonly<{ children: React.ReactNod
 
   if (taskSchema || !isRequiringTaskSchema) {
     return (
-      <div className={cn('w-full h-full', !isUsingNewDesign ? 'pt-[24px] pb-[16px]' : 'overflow-hidden')}>
-        {children}
-        <DeployVersionModal />
-      </div>
+      <IsProxyContextProvider schema={taskSchema}>
+        <div className={cn('w-full h-full', !isUsingNewDesign ? 'pt-[24px] pb-[16px]' : 'overflow-hidden')}>
+          {children}
+          <DeployVersionModal />
+        </div>
+      </IsProxyContextProvider>
     );
   }
 

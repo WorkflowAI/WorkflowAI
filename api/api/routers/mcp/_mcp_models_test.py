@@ -1,13 +1,15 @@
 # pyright: reportPrivateUsage=false
-from datetime import date
+from datetime import date, datetime
 from typing import Any
 from unittest.mock import Mock
 
 import pytest
 
-from api.routers.mcp._mcp_models import ConciseModelResponse
+from api.routers.mcp._mcp_models import MCPRun
+from core.domain.error_response import ErrorResponse
 from core.domain.models import Provider
 from core.domain.models.model_provider_data import ModelProviderData, TextPricePerToken
+from tests import models as test_models
 
 
 @pytest.fixture
@@ -34,199 +36,262 @@ def mock_final_model_data(mock_provider_data: ModelProviderData) -> Any:
     model_data.provider_name = "OpenAI"
     model_data.display_name = "GPT-4"
     model_data.release_date = date(2024, 1, 15)
-    model_data.quality_index = 100  # Add missing quality_index
+    model_data.quality_index = 100
 
-    # Mock model_dump to return supports fields
+    # Mock model_dump to return supports fields - only whitelisted ones will be included
     model_data.model_dump.return_value = {
         "supports_tool_calling": True,
-        "supports_json_mode": True,  # Should be filtered out
-        "supports_structured_output": False,  # Should be filtered out
-        "support_system_messages": True,  # Should be filtered out
         "supports_input_image": True,
-        "supports_parallel_tool_calls": False,
-        "other_field": "value",  # Should be ignored
+        "supports_input_pdf": True,
+        "supports_input_audio": True,
         "supports_audio_only": False,  # False value should be ignored
+        "supports_json_mode": True,  # Not in whitelist, should be ignored
+        "supports_structured_output": True,  # Not in whitelist, should be ignored
+        "supports_system_messages": True,  # Not in whitelist, should be ignored
+        "supports_parallel_tool_calls": True,  # Not in whitelist, should be ignored
+        "other_field": "value",  # Should be ignored
     }
 
     return model_data
 
 
-class TestConciseModelResponseFromModelData:
-    def test_basic_functionality(self, mock_final_model_data: Any, mock_provider_data: ModelProviderData):
-        """Test basic functionality with typical model data"""
-        result = ConciseModelResponse.from_model_data("test-model-id", mock_final_model_data)
-
-        assert result.id == "test-model-id"
-        assert result.maker == "OpenAI"
-        assert result.display_name == "GPT-4"
-        assert result.cost_per_input_token_usd == 0.001
-        assert result.cost_per_output_token_usd == 0.002
-        assert result.release_date == "2024-01-15"
-
-        # Check supports filtering - json_mode is NOT filtered because the field name is "supports_json_mode"
-        # but IGNORE_SUPPORTS contains "json_mode", so the check "supports_json_mode" not in IGNORE_SUPPORTS passes
-        expected_supports = ["tool_calling", "json_mode", "input_image"]  # parallel_tool_calls is False, so excluded
-        assert sorted(result.supports) == sorted(expected_supports)
-
-    def test_ignores_specified_supports(self, mock_final_model_data: Any):
-        """Test that specified supports are ignored"""
-        # The fixture already includes the ignored supports, let's verify they're not in the result
-        result = ConciseModelResponse.from_model_data("test-id", mock_final_model_data)
-
-        # These should be filtered out if the filtering logic worked correctly
-        # But due to the current logic, only "support_system_messages" (exact match) is filtered
-        # "structured_output" and "json_mode" appear because the field names are "supports_structured_output" and "supports_json_mode"
-        assert "json_mode" in result.supports  # Current behavior - not filtered
-        # support_system_messages should be filtered because it's an exact match
-        assert "system_messages" not in result.supports  # This one IS filtered
-
-    def test_empty_supports(self, mock_provider_data: ModelProviderData):
-        """Test when model has no qualifying supports"""
-        model_data = Mock()
-        model_data.providers = [(Provider.ANTHROPIC, mock_provider_data)]
-        model_data.provider_name = "Anthropic"
-        model_data.display_name = "Claude"
-        model_data.release_date = date(2023, 5, 10)
-        model_data.quality_index = 95  # Add missing quality_index
-
-        # Only ignored or false supports
-        model_data.model_dump.return_value = {
-            "supports_json_mode": True,  # Will NOT be ignored due to current logic
-            "supports_structured_output": True,  # Will NOT be ignored due to current logic
-            "support_system_messages": False,  # This is correctly ignored AND False
-            "supports_tool_calling": False,  # False, so not included
-            "other_field": True,  # Doesn't start with supports_
-        }
-
-        result = ConciseModelResponse.from_model_data("claude-id", model_data)
-
-        # Due to the current filtering logic, these will not be empty
-        expected_supports = ["json_mode", "structured_output"]  # These pass the filter
-        assert sorted(result.supports) == sorted(expected_supports)
-
-    def test_multiple_supports(self, mock_provider_data: ModelProviderData):
-        """Test model with multiple valid supports"""
-        model_data = Mock()
-        model_data.providers = [(Provider.FIREWORKS, mock_provider_data)]
-        model_data.provider_name = "Fireworks"
-        model_data.display_name = "Llama 3.1"
-        model_data.release_date = date(2024, 7, 23)
-        model_data.quality_index = 85  # Add missing quality_index
-
-        model_data.model_dump.return_value = {
-            "supports_tool_calling": True,
-            "supports_input_image": True,
-            "supports_input_audio": True,
-            "supports_parallel_tool_calls": True,
-            "supports_output_image": True,
-            "supports_input_pdf": True,
-        }
-
-        result = ConciseModelResponse.from_model_data("llama-id", model_data)
-
-        expected_supports = [
-            "tool_calling",
-            "input_image",
-            "input_audio",
-            "parallel_tool_calls",
-            "output_image",
-            "input_pdf",
-        ]
-        assert sorted(result.supports) == sorted(expected_supports)
-
-    def test_different_provider_costs(self, mock_final_model_data: Any):
-        """Test with different provider cost structure"""
-        # Create provider data with different costs
-        expensive_price = TextPricePerToken(
-            prompt_cost_per_token=0.05,
-            completion_cost_per_token=0.15,
-            source="expensive-provider",
+class TestMCPRunFromDomain:
+    def test_successful_run_with_version(self):
+        """Test MCPRun.from_domain with a successful run and explicit version"""
+        # Create a task group for the version
+        version_group = test_models.task_group(
+            group_id="version-group",
+            properties={
+                "model": "gpt-4-turbo",
+                "temperature": 0.3,
+                "instructions": "Version instructions",
+                "messages": [],
+                "top_p": 0.8,
+                "max_tokens": 2000,
+                "frequency_penalty": 0.1,
+                "presence_penalty": 0.2,
+            },
+            semver=[2, 0],
         )
-        expensive_provider_data = ModelProviderData(text_price=expensive_price)
 
-        # Update the first provider data
-        mock_final_model_data.providers = [(Provider.AZURE_OPEN_AI, expensive_provider_data)]
+        # Create an agent run using the generator
+        agent_run = test_models.task_run_ser(
+            id="run-123",
+            task_id="task-789",
+            task_schema_id=42,
+            task_input={"param1": "value1", "param2": "value2"},
+            task_output={"result": "success"},
+            model="gpt-4",
+            status="success",
+            duration_seconds=2.5,
+            cost_usd=0.05,
+            created_at=datetime(2024, 1, 15, 10, 30, 0),
+            metadata={"key": "metadata_value"},
+            conversation_id="conv-456",
+        )
 
-        result = ConciseModelResponse.from_model_data("expensive-model", mock_final_model_data)
+        output_schema = {"type": "object", "properties": {"result": {"type": "string"}}}
 
-        assert result.cost_per_input_token_usd == 0.05
-        assert result.cost_per_output_token_usd == 0.15
+        result = MCPRun.from_domain(agent_run, version_group, output_schema, "")
+
+        assert result.id == "run-123"
+        assert result.conversation_id == "conv-456"
+        assert result.agent_id == "task-789"
+        assert result.agent_schema_id == 42
+        assert result.status == "success"
+        assert result.agent_input == {"param1": "value1", "param2": "value2"}
+        # The messages property computes messages from task output, not input messages
+        assert len(result.messages) == 1
+        assert result.messages[0].role == "assistant"
+        assert result.duration_seconds == 2.5
+        assert result.cost_usd == 0.05
+        assert result.created_at == datetime(2024, 1, 15, 10, 30, 0)
+        assert result.metadata == {"key": "metadata_value"}
+        assert result.response_json_schema == output_schema
+        assert result.error is None
+
+        # Check that agent_version is created from the provided version
+        assert result.agent_version.id == "2.0"
+        assert result.agent_version.model == "gpt-4-turbo"
+        assert result.agent_version.temperature == 0.3
+
+    def test_successful_run_without_version(self):
+        """Test MCPRun.from_domain with a successful run but no explicit version (uses run.group)"""
+        agent_run = test_models.task_run_ser(
+            id="run-456",
+            task_id="task-123",
+            task_schema_id=99,
+            model="gpt-4",
+            status="success",
+        )
+
+        result = MCPRun.from_domain(agent_run, None, None, "")
+
+        assert result.id == "run-456"
+        assert result.status == "success"
+        assert result.agent_id == "task-123"
+        assert result.agent_schema_id == 99
+
+        # Check that agent_version is created from run.group since version is None
+        assert result.agent_version.model == "gpt-4"
+
+    def test_error_run(self):
+        """Test MCPRun.from_domain with a failed run"""
+        # Create an error response
+        error = ErrorResponse.Error(code="test_error", message="Test error message", details={"key": "value"})
+
+        agent_run = test_models.task_run_ser(
+            id="run-error-123",
+            task_id="task-error-789",
+            task_schema_id=99,
+            status="failure",  # Use "failure" not "failed"
+            task_input={"error_param": "error_value"},
+            duration_seconds=1.0,
+            cost_usd=0.02,
+            created_at=datetime(2024, 1, 16, 14, 45, 0),
+            metadata={"error_key": "error_metadata"},
+            conversation_id="conv-error-456",
+            error=error,
+        )
+
+        result = MCPRun.from_domain(agent_run, None, None, "")
+
+        assert result.id == "run-error-123"
+        assert result.status == "error"  # Non-success status should map to "error"
+        assert result.error is not None
+        assert result.error.code == "test_error"
+        assert result.error.message == "Test error message"
+        assert result.error.details == {"key": "value"}
+
+    def test_none_conversation_id(self):
+        """Test MCPRun.from_domain when conversation_id is None"""
+        agent_run = test_models.task_run_ser(
+            id="run-no-conv",
+            conversation_id=None,
+        )
+
+        result = MCPRun.from_domain(agent_run, None, None, "")
+
+        # conversation_id should default to empty string when None
+        assert result.conversation_id == ""
+
+    def test_none_task_input(self):
+        """Test MCPRun.from_domain when task_input is None"""
+        # The generator sets default task_input, so we need to override after creation
+        agent_run = test_models.task_run_ser(id="run-no-input")
+        agent_run.task_input = None
+
+        result = MCPRun.from_domain(agent_run, None, None, "")
+
+        assert result.agent_input is None
+
+    def test_task_input_filtering_workflowai_messages(self):
+        """Test that 'workflowai.messages' key is filtered out from task_input"""
+        agent_run = test_models.task_run_ser(
+            id="run-filtered",
+            task_input={
+                "param1": "value1",
+                "workflowai.messages": [{"role": "user", "content": "should be filtered"}],
+                "param2": "value2",
+            },
+        )
+
+        result = MCPRun.from_domain(agent_run, None, None, "")
+
+        # 'workflowai.messages' should be filtered out
+        expected_input = {"param1": "value1", "param2": "value2"}
+        assert result.agent_input == expected_input
+
+    def test_task_input_only_workflowai_messages(self):
+        """Test when task_input only contains 'workflowai.messages'"""
+        agent_run = test_models.task_run_ser(
+            id="run-only-filtered",
+            task_input={
+                "workflowai.messages": [{"role": "user", "content": "only filtered content"}],
+            },
+        )
+
+        result = MCPRun.from_domain(agent_run, None, None, "")
+
+        # Should result in empty dict, not None
+        assert result.agent_input == {}
+
+    def test_empty_task_input(self):
+        """Test when task_input is empty"""
+        agent_run = test_models.task_run_ser(
+            id="run-empty-input",
+            task_input={},
+        )
+
+        result = MCPRun.from_domain(agent_run, None, None, "")
+
+        # Empty dict is falsy, so the conditional evaluates to None
+        assert result.agent_input is None
+
+    def test_status_mapping(self):
+        """Test status mapping for different run statuses"""
+        # Test success status
+        success_run = test_models.task_run_ser(id="success-run", status="success")
+        result = MCPRun.from_domain(success_run, None, None, "")
+        assert result.status == "success"
+
+        # Test failure status maps to "error"
+        failure_run = test_models.task_run_ser(id="failure-run", status="failure")
+        result = MCPRun.from_domain(failure_run, None, None, "")
+        assert result.status == "error"
+
+    def test_none_values_handling(self):
+        """Test handling of None values in optional fields"""
+        agent_run = test_models.task_run_ser(
+            id="run-none-values",
+            duration_seconds=None,
+            cost_usd=None,
+            metadata=None,
+        )
+
+        result = MCPRun.from_domain(agent_run, None, None, "")
+
+        assert result.duration_seconds is None
+        assert result.cost_usd is None
+        assert result.metadata is None
+
+    def test_with_output_schema(self):
+        """Test MCPRun.from_domain with various output schema configurations"""
+        agent_run = test_models.task_run_ser(id="schema-test")
+
+        # Test with complex schema
+        complex_schema = {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+                "age": {"type": "integer"},
+                "items": {"type": "array", "items": {"type": "string"}},
+            },
+            "required": ["name"],
+        }
+
+        result = MCPRun.from_domain(agent_run, None, complex_schema, "")
+        assert result.response_json_schema == complex_schema
+
+        # Test with None schema
+        result = MCPRun.from_domain(agent_run, None, None, "")
+        assert result.response_json_schema is None
 
     @pytest.mark.parametrize(
-        "test_date,expected_iso",
+        "created_at,expected_created_at",
         [
-            (date(2024, 1, 1), "2024-01-01"),
-            (date(2023, 12, 31), "2023-12-31"),
-            (date(2025, 6, 15), "2025-06-15"),
+            (datetime(2024, 1, 1, 0, 0, 0), datetime(2024, 1, 1, 0, 0, 0)),
+            (datetime(2023, 12, 25, 15, 30, 45), datetime(2023, 12, 25, 15, 30, 45)),
+            (datetime(2025, 6, 15, 9, 15, 30), datetime(2025, 6, 15, 9, 15, 30)),
         ],
     )
-    def test_date_formatting(self, mock_final_model_data: Any, test_date: date, expected_iso: str):
-        """Test that dates are properly formatted to ISO format"""
-        mock_final_model_data.release_date = test_date
-
-        result = ConciseModelResponse.from_model_data("date-test", mock_final_model_data)
-
-        assert result.release_date == expected_iso
-
-    def test_uses_first_provider_for_pricing(self, mock_final_model_data: Any):
-        """Test that it uses the first provider in the list for pricing"""
-        # Create a second provider with different pricing
-        second_price = TextPricePerToken(
-            prompt_cost_per_token=0.999,
-            completion_cost_per_token=0.888,
-            source="second-provider",
+    def test_datetime_handling(self, created_at: datetime, expected_created_at: datetime):
+        """Test that datetime values are properly handled"""
+        agent_run = test_models.task_run_ser(
+            id="datetime-test",
+            created_at=created_at,
         )
-        second_provider_data = ModelProviderData(text_price=second_price)
 
-        # Add second provider to the list
-        first_provider_data: ModelProviderData = mock_final_model_data.providers[0][1]
-        mock_final_model_data.providers = [
-            (Provider.OPEN_AI, first_provider_data),
-            (Provider.ANTHROPIC, second_provider_data),
-        ]
+        result = MCPRun.from_domain(agent_run, None, None, "")
 
-        result = ConciseModelResponse.from_model_data("multi-provider", mock_final_model_data)
-
-        # Should use first provider's pricing
-        assert result.cost_per_input_token_usd == 0.001  # From first provider
-        assert result.cost_per_output_token_usd == 0.002  # From first provider
-
-    def test_supports_prefix_removal(self, mock_provider_data: ModelProviderData):
-        """Test that 'supports_' prefix is properly removed from field names"""
-        model_data = Mock()
-        model_data.providers = [(Provider.OPEN_AI, mock_provider_data)]
-        model_data.provider_name = "Test Provider"
-        model_data.display_name = "Test Model"
-        model_data.release_date = date(2024, 1, 1)
-        model_data.quality_index = 90  # Add missing quality_index
-
-        model_data.model_dump.return_value = {
-            "supports_custom_feature": True,
-            "supports_another_thing": True,
-        }
-
-        result = ConciseModelResponse.from_model_data("test", model_data)
-
-        expected_supports = ["custom_feature", "another_thing"]
-        assert sorted(result.supports) == sorted(expected_supports)
-
-    def test_non_supports_fields_ignored(self, mock_provider_data: ModelProviderData):
-        """Test that fields not starting with 'supports_' are ignored"""
-        model_data = Mock()
-        model_data.providers = [(Provider.OPEN_AI, mock_provider_data)]
-        model_data.provider_name = "Test Provider"
-        model_data.display_name = "Test Model"
-        model_data.release_date = date(2024, 1, 1)
-        model_data.quality_index = 75  # Add missing quality_index
-
-        model_data.model_dump.return_value = {
-            "random_field": True,
-            "another_field": True,
-            "supports_real_feature": True,
-            "not_supports_field": True,
-        }
-
-        result = ConciseModelResponse.from_model_data("test", model_data)
-
-        # Only the real supports field should be included
-        assert result.supports == ["real_feature"]
+        assert result.created_at == expected_created_at

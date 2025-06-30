@@ -59,7 +59,7 @@ class RunService:
         self.analytics_service = analytics_service
         self.user = user
 
-    async def stream_run(
+    async def stream_run(  # noqa: C901
         self,
         builder: TaskRunBuilder,
         runner: AbstractRunner[Any],
@@ -71,6 +71,7 @@ class RunService:
         store_inline: bool = False,
         file_storage: FileStorage | None = None,
     ) -> AsyncGenerator[str, None]:
+        streamed_final_chunk = False
         try:
             chunk: RunOutput | None = None
             async for chunk in self.stream_from_builder(
@@ -83,14 +84,19 @@ class RunService:
                 source=source,
                 file_storage=file_storage,
             ):
+                if chunk.final and (run := builder.task_run):
+                    if final_chunk := serializer(run):
+                        streamed_final_chunk = True
+                        yield _format_model(final_chunk)
+                        continue
                 if chunk and (serialized := chunk_serializer(builder.id, chunk)):
                     yield _format_model(serialized)
 
-            # TODO: We are streaming one too many chunks here. Both the abstract provider and below
-            # Stream the final chunk which leads to duplicate final chunks
-            if run := builder.task_run:
-                if final_chunk := serializer(run):
-                    yield _format_model(final_chunk)
+            if not streamed_final_chunk:
+                self._logger.warning("No final chunk streamed. Likely had no final chunks")
+                if run := builder.task_run:
+                    if final_chunk := serializer(run):
+                        yield _format_model(final_chunk)
         except ContentModerationError as e:
             yield _format_model(e.error_response(), exclude_none=True)
             capture_content_moderation_error(e, self._storage.tenant, builder.task.name)
@@ -225,7 +231,7 @@ class RunService:
         # Annoying to cast here but run_by_id will have standardized the messages
         # We can't use `llm_completions_by_id` because we need the task input and the tool calls
         try:
-            messages = previous_completion.to_messages()
+            messages = previous_completion.to_deprecated_messages()
         except Exception:
             raise InternalError("Failed to parse previous messages", extra={"run_id": to_run.id})
 
@@ -402,14 +408,29 @@ class RunService:
             file_storage=file_storage,
         ):
             async for chunk in runner.stream(builder, cache=cache):
+                if chunk.final:
+                    if builder.task_run:
+                        self._logger.warning(
+                            "Task run already built. Likely had multiple final chunks",
+                            extra={"task_id": builder.task.id},
+                        )
+                    # Forcing here, just in case we are in a case where we had final chunks
+                    builder.build(chunk, force=True)
                 yield chunk
-            if not chunk:
-                return
-            task_run = builder.build(chunk)
+        if not chunk:
+            return
+
+        built_run = builder.task_run
+        if not built_run:
+            self._logger.warning(
+                "No task run built. Likely had no final chunks",
+                extra={"task_id": builder.task.id},
+            )
+            built_run = builder.build(chunk)
 
         task_run = await self._store_task_run(
             task=builder.task,
-            run=task_run,
+            run=built_run,
             trigger=trigger,
             user=user,
             store_inline=store_inline,
@@ -418,4 +439,5 @@ class RunService:
         )
         # hack to update the builder task run so that it can be used
         # outside of the stream
+        # TODO: We should no longer need that once we have removed the ability to store inline
         builder._task_run = task_run  # pyright: ignore [reportPrivateUsage]

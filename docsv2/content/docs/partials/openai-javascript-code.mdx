@@ -1,5 +1,6 @@
 ---
 title: OpenAI JavaScript Code
+summary: How to use the OpenAI JavaScript SDK with WorkflowAI. WorkflowAI exposes a compatible OpenAI API endpoint. The only changes you need to make are updating the `base_url` and `api_key`.
 ---
 
 ```javascript
@@ -8,7 +9,7 @@ import OpenAI from 'openai';
 // setup WorkflowAI client
 const client = new OpenAI({
   baseURL: 'https://run.workflowai.com/v1', // [!code highlight]
-  apiKey: 'wai-***', // workflowai.com/keys // [!code highlight]
+  apiKey: 'wai-***', // use create_api_key MCP tool // [!code highlight]
 });
 
 client.chat.completions.create({

@@ -1,4 +1,5 @@
 import { Attach16Regular, Checkmark16Filled, ChevronUpDown16Regular, Dismiss16Regular } from '@fluentui/react-icons';
+import { CopyIcon } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/Popover';
@@ -18,11 +19,12 @@ type Props = {
   onRemove?: () => void;
   onChangeType: (type: ExtendedMessageType) => void;
   onAddContentEntry: (type: ContentType) => void;
+  onCopy?: () => void;
   readonly?: boolean;
 };
 
 export function ProxyMessageViewHeader(props: Props) {
-  const { type, avaibleTypes, isHovering, onRemove, onChangeType, onAddContentEntry, readonly } = props;
+  const { type, avaibleTypes, isHovering, onRemove, onChangeType, onAddContentEntry, onCopy, readonly } = props;
 
   const [showTypePopover, setShowTypePopover] = useState(false);
   const [showAttachmentPopover, setShowAttachmentPopover] = useState(false);
@@ -87,7 +89,17 @@ export function ProxyMessageViewHeader(props: Props) {
           </PopoverContent>
         </Popover>
       )}
-      <div className='flex flex-row'>
+      <div className='flex flex-row items-center'>
+        {isHovering && onCopy && (
+          <Button
+            variant='newDesignText'
+            size='none'
+            className='w-7 h-7'
+            icon={<CopyIcon size={13} />}
+            onClick={onCopy}
+          />
+        )}
+
         {isHovering && attachemntTypes.length > 0 && !readonly && (
           <Popover open={showAttachmentPopover} onOpenChange={setShowAttachmentPopover}>
             <PopoverTrigger asChild>

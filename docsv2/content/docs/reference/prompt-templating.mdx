@@ -1,5 +1,6 @@
 ---
 title: Prompt Templating Syntax
+summary: Documentation for Jinja2 templating syntax. Covers using variables, loops, and conditional logic for dynamic prompt generation.
 description: Learn how to use variables and templates in your prompts
 ---
 
@@ -9,7 +10,7 @@ WorkflowAI uses **Jinja2** as its templating engine to enable dynamic prompt gen
 
 ## Overview
 
-When using input variables with templates (as shown in the [Using variables in prompts](/docs/guides/using-variables-in-prompts.md) guide), WorkflowAI renders your message templates at runtime using the variables provided in `extra_body["input"]`.
+When using input variables with templates (as shown in the [Using variables in prompts](/guides/using-variables-in-prompts.md) guide), WorkflowAI renders your message templates at runtime using the variables provided in `extra_body["input"]`.
 
 ```python
 instructions = "You must classify the email address as:

@@ -1,5 +1,6 @@
 ---
 title: API Responses
+summary: Documentation of the API response structure. Details the chat completion object, its fields, and provides an example response.
 description: Understanding API response formats and structures
 ---
 
@@ -137,7 +138,7 @@ Usage statistics for the completion request.
 ## Extra fields in completion response
 
 In the completion response, the choice object includes the following fields that are not defined in the OpenAI API:
-- **feedback_token**: the feedback token for the completion, as described in the [User Feedback](/docs/guides/user-feedback.md) documentation.
+- **feedback_token**: the feedback token for the completion, as described in the [User Feedback](/guides/user-feedback.md) documentation.
 - **duration_seconds**: the duration of the completion in seconds
 - **cost_usd**: the cost of the generation in USD for that specific choice
 

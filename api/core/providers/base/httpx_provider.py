@@ -121,7 +121,6 @@ class HTTPXProvider(HTTPXProviderBase[ProviderConfigVar, dict[str, Any]], Generi
                     "raw": raw,
                 },
                 capture=True,
-                store_task_run=True,
             ) from e
 
         # Initialize content_str with the response text so that
@@ -227,7 +226,7 @@ class HTTPXProvider(HTTPXProviderBase[ProviderConfigVar, dict[str, Any]], Generi
             if not context.last_chunk:
                 cls._get_logger().warning("No last chunk found in streaming context")
                 return partial_output_factory("")
-            raw = StructuredOutput(output=None, delta=context.last_chunk.content)
+            raw = StructuredOutput(output=None, delta=context.last_chunk.content, final=False)
             if context.last_chunk.tool_calls:
                 raw = raw._replace(tool_calls=context.last_chunk.tool_calls)
             if context.last_chunk.reasoning_steps:
@@ -242,7 +241,7 @@ class HTTPXProvider(HTTPXProviderBase[ProviderConfigVar, dict[str, Any]], Generi
         # TODO: looks like we are not streaming tool calls ?
         # if context.tool_calls:
         #     partial = partial._replace(tool_calls=context.tool_calls)
-        return partial
+        return partial._replace(final=False)
 
     @classmethod
     def _build_structured_output(
@@ -276,7 +275,7 @@ class HTTPXProvider(HTTPXProviderBase[ProviderConfigVar, dict[str, Any]], Generi
             output = output._replace(tool_calls=native_tools_calls + (output.tool_calls or []))
         if files:
             output = output._replace(files=files)
-        return output
+        return output._replace(final=True)
 
     def _handle_chunk_output(self, context: StreamingContext, content: str) -> bool:
         updates = context.streamer.process_chunk(content)

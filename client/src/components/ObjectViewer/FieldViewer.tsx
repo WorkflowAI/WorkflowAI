@@ -198,6 +198,7 @@ export function FieldViewer(props: FieldViewerProps) {
                   isRoot={isRoot}
                   defs={defs}
                   keyPath={fieldKeyPath}
+                  fieldKey={fieldKey}
                   schemaRefName={schemaRefName}
                   defaultExpanded={defaultExpanded}
                   textColor={textColorToUse}
@@ -236,6 +237,7 @@ export function FieldViewer(props: FieldViewerProps) {
                         className='text-[13px]'
                         defs={defs}
                         keyPath={fieldKeyPath}
+                        fieldKey={fieldKey}
                         schemaRefName={schemaRefName}
                         defaultExpanded={defaultExpanded}
                         textColor={textColorToUse}

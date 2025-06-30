@@ -82,9 +82,17 @@ known-third-party = ["workflowai"]
 # in bin we use rich.print
 "scripts/*" = ["T201", "G004"]
 "api/tests/integration/mcp/*" = ["T201", "G004"]
+"integrations/python/*" = ["T201", "G004"]
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
 "openai.BaseModel".msg = "Import from pydantic instead"
+"openai.Field".msg = "Import from pydantic instead"
+"anthropic.BaseModel".msg = "Import from pydantic instead"
+"anthropic.Field".msg = "Import from pydantic instead"
+"litellm.AsyncOpenAI".msg = "Import from openai instead"
+"litellm.OpenAI".msg = "Import from anthropic instead"
+"litellm.BaseModel".msg = "Import from pydantic instead"
+"litellm.Field".msg = "Import from pydantic instead"
 
 [tool.poetry]
 # Not deploying a lib
@@ -132,7 +140,7 @@ stripe = "^11.4.1"
 html2text = "^2024.2.26"
 jinja2 = "^3.1.5"
 clickhouse-connect = "^0.8.16"
-fastmcp = "^2.8.0"
+fastmcp = "^2.9.0"
 
 [tool.poetry.group.dev.dependencies]
 freezegun = "^1.5.1"
@@ -156,3 +164,4 @@ bandit = "^1.8.2"
 safety = "^3.2.4"
 taskiq = { extras = ["reload"], version = "^0.11.6" }
 vulture = "^2.11"
+debugpy = "^1.8.14"

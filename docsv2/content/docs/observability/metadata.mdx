@@ -1,0 +1,93 @@
+---
+title: Metadata
+summary: Documentation on how to use metadata to improve observability of your agents.
+---
+
+## Metadata
+
+<Callout type="warning">
+We highly recommend reading this section. Metadata is essential for debugging and troubleshooting your AI agents.
+</Callout>
+
+You can attach custom metadata to a run. Think of metadata as the fields you or your AI engineer will use for debugging and troubleshooting. For example, when a customer reports an issue, you or your AI engineer will want to search by `user_id`, `customer_id`, or `session_id` to find their specific runs. Add these identifiers as metadata so you or your AI engineer can easily trace problems back to specific users, sessions, or contexts.
+
+### Setup
+
+TODO: remove the concept of "AI Engineer" and use CursorAI agent.
+
+<Callout type="info">
+**Using WorkflowAI's AI Engineer**:
+
+```
+Add the following metadata to the agent "my-agent-id" using WorkflowAI:
+user_id, user_email.
+```
+</Callout>
+
+<Tabs items={['Python', 'TypeScript', 'cURL']}>
+<Tab value="Python">
+```python
+completion = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[{"role": "user", "content": "Hello, how are you?"}],
+    metadata={
+        "agent_id": "my-agent-id", # [!code highlight]
+        "user_id": "123", # [!code highlight]
+        "language": "english" # [!code highlight]
+    }
+)
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+const completion = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    messages: [{"role": "user", "content": "Hello, how are you?"}],
+    metadata: {
+        agentId: "my-agent-id", // [!code highlight]
+        userId: "123", // [!code highlight]
+        language: "english" // [!code highlight]
+    }
+});
+```
+</Tab>
+<Tab value="cURL">
+```sh
+curl -X POST https://run.workflowai.com/v1/chat/completions \
+-H "Authorization: Bearer $WORKFLOWAI_API_KEY" \
+-H "Content-Type: application/json" \
+-d '{
+    "model": "gpt-4o-mini",
+    "messages": [{"role": "user", "content": "Hello, how are you?"}],
+    "metadata": {
+        "agent_id": "my-agent-id",
+        "user_id": "123",
+        "language": "english"
+    }
+}'
+```
+</Tab>
+</Tabs>
+
+### Special metadata keys
+
+| Key | Description | Example | Added automatically |
+|-----|-------------|---------|-------------------|
+| `agent_id` | The ID of the agent that generated the run | `summarizer-agent`, `translation-agent` | No |
+| `conversation_id` | Groups related runs into [conversations](/observability/conversations) for multi-turn interactions | `01234567-89ab-cdef-0123-456789abcdef` | Yes |
+| `environment` | The environment of the run | `production`, `staging`, `development` | Yes, when using a deployment |
+| `source` | The source of the run request | `my+app` (from proxy), `WorkflowAI` (from web app) | Yes |
+| `temperature` | The temperature setting used in the LLM | `0.7`, `1.0` | Yes |
+| `schema` | The schema used | `1`, `2` | Yes |
+| `review` | TBD | TBD | TBD |
+
+<Callout type="info">
+  TODO: @guillaume to check all the metadata keys and add them to the table.
+  Double check the value I listed above too. For example, `dev` or `development`?
+</Callout>
+
+<Callout type="info">
+  TODO: @guillaume is there any limit on the metadata size?
+</Callout>
+
+Then, you can [search for runs by metadata](/observability/runs#search-runs).
