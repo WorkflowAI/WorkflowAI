@@ -194,6 +194,18 @@ class OpenAIProxyToolCall(BaseModel):
     model_config = ConfigDict(extra="allow")
 
 
+class OpenAIProxyToolCallDelta(OpenAIProxyToolCall):
+    index: int
+
+    @classmethod
+    def from_domain(cls, tool_call: ToolCallRequestWithID):
+        return cls(
+            index=tool_call.index,
+            id=tool_call.id,
+            function=OpenAIProxyFunctionCall.from_domain(tool_call),
+        )
+
+
 class OpenAIProxyMessage(BaseModel):
     content: list[OpenAIProxyContent] | str | None = None
     name: str | None = None
@@ -933,7 +945,7 @@ _FinishReason: TypeAlias = Literal["stop", "length", "tool_calls", "content_filt
 class OpenAIProxyChatCompletionChunkDelta(BaseModel):
     content: str | None
     function_call: OpenAIProxyFunctionCall | None  # Deprecated
-    tool_calls: list[OpenAIProxyToolCall] | None
+    tool_calls: list[OpenAIProxyToolCallDelta] | None
     role: Literal["user", "assistant", "system", "tool"] | None
 
     @classmethod
@@ -953,7 +965,7 @@ class OpenAIProxyChatCompletionChunkDelta(BaseModel):
             function_call=OpenAIProxyFunctionCall.from_domain(output.tool_call_requests[0])
             if deprecated_function and output.tool_call_requests
             else None,
-            tool_calls=[OpenAIProxyToolCall.from_domain(t) for t in output.tool_call_requests]
+            tool_calls=[OpenAIProxyToolCallDelta.from_domain(t) for t in output.tool_call_requests]
             if output.tool_call_requests and not deprecated_function
             else None,
         )
@@ -972,27 +984,28 @@ class OpenAIProxyChatCompletionChunkChoiceFinal(OpenAIProxyChatCompletionChunkCh
     def _possible_finish_reason(cls, run: AgentRun, deprecated_function: bool) -> _FinishReason | None:
         """Compute the finish reason for a run"""
         if run.tool_call_requests:
-            return "tool_calls" if deprecated_function else "function_call"
+            return "function_call" if deprecated_function else "tool_calls"
         return "stop"
 
     @classmethod
     def _build_delta(
         cls,
         run: AgentRun,
+        final_chunk: RunOutput | None,
         output_mapper: Callable[[AgentOutput], str | None],
         deprecated_function: bool,
         aggregate_content: bool | None,
     ):
         """Build the final delta based on a run. The final delta contains the full output of the run if the run
-        is from cache since there was no previous delta. Otherwise the final delta is empty."""
-        if run.from_cache or aggregate_content:
-            if chunk := OpenAIProxyChatCompletionChunkDelta.from_domain(
-                RunOutput.from_run(run),
-                output_mapper,
-                deprecated_function,
-                True,
-            ):
-                return chunk
+        is from cache since there was no previous delta"""
+
+        if chunk := OpenAIProxyChatCompletionChunkDelta.from_domain(
+            final_chunk or RunOutput.from_run(run),
+            output_mapper=output_mapper,
+            deprecated_function=deprecated_function,
+            aggregate_content=run.from_cache or aggregate_content,
+        ):
+            return chunk
         # Otherwise the final chunk is always empty
         return OpenAIProxyChatCompletionChunkDelta(
             role="assistant",
@@ -1005,6 +1018,7 @@ class OpenAIProxyChatCompletionChunkChoiceFinal(OpenAIProxyChatCompletionChunkCh
     def from_run(
         cls,
         run: AgentRun,
+        final_chunk: RunOutput | None,
         output_mapper: Callable[[AgentOutput], str | None],
         deprecated_function: bool,
         feedback_generator: Callable[[str], str],
@@ -1016,7 +1030,7 @@ class OpenAIProxyChatCompletionChunkChoiceFinal(OpenAIProxyChatCompletionChunkCh
         usage = OpenAIProxyCompletionUsage.from_domain(run.llm_completions[-1]) if run.llm_completions else None
 
         return cls(
-            delta=cls._build_delta(run, output_mapper, deprecated_function, aggregate_content),
+            delta=cls._build_delta(run, final_chunk, output_mapper, deprecated_function, aggregate_content),
             finish_reason=cls._possible_finish_reason(run, deprecated_function),
             index=0,
             usage=usage,
@@ -1098,9 +1112,10 @@ class OpenAIProxyChatCompletionChunk(BaseModel):
         org: PublicOrganizationData,
     ):
         # Builds the final chunk containing the usage and feedback token
-        def _serializer(run: AgentRun):
+        def _serializer(run: AgentRun, final_chunk: RunOutput | None):
             choice = OpenAIProxyChatCompletionChunkChoiceFinal.from_run(
                 run,
+                final_chunk,
                 output_mapper,
                 deprecated_function,
                 feedback_generator,

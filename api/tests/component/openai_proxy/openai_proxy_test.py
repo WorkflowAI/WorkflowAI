@@ -6,6 +6,7 @@ from unittest import mock
 import openai
 import pytest
 from openai import AsyncOpenAI, RateLimitError
+from openai.types.chat.chat_completion_chunk import ChoiceDeltaToolCall, ChoiceDeltaToolCallFunction
 from openai.types.chat.chat_completion_message_tool_call import ChatCompletionMessageToolCall, Function
 from openai.types.chat.chat_completion_stream_options_param import ChatCompletionStreamOptionsParam
 from pydantic import BaseModel, Field
@@ -277,6 +278,60 @@ async def test_with_tools(test_client: IntegrationTestClient, openai_client: Asy
             function=Function(
                 name="test",
                 arguments='{"arg": "value"}',
+            ),
+        ),
+    ]
+
+
+def _tool_call_delta_payload(name: str, arguments: str, id: str = "1"):
+    return {
+        "index": 0,
+        "id": id,
+        "type": "function",
+        "function": {"name": name, "arguments": arguments},
+    }
+
+
+async def test_with_tools_streaming(test_client: IntegrationTestClient, openai_client: AsyncOpenAI):
+    # OpenAI will stream a tool call in 2 different payloads
+    test_client.mock_openai_stream(
+        deltas=None,
+        tool_calls_deltas=[
+            [_tool_call_delta_payload("get_weather", '{"location')],
+            [_tool_call_delta_payload("get_weather", '":"Tokyo"}')],
+        ],
+    )
+    res = await openai_client.chat.completions.create(
+        model="gpt-4o",
+        messages=[],
+        tools=[
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_weather",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "location": {
+                                "type": "string",
+                            },
+                        },
+                    },
+                },
+            },
+        ],
+        stream=True,
+    )
+    chunks = [c async for c in res]
+    assert len(chunks) == 1
+    assert chunks[-1].choices[0].delta.tool_calls == [
+        ChoiceDeltaToolCall(
+            index=0,
+            id="1",
+            type="function",
+            function=ChoiceDeltaToolCallFunction(
+                name="get_weather",
+                arguments='{"location": "Tokyo"}',
             ),
         ),
     ]

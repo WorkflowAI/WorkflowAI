@@ -867,9 +867,14 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
         self,
         tool_calls: list[ToolCallRequestWithID] | None,
     ) -> tuple[list[ToolCallRequestWithID] | None, list[ToolCallRequestWithID] | None]:
+        """Split tools into internal and external tools"""
         if not tool_calls:
             return None, None
-        """Split tools into internal and external tools"""
+
+        # First assigning tool call indices
+        for i, tool_call in enumerate(tool_calls):
+            tool_call.index = i
+
         internal_tools: list[ToolCallRequestWithID] = []
         external_tools: list[ToolCallRequestWithID] = []
         for tool_call in tool_calls:
