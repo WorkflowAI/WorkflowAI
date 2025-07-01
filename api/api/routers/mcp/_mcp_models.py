@@ -4,6 +4,7 @@ from typing import Any, Generic, Literal, TypeAlias, TypeVar
 
 from pydantic import BaseModel, Field
 
+from api.routers.mcp._mcp_utils import truncate_obj
 from api.schemas.user_identifier import UserIdentifier
 from api.schemas.version_properties import ShortVersionProperties
 from api.services.models import ModelForTask
@@ -689,6 +690,13 @@ class MCPRun(BaseModel):
         output_schema: dict[str, Any] | None,
         url: str,
     ):
+        messages = run.messages
+        for m in messages:
+            for m in m.content:
+                if m.file and m.file.data:
+                    # No need to pass base64 data
+                    m.file.data = truncate_obj(m.file.data, max_field_length=10)
+
         return cls(
             id=run.id,
             conversation_id=run.conversation_id or "",  # there is always a conversation id, or is for typing reasons
@@ -698,7 +706,7 @@ class MCPRun(BaseModel):
             # See https://linear.app/workflowai/issue/WOR-4485/stop-storing-non-saved-versions-and-attach-them-to-runs-instead
             agent_version=AgentVersion.from_domain(version) if version else AgentVersion.from_domain(run.group),
             status="success" if run.status == "success" else "error",
-            agent_input={k: v for k, v in run.task_input.items() if k != "workflowai.messages"}
+            agent_input=truncate_obj({k: v for k, v in run.task_input.items() if k != "workflowai.messages"})
             if run.task_input
             else None,
             messages=run.messages,
