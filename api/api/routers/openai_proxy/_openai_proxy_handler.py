@@ -20,14 +20,14 @@ from core.domain.models.model_data_mapping import MODEL_COUNT
 from core.domain.task_group_properties import TaskGroupProperties
 from core.domain.task_io import RawJSONMessageSchema, RawMessagesSchema, RawStringMessageSchema, SerializableTaskIO
 from core.domain.task_variant import SerializableTaskVariant
-from core.domain.tenant_data import PublicOrganizationData
+from core.domain.tenant_data import PublicOrganizationData, TenantData
 from core.domain.types import AgentOutput, CacheUsage
 from core.domain.version_reference import VersionReference
 from core.providers.base.provider_error import MissingModelError
 from core.storage import ObjectNotFoundException
 from core.storage.backend_storage import BackendStorage
 from core.utils.schemas import schema_from_data
-from core.utils.strings import is_url_safe, slugify, to_pascal_case
+from core.utils.strings import slugify, to_pascal_case
 from core.utils.templates import InvalidTemplateError
 
 from ._openai_proxy_models import (
@@ -438,7 +438,7 @@ class OpenAIProxyHandler:
         body: OpenAIProxyChatCompletionRequest,
         metadata: dict[str, Any] | None,
         start_time: float,
-        tenant_data: PublicOrganizationData,
+        tenant_data: TenantData,
     ):
         self._check_final_input(
             prepared_run,
@@ -456,7 +456,7 @@ class OpenAIProxyHandler:
             task_id=prepared_run.variant.task_id,
             task_schema_id=prepared_run.variant.task_schema_id,
             reference=VersionReference(properties=prepared_run.properties),
-            provider_settings=None,
+            provider_settings=tenant_data.providers,
             variant=prepared_run.variant,
             stream_deltas=body.stream is True and not aggregate_content,
             use_fallback=parsed_fallback,
@@ -535,7 +535,7 @@ class OpenAIProxyHandler:
         self,
         body: OpenAIProxyChatCompletionRequest,
         request: Request,
-        tenant_data: PublicOrganizationData,
+        tenant_data: TenantData,
     ):
         body.check_supported_fields()
 
@@ -573,6 +573,8 @@ To list all models programmatically: {_curl_command}""",
 
 
 def _sanitize_agent_id(agent_id: str) -> str:
-    if not is_url_safe(agent_id):
-        return slugify(agent_id)
-    return agent_id
+    # TODO: only slugify the agent_id if needed
+    return slugify(agent_id)
+    # if not is_url_safe(agent_id):
+    #     return slugify(agent_id)
+    # return agent_id

@@ -8,7 +8,7 @@ from api.routers.mcp._mcp_service import MCPService, _merge_inputs, _merge_prope
 from core.domain.documentation_section import DocumentationSection
 from core.domain.message import Message, Messages
 from core.domain.task_group_properties import TaskGroupProperties
-from core.domain.tenant_data import PublicOrganizationData
+from core.domain.tenant_data import TenantData
 
 
 @pytest.fixture
@@ -24,7 +24,7 @@ def mcp_service():
         user_email=None,
         event_router=Mock(),
         run_service=Mock(),
-        tenant=PublicOrganizationData(slug="test-tenant"),
+        tenant=TenantData(slug="test-tenant"),
     )
 
 

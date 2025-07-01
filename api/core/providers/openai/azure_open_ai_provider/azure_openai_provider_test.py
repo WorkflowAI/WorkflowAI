@@ -130,7 +130,7 @@ class TestBuildRequest:
                     MessageDeprecated(role=MessageDeprecated.Role.SYSTEM, content="Hello 1"),
                     MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello"),
                 ],
-                options=ProviderOptions(model=Model.O1_PREVIEW_2024_09_12, max_tokens=10, temperature=0),
+                options=ProviderOptions(model=Model.GPT_4O_AUDIO_PREVIEW_2025_06_03, max_tokens=10, temperature=0),
                 stream=False,
             ),
         )
@@ -145,7 +145,7 @@ class TestBuildRequest:
                 "content": "Hello",
             },
         ]
-        assert request.temperature == 1.0
+        assert request.temperature is None
 
     def test_build_request_with_reasoning_effort(self, azure_openai_provider: AzureOpenAIProvider):
         request = cast(

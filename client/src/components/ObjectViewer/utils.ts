@@ -20,7 +20,7 @@ export interface ValueViewerProps<T, S extends JsonValueSchema = JsonValueSchema
   defaultExpanded?: boolean;
   voidValue?: Record<string, unknown> | SchemaNodeType[] | undefined;
   textColor?: string;
-  truncateText?: number;
+  supportTextWrapping?: boolean;
   flatFieldBasedConfigDict?: Record<string, ObjectKeyType>;
   errorsByKeypath?: Map<string, string>;
   flatFieldBasedConfigMode?: 'editable' | 'readonly' | 'evaluation';

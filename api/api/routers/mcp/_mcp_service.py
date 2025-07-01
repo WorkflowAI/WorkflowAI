@@ -52,7 +52,7 @@ from core.domain.task_group import TaskGroup, TaskGroupQuery
 from core.domain.task_group_properties import TaskGroupProperties
 from core.domain.task_info import TaskInfo
 from core.domain.task_variant import SerializableTaskVariant
-from core.domain.tenant_data import PublicOrganizationData
+from core.domain.tenant_data import TenantData
 from core.storage import ObjectNotFoundException
 from core.storage.backend_storage import BackendStorage
 from core.storage.task_run_storage import TaskRunStorage
@@ -79,7 +79,7 @@ class MCPService:
         models_service: ModelsService,
         task_deployments_service: TaskDeploymentsService,
         user_email: str | None,
-        tenant: PublicOrganizationData,
+        tenant: TenantData,
         event_router: EventRouter,
     ):
         self.storage = storage
@@ -399,8 +399,8 @@ Your primary purpose is to help developers find the most relevant WorkflowAI doc
 
         # Always add foundations page
         # TODO: try to return the foundations page only once, per chat, but might be difficult since `mcp-session-id` is probably not scoped to a chat (for example, on CursorAI, multiple chat tabs can be open at the same time, using (probably) the same `mcp-session-id`)
-
         if "foundations" not in [section.file_path for section in relevant_sections]:
+            # @guillaume suggested to add a `read_foundations: true, false` parameter to the search_documentation MCP tool
             sections = await documentation_service.get_documentation_by_path(["foundations"])
             query_results.append(
                 SearchResponse.QueryResult(
