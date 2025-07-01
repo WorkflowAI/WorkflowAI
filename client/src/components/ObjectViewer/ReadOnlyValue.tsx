@@ -3,6 +3,7 @@ import { diffLines, diffWords } from 'diff';
 import { useMemo } from 'react';
 import { CopyButtonWrapper } from '@/components/buttons/CopyTextButton';
 import { SimpleTooltip } from '../ui/Tooltip';
+import { WrappedTextView } from '../ui/WrappedTextView';
 import { SVGValueContent } from './SVGValue';
 import { ValueViewerProps, stringifyNil } from './utils';
 
@@ -14,13 +15,13 @@ type ReadonlyValueTextContentProps = {
   className: string;
   previewMode: boolean;
   isError: boolean;
-  truncateText: number;
+  supportTextWrapping?: boolean;
   icon: React.ReactNode;
   text: string;
 };
 
 export function ReadonlyValueTextContent(props: ReadonlyValueTextContentProps) {
-  const { className, previewMode, isError, truncateText, icon, text } = props;
+  const { className, previewMode, isError, supportTextWrapping, icon, text } = props;
 
   return (
     <div
@@ -36,18 +37,7 @@ export function ReadonlyValueTextContent(props: ReadonlyValueTextContentProps) {
         }
       )}
     >
-      <div
-        className={cx('flex-1 whitespace-pre-wrap', !!truncateText && 'overflow-hidden')}
-        style={{
-          display: !!truncateText ? '-webkit-box' : 'block',
-          WebkitLineClamp: !!truncateText ? truncateText : undefined,
-          WebkitBoxOrient: !!truncateText ? 'vertical' : undefined,
-          wordBreak: 'break-word',
-          overflowWrap: 'anywhere',
-        }}
-      >
-        {text}
-      </div>
+      <WrappedTextView text={text} wrapTextIfNeeded={supportTextWrapping} />
       {!!icon && <div className='flex-shrink-0 ml-1'>{icon}</div>}
     </div>
   );
@@ -64,7 +54,7 @@ type ReadonlyValueProps = Pick<
   | 'previewMode'
   | 'showDescriptionExamples'
   | 'hideCopyValue'
-  | 'truncateText'
+  | 'supportTextWrapping'
 > & {
   icon?: React.ReactNode;
 };
@@ -80,7 +70,7 @@ export function ReadonlyValue(props: ReadonlyValueProps) {
     previewMode,
     showDescriptionExamples,
     hideCopyValue,
-    truncateText,
+    supportTextWrapping,
   } = props;
   const text = stringifyNil(value);
 
@@ -133,7 +123,6 @@ export function ReadonlyValue(props: ReadonlyValueProps) {
       className={className ?? ''}
       previewMode={previewMode ?? false}
       isError={isError ?? false}
-      truncateText={truncateText ?? 0}
       icon={icon}
     />
   ) : (
@@ -142,7 +131,7 @@ export function ReadonlyValue(props: ReadonlyValueProps) {
       className={className ?? ''}
       previewMode={previewMode ?? false}
       isError={isError ?? false}
-      truncateText={truncateText ?? 0}
+      supportTextWrapping={supportTextWrapping}
       icon={icon}
     />
   );

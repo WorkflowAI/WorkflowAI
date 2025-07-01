@@ -7,6 +7,8 @@ summary: Essential concepts and architecture of WorkflowAI to get you started wi
 
 Think of WorkflowAI as a drop-in replacement for OpenAI, with primitives added to make it easier to build AI agents.
 
+WorkflowAI works with all programming languages, we provide specific examples for Python, Javascript, Typescript, Go, Ruby, Rust, Java, C#.
+
 ### Cost 
 
 By using WorkflowAI, you won't pay more than your current inference costs. We price match the providers and make our margin through volume discounts. [Learn more about our pricing](/pricing).
@@ -41,6 +43,17 @@ Technical details:
 By default, WorkflowAI saves all LLM completions. Observability is critical for building reliable AI agents. LLM observability helps teams improve reliability, reduce costs, debug failures faster, ensure safety, and optimize prompts and models by providing end-to-end visibility into how queries are processed and where issues arise.
 
 Learn more about by reading the [Observability](/observability) section.
+
+### Playground
+
+Playground is accessible via the WorkflowAI web app and allows a human to test a agent with a dedicated UI optimized for:
+- comparing models side-by-side
+- testing different prompts and parameters
+- testing different input
+
+It's a good idea to send a link to the playground to your user after you have implemented a first version of the agent, by using the URL `https://workflowai.com/agents/agent_id/playground`, or when the user wants to compare different models side-by-side.
+
+The playground has a "Send to Cursor" button that allows to send a specific agent version back to Cursor, so that the user can continue the development in Cursor.
 
 ### Deployments
 
@@ -169,8 +182,8 @@ parsed_output = completion.choices[0].message.parsed
 WorkflowAI adds cost and latency to the response. Learn more about cost and latency in the [Cost Metadata](/inference/cost) section.
 
 ```python
-cost = completion.model_extra.get('cost_usd')
-latency = completion.model_extra.get("duration_seconds")
+cost = getattr(completion.choices[0], 'cost_usd', None)
+latency = getattr(completion.choices[0], 'duration_seconds', None)
 print(f"Latency (s): {latency:.2f}")
 print(f"Cost   ($): ${cost:.6f}")
 ```

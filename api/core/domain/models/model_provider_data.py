@@ -96,6 +96,10 @@ class ModelDataSupportsOverride(BaseModel):
     supports_output_text: bool | None = None
     supports_tool_calling: bool | None = None
     supports_parallel_tool_calls: bool | None = None
+    supports_temperature: bool | None = None
+    supports_top_p: bool | None = None
+    supports_presence_penalty: bool | None = None
+    supports_frequency_penalty: bool | None = None
 
     def override(self, data: _T) -> _T:
         return data.model_copy(update=self.model_dump(exclude_none=True))

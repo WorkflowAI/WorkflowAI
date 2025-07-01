@@ -11,6 +11,7 @@ from core.domain.fields.file import File
 from core.domain.llm_usage import LLMUsage
 from core.domain.message import MessageDeprecated
 from core.domain.models import Model
+from core.domain.models.model_data_supports import ModelDataSupports
 from core.domain.models.utils import get_model_data
 from core.domain.tool_call import ToolCallRequestWithID
 from core.providers.base.abstract_provider import ProviderConfigInterface, RawCompletion
@@ -54,45 +55,12 @@ class OpenAIProviderBaseConfig(ProviderConfigInterface, Protocol):
     pass
 
 
-_O1_PREVIEW_MODELS = {
-    Model.O1_PREVIEW_2024_09_12,
-    Model.O1_MINI_2024_09_12,
-}
-
-_AUDIO_PREVIEW_MODELS = {
-    Model.GPT_4O_AUDIO_PREVIEW_2024_10_01,
-    Model.GPT_4O_AUDIO_PREVIEW_2024_12_17,
-}
-
-# TODO: use value from model data
-_UNSUPPORTED_TEMPERATURES = {
-    Model.O1_2024_12_17_LOW_REASONING_EFFORT,
-    Model.O1_2024_12_17,
-    Model.O1_2024_12_17_HIGH_REASONING_EFFORT,
-    Model.O3_MINI_2025_01_31_HIGH_REASONING_EFFORT,
-    Model.O3_MINI_2025_01_31_MEDIUM_REASONING_EFFORT,
-    Model.O3_MINI_2025_01_31_LOW_REASONING_EFFORT,
-    Model.O4_MINI_2025_04_16_HIGH_REASONING_EFFORT,
-    Model.O4_MINI_2025_04_16_MEDIUM_REASONING_EFFORT,
-    Model.O4_MINI_2025_04_16_LOW_REASONING_EFFORT,
-    Model.O3_2025_04_16_HIGH_REASONING_EFFORT,
-    Model.O3_2025_04_16_MEDIUM_REASONING_EFFORT,
-    Model.O3_2025_04_16_LOW_REASONING_EFFORT,
-    # Model.O3_PRO_2025_06_10_HIGH_REASONING_EFFORT,
-    # Model.O3_PRO_2025_06_10_MEDIUM_REASONING_EFFORT,
-    # Model.O3_PRO_2025_06_10_LOW_REASONING_EFFORT,
-    *_O1_PREVIEW_MODELS,
-    *_AUDIO_PREVIEW_MODELS,
-}
-
-
 _OpenAIConfigVar = TypeVar("_OpenAIConfigVar", bound=OpenAIProviderBaseConfig)
 
 
 class OpenAIProviderBase(HTTPXProvider[_OpenAIConfigVar, CompletionResponse], Generic[_OpenAIConfigVar]):
     def _build_request(self, messages: list[MessageDeprecated], options: ProviderOptions, stream: bool) -> BaseModel:
         model_name = options.model
-        is_preview_model = options.model in _O1_PREVIEW_MODELS or options.model in _AUDIO_PREVIEW_MODELS
         model_data = get_model_data(options.model)
 
         message: list[OpenAIMessage | OpenAIToolMessage] = []
@@ -100,24 +68,22 @@ class OpenAIProviderBase(HTTPXProvider[_OpenAIConfigVar, CompletionResponse], Ge
             if m.tool_call_results:
                 message.extend(OpenAIToolMessage.from_domain(m))
             else:
-                message.append(OpenAIMessage.from_domain(m, is_system_allowed=not is_preview_model))
+                message.append(OpenAIMessage.from_domain(m, is_system_allowed=model_data.supports_system_messages))
 
-        # Preview models only support temperature 1.0
-        temperature = 1.0 if options.model in _UNSUPPORTED_TEMPERATURES else options.temperature
         completion_request = CompletionRequest(
             messages=message,
             model=model_name,
-            temperature=temperature,
+            temperature=options.temperature if model_data.supports_temperature else None,
             max_completion_tokens=options.max_tokens,
             stream=stream,
             stream_options=StreamOptions(include_usage=True) if stream else None,
             # store=True,
-            response_format=self._response_format(options, is_preview_model),
+            response_format=self._response_format(options, supports=model_data),
             reasoning_effort=options.final_reasoning_effort(model_data.reasoning),
             tool_choice=CompletionRequest.tool_choice_from_domain(options.tool_choice),
-            top_p=options.top_p,
-            presence_penalty=options.presence_penalty,
-            frequency_penalty=options.frequency_penalty,
+            top_p=options.top_p if model_data.supports_top_p else None,
+            presence_penalty=options.presence_penalty if model_data.supports_presence_penalty else None,
+            frequency_penalty=options.frequency_penalty if model_data.supports_frequency_penalty else None,
             parallel_tool_calls=options.parallel_tool_calls if model_data.supports_parallel_tool_calls else None,
         )
 
@@ -129,12 +95,14 @@ class OpenAIProviderBase(HTTPXProvider[_OpenAIConfigVar, CompletionResponse], Ge
     def _response_format(
         self,
         options: ProviderOptions,
-        is_preview_model: bool,
+        supports: ModelDataSupports,
     ) -> TextResponseFormat | JSONResponseFormat | JSONSchemaResponseFormat:
-        if is_preview_model or options.output_schema is None:
+        if options.output_schema is None or (
+            not supports.supports_json_mode and not supports.supports_structured_output
+        ):
             return TextResponseFormat()
 
-        if not options.output_schema or not options.structured_generation:
+        if not supports.supports_structured_output or not options.output_schema or not options.structured_generation:
             return JSONResponseFormat()
 
         task_name = options.task_name or ""

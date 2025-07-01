@@ -2,13 +2,13 @@
 
 Instructor is powerful — but as you build with it, a few common pain points start to show up:
 
-| Pain Points | Solutions |
-|-------------|-----------|
-| **Ever wish you could see outputs from different models side-by-side?** | WorkflowAI's [Playground](#comparing-models-side-by-side) lets you compare 100+ models on the same input with visual side-by-side results, latency, and cost analysis. |
-| **When something breaks in production, do you have to guess what the LLM saw?** | Full [observability](#observability): see every input, output, cost, latency, and more. Share runs with your team and re-run them on different models for debugging. |
-| **How do you run consistent evaluations across prompts and models?** | Built-in [evaluation system](#evaluations-and-benchmarks) with automated benchmarks. Compare configurations, track performance metrics, and make data-driven decisions. |
-| **Is your team blocked every time someone wants to tweak a prompt?** | [Deployments](#update-prompts-and-models-without-deploying-code) let anyone in your team update prompts and models directly in the web interface, no code changes required. |
-| **And when your AI provider is slow or down — is your app just… stuck?** | [Multi-provider fallbacks](#100-uptime) ensure 100% uptime. If your AI provider has issues, automatically fallback to other providers with zero downtime. |
+| Pain Points                                                                     | Solutions                                                                                                                                                                   |
+| ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Ever wish you could see outputs from different models side-by-side?**         | WorkflowAI's [Playground](#comparing-models-side-by-side) lets you compare 100+ models on the same input with visual side-by-side results, latency, and cost analysis.      |
+| **When something breaks in production, do you have to guess what the LLM saw?** | Full [observability](#observability): see every input, output, cost, latency, and more. Share runs with your team and re-run them on different models for debugging.        |
+| **How do you run consistent evaluations across prompts and models?**            | Built-in [evaluation system](#evaluations-and-benchmarks) with automated benchmarks. Compare configurations, track performance metrics, and make data-driven decisions.     |
+| **Is your team blocked every time someone wants to tweak a prompt?**            | [Deployments](#update-prompts-and-models-without-deploying-code) let anyone in your team update prompts and models directly in the web interface, no code changes required. |
+| **And when your AI provider is slow or down — is your app just… stuck?**        | [Multi-provider fallbacks](#100-uptime) ensure 100% uptime. If your AI provider has issues, automatically fallback to other providers with zero downtime.                   |
 
 We built WorkflowAI to address these problems — and it integrates with Instructor in just one line of code.
 
@@ -52,28 +52,29 @@ Prefixing the `model` parameter with an `agent-name` is optional but recommended
 
 We strongly recommend `mode=instructor.Mode.OPENROUTER_STRUCTURED_OUTPUTS`. This mode offers the highest reliability for structured outputs by:
 
-*   **Leveraging native structured generation:** For models that support it, this guarantees the output object perfectly matches your `response_model`.
-*   **Employing intelligent fallbacks:**
-    *   If a model lacks native structured generation, WorkflowAI seamlessly transitions to JSON-mode. It instructs the model using the schema provided in the system message.
-    *   If JSON-mode is also unsupported by the model, WorkflowAI will parse a JSON object from the model's raw completion. It includes an automatic retry mechanism if the generated JSON is malformed or doesn't conform to the required schema.
+- **Leveraging native structured generation:** For models that support it, this guarantees the output object perfectly matches your `response_model`.
+- **Employing intelligent fallbacks:**
+  - If a model lacks native structured generation, WorkflowAI seamlessly transitions to JSON-mode. It instructs the model using the schema provided in the system message.
+  - If JSON-mode is also unsupported by the model, WorkflowAI will parse a JSON object from the model's raw completion. It includes an automatic retry mechanism if the generated JSON is malformed or doesn't conform to the required schema.
 
 This multi-layered approach maximizes the chances of receiving a well-formed, schema-compliant output.
 
 **Other Modes:**
 
-*   If the `mode` parameter is omitted, Instructor defaults to `TOOLS` mode.
-*   Other supported modes include `TOOLS_STRICT`, `JSON`, and `JSON_SCHEMA`. While these can also produce well-formed objects, `OPENROUTER_STRUCTURED_OUTPUTS` is the preferred choice. It's designed to make the most of native structured generation capabilities offered by various LLM providers.
+- If the `mode` parameter is omitted, Instructor defaults to `TOOLS` mode.
+- Other supported modes include `TOOLS_STRICT`, `JSON`, and `JSON_SCHEMA`. While these can also produce well-formed objects, `OPENROUTER_STRUCTURED_OUTPUTS` is the preferred choice. It's designed to make the most of native structured generation capabilities offered by various LLM providers.
 
 ## Identifying your agent
 
 When using WorkflowAI with Instructor, the `model` parameter serves a dual purpose: it specifies the underlying language model to use and can optionally identify your agent within the WorkflowAI platform. While providing an agent identifier is not required, it offers organizational benefits for managing your agents.
 
 We recommend using the format `<agent_name>/<model_name>` for the `model` parameter, such as:
+
 - `model="user-info-extraction-agent/gpt-4o-mini-latest"`
 
 By adding an agent name prefix (like `user-info-extraction-agent`), you'll create a more organized workspace in your WorkflowAI dashboard. This makes it significantly easier to locate specific agents, track their performance, and manage them effectively across your projects, as shown below:
 
-![Agent list](</docs/assets/images/agent-list.png>)
+![Agent list](/docs/assets/images/agent-list.png)
 
 {% hint style="info" %}
 If you don't provide an agent name prefix in the `model` parameter (e.g., using just `"gpt-4o-mini-latest"` instead of `"user-info-extraction-agent/gpt-4o-mini-latest"`), your requests will automatically be assigned to the `default` agent. While this works perfectly fine, using named agents helps organize your LLM usage in the WorkflowAI dashboard, especially when working with multiple AI features.
@@ -108,6 +109,7 @@ This unified approach means you only need one API key (WorkflowAI's) instead of 
 The complete list of our supported models is available [here](/docs/reference/models.md) or from the playground.
 
 You can also get the list of models programmatically:
+
 ```python
 # List all available models
 models = client.models.list()
@@ -128,7 +130,7 @@ WorkflowAI's 'Playground' allows you to run models side-by-side on the same inpu
 
 WorkflowAI allows you to view all the runs that were made for your agent:
 
-![Run list](</docs/assets/images/runs/list-runs.png>)
+![Run list](/docs/assets/images/runs/list-runs.png)
 
 [Learn more about observability](/docs/guides/observability.md)
 
@@ -173,13 +175,12 @@ Deployments is a feature that lets you update your agent's instructions, model, 
 
 With deployments, anyone at your company (such as a product manager) can quickly maintain, improve, and adapt an agent to new requirements, ensuring your agents stay up-to-date and effective.
 
-
 ## Evaluations and benchmarks
 
 🚧 [TODO: ...]
 ![Benchmarks](/docs/assets/images/benchmarks/benchmark-table.png)
 
-## 100% uptime 
+## 100% uptime
 
 Our goal with WorkflowAI is to provide a 100% uptime for your AI agents. We have a multi-provider infrastructure with automatic fallbacks to ensure high availability.
 
@@ -202,6 +203,7 @@ If you previously used Instructor's `context` parameter to pass variables for Ji
 WorkflowAI uses the `extra_body={"input": ...}` structure to handle these variables. Your Jinja templates in messages remain the same (`{{ variable_name }}`).
 
 **Previously (Standard Instructor):**
+
 ```python
 response = client.chat.completions.create(
     model="gpt-4o-mini",
@@ -215,6 +217,7 @@ response = client.chat.completions.create(
 ```
 
 **Now (WorkflowAI with Instructor):**
+
 ```python
 response = client.chat.completions.create(
     model="my-agent/gpt-4o-mini", # Note the agent/model naming
@@ -259,18 +262,18 @@ from pydantic import BaseModel, Field
 
 class CalendarEvent(BaseModel):
     title: Optional[str] = Field(
-        None, 
-        description="The event title/name", 
+        None,
+        description="The event title/name",
         examples=["Team Meeting", "Quarterly Review"]
     )
     date: Optional[str] = Field(
-        None, 
-        description="Date in YYYY-MM-DD format", 
+        None,
+        description="Date in YYYY-MM-DD format",
         examples=["2023-05-21", "2023-06-15"]
     )
     start_time: Optional[str] = Field(
-        None, 
-        description="Start time in 24-hour format", 
+        None,
+        description="Start time in 24-hour format",
         examples=["14:00", "09:30"]
     )
     ...
@@ -299,8 +302,8 @@ answer, completion = client.chat.completions.create_with_completion(
 
 # print("Structured answer:", answer)
 
-cost = completion.model_extra.get('cost_usd')
-latency = completion.model_extra.get("duration_seconds")
+cost = getattr(completion.choices[0], 'cost_usd')
+latency = getattr(completion.choices[0], 'duration_seconds')
 print(f"Latency (s): {latency:.2f}")
 print(f"Cost   ($): ${cost:.6f}")
 ```
@@ -323,6 +326,7 @@ WorkflowAI offers caching capabilities that allow you to reuse the results of id
 
 {% hint style="warning" %}
 **Endpoint Support Note:** The WorkflowAI `OpenAI` client (e.g., `workflowai_client` in the example above) is specifically designed to work with the `chat.completions` endpoint. If you need to use other OpenAI endpoints, such as `v1/audio/transcriptions` for audio transcription or `v1/embeddings` for creating embeddings, you should use a standard OpenAI Python client initialized with your OpenAI API key.
+
 ```python
 # Example for using other OpenAI endpoints
 from openai import OpenAI as StandardOpenAI
@@ -338,4 +342,5 @@ standard_openai_client = StandardOpenAI(api_key="sk-...") # Your OpenAI API key
 #     )
 #     print(transcript.text)
 ```
+
 {% endhint %}

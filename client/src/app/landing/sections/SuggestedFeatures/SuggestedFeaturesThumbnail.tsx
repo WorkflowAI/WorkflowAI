@@ -39,7 +39,7 @@ export function SuggestedFeaturesThumbnail(props: SuggestedFeaturesThumbnailProp
               errorsByKeypath={undefined}
               hideCopyValue={true}
               showTypesForFiles={true}
-              truncateText={shouldTruncate ? 3 : 9}
+              supportTextWrapping={shouldTruncate}
             />
             {isStreaming && (
               <div className='absolute top-0 right-0'>

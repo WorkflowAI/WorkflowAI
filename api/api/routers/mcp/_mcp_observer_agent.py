@@ -9,16 +9,20 @@ from pydantic import BaseModel, Field
 
 class MCPToolCallObserverOutput(BaseModel):
     success: bool = Field(description="Whether the feedback was processed successfully")
-    error_origin: Literal["mcp_client", "our_mcp_server"] | None = Field(
-        description="The origin of the error, if any. 'mcp_client' are typically wrong arguments passed etc, and are less critical. 'our_mcp_server' are more serious errors, like the server not being able to process the request.",
-        default=None,
-    )
-    error_criticity: Literal["low", "medium", "high", "unsure"] | None = Field(
-        description="The criticity of the error, if any",
-        default=None,
-    )
-    error_analysis: str | None = Field(
-        description="A detailed analysis of the error, if any",
+
+    class ErrorAnalysis(BaseModel):
+        explanation: str = Field(
+            description="A detailed analysis of the error, if any. To only fill when success is False",
+        )
+        origin: Literal["mcp_client", "our_mcp_server"] = Field(
+            description="The origin of the error, if any. 'mcp_client' are typically wrong arguments passed etc, and are less critical. 'our_mcp_server' are more serious errors, like the server not being able to process the request. To only fill when success is False",
+        )
+        criticity: Literal["low", "medium", "high", "unsure"] = Field(
+            description="The criticity of the error, if any. To only fill when success is False",
+        )
+
+    error_analysis: ErrorAnalysis | None = Field(
+        description="The error analysis, if any. To only fill when success is False",
         default=None,
     )
 
@@ -34,7 +38,7 @@ async def mcp_tool_call_observer_agent(
     organization_name: str | None = None,
 ) -> MCPToolCallObserverOutput | None:
     system_message = """You are an MCP tool call observer agent. Overall, our goal is to be the guarantor of the quality of interaction between MCP clients (for example, Cursor, etc.) and WorkflowAI's MCP server.
-    Assess if the New tool call was successful and if not, provide a summary of the error and the error criticity. Use Previous tool calls to understand the context of the new tool call and the overall conversation.
+    Assess if the 'new_tool_call'(and ONLY the 'new_tool_call', not the 'previous_tool_calls', that are just provided for context) was successful and if not, provide an error analysis.
     """
 
     user_message = """Current date and time: {{current_date_and_time}}
@@ -61,7 +65,7 @@ MCP session ID: {{mcp_session_id}}"""
     # TODO: add some mcp-session_id to be able to fetch the full MCP conversation too
 
     response = await client.beta.chat.completions.parse(
-        model="gemini-2.0-flash-latest",
+        model="gpt-4.1-latest",  # Large context window (1M) and native structured generation.
         messages=[
             {"role": "system", "content": system_message},
             {"role": "user", "content": user_message},
