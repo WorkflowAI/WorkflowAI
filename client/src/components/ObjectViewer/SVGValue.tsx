@@ -6,13 +6,12 @@ type SVGValueContentProps = {
   className: string;
   previewMode: boolean;
   isError: boolean;
-  truncateText: number;
   icon: React.ReactNode;
   text: string;
 };
 
 export function SVGValueContent(props: SVGValueContentProps) {
-  const { className, previewMode, isError, truncateText, icon, text } = props;
+  const { className, previewMode, isError, icon, text } = props;
 
   const isSVG = useMemo(() => {
     if (!text) return false;
@@ -85,11 +84,11 @@ export function SVGValueContent(props: SVGValueContentProps) {
       )}
     >
       <div
-        className={cx('flex-1', !!truncateText && 'overflow-hidden')}
+        className={cx('flex-1')}
         style={{
-          display: !!truncateText ? '-webkit-box' : 'block',
-          WebkitLineClamp: !!truncateText ? truncateText : undefined,
-          WebkitBoxOrient: !!truncateText ? 'vertical' : undefined,
+          display: 'block',
+          WebkitLineClamp: undefined,
+          WebkitBoxOrient: undefined,
           wordBreak: 'break-word',
           overflowWrap: 'anywhere',
         }}

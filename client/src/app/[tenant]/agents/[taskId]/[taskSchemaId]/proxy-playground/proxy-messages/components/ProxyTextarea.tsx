@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import { TaskOutputViewer } from '@/components/ObjectViewer/TaskOutputViewer';
+import { WrappedTextView } from '@/components/ui/WrappedTextView';
 import { ProxyMessageContent } from '@/types/workflowAI';
 import { createEmptyMessageContent, formatResponseToText } from '../utils';
 import { VariablesTextarea } from '../variables-textarea/VariablesTextarea';
@@ -66,11 +67,13 @@ export function ProxyTextarea(props: ProxyTextareaProps) {
             showDescriptionPopover={false}
             defaultOpenForSteps={false}
             hideCopyValue={isString}
+            supportTextWrapping={true}
           />
         );
       }
     } catch (error) {
       console.error(error);
+      return <WrappedTextView text={content?.text ?? ''} wrapTextIfNeeded={true} className='px-3 w-full' />;
     }
   }
 
