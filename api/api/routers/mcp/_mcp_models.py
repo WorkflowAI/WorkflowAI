@@ -689,6 +689,7 @@ class MCPRun(BaseModel):
         version: TaskGroup | None,
         output_schema: dict[str, Any] | None,
         url: str,
+        truncate: bool = True,
     ):
         messages = run.messages
         # Truncation is really arbitrary for now
@@ -698,14 +699,21 @@ class MCPRun(BaseModel):
         # - the size of the file data to 10 characters since base64 data is not really interesting and eats tokens fast
         # TODO: implement better truncation logic
         # Note that when we actually fetch messages from the database, the files will have a URL
-        for m in messages:
-            for m in m.content:
-                if m.file and m.file.data:
-                    # No need to pass base64 data
-                    m.file.data = truncate_obj(m.file.data, max_field_length=10)
+        if truncate:
+            for m in messages:
+                for m in m.content:
+                    if m.file and m.file.data:
+                        # No need to pass base64 data
+                        m.file.data = truncate_obj(m.file.data, max_field_length=10)
 
-                if m.text:
-                    m.text = truncate_obj(m.text, max_field_length=10000)
+                    if m.text:
+                        m.text = truncate_obj(m.text, max_field_length=10000)
+
+        agent_input = run.task_input
+        if agent_input:
+            agent_input = {k: v for k, v in agent_input.items() if k != "workflowai.messages"}
+            if truncate:
+                agent_input = truncate_obj(agent_input)
 
         return cls(
             id=run.id,
@@ -716,9 +724,7 @@ class MCPRun(BaseModel):
             # See https://linear.app/workflowai/issue/WOR-4485/stop-storing-non-saved-versions-and-attach-them-to-runs-instead
             agent_version=AgentVersion.from_domain(version) if version else AgentVersion.from_domain(run.group),
             status="success" if run.status == "success" else "error",
-            agent_input=truncate_obj({k: v for k, v in run.task_input.items() if k != "workflowai.messages"})
-            if run.task_input
-            else None,
+            agent_input=agent_input,
             messages=run.messages,
             duration_seconds=run.duration_seconds,
             cost_usd=run.cost_usd,
