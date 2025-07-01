@@ -60,6 +60,8 @@ Successfully converted the Meta Agent documentation from always-loaded to an on-
 2. **Relevance**: Documentation is only searched when specifically needed
 3. **Flexibility**: Agent can search for specific topics based on user questions
 4. **Scalability**: Reduces load on documentation service for simple queries
+5. **Clean Code**: Simple recursive approach eliminates complex nested API calls
+6. **Maintainable**: Reuses the same function with different parameters
 
 ## Integration Points
 
@@ -95,14 +97,17 @@ The search documentation tool integrates with:
 
 ## Technical Implementation Details
 
-### Immediate Search-and-Continue Pattern
-The implementation uses a sophisticated pattern where:
+### Clean Recursive Search-and-Continue Pattern
+The implementation uses a clean recursive pattern where:
 - The agent starts responding to the user
 - If it needs documentation, it calls the `search_documentation` tool
 - The search is executed immediately within the streaming response
 - Documentation results are injected into the agent's context
-- A follow-up call is made with the enriched context
-- The follow-up response is streamed seamlessly to the user
+- The same `proxy_meta_agent` function is called recursively with:
+  - The enriched input (now containing documentation)
+  - `use_tool_calls=False` to prevent infinite recursion
+  - All other parameters preserved
+- The recursive response is streamed seamlessly to the user
 
 ### Error Handling
 - If documentation search fails, the agent continues with a graceful error message

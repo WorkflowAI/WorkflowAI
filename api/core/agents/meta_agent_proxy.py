@@ -1298,77 +1298,25 @@ async def proxy_meta_agent(
                         usage_context="Meta agent documentation search",
                     )
 
-                    # Add the documentation to the input and continue the conversation
+                    # Add the documentation to the input and restart the agent with documentation
                     input.workflowai_documentation_sections = doc_sections[:5]  # Limit to top 5 results
 
-                    # Make a follow-up call to the agent with the documentation now available
-                    follow_up_response = await client.chat.completions.create(
-                        model="proxy-meta-agent/claude-sonnet-4-20250514",
-                        messages=[
-                            {"role": "system", "content": instructions},
-                            {
-                                "role": "user",
-                                "content": f"I found the following documentation for '{parsed_tool_call.search_documentation_query}'. Please use this information to answer the user's question:",
-                            },
-                        ],
-                        stream=True,
-                        temperature=0.0,
-                        extra_body={
-                            "input": {
-                                "current_datetime": input.current_datetime.isoformat(),
-                                "current_agent": input.current_agent.model_dump_json(indent=4, exclude_none=True),
-                                "is_using_version_messages": is_using_version_messages,
-                                "agent_has_output_schema": agent_has_output_schema,
-                                "is_using_input_variables": is_using_input_variables,
-                                "is_agent_deployed": is_agent_deployed,
-                                "chat_messages": "\n".join(
-                                    [
-                                        message.model_dump_json(indent=4, exclude_none=True)
-                                        for message in input.chat_messages
-                                    ],
-                                ),
-                                "deployments_str": "\n".join(
-                                    [
-                                        deployment.model_dump_json(indent=4, exclude_none=True)
-                                        for deployment in input.agent_lifecycle_info.deployment_info.deployments or []
-                                    ]
-                                    if input.agent_lifecycle_info and input.agent_lifecycle_info.deployment_info
-                                    else "",
-                                ),
-                                "available_models_str": "\n".join(
-                                    [
-                                        model.model_dump_json(indent=4, exclude_none=True)
-                                        for model in input.playground_state.available_models
-                                    ],
-                                ),
-                                "available_hosted_tools_description": input.available_hosted_tools_description,
-                                "other_context": "{% raw %}"
-                                + input.model_dump_json(
-                                    indent=4,
-                                    exclude=dict(
-                                        current_datetime=True,
-                                        current_agent=True,
-                                        chat_messages=True,
-                                        agent_lifecycle_info={"deployment_info": {"deployments": True}},
-                                        playground_state={"available_models": True},
-                                        available_hosted_tools_description=True,
-                                    ),
-                                )
-                                + "{% endraw %}",
-                            },
-                            "use_cache": "never",
-                        },
-                        tools=[],  # No tools for the follow-up call to prevent recursion
-                    )
+                    # Recursively call the same function with the enriched input
+                    async for enriched_output in proxy_meta_agent(
+                        input=input,
+                        instructions=instructions,
+                        model_name_prefix=model_name_prefix,
+                        completion_client=completion_client,
+                        is_using_version_messages=is_using_version_messages,
+                        is_using_input_variables=is_using_input_variables,
+                        agent_has_output_schema=agent_has_output_schema,
+                        use_tool_calls=False,  # Disable tools to prevent infinite recursion
+                        is_agent_deployed=is_agent_deployed,
+                        hosted_tool_update_mode=hosted_tool_update_mode,
+                    ):
+                        yield enriched_output
 
-                    # Stream the follow-up response
-                    async for follow_up_chunk in follow_up_response:
-                        if follow_up_chunk.choices[0].delta.content:
-                            yield ProxyMetaAgentOutput(
-                                assistant_answer=follow_up_chunk.choices[0].delta.content,
-                            )
-
-                    return  # End the original stream since we've handled it with the follow-up
+                    return  # End the original stream since we've handled it with the enriched call
 
                 except Exception:
                     # If documentation search fails, continue with an error message
