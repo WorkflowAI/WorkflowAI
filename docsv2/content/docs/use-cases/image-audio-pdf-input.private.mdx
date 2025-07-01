@@ -1,0 +1,98 @@
+---
+title: Multimodal Input (Image, Audio, PDF)
+summary: Use case guide for using images, audio, and PDF files as input for AI agents. Covers processing and analyzing images to extract information, answer questions, perform vision-based tasks, audio transcription and analysis, and PDF document processing using input variables.
+---
+
+WorkflowAI supports multiple input formats including images, audio files, and PDFs. This allows you to build agents that can process and analyze various types of content.
+
+## Image Input
+
+TODO: explain the difference between the two ways of using images
+- using a image URL
+- using a base64 encoded image
+
+TODO:
+- explain with and without input variables
+
+```python
+completion = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[{
+        "role": "user",
+        "content": [
+            {
+                "type": "text",
+                "text": "Analyze this image and describe what you see:"
+            },
+            {
+                "type": "image_url",
+                "image_url": {
+                    "url": "{{image_url}}"
+                }
+            },
+            {
+                "type": "image_url",
+                "image_url": {
+                    "url": "{{image_url_base64}}"
+                }
+            }
+        ]
+    }],
+    extra_body={
+        "input": {
+            "image_url": "https://example.com/image.jpg",
+            "image_url_base64": "data:image/jpeg;base64,[...]" # base64 encoded image
+        }
+    },
+    metadata={"agent_id": "image-analyzer"}
+)
+```
+
+Note that the input variable, when using base64 encoded images, must include the `data` prefix.
+
+## Audio Input
+
+TODO: explain the difference between the two ways of using images
+- using a image URL
+- using a base64 encoded image
+
+TODO:
+- explain with and without input variables
+
+```python
+completion = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[{
+        "role": "user",
+        "content": [
+            {
+                "type": "system",
+                "text": "You are a helpful assistant that can analyze audio files and describe what you hear."
+            },
+            {
+                "type": "input_audio",
+                "input_audio": {
+                    "data": "{{audio_data}}",
+                    "format": "{{audio_format}}"
+                }
+            }
+        ]
+    }],
+    extra_body={
+        "input": {
+            "audio_data": "{{audio_data}}",
+            "audio_format": "{{audio_format}}"
+        }
+    },
+    metadata={"agent_id": "audio-analyzer"}
+)
+```
+
+## PDF Input
+
+TODO: explain the difference between the two ways of using images
+- using a image URL
+- using a base64 encoded image
+
+TODO:
+- explain with and without input variables
