@@ -286,6 +286,9 @@ def _handle_one_any_all_ofs(
         # We removed a null type but the field is required. So we add it back as
         # a type array
         streamlined_not_null["type"] = [streamlined_not_null["type"], "null"]
+        # We also need to add it to the enum if it exists
+        if "enum" in streamlined_not_null:
+            streamlined_not_null["enum"].append(None)
 
     return streamlined_not_null
 

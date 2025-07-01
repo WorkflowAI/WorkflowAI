@@ -3,7 +3,6 @@ import { useMemo } from 'react';
 import { TaskModelBadge } from '@/components/TaskModelBadge';
 import { TaskTemperatureBadge } from '@/components/v2/TaskTemperatureBadge';
 import { LEGACY_TASK_RUN_RUN_BY_METADATA_KEY, WORKFLOW_AI_METADATA_PREFIX } from '@/lib/constants';
-import { embedReasoningInModelID } from '@/lib/modelUtils';
 import { ContextWindowInformation } from '@/lib/taskRunUtils';
 import { ModelResponse, RunV1, VersionV1 } from '@/types/workflowAI';
 import { BaseOutputValueRow } from './BaseOutputValueRow';
@@ -44,21 +43,14 @@ function renderMetadataValue(value: unknown): React.ReactNode {
   return '';
 }
 
-function AdditionalFields({
-  showAllFields,
-  model,
-  provider,
-  temperature,
-  filteredMetadata,
-  reasoning_effort,
-}: AdditionalFieldsProps) {
+function AdditionalFields({ showAllFields, model, provider, temperature, filteredMetadata }: AdditionalFieldsProps) {
   if (!showAllFields) return null;
 
   return (
     <>
       {model && (
         <div className='flex h-10 items-center pl-4'>
-          <TaskModelBadge model={embedReasoningInModelID(model, reasoning_effort)} providerId={provider} />
+          <TaskModelBadge model={model} providerId={provider} />
         </div>
       )}
 

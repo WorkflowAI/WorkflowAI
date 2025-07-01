@@ -66,7 +66,7 @@ class RunService:
         cache: CacheUsage,
         trigger: RunTrigger,
         chunk_serializer: Callable[[str, RunOutput], BaseModel | None],
-        serializer: Callable[[AgentRun], BaseModel | None],
+        serializer: Callable[[AgentRun, RunOutput | None], BaseModel | None],
         source: SourceType | None,
         store_inline: bool = False,
         file_storage: FileStorage | None = None,
@@ -85,7 +85,7 @@ class RunService:
                 file_storage=file_storage,
             ):
                 if chunk.final and (run := builder.task_run):
-                    if final_chunk := serializer(run):
+                    if final_chunk := serializer(run, chunk):
                         streamed_final_chunk = True
                         yield _format_model(final_chunk)
                         continue
@@ -95,7 +95,7 @@ class RunService:
             if not streamed_final_chunk:
                 self._logger.warning("No final chunk streamed. Likely had no final chunks")
                 if run := builder.task_run:
-                    if final_chunk := serializer(run):
+                    if final_chunk := serializer(run, chunk):
                         yield _format_model(final_chunk)
         except ContentModerationError as e:
             yield _format_model(e.error_response(), exclude_none=True)
@@ -148,7 +148,7 @@ class RunService:
         cache: CacheUsage,
         metadata: Optional[dict[str, Any]],
         trigger: RunTrigger,
-        serializer: Callable[[AgentRun], BaseModel],
+        serializer: Callable[[AgentRun, RunOutput | None], BaseModel],
         start_time: float,
         author_tenant: TenantTuple | None = None,
         stream_last_chunk: bool = False,
@@ -180,7 +180,7 @@ class RunService:
                     cache=cache,
                     trigger=trigger,
                     chunk_serializer=stream_serializer,
-                    serializer=serializer if stream_last_chunk else lambda _: None,
+                    serializer=serializer if stream_last_chunk else lambda _, __: None,
                     store_inline=store_inline,
                     source=source,
                     file_storage=file_storage,
@@ -197,7 +197,7 @@ class RunService:
             source=source,
             file_storage=file_storage,
         )
-        return JSONResponse(content=serializer(task_run).model_dump(mode="json"))
+        return JSONResponse(content=serializer(task_run, None).model_dump(mode="json"))
 
     def _combine_tool_calls(
         self,
@@ -217,7 +217,7 @@ class RunService:
         user_message: str | None,
         tool_calls: Iterable[ToolCallOutput] | None,
         metadata: dict[str, Any] | None,
-        serializer: Callable[[AgentRun], BaseModel],
+        serializer: Callable[[AgentRun, RunOutput | None], BaseModel],
         start_time: float,
         stream_serializer: Callable[[str, RunOutput], BaseModel] | None = None,
         is_different_version: bool = False,
@@ -275,7 +275,7 @@ class RunService:
             source=None,  # see comment above, not needed when not storing inline
         )
 
-        return JSONResponse(content=serializer(task_run).model_dump(mode="json", exclude_none=True))
+        return JSONResponse(content=serializer(task_run, None).model_dump(mode="json", exclude_none=True))
 
     async def _store_task_run(
         self,
@@ -408,14 +408,6 @@ class RunService:
             file_storage=file_storage,
         ):
             async for chunk in runner.stream(builder, cache=cache):
-                if chunk.final:
-                    if builder.task_run:
-                        self._logger.warning(
-                            "Task run already built. Likely had multiple final chunks",
-                            extra={"task_id": builder.task.id},
-                        )
-                    # Forcing here, just in case we are in a case where we had final chunks
-                    builder.build(chunk, force=True)
                 yield chunk
         if not chunk:
             return

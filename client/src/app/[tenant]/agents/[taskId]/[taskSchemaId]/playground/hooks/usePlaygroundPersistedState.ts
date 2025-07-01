@@ -5,7 +5,7 @@ import { buildScopeKey } from '@/store/utils';
 import { GeneralizedTaskInput } from '@/types';
 import { ModelOptional, TaskID, TaskSchemaID, TenantID } from '@/types/aliases';
 import { ProxyMessage, VersionV1 } from '@/types/workflowAI';
-import { PlaygroundModels, formatTaskRunIdParam } from './utils';
+import { PlaygroundModels, PlaygroundModelsReasoning, formatTaskRunIdParam } from './utils';
 
 export type GeneratePlaygroundInputParams = {
   externalVersion?: VersionV1 | undefined;
@@ -24,6 +24,7 @@ export type RunTaskOptions = {
   externalGeneratedInput?: GeneralizedTaskInput;
   externalVersion?: VersionV1;
   externalModel?: string;
+  externalReasoning?: string;
   externalTemperature?: number;
   externalInstructions?: string;
 };
@@ -32,6 +33,7 @@ type PlaygroundPersistedState = Record<
   string,
   {
     models: PlaygroundModels;
+    modelsReasoning: PlaygroundModelsReasoning;
     showDiffMode: boolean;
     hiddenModelColumns: number[] | undefined;
     taskRunId1: string | undefined;
@@ -85,8 +87,10 @@ export function usePlaygroundPersistedState(props: Props) {
   const persistedTaskRunId3 = persistedState[schemaScopeKey]?.taskRunId3;
   const persistedVersionId = persistedState[schemaScopeKey]?.versionId;
   const persistedProxyMessages = persistedState[schemaScopeKey]?.proxyMessages;
+  const persistedModelsReasoning = persistedState[schemaScopeKey]?.modelsReasoning ?? [undefined, undefined, undefined];
 
   const [schemaModels, setSchemaModels] = useState<PlaygroundModels>(persistedSchemaModels);
+  const [modelsReasoning, setModelsReasoning] = useState<PlaygroundModelsReasoning>(persistedModelsReasoning);
   const [taskModels, setTaskModels] = useState<PlaygroundModels>(persistedTaskModels);
   const [generatedInput, setGeneratedInput] = useState<GeneralizedTaskInput | undefined>(persistedGeneratedInput);
   const [proxyMessages, setProxyMessages] = useState<ProxyMessage[] | undefined>(persistedProxyMessages);
@@ -122,6 +126,24 @@ export function usePlaygroundPersistedState(props: Props) {
       });
     },
     [schemaScopeKey, taskScopeKey, setPersistedState]
+  );
+
+  const handleSetModelsReasoning = useCallback(
+    (index: number, newReasoning: string | undefined) => {
+      setModelsReasoning((prev) => {
+        const newModelsReasoning: PlaygroundModelsReasoning = [...prev];
+        newModelsReasoning[index] = newReasoning;
+        setPersistedState((prev) => ({
+          ...prev,
+          [schemaScopeKey]: {
+            ...prev[schemaScopeKey],
+            modelsReasoning: newModelsReasoning,
+          },
+        }));
+        return newModelsReasoning;
+      });
+    },
+    [schemaScopeKey, setPersistedState]
   );
 
   const redirectWithParams = useRedirectWithParams();
@@ -251,6 +273,8 @@ export function usePlaygroundPersistedState(props: Props) {
   }, [hiddenModelColumnsParam, persistedHiddenModelColumns]);
 
   return {
+    modelsReasoning,
+    setModelsReasoning: handleSetModelsReasoning,
     schemaModels,
     taskModels,
     setSchemaModels: handleSetModels,

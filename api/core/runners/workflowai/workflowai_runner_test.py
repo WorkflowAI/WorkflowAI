@@ -122,6 +122,7 @@ def _build_runner2(
 def mock_provider():
     mock = Mock(spec=AbstractProvider)
     mock.requires_downloading_file.return_value = False
+    mock.max_number_of_file_urls = None
     mock.sanitize_agent_instructions.return_value = "sanitized"
     mock.sanitize_template.side_effect = lambda template: template  # type:ignore
     return mock
@@ -1461,6 +1462,7 @@ def mock_provider_factory_full(mock_provider_factory: Mock):
         m.sanitize_template.side_effect = lambda x: x  # pyright: ignore[reportUnknownLambdaType]
         m.sanitize_agent_instructions.side_effect = lambda x: x  # pyright: ignore[reportUnknownLambdaType]
         m.name.return_value = name
+        m.max_number_of_file_urls = None
         return m
 
     google = _mock_provider(Provider.GOOGLE)
@@ -3134,3 +3136,170 @@ class TestTemplatedMessages:
         messages = cast(list[MessageDeprecated], messages)
         assert len(messages) == 1
         assert messages[0].content == "Hello bla"
+
+
+class TestExtractFilesToDownload:
+    def test_all_files_should_be_downloaded(self, patched_runner: WorkflowAIRunner):
+        """Test when all files should be downloaded according to the callback"""
+        files = [
+            File(content_type="image/png", url="https://example.com/image1.png"),
+            File(content_type="image/jpg", url="https://example.com/image2.jpg"),
+            File(content_type="text/plain", url="https://example.com/text.txt"),
+        ]
+
+        # Callback that always returns True (all files should be downloaded)
+        def should_download(f: File) -> bool:
+            return True
+
+        result = patched_runner._extract_files_to_download(  # pyright: ignore[reportPrivateUsage]
+            files,
+            max_number_of_file_urls=None,
+            should_download_file=should_download,
+        )
+
+        assert result == files
+
+    def test_no_files_should_be_downloaded(self, patched_runner: WorkflowAIRunner):
+        """Test when no files should be downloaded and all have data"""
+        files = [
+            File(content_type="image/png", data="base64=="),
+            File(content_type="image/jpg", data="base64=="),
+            File(content_type="text/plain", data="base64=="),
+        ]
+
+        # Callback that always returns False (no files should be downloaded)
+        def should_download(f: File) -> bool:
+            return False
+
+        result = patched_runner._extract_files_to_download(  # pyright: ignore[reportPrivateUsage]
+            files,
+            max_number_of_file_urls=None,
+            should_download_file=should_download,
+        )
+
+        assert result == []
+
+    def test_mixed_files_with_data_and_urls(self, patched_runner: WorkflowAIRunner):
+        """Test mixed scenario with files that have data and files with URLs"""
+        files = [
+            File(content_type="image/png", data="base64=="),  # Has data, shouldn't download
+            File(content_type="image/jpg", url="https://example.com/image2.jpg"),  # No data, could be link
+            File(content_type="text/plain", url="https://example.com/text.txt"),  # No data, could be link
+        ]
+
+        # Only download the first file (with data)
+        def should_download(f: File) -> bool:
+            return f.data is not None
+
+        result = patched_runner._extract_files_to_download(  # pyright: ignore[reportPrivateUsage]
+            files,
+            max_number_of_file_urls=None,
+            should_download_file=should_download,
+        )
+
+        assert result == [files[0]]  # Only the file with data
+
+    def test_max_file_urls_limit_exceeded(self, patched_runner: WorkflowAIRunner):
+        """Test that excess files become downloads when max_number_of_file_urls is exceeded"""
+        files = [
+            File(content_type="image/png", url="https://example.com/image1.png"),  # No data
+            File(content_type="image/jpg", url="https://example.com/image2.jpg"),  # No data
+            File(content_type="text/plain", url="https://example.com/text.txt"),  # No data
+            File(content_type="application/pdf", url="https://example.com/doc.pdf"),  # No data
+        ]
+
+        # Don't download any files initially
+        def should_download(f: File) -> bool:
+            return False
+
+        result = patched_runner._extract_files_to_download(  # pyright: ignore[reportPrivateUsage]
+            files,
+            max_number_of_file_urls=2,
+            should_download_file=should_download,
+        )
+
+        # Since max_number_of_file_urls=2 and we have 4 files without data,
+        # the first 2 remain as links, the last 2 get moved to downloads
+        assert len(result) == 2
+        assert result == files[2:]  # Last 2 files should be downloaded
+
+    def test_max_file_urls_limit_not_exceeded(self, patched_runner: WorkflowAIRunner):
+        """Test that files remain as links when max_number_of_file_urls is not exceeded"""
+        files = [
+            File(content_type="image/png", url="https://example.com/image1.png"),  # No data
+            File(content_type="image/jpg", url="https://example.com/image2.jpg"),  # No data
+        ]
+
+        # Don't download any files
+        def should_download(f: File) -> bool:
+            return False
+
+        result = patched_runner._extract_files_to_download(  # pyright: ignore[reportPrivateUsage]
+            files,
+            max_number_of_file_urls=5,
+            should_download_file=should_download,
+        )
+
+        # Since we have only 2 files and limit is 5, no files need to be downloaded
+        assert result == []
+
+    def test_mixed_scenario_with_limit(self, patched_runner: WorkflowAIRunner):
+        """Test complex scenario with files that should be downloaded and URL limit"""
+        files = [
+            File(content_type="image/png", url="https://example.com/image1.png"),  # Should download
+            File(content_type="image/jpg", url="https://example.com/image2.jpg"),  # No data, link
+            File(content_type="text/plain", url="https://example.com/text.txt"),  # No data, link
+            File(content_type="application/pdf", url="https://example.com/doc.pdf"),  # No data, link
+            File(content_type="video/mp4", data="base64=="),  # Has data, not downloaded
+        ]
+
+        # Download only the first file
+        def should_download(f: File) -> bool:
+            return f.url == "https://example.com/image1.png"
+
+        result = patched_runner._extract_files_to_download(  # pyright: ignore[reportPrivateUsage]
+            files,
+            max_number_of_file_urls=2,
+            should_download_file=should_download,
+        )
+
+        # First file should be downloaded due to callback
+        # Files 1,2 become links (within limit)
+        # File 3 gets moved to download (exceeds limit)
+        # File 4 has data so it's not considered for links
+        expected = [files[0], files[3]]  # First and fourth files
+        assert result == expected
+
+    def test_empty_files_list(self, patched_runner: WorkflowAIRunner):
+        """Test with empty files list"""
+
+        def should_download(f: File) -> bool:
+            return True
+
+        result = patched_runner._extract_files_to_download(  # pyright: ignore[reportPrivateUsage]
+            [],
+            max_number_of_file_urls=5,
+            should_download_file=should_download,
+        )
+
+        assert result == []
+
+    def test_zero_max_file_urls(self, patched_runner: WorkflowAIRunner):
+        """Test with max_number_of_file_urls set to 0"""
+        files = [
+            File(content_type="image/png", url="https://example.com/image1.png"),
+            File(content_type="image/jpg", url="https://example.com/image2.jpg"),
+        ]
+
+        # Don't download any files initially
+        def should_download(f: File) -> bool:
+            return False
+
+        result = patched_runner._extract_files_to_download(  # pyright: ignore[reportPrivateUsage]
+            files,
+            max_number_of_file_urls=0,
+            should_download_file=should_download,
+        )
+
+        # Since max_number_of_file_urls=0, all files without data must be downloaded
+        assert result == files

@@ -88,6 +88,14 @@ class AbstractProvider(ABC, Generic[ProviderConfigVar, ProviderRequestVar]):
     def display_name(cls) -> str:
         return cls.__name__.removesuffix("Provider")
 
+    @property
+    def max_number_of_file_urls(self) -> int | None:
+        """The maximum number of file URLs that can be sent to the provider.
+        Files past that limit will be downloaded and passed as base64 data
+        None means no limit.
+        """
+        return None
+
     def supports_model(self, model: Model) -> bool:
         try:
             get_model_provider_data(self.name(), model)
