@@ -4,10 +4,12 @@ import { Button } from '@/components/ui/Button';
 import { SimpleTooltip } from '@/components/ui/Tooltip';
 import { ProxySaveBadgeButton } from '@/components/v2/ProxySaveBadgeButton';
 import { useIsAllowed } from '@/lib/hooks/useIsAllowed';
+import { isVersionSaved } from '@/lib/versionUtils';
 import { useVersions } from '@/store/versions';
 import { TaskID, TenantID } from '@/types/aliases';
 import { VersionV1 } from '@/types/workflowAI';
 import { TaskRunner } from '../../playground/hooks/useTaskRunners';
+import { SendToCursorModal } from './SendToCursorModal';
 
 type Props = {
   taskRunner: TaskRunner;
@@ -57,9 +59,12 @@ export function ProxyRunButton(props: Props) {
   };
 
   const [isHovering, setIsHovering] = useState(false);
+  const [isSendToCursorModalOpen, setIsSendToCursorModalOpen] = useState(false);
 
   const saveVersion = useVersions((state) => state.saveVersion);
   const { checkIfSignedIn } = useIsAllowed();
+
+  const isSaved = version ? isVersionSaved(version) : false;
 
   const onSave = useCallback(async () => {
     if (!checkIfSignedIn() || !version) {
@@ -68,16 +73,33 @@ export function ProxyRunButton(props: Props) {
     await saveVersion(tenant, taskId, version.id);
   }, [saveVersion, tenant, taskId, version, checkIfSignedIn]);
 
+  const onSendToCursor = useCallback(async () => {
+    if (!checkIfSignedIn() || !version) {
+      return;
+    }
+    if (!isSaved) {
+      await saveVersion(tenant, taskId, version.id);
+    }
+    setIsSendToCursorModalOpen(true);
+  }, [saveVersion, tenant, taskId, version, checkIfSignedIn, isSaved]);
+
   if (!taskRunner.loading && !!version) {
     return (
       <div className='flex items-center justify-center shadow-sm'>
         <ProxySaveBadgeButton
           version={version}
           onSave={onSave}
+          onSendToCursor={onSendToCursor}
           tenant={tenant}
           taskId={taskId}
           showLabels={false}
           tallButtons={true}
+        />
+        <SendToCursorModal
+          open={isSendToCursorModalOpen}
+          onClose={() => setIsSendToCursorModalOpen(false)}
+          version={version}
+          agentId={taskId}
         />
       </div>
     );
