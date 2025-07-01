@@ -1444,7 +1444,7 @@ async def test_tool_call_recursion_streaming(test_client: IntegrationTestClient)
         "greeting": "Hello James!",
     }
     assert fetched_run["llm_completions"][0]["tool_calls"] == [
-        {"tool_name": "@search-google", "tool_input_dict": {"query": "bla"}, "id": "some_id"},
+        {"tool_name": "@search-google", "tool_input_dict": {"query": "bla"}, "id": "some_id", "index": 0},
     ]
 
     assert len(fetched_run["llm_completions"]) == 2
