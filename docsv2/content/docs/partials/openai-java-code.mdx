@@ -1,0 +1,26 @@
+---
+title: OpenAI Java Code
+summary: How to use the official OpenAI Java SDK with WorkflowAI. WorkflowAI exposes a compatible OpenAI API endpoint. The only changes you need to make are updating the base URL and API key.
+---
+
+```java
+import com.openai.client.OpenAIClient;
+import com.openai.client.okhttp.OpenAIOkHttpClient;
+import com.openai.models.chat.completions.ChatCompletion;
+import com.openai.models.chat.completions.ChatCompletionCreateParams;
+
+public class WorkflowAIExample {
+    public static void main(String[] args) {
+        // setup WorkflowAI client
+        OpenAIClient client = OpenAIOkHttpClient.builder()
+            .baseUrl("https://run.workflowai.com/v1") // [!code highlight]
+            .apiKey("wai-***") // use create_api_key MCP tool // [!code highlight]
+            .build();
+
+        ChatCompletion chatCompletion = client.chat().completions().create(
+            ChatCompletionCreateParams.builder()
+                // your existing code
+                .build()
+        );
+    }
+} 
