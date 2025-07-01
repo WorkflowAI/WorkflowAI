@@ -175,13 +175,13 @@ class MCPService:
 
         return self.RunVersionVariant(run, version, variant, task_info)
 
-    async def fetch_run_details(
+    async def get_run(
         self,
         agent_id: str | None,
         run_id: str | None,
         run_url: str | None,
     ) -> MCPRun:
-        """Fetch details of a specific agent run."""
+        """Get details of a specific agent run."""
 
         if run_url:
             agent_id, run_id = extract_agent_id_and_run_id(run_url)
