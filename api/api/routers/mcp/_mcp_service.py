@@ -383,7 +383,10 @@ class MCPService:
 
 Your primary purpose is to help developers find the most relevant WorkflowAI documentation sections to answer their specific queries about building, deploying, and using AI agents.
 """
-        relevant_sections = await documentation_service.search_documentation_by_query(query, usage_context)
+        relevant_sections = await documentation_service.search_documentation_by_query(
+            query,
+            usage_context,
+        )
 
         # Convert to SearchResult format with content snippets
         query_results = [
@@ -396,14 +399,15 @@ Your primary purpose is to help developers find the most relevant WorkflowAI doc
 
         # Always add foundations page
         # TODO: try to return the foundations page only once, per chat, but might be difficult since `mcp-session-id` is probably not scoped to a chat (for example, on CursorAI, multiple chat tabs can be open at the same time, using (probably) the same `mcp-session-id`)
-        # @guillaume suggested to add a `read_foundations: true, false` parameter to the search_documentation MCP tool
-        sections = await documentation_service.get_documentation_by_path(["foundations"])
-        query_results.append(
-            SearchResponse.QueryResult(
-                content_snippet=sections[0].content,
-                source_page="foundations.mdx",
-            ),
-        )
+        if "foundations" not in [section.file_path for section in relevant_sections]:
+            # @guillaume suggested to add a `read_foundations: true, false` parameter to the search_documentation MCP tool
+            sections = await documentation_service.get_documentation_by_path(["foundations"])
+            query_results.append(
+                SearchResponse.QueryResult(
+                    content_snippet=sections[0].content if sections else "",
+                    source_page="foundations.mdx",
+                ),
+            )
 
         if len(query_results) == 0:
             return MCPToolReturn(
