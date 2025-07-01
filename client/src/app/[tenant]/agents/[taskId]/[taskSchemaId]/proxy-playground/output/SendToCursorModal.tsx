@@ -33,7 +33,7 @@ export function SendToCursorModal(props: Props) {
     const versionNumber = formatSemverVersion(version);
     const environment = environmentsForVersion(version)?.[0];
     const versionAndEnvironment = environment ? `${versionNumber}/${environment}` : versionNumber;
-    return `Update WorkflowAI agent to version [${versionAndEnvironment}] get_code(agent_id=&quot;${agentId}&quot;) with the WorkflowAI MCP.`;
+    return `Update WorkflowAI agent to version [${versionAndEnvironment}] get_code(agent_id="${agentId}") with the WorkflowAI MCP.`;
   }, [agentId, version]);
 
   const onCopy = useCopy();
