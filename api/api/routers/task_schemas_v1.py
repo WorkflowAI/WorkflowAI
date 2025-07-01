@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
@@ -167,3 +167,17 @@ async def check_instructions(task: TaskVariantDep, request: CheckInstructionsReq
         return CheckInstructionsResponse.from_missing_keys(missing_keys)
 
     return CheckInstructionsResponse(is_template=True, is_valid=True)
+
+
+class SuggestVersionsMessagesResponse(BaseModel):
+    class VersionMessage(BaseModel):
+        role: Literal["SYSTEM", "USER", "ASSISTANT"]
+        content: str
+
+    version_messages: list[VersionMessage] = Field(description="The suggested version messages")
+
+
+@router.post("/versions-messages-suggestions", response_model_exclude_none=True)
+async def suggest_versions_messages(
+    # No request body
+) -> SuggestVersionsMessagesResponse: ...

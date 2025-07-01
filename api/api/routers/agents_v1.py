@@ -4,6 +4,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Query
 from pydantic import BaseModel, Field, model_validator
+from typing_extensions import Literal
 
 from api.dependencies.event_router import EventRouterDep
 from api.dependencies.security import RequiredUserOrganizationDep
@@ -29,8 +30,18 @@ router = APIRouter(prefix="/v1/{tenant}/agents", tags=[RouteTags.AGENTS])
 
 class CreateAgentRequest(BaseModel):
     id: str = Field(default="", description="The agent id, must be unique per tenant and URL safe")
-    input_schema: dict[str, Any] = Field(description="The input schema for the agent")
-    output_schema: dict[str, Any] = Field(description="The output schema for the agent")
+    is_proxy_agent: bool = Field(
+        default=False,
+        description="Whether the agent is a proxy agent",
+    )
+    input_schema: dict[str, Any] | None = Field(
+        default=None,
+        description="The input schema for the agent, none if for a proxy agent",
+    )
+    output_schema: dict[str, Any] | None = Field(
+        default=None,
+        description="The output schema for the agent",
+    )
     name: str = Field(
         default="",
         description="The name of the agent, if not provided, a TitleCase version of the id is used",
@@ -194,3 +205,40 @@ async def extract_template(request: ExtractTemplateRequest) -> ExtractTemplateRe
             details=e.serialize_details(),
         )
     return ExtractTemplateResponse(json_schema=json_schema, last_templated_index=last_templated_index)
+
+
+class BuildAgentMessage(BaseModel):
+    content: str
+    role: Literal["USER", "ASSISTANT"]
+
+    class AgentSchema(BaseModel):
+        agent_name: str = Field(description="The name of the agent in Title Case", serialization_alias="agent_name")
+        output_json_schema: dict[str, Any] | None = Field(
+            default=None,
+            description="The JSON schema of the agent output",
+        )
+
+    agent_schema: AgentSchema | None = Field(
+        default=None,
+        description="The agent schema returned as part of the message",
+    )
+
+
+class BuildAgentRequest(BaseModel):
+    messaes: list[BuildAgentMessage] | None = Field(
+        default=None,
+        description="The previous messages of the agent builder process",
+    )
+
+
+class BuildAgentResponse(BaseModel):
+    message: BuildAgentMessage
+
+
+@router.post(
+    "/new",
+    description="Prepare a new agent based on natural language queries, allowing for multiple iterations",
+)
+async def generate_via_chat(
+    request: BuildAgentRequest,
+) -> BuildAgentResponse: ...
