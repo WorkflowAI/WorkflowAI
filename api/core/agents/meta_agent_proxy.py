@@ -531,6 +531,11 @@ class ProxyMetaAgentOutput(BaseModel):
         description="The directly generated version messages, if any",
     )
 
+    search_documentation_request: str | None = Field(
+        default=None,
+        description="The search documentation request, if any",
+    )
+
 
 class ParsedToolCall(NamedTuple):
     """Result of parsing a tool call from the OpenAI streaming response."""
@@ -542,6 +547,7 @@ class ParsedToolCall(NamedTuple):
     run_trigger_config: ProxyMetaAgentOutput.RunTriggerConfig | None = None
     generate_input_request: GenerateAgentInputToolCallRequest | None = None
     updated_version_messages: list[dict[str, Any]] | None = None
+    search_documentation_query: str | None = None
 
 
 def parse_tool_call(tool_call: Any) -> ParsedToolCall:
@@ -591,6 +597,11 @@ def parse_tool_call(tool_call: Any) -> ParsedToolCall:
             generate_input_request=GenerateAgentInputToolCallRequest(
                 instructions=arguments.get("instructions"),
             ),
+        )
+
+    if function_name == "search_documentation":
+        return ParsedToolCall(
+            search_documentation_query=arguments.get("query"),
         )
 
     return ParsedToolCall()
@@ -1009,6 +1020,17 @@ The 'generate_agent_input' tool call is strictly to generate example agent input
 The 'instructions' field of the 'generate_agent_input' object will be passed to an agent specialized in input generation, "instructions" must be succinct.
 You MUST always make an actual 'generate_agent_input' tool call to generate the agent input, and NOT <function_call>...</function_call>
 </input_generation>
+
+<documentation_search>
+When users ask questions about WorkflowAI features, capabilities, or need specific guidance that requires detailed platform documentation, you can use the 'search_documentation' tool to find relevant information.
+Use this tool when:
+- Users ask about platform features, deployment options, integration guides
+- You need specific technical details not available in your current context
+- Users request information about best practices or advanced configurations
+- You need to provide accurate, up-to-date documentation references
+
+Be specific in your search queries to get the most relevant results (e.g., "deployment configuration", "input variables setup", "structured output implementation").
+</documentation_search>
 """
     + INSTRUCTIONS_FOOTER
 )
@@ -1049,6 +1071,26 @@ VERSION_MESSAGES_HOSTED_TOOL_UPDATE_TOOL: ChatCompletionToolParam = {
     },
 }
 
+
+SEARCH_DOCUMENTATION_TOOL: ChatCompletionToolParam = {
+    "type": "function",
+    "function": {
+        "name": "search_documentation",
+        "description": "Search WorkflowAI documentation to find relevant information for answering user questions about the platform, features, integrations, deployments, etc. Use this when you need specific documentation to help answer the user's question.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "The search query to find relevant documentation. Be specific about what you're looking for (e.g., 'how to deploy agents', 'input variables setup', 'structured output configuration').",
+                },
+            },
+            "required": ["query"],
+            "additionalProperties": False,
+        },
+        "strict": True,
+    },
+}
 
 TOOL_DEFINITIONS: list[ChatCompletionToolParam] = [
     {
@@ -1142,6 +1184,7 @@ TOOL_DEFINITIONS: list[ChatCompletionToolParam] = [
             "strict": True,
         },
     },
+    SEARCH_DOCUMENTATION_TOOL,
     VERSION_MESSAGES_HOSTED_TOOL_UPDATE_TOOL,
 ]
 
@@ -1261,4 +1304,5 @@ async def proxy_meta_agent(
             run_trigger_config=parsed_tool_call.run_trigger_config,
             generate_input_request=parsed_tool_call.generate_input_request,
             updated_version_messages=parsed_tool_call.updated_version_messages,
+            search_documentation_request=parsed_tool_call.search_documentation_query,
         )

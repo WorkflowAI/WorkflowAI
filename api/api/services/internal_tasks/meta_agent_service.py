@@ -22,7 +22,6 @@ from core.agents.extract_company_info_from_domain_task import (
 )
 from core.agents.input_variables_extractor_agent import InputVariablesExtractorInput, input_variables_extractor_agent
 from core.agents.meta_agent import (
-    META_AGENT_INSTRUCTIONS,
     EditSchemaToolCallResult,
     GenerateAgentInputToolCallResult,
     ImprovePromptToolCallResult,
@@ -346,6 +345,17 @@ class DirectUpdateVersionMessages(MetaAgentToolCall):
         return None
 
 
+class SearchDocumentationToolCall(MetaAgentToolCall):
+    tool_name: str = "search_documentation"
+
+    query: str = Field(
+        description="The search query to find relevant documentation.",
+    )
+
+    def to_domain(self) -> None:
+        return None
+
+
 MetaAgentToolCallType: TypeAlias = (
     ImprovePromptToolCall
     | EditSchemaToolCall
@@ -354,6 +364,7 @@ MetaAgentToolCallType: TypeAlias = (
     | UpdateVersionMessagesToolCall
     | AddToolToolCall
     | DirectUpdateVersionMessages
+    | SearchDocumentationToolCall
 )
 
 
@@ -743,12 +754,7 @@ class MetaAgentService:
                 company_products=context.company_description.products if context.company_description else None,
                 existing_agents_descriptions=context.existing_agents or [],
             ),
-            workflowai_documentation_sections=[]
-            if playground_state.is_proxy
-            else await DocumentationService().get_relevant_doc_sections(
-                chat_messages=[message.to_chat_message() for message in messages],
-                agent_instructions=META_AGENT_INSTRUCTIONS or "",
-            ),
+            workflowai_documentation_sections=[],
             available_tools_description=internal_tools_description(
                 include={ToolKind.WEB_BROWSER_TEXT, ToolKind.WEB_SEARCH_PERPLEXITY_SONAR_PRO},
             ),
@@ -1241,15 +1247,6 @@ class MetaAgentService:
             ],
         )
 
-    async def _pick_relevant_doc_sections(
-        self,
-        messages: list[MetaAgentChatMessage],
-    ) -> list[DocumentationSection]:
-        return await DocumentationService().get_relevant_doc_sections(
-            chat_messages=[message.to_chat_message() for message in messages],
-            agent_instructions=GENERIC_INSTRUCTIONS or "",
-        )
-
     async def _build_proxy_meta_agent_input(
         self,
         task_tuple: TaskTuple,
@@ -1287,20 +1284,8 @@ class MetaAgentService:
             else None
         )
 
-        if hosted_tool_update_mode:
-            # In the case when the use case is very well defined, we avoid dynamically picking a documentation section to save time—and manually pick the one to use.
-            overidden_doc_sections = ["agents/tools"]
-            relevant_doc_sections = await DocumentationService().get_documentation_by_path(
-                paths=overidden_doc_sections,
-            )
-            if len(relevant_doc_sections) == 0:
-                self._logger.error(
-                    "Could not find overridden doc sections, reverting to dynamically picking relevant doc sections",
-                    extra={"overidden_doc_sections": ", ".join(overidden_doc_sections)},
-                )
-                relevant_doc_sections = await self._pick_relevant_doc_sections(messages)
-        else:
-            relevant_doc_sections = await self._pick_relevant_doc_sections(messages)
+        # Documentation is now loaded on-demand via the search_documentation tool
+        relevant_doc_sections: list[DocumentationSection] = []
 
         return ProxyMetaAgentInput(
             current_datetime=datetime.datetime.now(tz=datetime.timezone.utc),
@@ -1442,6 +1427,47 @@ class MetaAgentService:
             return _remove_typescript_comments(output_string)
         return output_string
 
+    async def _handle_search_documentation_tool_call(
+        self,
+        search_query: str,
+        messages: list[MetaAgentChatMessage],
+    ) -> list[MetaAgentChatMessage]:
+        """Handle the search documentation tool call by performing the search and returning results."""
+        try:
+            # Search the documentation
+            doc_sections = await DocumentationService().search_documentation_by_query(
+                query=search_query,
+                usage_context="Meta agent documentation search",
+            )
+
+            if not doc_sections:
+                content = f"I searched for '{search_query}' but couldn't find any relevant documentation. Could you try rephrasing your question or being more specific?"
+            else:
+                # Format the documentation results
+                content = f"I found the following information about '{search_query}':\n\n"
+                for section in doc_sections[:3]:  # Limit to top 3 results
+                    content += f"**{section.file_path}**\n{section.content[:500]}...\n\n"
+
+            return [
+                MetaAgentChatMessage(
+                    role="ASSISTANT",
+                    content=content,
+                    sent_at=datetime.datetime.now(tz=datetime.timezone.utc),
+                    kind="non_specific",
+                ),
+            ]
+
+        except Exception as e:
+            self._logger.exception("Error searching documentation", exc_info=e)
+            return [
+                MetaAgentChatMessage(
+                    role="ASSISTANT",
+                    content=f"I encountered an error while searching for '{search_query}'. Please try again or rephrase your question.",
+                    sent_at=datetime.datetime.now(tz=datetime.timezone.utc),
+                    kind="non_specific",
+                ),
+            ]
+
     async def _get_proxy_agent_input_variables_proposal_paylaod(
         self,
         proxy_meta_agent_input: ProxyMetaAgentInput,
@@ -1546,6 +1572,7 @@ class MetaAgentService:
         run_trigger_config: ProxyMetaAgentOutput.RunTriggerConfig | None,
         generate_input_request: GenerateAgentInputToolCallRequest | None,
         updated_version_messages: list[dict[str, Any]] | None = None,
+        search_documentation_request: str | None = None,
     ) -> MetaAgentToolCallType | None:
         tool_call_to_return = None
         if improvement_instructions:
@@ -1591,6 +1618,11 @@ class MetaAgentService:
         if generate_input_request:
             tool_call_to_return = GenerateAgentInputToolCall(
                 instructions=generate_input_request.instructions,
+            )
+
+        if search_documentation_request:
+            tool_call_to_return = SearchDocumentationToolCall(
+                query=search_documentation_request,
             )
 
         return tool_call_to_return
@@ -1941,6 +1973,7 @@ Please double check:
         run_trigger_config: ProxyMetaAgentOutput.RunTriggerConfig | None = None
         generate_input_request_chunk: GenerateAgentInputToolCallRequest | None = None
         updated_version_messages_chunk: list[dict[str, Any]] | None = None
+        search_documentation_request_chunk: str | None = None
         tool_call_to_return: MetaAgentToolCallType | None = None
         async for chunk in proxy_meta_agent(
             input=proxy_meta_agent_input,
@@ -1984,6 +2017,8 @@ Please double check:
                 generate_input_request_chunk = chunk.generate_input_request
             if chunk.updated_version_messages:
                 updated_version_messages_chunk = chunk.updated_version_messages
+            if chunk.search_documentation_request:
+                search_documentation_request_chunk = chunk.search_documentation_request
 
         tool_call_to_return = self._extract_tool_call_to_return(
             improvement_instructions_chunk,
@@ -1991,6 +2026,7 @@ Please double check:
             run_trigger_config,
             generate_input_request_chunk,
             updated_version_messages_chunk,
+            search_documentation_request_chunk,
         )
 
         if tool_call_to_return:
