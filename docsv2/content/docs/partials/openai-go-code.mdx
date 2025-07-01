@@ -19,12 +19,33 @@ func main() {
 		option.WithAPIKey("wai-***"), // use create_api_key MCP tool // [!code highlight]
 	)
 
-	chatCompletion, err := client.Chat.Completions.New(
-		context.TODO(),
-		openai.ChatCompletionNewParams{
-			// your existing code
+	params := openai.ChatCompletionNewParams{
+		Model: openai.ChatModel("gemini-2.5-flash"), // TODO: to be tested, not 100% sure this format works
+		Messages: []openai.ChatCompletionMessage{
+			{Role: "user", Content: "You are a helpful assistant that analyzes emails and provides a summary of the content. Analyze the following email: {{email}}"},
 		},
-	)
+		// TODO: add structured outputs
+		responseFormat: ...
+	}
+
+	extraFields := map[string]interface{}{
+		// input variables
+		"input": map[string]interface{}{
+			"email": "Dear team, please review the quarterly report...",
+		},
+		// I've tried using Metadata: from OpenAI Go SDK, but it didn't work.
+		"metadata": map[string]interface{}{
+			"agent_id":   "email-analyzer",
+			"user_email": "user@example.com",
+		},
+	}
+
+	params.SetExtraFields(extraFields)
+
+	chatCompletion, err := client.Chat.Completions.New(context.TODO(), params)
+
+	// access response, cost, latency.
+	// ..
 }
 ```
 
