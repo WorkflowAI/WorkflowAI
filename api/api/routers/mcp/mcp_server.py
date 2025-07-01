@@ -498,7 +498,7 @@ async def search_runs(
     )
 
 
-@_mcp.tool()
+# @_mcp.tool()
 async def get_deployment_confirmation_url(
     agent_id: Annotated[
         str,
