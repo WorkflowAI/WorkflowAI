@@ -177,7 +177,7 @@ class SuggestVersionsMessagesResponse(BaseModel):
     version_messages: list[VersionMessage] = Field(description="The suggested version messages")
 
 
-@router.post("/versions-messages-suggestions", response_model_exclude_none=True)
+@router.post("/versions-messages-suggestions")
 async def suggest_versions_messages(
     # No request body
 ) -> SuggestVersionsMessagesResponse: ...
