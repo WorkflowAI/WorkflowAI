@@ -46,6 +46,8 @@ class ToolCallRequest(BaseModel):
 
 class ToolCallRequestWithID(ToolCallRequest):
     id: str = Field(default="", description="The id of the tool call")
+    # TODO: make index a required field
+    index: int = Field(default=0, description="The index of the tool call")
 
     @classmethod
     def default_id(cls, tool_name: str, input_dict: dict[str, Any]) -> str:
