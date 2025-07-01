@@ -531,11 +531,6 @@ class ProxyMetaAgentOutput(BaseModel):
         description="The directly generated version messages, if any",
     )
 
-    search_documentation_request: str | None = Field(
-        default=None,
-        description="The search documentation request, if any",
-    )
-
 
 class ParsedToolCall(NamedTuple):
     """Result of parsing a tool call from the OpenAI streaming response."""
@@ -1291,6 +1286,96 @@ async def proxy_meta_agent(
             tool_call = chunk.choices[0].delta.tool_calls[0]
             parsed_tool_call = parse_tool_call(tool_call)
 
+            # Handle search documentation tool call immediately
+            if parsed_tool_call.search_documentation_query:
+                # Import here to avoid circular imports
+                from api.services.documentation_service import DocumentationService
+
+                try:
+                    # Search the documentation
+                    doc_sections = await DocumentationService().search_documentation_by_query(
+                        query=parsed_tool_call.search_documentation_query,
+                        usage_context="Meta agent documentation search",
+                    )
+
+                    # Add the documentation to the input and continue the conversation
+                    input.workflowai_documentation_sections = doc_sections[:5]  # Limit to top 5 results
+
+                    # Make a follow-up call to the agent with the documentation now available
+                    follow_up_response = await client.chat.completions.create(
+                        model="proxy-meta-agent/claude-sonnet-4-20250514",
+                        messages=[
+                            {"role": "system", "content": instructions},
+                            {
+                                "role": "user",
+                                "content": f"I found the following documentation for '{parsed_tool_call.search_documentation_query}'. Please use this information to answer the user's question:",
+                            },
+                        ],
+                        stream=True,
+                        temperature=0.0,
+                        extra_body={
+                            "input": {
+                                "current_datetime": input.current_datetime.isoformat(),
+                                "current_agent": input.current_agent.model_dump_json(indent=4, exclude_none=True),
+                                "is_using_version_messages": is_using_version_messages,
+                                "agent_has_output_schema": agent_has_output_schema,
+                                "is_using_input_variables": is_using_input_variables,
+                                "is_agent_deployed": is_agent_deployed,
+                                "chat_messages": "\n".join(
+                                    [
+                                        message.model_dump_json(indent=4, exclude_none=True)
+                                        for message in input.chat_messages
+                                    ],
+                                ),
+                                "deployments_str": "\n".join(
+                                    [
+                                        deployment.model_dump_json(indent=4, exclude_none=True)
+                                        for deployment in input.agent_lifecycle_info.deployment_info.deployments or []
+                                    ]
+                                    if input.agent_lifecycle_info and input.agent_lifecycle_info.deployment_info
+                                    else "",
+                                ),
+                                "available_models_str": "\n".join(
+                                    [
+                                        model.model_dump_json(indent=4, exclude_none=True)
+                                        for model in input.playground_state.available_models
+                                    ],
+                                ),
+                                "available_hosted_tools_description": input.available_hosted_tools_description,
+                                "other_context": "{% raw %}"
+                                + input.model_dump_json(
+                                    indent=4,
+                                    exclude=dict(
+                                        current_datetime=True,
+                                        current_agent=True,
+                                        chat_messages=True,
+                                        agent_lifecycle_info={"deployment_info": {"deployments": True}},
+                                        playground_state={"available_models": True},
+                                        available_hosted_tools_description=True,
+                                    ),
+                                )
+                                + "{% endraw %}",
+                            },
+                            "use_cache": "never",
+                        },
+                        tools=[],  # No tools for the follow-up call to prevent recursion
+                    )
+
+                    # Stream the follow-up response
+                    async for follow_up_chunk in follow_up_response:
+                        if follow_up_chunk.choices[0].delta.content:
+                            yield ProxyMetaAgentOutput(
+                                assistant_answer=follow_up_chunk.choices[0].delta.content,
+                            )
+
+                    return  # End the original stream since we've handled it with the follow-up
+
+                except Exception:
+                    # If documentation search fails, continue with an error message
+                    yield ProxyMetaAgentOutput(
+                        assistant_answer=f"I tried to search for documentation about '{parsed_tool_call.search_documentation_query}' but encountered an error. Let me try to help you without the documentation. ",
+                    )
+
         yield ProxyMetaAgentOutput(
             assistant_answer=chunk.choices[0].delta.content,
             improvement_instructions=parsed_tool_call.improvement_instructions,
@@ -1304,5 +1389,4 @@ async def proxy_meta_agent(
             run_trigger_config=parsed_tool_call.run_trigger_config,
             generate_input_request=parsed_tool_call.generate_input_request,
             updated_version_messages=parsed_tool_call.updated_version_messages,
-            search_documentation_request=parsed_tool_call.search_documentation_query,
         )

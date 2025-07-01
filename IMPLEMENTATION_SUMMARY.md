@@ -1,7 +1,7 @@
 # Meta Agent Documentation Conversion Summary
 
 ## Overview
-Successfully converted the Meta Agent documentation from always-loaded to an on-demand search tool, improving performance by removing automatic documentation fetching on every request.
+Successfully converted the Meta Agent documentation from always-loaded to an on-demand search tool, improving performance by removing automatic documentation fetching on every request. The implementation uses an immediate search-and-continue approach where the agent searches for documentation during its response and then continues with that documentation in context.
 
 ## Changes Made
 
@@ -16,11 +16,16 @@ Successfully converted the Meta Agent documentation from always-loaded to an on-
 #### Updated Tool Parsing
 - Added `search_documentation_query: str | None = None` to `ParsedToolCall`
 - Updated `parse_tool_call()` function to handle `search_documentation` tool calls
-- Added `search_documentation_request: str | None` to `ProxyMetaAgentOutput`
+
+#### Immediate Search Implementation
+- When a search documentation tool call is detected, the search is executed immediately
+- Retrieved documentation is added to the agent's context (`input.workflowai_documentation_sections`)
+- A follow-up call is made to the agent with the documentation now available
+- The follow-up response is streamed to the user seamlessly
 
 #### Updated Tool Lists
 - Added `SEARCH_DOCUMENTATION_TOOL` to `TOOL_DEFINITIONS`
-- Updated `proxy_meta_agent()` to include search documentation request in output
+- Tool calls are processed immediately rather than returned to frontend
 
 #### Updated Instructions
 - Added `<documentation_search>` section to `GENERIC_INSTRUCTIONS`
@@ -28,32 +33,16 @@ Successfully converted the Meta Agent documentation from always-loaded to an on-
 
 ### 2. Updated Meta Agent Service (`/workspace/api/api/services/internal_tasks/meta_agent_service.py`)
 
-#### New Tool Call Type
-- Added `SearchDocumentationToolCall(MetaAgentToolCall)` class
-- Updated `MetaAgentToolCallType` to include the new tool call
-- Added proper field validation and domain conversion methods
-
 #### Removed Automatic Documentation Loading
 - Removed automatic `get_relevant_doc_sections()` calls from `_build_meta_agent_input()`
 - Removed automatic documentation loading from `_build_proxy_meta_agent_input()`
 - Removed `_pick_relevant_doc_sections()` method (no longer needed)
 - Set `workflowai_documentation_sections=[]` by default
 
-#### Updated Tool Call Handling
-- Updated `_extract_tool_call_to_return()` to handle search documentation requests
-- Added `search_documentation_request: str | None` parameter
-- Added logic to create `SearchDocumentationToolCall` when search is requested
-
-#### Updated Response Streaming
-- Added `search_documentation_request_chunk` variable to capture search requests
-- Updated chunk processing to handle search documentation requests
-- Updated `_extract_tool_call_to_return()` call to pass search documentation parameter
-
-#### Added Documentation Search Handler
-- Added `_handle_search_documentation_tool_call()` method
-- Integrates with existing `DocumentationService.search_documentation_by_query()`
-- Returns formatted search results with proper error handling
-- Limits results to top 3 sections for performance
+#### Simplified Tool Call Handling
+- Removed `SearchDocumentationToolCall` class (no longer needed since search is immediate)
+- No changes needed to `_extract_tool_call_to_return()` since search is handled in proxy
+- Documentation search is now handled entirely within the proxy agent streaming
 
 ## Performance Impact
 
@@ -85,10 +74,11 @@ The search documentation tool integrates with:
 1. User asks a question requiring documentation
 2. Meta agent determines documentation search is needed
 3. Meta agent calls `search_documentation` tool with specific query
-4. Frontend/API executes the tool call
+4. **Immediate execution**: Search is performed within the proxy agent streaming
 5. `DocumentationService.search_documentation_by_query()` performs the search
-6. Results are returned and formatted for the user
-7. Meta agent provides answer based on retrieved documentation
+6. Documentation is added to the agent's context
+7. Agent continues with a follow-up response using the retrieved documentation
+8. User receives a seamless response with documentation-informed content
 
 ## Files Modified
 
@@ -103,9 +93,26 @@ The search documentation tool integrates with:
 4. Test error handling when documentation search fails
 5. Verify tool call execution in frontend
 
+## Technical Implementation Details
+
+### Immediate Search-and-Continue Pattern
+The implementation uses a sophisticated pattern where:
+- The agent starts responding to the user
+- If it needs documentation, it calls the `search_documentation` tool
+- The search is executed immediately within the streaming response
+- Documentation results are injected into the agent's context
+- A follow-up call is made with the enriched context
+- The follow-up response is streamed seamlessly to the user
+
+### Error Handling
+- If documentation search fails, the agent continues with a graceful error message
+- No recursion issues since follow-up calls don't include tools
+- Limits results to top 5 documentation sections for performance
+
 ## Notes
 
 - The existing `DocumentationService` and `search_documentation_agent` remain unchanged
 - All existing documentation search functionality is preserved
-- The change is backward compatible with existing tool call framework
+- The search happens transparently during the agent's response streaming
+- No frontend changes required - the search is handled entirely in the backend
 - Error handling is included for failed documentation searches
