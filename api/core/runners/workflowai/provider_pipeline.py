@@ -71,6 +71,7 @@ class ProviderPipeline:
         self._has_used_model_fallback: bool = False
         self._model_fallback_disabled = use_fallback == "never"
         self._fallback_models = use_fallback if isinstance(use_fallback, list) else None
+        self._tried_models: set[Model] = {options.model}  # Track models we've already tried
 
     @property
     def _retry_on_same_provider(self) -> bool:
@@ -109,6 +110,8 @@ class ProviderPipeline:
                 return None
 
             fallback_model = self._fallback_models.pop(0)
+            # Also track user-provided fallback models
+            self._tried_models.add(fallback_model)
             return get_model_data(fallback_model)
 
         if not self.model_data.fallback:
@@ -131,6 +134,18 @@ class ProviderPipeline:
         if not fallback_model:
             return None
 
+        # Check if we've already tried this model to prevent infinite loops
+        if fallback_model in self._tried_models:
+            _logger.warning(
+                "Skipping fallback model as it has already been tried",
+                extra={
+                    "model": self._options.model,
+                    "fallback_model": fallback_model,
+                    "error_code": e.code,
+                },
+            )
+            return None
+
         fallback_model_data = get_model_data(fallback_model)
         if fallback_model_data.is_not_supported_reason(self._typology):
             _logger.warning(
@@ -143,6 +158,8 @@ class ProviderPipeline:
             )
             return None
 
+        # Mark this model as tried
+        self._tried_models.add(fallback_model)
         return fallback_model_data
 
     @contextmanager

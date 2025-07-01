@@ -453,3 +453,78 @@ class TestProviderIterator:
             (Provider.ANTHROPIC, Model.CLAUDE_4_OPUS_20250514),
         ]
         mock_provider1.complete.assert_not_called()
+
+    async def test_no_infinite_loop_on_fallback_model_failure(
+        self,
+        provider_builder: Mock,
+        mock_provider_factory: Mock,
+    ):
+        """Test that we don't get an infinite loop when a fallback model keeps failing with the same error"""
+        with patch(
+            "core.runners.workflowai.provider_pipeline.get_model_data",
+            side_effect=lambda model: _final_model_data(
+                model=model,
+                providers=[Provider.ANTHROPIC] if model == Model.CLAUDE_3_5_SONNET_20241022 else [Provider.OPEN_AI],
+                # This model has a fallback to Claude on rate limit
+                fallback=ModelFallback(
+                    rate_limit=Model.CLAUDE_3_5_SONNET_20241022,
+                )
+                if model == Model.GPT_4O_MINI_2024_07_18
+                else None,
+            ),
+        ):
+            pipeline = ProviderPipeline(
+                options=WorkflowAIRunnerOptions(
+                    model=Model.GPT_4O_MINI_2024_07_18,
+                    provider=None,
+                    is_structured_generation_enabled=None,
+                    instructions="",
+                ),
+                custom_configs=None,
+                builder=provider_builder,
+                factory=mock_provider_factory,
+                typology=TaskTypology(),
+            )
+
+        # Mock providers that always fail with rate limit
+        mock_openai = _mock_provider(Provider.OPEN_AI)
+        mock_openai.complete.side_effect = ProviderRateLimitError()
+        mock_anthropic = _mock_provider(Provider.ANTHROPIC)
+        mock_anthropic.complete.side_effect = ProviderRateLimitError()
+
+        def _get_providers(provider_type: Provider) -> list[AbstractProvider[Any, Any]]:
+            match provider_type:
+                case Provider.OPEN_AI:
+                    return [mock_openai]
+                case Provider.ANTHROPIC:
+                    return [mock_anthropic]
+                case _:
+                    assert False, f"Unexpected provider type: {provider_type}"
+
+        mock_provider_factory.get_providers.side_effect = _get_providers
+
+        yielded: list[tuple[Provider, Model]] = []
+        for provider, _, _, model_data in pipeline.provider_iterator(raise_at_end=False):
+            yielded.append((provider.name(), model_data.model))  # type: ignore
+
+            with pipeline.wrap_provider_call(provider):
+                try:
+                    await cast(Mock, provider).complete()
+                except Exception:
+                    pass
+
+        # Should try:
+        # 1. GPT-4 on OpenAI (fails with rate limit)
+        # 2. Claude fallback on Anthropic (fails with rate limit)
+        # 3. Should NOT try Claude again (prevented by our fix)
+        assert yielded == [
+            (Provider.OPEN_AI, Model.GPT_4O_MINI_2024_07_18),
+            (Provider.ANTHROPIC, Model.CLAUDE_3_5_SONNET_20241022),
+        ]
+
+        # Verify each provider was only called once
+        mock_openai.complete.assert_called_once()
+        mock_anthropic.complete.assert_called_once()
+
+        # Verify that the tried models set contains both models
+        assert pipeline._tried_models == {Model.GPT_4O_MINI_2024_07_18, Model.CLAUDE_3_5_SONNET_20241022}
