@@ -1279,6 +1279,9 @@ async def proxy_meta_agent(
         tools=tools_to_use,
     )
 
+    # Track if we're processing a search documentation tool call
+    search_documentation_query = None
+
     async for chunk in response:
         # Parse tool calls if present
         parsed_tool_call = ParsedToolCall()
@@ -1286,55 +1289,63 @@ async def proxy_meta_agent(
             tool_call = chunk.choices[0].delta.tool_calls[0]
             parsed_tool_call = parse_tool_call(tool_call)
 
-            # Handle search documentation tool call immediately
+            # If this is a search documentation tool call, capture it but don't yield anything yet
             if parsed_tool_call.search_documentation_query:
-                # Import here to avoid circular imports
-                from api.services.documentation_service import DocumentationService
+                search_documentation_query = parsed_tool_call.search_documentation_query
+                continue  # Don't yield anything, just continue to collect the complete tool call
 
-                try:
-                    # Search the documentation
-                    doc_sections = await DocumentationService().search_documentation_by_query(
-                        query=parsed_tool_call.search_documentation_query,
-                        usage_context="Meta agent documentation search",
-                    )
+        # If we have a search documentation query, handle it after the tool call is complete
+        if search_documentation_query and chunk.choices[0].finish_reason:
+            # Import here to avoid circular imports
+            from api.services.documentation_service import DocumentationService
 
-                    # Add the documentation to the input and restart the agent with documentation
-                    input.workflowai_documentation_sections = doc_sections[:5]  # Limit to top 5 results
+            try:
+                # Search the documentation
+                doc_sections = await DocumentationService().search_documentation_by_query(
+                    query=search_documentation_query,
+                    usage_context="Meta agent documentation search",
+                )
 
-                    # Recursively call the same function with the enriched input
-                    async for enriched_output in proxy_meta_agent(
-                        input=input,
-                        instructions=instructions,
-                        model_name_prefix=model_name_prefix,
-                        completion_client=completion_client,
-                        is_using_version_messages=is_using_version_messages,
-                        is_using_input_variables=is_using_input_variables,
-                        agent_has_output_schema=agent_has_output_schema,
-                        use_tool_calls=False,  # Disable tools to prevent infinite recursion
-                        is_agent_deployed=is_agent_deployed,
-                        hosted_tool_update_mode=hosted_tool_update_mode,
-                    ):
-                        yield enriched_output
+                # Add the documentation to the input and restart the agent with documentation
+                input.workflowai_documentation_sections = doc_sections[:5]  # Limit to top 5 results
 
-                    return  # End the original stream since we've handled it with the enriched call
+                # Recursively call the same function with the enriched input
+                async for enriched_output in proxy_meta_agent(
+                    input=input,
+                    instructions=instructions,
+                    model_name_prefix=model_name_prefix,
+                    completion_client=completion_client,
+                    is_using_version_messages=is_using_version_messages,
+                    is_using_input_variables=is_using_input_variables,
+                    agent_has_output_schema=agent_has_output_schema,
+                    use_tool_calls=False,  # Disable tools to prevent infinite recursion
+                    is_agent_deployed=is_agent_deployed,
+                    hosted_tool_update_mode=hosted_tool_update_mode,
+                ):
+                    yield enriched_output
 
-                except Exception:
-                    # If documentation search fails, continue with an error message
-                    yield ProxyMetaAgentOutput(
-                        assistant_answer=f"I tried to search for documentation about '{parsed_tool_call.search_documentation_query}' but encountered an error. Let me try to help you without the documentation. ",
-                    )
+                return  # End the original stream since we've handled it with the enriched call
 
-        yield ProxyMetaAgentOutput(
-            assistant_answer=chunk.choices[0].delta.content,
-            improvement_instructions=parsed_tool_call.improvement_instructions,
-            new_tool=ProxyMetaAgentOutput.NewTool(
-                name=parsed_tool_call.tool_name,
-                description=parsed_tool_call.tool_description,
-                parameters=parsed_tool_call.tool_parameters,
+            except Exception:
+                # If documentation search fails, continue with an error message
+                yield ProxyMetaAgentOutput(
+                    assistant_answer=f"I tried to search for documentation about '{search_documentation_query}' but encountered an error. Let me try to help you without the documentation. ",
+                )
+                return
+
+        # Only yield regular content if we're not processing a search documentation tool call
+        if not search_documentation_query:
+            yield ProxyMetaAgentOutput(
+                assistant_answer=chunk.choices[0].delta.content,
+                improvement_instructions=parsed_tool_call.improvement_instructions,
+                new_tool=ProxyMetaAgentOutput.NewTool(
+                    name=parsed_tool_call.tool_name,
+                    description=parsed_tool_call.tool_description,
+                    parameters=parsed_tool_call.tool_parameters,
+                )
+                if parsed_tool_call.tool_name and parsed_tool_call.tool_description and parsed_tool_call.tool_parameters
+                else None,
+                run_trigger_config=parsed_tool_call.run_trigger_config,
+                generate_input_request=parsed_tool_call.generate_input_request,
+                updated_version_messages=parsed_tool_call.updated_version_messages,
             )
-            if parsed_tool_call.tool_name and parsed_tool_call.tool_description and parsed_tool_call.tool_parameters
-            else None,
-            run_trigger_config=parsed_tool_call.run_trigger_config,
-            generate_input_request=parsed_tool_call.generate_input_request,
-            updated_version_messages=parsed_tool_call.updated_version_messages,
-        )

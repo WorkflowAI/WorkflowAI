@@ -97,22 +97,30 @@ The search documentation tool integrates with:
 
 ## Technical Implementation Details
 
-### Clean Recursive Search-and-Continue Pattern
-The implementation uses a clean recursive pattern where:
+### Clean Backend Search-and-Continue Pattern
+The implementation uses a clean backend-only pattern where:
 - The agent starts responding to the user
 - If it needs documentation, it calls the `search_documentation` tool
-- The search is executed immediately within the streaming response
+- **Key**: Tool call is intercepted and NOT shown to the user
+- The search is executed silently in the backend
 - Documentation results are injected into the agent's context
 - The same `proxy_meta_agent` function is called recursively with:
   - The enriched input (now containing documentation)
   - `use_tool_calls=False` to prevent infinite recursion
   - All other parameters preserved
-- The recursive response is streamed seamlessly to the user
+- Only the final response (with documentation context) is streamed to the user
 
 ### Error Handling
 - If documentation search fails, the agent continues with a graceful error message
 - No recursion issues since follow-up calls don't include tools
 - Limits results to top 5 documentation sections for performance
+- Tool calls are completely hidden from user - only final responses are shown
+
+### Implementation Details
+- Uses `search_documentation_query` variable to track when a search tool call is detected
+- `continue` statement prevents yielding tool call content to user
+- Waits for `finish_reason` to ensure complete tool call before processing
+- Recursive call happens entirely in backend with enriched context
 
 ## Notes
 
