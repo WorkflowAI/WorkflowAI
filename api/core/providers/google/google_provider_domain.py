@@ -593,9 +593,9 @@ class CompletionRequest(BaseModel):
     class GenerationConfig(BaseModel):
         # Docs: https://cloud.google.com/vertex-ai/docs/reference/rest/v1/GenerationConfig
         # Docs: https://ai.google.dev/api/generate-content#generationconfig
-        # TODO: use responseSchema
 
         responseMimeType: Literal["text/plain", "application/json"] = "text/plain"
+        responseSchema: dict[str, Any] | None = None  # For structured output support
         maxOutputTokens: int | None = None
         temperature: float = 0.0
 

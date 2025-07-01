@@ -141,3 +141,124 @@ def test_handle_invalid_argument_raises_provider_invalid_file_error(error_messag
 
     with pytest.raises(ProviderInvalidFileError):
         GoogleProviderBase._handle_invalid_argument(error_message, mock_response)  # pyright: ignore[reportPrivateUsage]
+
+
+def test_structured_output_logic_with_tools() -> None:
+    """Test that structured output is disabled when tools are enabled."""
+    from unittest.mock import Mock, patch
+    from core.domain.message import MessageDeprecated
+    from core.domain.models import Model
+    from core.providers.base.provider_options import ProviderOptions
+    from core.domain.tool import Tool
+
+    # Mock the model data to support structured output
+    mock_model_data = Mock()
+    mock_model_data.supports_structured_output = True
+    mock_model_data.supports_json_mode = True
+    mock_model_data.supports_system_messages = True
+    mock_model_data.reasoning = None
+
+    # Create provider options with both tools and output schema
+    mock_tool = Mock(spec=Tool)
+    mock_tool.name = "test_tool"
+    mock_tool.description = "Test tool"
+    mock_tool.input_schema = {}
+    mock_tool.output_schema = None
+    
+    options = Mock(spec=ProviderOptions)
+    options.enabled_tools = [mock_tool]  # Tools are enabled
+    options.output_schema = {"type": "object", "properties": {"test": {"type": "string"}}}
+    options.structured_generation = True
+    options.model = Model.GEMINI_2_5_FLASH
+    options.temperature = 0.7
+    options.max_tokens = 1000
+    options.tool_choice = None
+    options.presence_penalty = None
+    options.frequency_penalty = None
+    options.top_p = None
+    
+    def mock_final_reasoning_budget(reasoning):
+        return None
+    options.final_reasoning_budget = mock_final_reasoning_budget
+
+    messages = [Mock(spec=MessageDeprecated)]
+    messages[0].role = MessageDeprecated.Role.USER
+    messages[0].image_options = None
+
+    # Create a mock provider instance
+    class MockGoogleProvider(GoogleProviderBase):
+        def _request_url(self, model, stream):
+            return "https://mock.url"
+    
+    provider = MockGoogleProvider(Mock())
+
+    with patch('core.providers.google.google_provider_base.get_model_data', return_value=mock_model_data), \
+         patch.object(provider, '_convert_messages', return_value=([Mock()], None)), \
+         patch.object(provider, '_safety_settings', return_value=None), \
+         patch.object(provider, '_add_native_tools'):
+        
+        request = provider._build_request(messages, options, stream=False)
+        
+        # When tools are enabled, structured output should be disabled
+        # responseMimeType should be "text/plain" and responseSchema should be None
+        assert request.generationConfig.responseMimeType == "text/plain"
+        assert request.generationConfig.responseSchema is None
+
+
+def test_structured_output_logic_without_tools() -> None:
+    """Test that structured output is enabled when tools are disabled."""
+    from unittest.mock import Mock, patch
+    from core.domain.message import MessageDeprecated
+    from core.domain.models import Model
+    from core.providers.base.provider_options import ProviderOptions
+
+    # Mock the model data to support structured output
+    mock_model_data = Mock()
+    mock_model_data.supports_structured_output = True
+    mock_model_data.supports_json_mode = True
+    mock_model_data.supports_system_messages = True
+    mock_model_data.reasoning = None
+
+    # Create provider options without tools but with output schema
+    options = Mock(spec=ProviderOptions)
+    options.enabled_tools = []  # No tools enabled
+    options.output_schema = {"type": "object", "properties": {"test": {"type": "string"}}}
+    options.structured_generation = True
+    options.model = Model.GEMINI_2_5_FLASH
+    options.temperature = 0.7
+    options.max_tokens = 1000
+    options.tool_choice = None
+    options.presence_penalty = None
+    options.frequency_penalty = None
+    options.top_p = None
+    
+    def mock_final_reasoning_budget(reasoning):
+        return None
+    options.final_reasoning_budget = mock_final_reasoning_budget
+
+    messages = [Mock(spec=MessageDeprecated)]
+    messages[0].role = MessageDeprecated.Role.USER
+    messages[0].image_options = None
+
+    # Create a mock provider instance
+    class MockGoogleProvider(GoogleProviderBase):
+        def _request_url(self, model, stream):
+            return "https://mock.url"
+    
+    provider = MockGoogleProvider(Mock())
+
+    with patch('core.providers.google.google_provider_base.get_model_data', return_value=mock_model_data), \
+         patch.object(provider, '_convert_messages', return_value=([Mock()], None)), \
+         patch.object(provider, '_safety_settings', return_value=None), \
+         patch.object(provider, '_add_native_tools'), \
+         patch('core.providers.google.google_provider_base.prepare_google_json_schema', return_value={"cleaned": "schema"}) as mock_prepare:
+        
+        request = provider._build_request(messages, options, stream=False)
+        
+        # When tools are disabled, structured output should be enabled
+        # responseMimeType should be "application/json" and responseSchema should be set
+        assert request.generationConfig.responseMimeType == "application/json"
+        assert request.generationConfig.responseSchema == {"cleaned": "schema"}
+        
+        # Verify that the schema preparation function was called
+        mock_prepare.assert_called_once()

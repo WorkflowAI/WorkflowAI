@@ -1,4 +1,5 @@
 import asyncio
+import copy
 from abc import abstractmethod
 from json import JSONDecodeError
 from typing import Any, AsyncIterator, Generic, Protocol, TypeVar
@@ -32,6 +33,7 @@ from core.providers.base.provider_error import (
 )
 from core.providers.base.provider_options import ProviderOptions
 from core.providers.base.streaming_context import ParsedResponse, ToolCallRequestBuffer
+from core.providers.google._google_utils import prepare_google_json_schema
 from core.providers.google.google_provider_domain import (
     BLOCK_THRESHOLD,
     Candidate,
@@ -166,13 +168,24 @@ class GoogleProviderBase(HTTPXProvider[_GoogleConfigVar, CompletionResponse], Ge
             )
         )
 
+        # Handle structured output - similar pattern to OpenAI provider
+        response_mime_type = "text/plain"
+        response_schema = None
+        
+        if options.output_schema and not options.enabled_tools:
+            if model_data.supports_structured_output and options.structured_generation:
+                # Use structured output with responseSchema
+                response_mime_type = "application/json"
+                response_schema = prepare_google_json_schema(copy.deepcopy(options.output_schema))
+            elif model_data.supports_json_mode:
+                # Fallback to JSON mode without schema
+                response_mime_type = "application/json"
+
         generation_config = CompletionRequest.GenerationConfig(
             temperature=options.temperature,
             maxOutputTokens=options.max_tokens,
-            responseMimeType="application/json"
-            if (model_data.supports_json_mode and not options.enabled_tools and options.output_schema)
-            # Google does not allow setting the response mime type at all when using tools.
-            else "text/plain",
+            responseMimeType=response_mime_type,
+            responseSchema=response_schema,
             thinking_config=thinking_config,
             presencePenalty=options.presence_penalty,
             frequencyPenalty=options.frequency_penalty,
