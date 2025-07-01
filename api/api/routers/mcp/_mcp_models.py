@@ -691,11 +691,21 @@ class MCPRun(BaseModel):
         url: str,
     ):
         messages = run.messages
+        # Truncation is really arbitrary for now
+        # We limit:
+        # - the length of the message text content to 10000 characters, ~3000 tokens
+        # - the size of input data to 1000 characters, ~300 tokens. The input is repeated in the messages
+        # - the size of the file data to 10 characters since base64 data is not really interesting and eats tokens fast
+        # TODO: implement better truncation logic
+        # Note that when we actually fetch messages from the database, the files will have a URL
         for m in messages:
             for m in m.content:
                 if m.file and m.file.data:
                     # No need to pass base64 data
                     m.file.data = truncate_obj(m.file.data, max_field_length=10)
+
+                if m.text:
+                    m.text = truncate_obj(m.text, max_field_length=10000)
 
         return cls(
             id=run.id,
