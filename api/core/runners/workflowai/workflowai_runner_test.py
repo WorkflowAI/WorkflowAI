@@ -122,6 +122,7 @@ def _build_runner2(
 def mock_provider():
     mock = Mock(spec=AbstractProvider)
     mock.requires_downloading_file.return_value = False
+    mock.max_number_of_file_urls = None
     mock.sanitize_agent_instructions.return_value = "sanitized"
     mock.sanitize_template.side_effect = lambda template: template  # type:ignore
     return mock
@@ -1461,6 +1462,7 @@ def mock_provider_factory_full(mock_provider_factory: Mock):
         m.sanitize_template.side_effect = lambda x: x  # pyright: ignore[reportUnknownLambdaType]
         m.sanitize_agent_instructions.side_effect = lambda x: x  # pyright: ignore[reportUnknownLambdaType]
         m.name.return_value = name
+        m.max_number_of_file_urls = None
         return m
 
     google = _mock_provider(Provider.GOOGLE)
