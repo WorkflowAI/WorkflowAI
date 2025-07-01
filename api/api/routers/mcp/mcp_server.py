@@ -633,7 +633,18 @@ def _get_description_search_documentation_tool() -> str:
 
     available_pages = documentation_service.get_available_pages_descriptions()
 
-    return f"""Search WorkflowAI documentation OR fetch a specific documentation page.
+    return f"""🔍 **CRITICAL: Always search documentation before performing WorkflowAI tasks.**
+
+Search WorkflowAI documentation OR fetch a specific documentation page.
+
+     <mandatory_first_step>
+     **BEFORE starting any WorkflowAI task, you MUST:**
+     1. First, read the "foundations" page to understand core concepts and architecture
+     2. Search or read relevant documentation pages for the specific task you're performing
+     3. Only proceed with other tools after consulting the appropriate documentation
+
+     This ensures you have the correct context and approach for WorkflowAI operations.
+     </mandatory_first_step>
 
      <how_to_use>
      Enable MCP clients to explore WorkflowAI documentation through a dual-mode search tool:
