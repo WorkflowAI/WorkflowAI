@@ -7,6 +7,7 @@ export function formatTaskRunIdParam(index: number) {
 }
 
 export type PlaygroundModels = [Model | null | undefined, Model | null | undefined, Model | null | undefined];
+export type PlaygroundModelsReasoning = [string | undefined, string | undefined, string | undefined];
 
 /**
  * Calculates the difference between two texts by finding where the new text

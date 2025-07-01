@@ -1,27 +1,14 @@
 import { FaGoogle } from 'react-icons/fa';
 import { SiAnthropic } from 'react-icons/si';
+import { AIProviderMetadata } from '@/components/ProxyModelsCombobox/utils';
+import { AmazonBedrockIcon } from '@/components/icons/models/amazonBedrockIcon';
+import { AzureIcon } from '@/components/icons/models/azureIcon';
+import { FireworksIcon } from '@/components/icons/models/fireworksIcon';
+import { GroqIcon } from '@/components/icons/models/groqIcon';
+import { MistralAIIcon } from '@/components/icons/models/mistralAIIcon';
+import { OpenAIIcon } from '@/components/icons/models/openAIIcon';
 import { isNullish } from '@/types';
 import { ModelResponse, Provider } from '@/types/workflowAI';
-import { AmazonBedrockIcon } from '../icons/models/amazonBedrockIcon';
-import { AzureIcon } from '../icons/models/azureIcon';
-import { FireworksIcon } from '../icons/models/fireworksIcon';
-import { GroqIcon } from '../icons/models/groqIcon';
-import { MistralAIIcon } from '../icons/models/mistralAIIcon';
-import { OpenAIIcon } from '../icons/models/openAIIcon';
-
-export type AIModelComboboxOption = {
-  model: ModelResponse;
-  value: string;
-  label: string;
-  disabled?: boolean;
-  isLatest?: boolean;
-};
-
-export type AIProviderMetadata = {
-  name: string;
-  icon: JSX.Element;
-  documentationUrl: string;
-};
 
 export const AI_PROVIDERS_METADATA: Record<Provider, AIProviderMetadata> = {
   openai: {

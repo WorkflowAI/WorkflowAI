@@ -79,6 +79,7 @@ import { pickFinalRunProperties } from './hooks/utils';
 import { PlaygroundInputContainer } from './playgroundInputContainer';
 import { PlaygroundInputSettingsModal } from './playgroundInputSettingsModal';
 import { PlaygroundOutput } from './playgroundOutput';
+import { getReasoningEffortAndBudget } from './utils';
 
 export type PlaygroundContentProps = {
   taskId: TaskID;
@@ -196,6 +197,8 @@ export function PlaygroundContent(props: PlaygroundContentBodyProps) {
     schemaModels,
     taskModels,
     setSchemaModels,
+    modelsReasoning,
+    setModelsReasoning,
     generatedInput: persistedGeneratedInput,
     showDiffMode,
     hiddenModelColumns,
@@ -413,6 +416,9 @@ export function PlaygroundContent(props: PlaygroundContentBodyProps) {
           return;
         }
 
+        const reasoning = runOptions.externalReasoning || modelsReasoning[index];
+        const { effort, budget } = getReasoningEffortAndBudget(reasoning);
+
         cleanTaskRun(model, true);
 
         const oldAbortController = findAbortController(index);
@@ -427,6 +433,8 @@ export function PlaygroundContent(props: PlaygroundContentBodyProps) {
             instructions: finalInstructions,
             temperature: finalTemperature,
             task_variant_id: finalVariantId,
+            reasoning_effort: effort,
+            reasoning_budget: budget,
           };
 
           // We need to find or create the version that corresponds to these properties
@@ -558,6 +566,7 @@ export function PlaygroundContent(props: PlaygroundContentBodyProps) {
       fetchOrganizationSettings,
       setAbortController,
       findAbortController,
+      modelsReasoning,
     ]
   );
 
@@ -671,6 +680,21 @@ export function PlaygroundContent(props: PlaygroundContentBodyProps) {
       handleRunTask(index, options);
     },
     [handleRunTask, setSchemaModels, saveToHistoryForParameters, saveToHistoryForInput]
+  );
+
+  const setModelsReasoningAndRunTask = useCallback(
+    (index: number, reasoning: string | undefined) => {
+      setModelsReasoning(index, reasoning);
+      const options = reasoning
+        ? {
+            externalReasoning: reasoning,
+          }
+        : undefined;
+      saveToHistoryForParameters();
+      saveToHistoryForInput();
+      handleRunTask(index, options);
+    },
+    [handleRunTask, setModelsReasoning, saveToHistoryForInput, saveToHistoryForParameters]
   );
 
   const voidInput = useMemo(() => {
@@ -1243,6 +1267,8 @@ export function PlaygroundContent(props: PlaygroundContentBodyProps) {
                   improveInstructions={improveInstructions}
                   models={schemaModels}
                   onModelsChange={setModelsAndRunTask}
+                  modelsReasoning={modelsReasoning}
+                  onModelsReasoningChange={setModelsReasoningAndRunTask}
                   outputSchema={outputSchema}
                   showDiffMode={showDiffMode}
                   setShowDiffMode={setShowDiffMode}

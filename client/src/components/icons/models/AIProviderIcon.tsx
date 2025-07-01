@@ -1,4 +1,4 @@
-import { AI_PROVIDERS_METADATA } from '@/components/AIModelsCombobox/utils';
+import { AI_PROVIDERS_METADATA } from '@/lib/modelMetadataUtils';
 import { cn } from '@/lib/utils/cn';
 import { Provider } from '@/types/workflowAI';
 import { MysteryModelIcon } from './mysteryModelIcon';
