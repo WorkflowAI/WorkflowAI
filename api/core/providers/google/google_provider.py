@@ -99,6 +99,11 @@ class GoogleProvider(GoogleProviderBase[GoogleProviderConfig]):
     def _default_config(cls, index: int) -> GoogleProviderConfig:
         return GoogleProviderConfig.default(index)
 
+    @property
+    @override
+    def max_number_of_file_urls(self):
+        return 10
+
     @classmethod
     def sanitize_config(cls, config: GoogleProviderConfig) -> GoogleProviderConfig:
         return config.sanitize()
