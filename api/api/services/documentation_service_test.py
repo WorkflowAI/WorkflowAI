@@ -473,10 +473,12 @@ async def test_search_documentation_by_query_success(
     class MockSearchResult(NamedTuple):
         relevant_documentation_file_paths: list[str]
         missing_doc_sections_feedback: str | None
+        unsupported_feature_feedback: str | None
 
     mock_search_agent.return_value = MockSearchResult(
         relevant_documentation_file_paths=["reference/api", "guides/authentication"],
         missing_doc_sections_feedback=None,
+        unsupported_feature_feedback=None,
     )
 
     query = "How to authenticate with the API?"
@@ -650,10 +652,12 @@ async def test_search_documentation_by_query_partial_matches(
     class MockSearchResult(NamedTuple):
         relevant_documentation_file_paths: list[str]
         missing_doc_sections_feedback: str | None
+        unsupported_feature_feedback: str | None
 
     mock_search_agent.return_value = MockSearchResult(
         relevant_documentation_file_paths=["existing-section", "non-existent-section", "another-section"],
         missing_doc_sections_feedback=None,
+        unsupported_feature_feedback=None,
     )
 
     query = "test query"
