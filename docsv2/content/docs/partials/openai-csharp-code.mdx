@@ -1,0 +1,22 @@
+---
+title: OpenAI C# Code
+summary: How to use the official OpenAI .NET SDK with WorkflowAI. WorkflowAI exposes a compatible OpenAI API endpoint. The only changes you need to make are updating the endpoint and API key.
+---
+
+```csharp
+using OpenAI;
+
+// setup WorkflowAI client
+OpenAIClient client = new OpenAIClient(
+    apiKey: "wai-***", // use create_api_key MCP tool // [!code highlight]
+    new OpenAIClientOptions
+    {
+        Endpoint = new Uri("https://run.workflowai.com/v1") // [!code highlight]
+    }
+);
+
+ChatClient chatClient = client.GetChatClient("model-name");
+ChatCompletion completion = chatClient.CompleteChat(
+    // your existing code
+);
+``` 

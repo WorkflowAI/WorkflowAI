@@ -250,7 +250,7 @@ class AbstractRunner(
         cached = await self._cache_or_none(builder.task_input, cache)
         if cached is not None:
             # Hack to make sure the returned built task run is the same as the cached one
-            builder._task_run = cached  # type:ignore
+            builder._task_run = cached  # pyright: ignore [reportPrivateUsage]
             # Updating the builder id to match the cached one
             builder.id = cached.id
             return cached
@@ -306,6 +306,15 @@ class AbstractRunner(
 
         async with self._wrap_for_metric():
             async for o in self._stream_task_output(builder.task_input):
+                # Making sure the chunk is built
+                if o.final:
+                    if builder.task_run:
+                        _logger.warning(
+                            "Task run already built. Likely had multiple final chunks",
+                            extra={"task_id": builder.task.id},
+                        )
+                    # Forcing here, just in case we are in a case where we had multiple final chunks
+                    builder.build(o, force=True)
                 yield o
 
     @classmethod

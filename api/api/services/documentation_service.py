@@ -293,6 +293,15 @@ class DocumentationService:
                     },
                 )
 
+            # Log warning for cases where the agent has reported an unsupported feature
+            if result and result.unsupported_feature_feedback:
+                _logger.warning(
+                    "Documentation search agent has reported an unsupported feature",
+                    extra={
+                        "unsupported_feature_feedback": result.unsupported_feature_feedback,
+                    },
+                )
+
             # If agent did not report any missing doc sections but no relevant doc sections were found, we log a warning too
             if result and not result.missing_doc_sections_feedback and not result.relevant_documentation_file_paths:
                 _logger.warning(

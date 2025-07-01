@@ -1,4 +1,5 @@
 import datetime
+import re
 
 import pytest
 from pydantic import BaseModel
@@ -458,3 +459,20 @@ class TestReasoningModel:
         assert reasoning.low
         assert reasoning.medium
         assert reasoning.high
+
+
+def _filter_o_models():
+    for model in Model:
+        if re.match(r"^o\d+", model.value) and isinstance(MODEL_DATAS[model], FinalModelData):
+            yield model
+
+
+@pytest.mark.parametrize("model", _filter_o_models())
+def test_o_models_do_not_support_temperature(model: Model):
+    model_data = MODEL_DATAS[model]
+    assert isinstance(model_data, ModelData), "sanity"
+
+    assert not model_data.supports_temperature, f"Model {model} supports temperature"
+    assert not model_data.supports_top_p, f"Model {model} supports top_p"
+    assert not model_data.supports_presence_penalty, f"Model {model} supports presence_penalty"
+    assert not model_data.supports_frequency_penalty, f"Model {model} supports frequency_penalty"
