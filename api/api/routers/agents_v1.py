@@ -89,10 +89,6 @@ async def build_agent(
 
 class CreateAgentRequest(BaseModel):
     id: str = Field(default="", description="The agent id, must be unique per tenant and URL safe")
-    is_proxy_agent: bool = Field(
-        default=False,
-        description="Whether the agent is a proxy agent",
-    )
     input_schema: dict[str, Any] = Field(description="The input schema for the agent")
     output_schema: dict[str, Any] = Field(description="The output schema for the agent")
     name: str = Field(
