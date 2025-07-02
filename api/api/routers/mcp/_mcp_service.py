@@ -64,8 +64,11 @@ _logger = logging.getLogger(__name__)
 
 
 # Claude Code only support 25k tokens, for example.
-# Overall it's a good practice to limit the tool return tokens to avoid overflowing the coding agents context.
-MAX_TOOL_RETURN_TOKENS = 20000
+# (see: `MAX_MCP_OUTPUT_TOKENS` in https://docs.anthropic.com/en/docs/claude-code/settings#global-configuration)
+# Set to 90% of 25k tokens to maximize data returned while avoiding context overflow.
+# We leave 10% buffer because the tokenizer for Claude might be different than the GPT-4o tokenizer used here.
+# Returning more data is usually valuable for the AI agent.
+MAX_TOOL_RETURN_TOKENS = 22500
 
 
 class MCPService:
@@ -180,6 +183,7 @@ class MCPService:
         agent_id: str | None,
         run_id: str | None,
         run_url: str | None,
+        truncate: bool = False,
     ) -> MCPRun:
         """Get details of a specific agent run."""
 
@@ -199,6 +203,7 @@ class MCPService:
             data.version,
             data.variant.output_schema.json_schema if data.variant else None,
             self.tenant.app_run_url(agent_id, run_id),
+            truncate=truncate,
         )
 
     async def _get_agent_stats(

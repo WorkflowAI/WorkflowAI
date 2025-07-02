@@ -194,6 +194,13 @@ async def get_run(
         str | None,
         Field(description="The url of the run to fetch details for"),
     ] = None,
+    truncate: Annotated[
+        bool,
+        Field(
+            description="Whether to truncate extra long fields in the run details. "
+            "Set to true if the run details response is too long",
+        ),
+    ] = False,
 ) -> MCPToolReturn[MCPRun]:
     """<when_to_use>
     To investigate a specific run of a WorkflowAI agent for debugging, improvement, or troubleshooting. This is particularly useful for:
@@ -232,7 +239,7 @@ async def get_run(
     This data structure provides everything needed for debugging, performance analysis, cost tracking, and understanding the complete execution context of your WorkflowAI agent.
     </returns>"""
     service = await get_mcp_service()
-    return await mcp_wrap(service.get_run(agent_id, run_id, run_url))
+    return await mcp_wrap(service.get_run(agent_id, run_id, run_url, truncate=truncate))
 
 
 @_mcp.tool()
@@ -260,6 +267,8 @@ async def get_agent_versions(
     </when_to_use>
     <returns>
     Returns the details of one or more versions of a WorkflowAI agent.
+    Run details are truncated when searching. If you need the full input or messages data, use the
+    `fetch_run_details` tool.
     </returns>"""
     # TODO: remind the agent what an AgentVersion is ?
     service = await get_mcp_service()
@@ -498,7 +507,7 @@ async def search_runs(
     )
 
 
-@_mcp.tool()
+# @_mcp.tool()
 async def get_deployment_confirmation_url(
     agent_id: Annotated[
         str,
@@ -633,7 +642,18 @@ def _get_description_search_documentation_tool() -> str:
 
     available_pages = documentation_service.get_available_pages_descriptions()
 
-    return f"""Search WorkflowAI documentation OR fetch a specific documentation page.
+    return f"""🔍 **CRITICAL: Always search documentation before performing WorkflowAI tasks.**
+
+Search WorkflowAI documentation OR fetch a specific documentation page.
+
+     <mandatory_first_step>
+     **BEFORE starting any WorkflowAI task, you MUST:**
+     1. First, read the "foundations" page to understand core concepts and architecture
+     2. Search or read relevant documentation pages for the specific task you're performing
+     3. Only proceed with other tools after consulting the appropriate documentation
+
+     This ensures you have the correct context and approach for WorkflowAI operations.
+     </mandatory_first_step>
 
      <how_to_use>
      Enable MCP clients to explore WorkflowAI documentation through a dual-mode search tool:
