@@ -136,18 +136,17 @@ class AgentCreationService:
                     ),
                 )
 
-        acc = ""
+        assistant_answer = ""
         agent_creation_tool_call: CreateAgentToolCall | None = None
         async for chunk in agent_creation_agent(openai_messages):  # pyright: ignore[reportArgumentType]
-            if chunk.assistant_answer:
-                acc += chunk.assistant_answer
+            assistant_answer = chunk.assistant_answer
 
             if chunk.agent_creation_tool_call:
                 agent_creation_tool_call = chunk.agent_creation_tool_call
 
             else:
                 yield AgentCreationChatResponse(
-                    assistant_answer=acc,
+                    assistant_answer=assistant_answer,
                     agent_creation_result=None,
                 )
 
@@ -161,6 +160,6 @@ class AgentCreationService:
                 agent_creation_tool_call=agent_creation_tool_call,
             )
             yield AgentCreationChatResponse(
-                assistant_answer=acc,
+                assistant_answer=assistant_answer,
                 agent_creation_result=agent_creation_result,
             )
