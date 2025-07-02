@@ -1622,11 +1622,13 @@ class MetaAgentService:
         if updated_output_schema_structure:
             tool_call_to_return = EditOutputSchemaStructureToolCall(
                 updated_output_schema=updated_output_schema_structure,
+                auto_run=True,
             )
 
         if updated_output_schema_description_and_examples:
             tool_call_to_return = EditOutputSchemaDescriptionAndExamplesToolCall(
                 updated_output_schema=updated_output_schema_description_and_examples,
+                auto_run=True,
             )
 
         return tool_call_to_return
