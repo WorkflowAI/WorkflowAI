@@ -66,6 +66,7 @@ _logger = logging.getLogger(__name__)
 # Claude Code only support 25k tokens, for example.
 # (see: `MAX_MCP_OUTPUT_TOKENS` in https://docs.anthropic.com/en/docs/claude-code/settings#global-configuration)
 # Set to 90% of 25k tokens to maximize data returned while avoiding context overflow.
+# We leave 10% buffer because the tokenizer for Claude might be different than the GPT-4o tokenizer used here.
 # Returning more data is usually valuable for the AI agent.
 MAX_TOOL_RETURN_TOKENS = 22500
 
