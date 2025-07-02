@@ -93,6 +93,8 @@ class AgentCreationService:
 
         prepared_run = await handler.prepare_run(completion_request, user_org)
 
+        # Using the OpenAIProxyHandler is the quickest way to create an agent and a run.
+        # Also, having a run_id make the work easier for the frontend to display the right playground state right at agent creation.
         response = await handler.handle_prepared_run(
             prepared_run=prepared_run,
             body=completion_request,
