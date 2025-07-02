@@ -16,7 +16,7 @@ from api.routers.openai_proxy._openai_proxy_models import (
 from api.services.feedback_svc import FeedbackTokenGenerator
 from api.services.groups import GroupService
 from api.services.run import RunService
-from core.agents.agent_creation_agent import agent_creation_agent
+from core.agents.agent_creation_agent import CreateAgentToolCall, agent_creation_agent
 from core.domain.events import EventRouter
 from core.domain.fields.chat_message import ChatMessage
 from core.domain.tenant_data import TenantData
@@ -48,6 +48,7 @@ class AgentCreationService:
         run_service: RunService,
         event_router: EventRouter,
         feedback_generator: FeedbackTokenGenerator,
+        agent_creation_tool_call: CreateAgentToolCall,
     ):
         # TODO: plug actual data from agent tool call
 
@@ -59,24 +60,35 @@ class AgentCreationService:
             feedback_generator=feedback_generator,
         )
 
+        messages = [
+            OpenAIProxyMessage(
+                role="system",
+                content=agent_creation_tool_call.system_message_content,
+            ),
+        ]
+        if agent_creation_tool_call.user_message_content:
+            messages.append(
+                OpenAIProxyMessage(
+                    role="user",
+                    content=agent_creation_tool_call.user_message_content,
+                ),
+            )
+
         # Create a completion request that will be executed
         completion_request = OpenAIProxyChatCompletionRequest(
             model="gpt-4o-latest",
-            messages=[
-                OpenAIProxyMessage(
-                    role="system",
-                    content="You are a helpful assistant called {{name}}",
-                ),
-            ],
-            response_format=OpenAIProxyResponseFormat(
-                type="json_schema",
-                json_schema=OpenAIProxyResponseFormat.JsonSchema(
-                    schema={"type": "object", "properties": {"answer": {"type": "string"}}},
-                ),
-            ),
-            agent_id="example-agent",
+            messages=messages,
+            agent_id=agent_creation_tool_call.agent_name,
             stream=False,
         )
+
+        if agent_creation_tool_call.response_format:
+            completion_request.response_format = OpenAIProxyResponseFormat(
+                type="json_schema",
+                json_schema=OpenAIProxyResponseFormat.JsonSchema(
+                    schema=agent_creation_tool_call.response_format,
+                ),
+            )
 
         prepared_run = await handler.prepare_run(completion_request, user_org)
 
@@ -133,7 +145,7 @@ class AgentCreationService:
             if chunk.assistant_answer:
                 acc += chunk.assistant_answer
 
-            if chunk.tool_call and not has_created_agent:
+            if chunk.agent_creation_tool_call and not has_created_agent:
                 has_created_agent = True
                 agent_creation_result = await self._handle_agent_creation(
                     user_org=user_org,
@@ -141,6 +153,7 @@ class AgentCreationService:
                     run_service=run_service,
                     event_router=event_router,
                     feedback_generator=feedback_generator,
+                    agent_creation_tool_call=chunk.agent_creation_tool_call,
                 )
                 yield AgentCreationChatResponse(
                     assistant_answer=acc,

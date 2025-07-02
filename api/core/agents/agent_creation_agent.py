@@ -5,7 +5,7 @@ from typing import Any, AsyncIterator
 
 from openai import AsyncOpenAI
 from openai.types.chat.chat_completion_message_param import ChatCompletionMessageParam
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
@@ -16,10 +16,12 @@ Trigger agent creation when you have enough information to create a new agent.
 
 
 class CreateAgentToolCall(BaseModel):
-    agent_name: str
-    system_message_content: str
-    user_message_content: str | None = None
-    response_format: dict[str, Any] | None = None
+    agent_name: str = Field(description="The name of the agent to create, in snake_case")
+    system_message_content: str = Field(description="The system message content")
+    user_message_content: str | None = Field(description="The user message content")
+    response_format: dict[str, Any] | None = Field(
+        description="In case the agent needs to output structured data, the schema of the data to be output, always strating with `type: object`, `properties`: [...], `required`: [...]",
+    )
 
 
 def parse_tool_call(tool_call: Any) -> CreateAgentToolCall | None:
@@ -39,7 +41,7 @@ def parse_tool_call(tool_call: Any) -> CreateAgentToolCall | None:
 
 class AgentCreationAgentOutput(BaseModel):
     assistant_answer: str
-    tool_call: CreateAgentToolCall | None
+    agent_creation_tool_call: CreateAgentToolCall | None
 
 
 async def agent_creation_agent(
@@ -88,5 +90,5 @@ async def agent_creation_agent(
 
     yield AgentCreationAgentOutput(
         assistant_answer="",
-        tool_call=parsed_tool_call,
+        agent_creation_tool_call=parsed_tool_call,
     )
