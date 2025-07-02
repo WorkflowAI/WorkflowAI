@@ -13,6 +13,7 @@ from api.routers.openai_proxy._openai_proxy_models import (
     OpenAIProxyMessage,
     OpenAIProxyResponseFormat,
 )
+from api.services.documentation_service import DocumentationService
 from api.services.feedback_svc import FeedbackTokenGenerator
 from api.services.groups import GroupService
 from api.services.run import RunService
@@ -110,6 +111,12 @@ class AgentCreationService:
             run_id=response.id.split("/")[-1],
         )
 
+    async def _get_tools_docs(self) -> str:
+        tool_docs = await DocumentationService().get_documentation_by_path(
+            paths=["agents/tools"],
+        )
+        return "\n".join([doc.content for doc in tool_docs])
+
     async def stream_agent_creation(
         self,
         user_org: TenantData,
@@ -136,9 +143,11 @@ class AgentCreationService:
                     ),
                 )
 
+        tools_docs = await self._get_tools_docs()
+
         assistant_answer = ""
         agent_creation_tool_call: CreateAgentToolCall | None = None
-        async for chunk in agent_creation_agent(openai_messages):  # pyright: ignore[reportArgumentType]
+        async for chunk in agent_creation_agent(openai_messages, tools_docs):  # pyright: ignore[reportArgumentType]
             assistant_answer = chunk.assistant_answer
 
             if chunk.agent_creation_tool_call:

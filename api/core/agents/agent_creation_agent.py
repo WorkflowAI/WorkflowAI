@@ -29,7 +29,7 @@ DO NOT create an agent if:
 
 DO CREATE an agent if:
 - You have a clear task definition, even if some details need refinement
-- Input/output are defined but may need clarification (you can create and ask for refinement)
+- Input/output are defined but may need clarification (you can create and user can adjust later)
 - The task is achievable through LLM reasoning with optional tools
 
 Examples:
@@ -86,21 +86,6 @@ When using input variables, show them in messages using {{variable_name}} syntax
 </input_variables_decision_logic>
 
 <hosted_tools_decision_logic>
-When to recommend hosted tools:
-
-RECOMMEND @web-search when:
-- Agent needs current/real-time information
-- Task involves research or fact-finding
-- Need to find information not in training data
-
-RECOMMEND @browser-text when:
-- Agent needs to read content from URLs
-- Processing web pages or online documents
-- User mentions specific websites/links
-
-RECOMMEND other tools based on specific needs:
-- @calculator for mathematical computations
-- Data processing tools for structured data tasks
 
 DO NOT recommend tools when:
 - Agent task is self-contained with provided input
@@ -108,12 +93,14 @@ DO NOT recommend tools when:
 - Simple text processing that LLM can handle alone
 
 Examples:
-✅ "Create agent that analyzes current news trends" → needs @web-search
+✅ "Create agent that analyzes current news trends" → needs @browser-text
 ✅ "Process content from company websites" → needs @browser-text
 ❌ "Summarize provided documents" → input is provided, no tools needed
 ❌ "Simple chat agent" → conversational, no external data needed
 
-When recommending tools, embed them directly in the system message content.
+When recommending tools, embed them directly in the system message content Ex: "To fetch an URL, use @browser-text".
+
+Additional docs (mentions the currently available tools): {{tools_docs}}
 </hosted_tools_decision_logic>
 
 <system_message_content_guidelines>
@@ -227,6 +214,7 @@ class AgentCreationAgentOutput(BaseModel):
 
 async def agent_creation_agent(
     messages: list[ChatCompletionMessageParam],
+    tools_docs: str,
 ) -> AsyncIterator[AgentCreationAgentOutput]:
     client = AsyncOpenAI(
         api_key=os.environ["WORKFLOWAI_API_KEY"],
@@ -237,14 +225,15 @@ async def agent_creation_agent(
         model="agent-creation-agent/claude-sonnet-4-latest",
         messages=[
             {"role": "system", "content": INSTRUCTIONS},
-            {"role": "user", "content": "Help me create an agent based on the following conversation:"},
             *messages,
         ],
         stream=True,
         temperature=0.0,
         extra_body={
+            "input": {
+                "tools_docs": tools_docs,
+            },
             "temperature": 0.0,
-            "use_cache": "never",
         },
         tools=[
             {
