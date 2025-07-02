@@ -6,16 +6,18 @@ from fastapi import APIRouter, Query
 from pydantic import BaseModel, Field, model_validator
 from typing_extensions import Literal
 
+from api.dependencies.analytics import UserPropertiesDep
 from api.dependencies.event_router import EventRouterDep
 from api.dependencies.security import RequiredUserOrganizationDep
-from api.dependencies.services import AnalyticsServiceDep
+from api.dependencies.services import AnalyticsServiceDep, InternalTasksServiceDep
 from api.dependencies.storage import StorageDep
 from api.services.messages.messages_utils import json_schema_for_template
 from api.tags import RouteTags
+from core.agents.chat_task_schema_generation.chat_task_schema_generation_task import AgentSchemaJson
 from core.domain.analytics_events.analytics_events import CreatedTaskProperties, TaskProperties
 from core.domain.errors import BadRequestError
 from core.domain.events import TaskSchemaCreatedEvent
-from core.domain.fields.chat_message import ChatMessage
+from core.domain.fields.chat_message import AssistantChatMessage, ChatMessage, UserChatMessage
 from core.domain.message import Message
 from core.domain.page import Page
 from core.domain.task_io import SerializableTaskIO
@@ -26,6 +28,117 @@ from core.utils.schema_sanitation import streamline_schema
 from core.utils.templates import InvalidTemplateError, extract_variable_schema
 
 router = APIRouter(prefix="/v1/{tenant}/agents", tags=[RouteTags.AGENTS])
+
+
+class BuildAgentMessage(BaseModel):
+    content: str
+    role: Literal["USER", "ASSISTANT"]
+
+    class AgentSchema(BaseModel):
+        agent_name: str = Field(description="The name of the agent in Title Case", serialization_alias="agent_name")
+        output_json_schema: dict[str, Any] | None = Field(
+            default=None,
+            description="The JSON schema of the agent output",
+        )
+
+    agent_schema: AgentSchema | None = Field(
+        default=None,
+        description="The agent schema returned as part of the message",
+    )
+
+
+class BuildAgentRequest(BaseModel):
+    messages: list[BuildAgentMessage] | None = Field(
+        default=None,
+        description="The previous messages of the agent builder process",
+    )
+
+
+class BuildAgentResponse(BaseModel):
+    message: BuildAgentMessage
+
+
+def _convert_build_messages_to_chat_messages(messages: list[BuildAgentMessage] | None) -> list[ChatMessage]:
+    """Convert BuildAgentMessage format to ChatMessage format for internal service"""
+    if not messages:
+        return []
+
+    chat_messages: list[ChatMessage] = []
+    for msg in messages:
+        if msg.role == "USER":
+            chat_messages.append(UserChatMessage(content=msg.content))
+        elif msg.role == "ASSISTANT":
+            chat_messages.append(AssistantChatMessage(content=msg.content))
+
+    return chat_messages
+
+
+def _extract_existing_agent_schema(messages: list[BuildAgentMessage] | None) -> AgentSchemaJson | None:
+    """Extract the most recent agent schema from the messages"""
+    if not messages:
+        return None
+
+    # Look for the most recent assistant message with an agent schema
+    for msg in reversed(messages):
+        if msg.role == "ASSISTANT" and msg.agent_schema:
+            return AgentSchemaJson(
+                agent_name=msg.agent_schema.agent_name,
+                input_json_schema=None,  # Build agent only deals with output schemas
+                output_json_schema=msg.agent_schema.output_json_schema,
+            )
+
+    return None
+
+
+@router.post(
+    "/build/messages",
+    description="Prepare a new agent based on natural language queries, allowing for multiple iterations",
+)
+async def build_agent(
+    request: BuildAgentRequest,
+    internal_tasks: InternalTasksServiceDep,
+    user_properties: UserPropertiesDep,
+) -> BuildAgentResponse:
+    # Convert the messages to the format expected by the internal service
+    chat_messages = _convert_build_messages_to_chat_messages(request.messages)
+
+    # Extract existing agent schema from the messages
+    existing_task = _extract_existing_agent_schema(request.messages)
+
+    # Add a default user message if no messages are provided
+    if not chat_messages:
+        chat_messages: list[ChatMessage] = [UserChatMessage(content="Create a new agent based on our conversation.")]
+
+    # Use the internal service to generate the agent schema using proxy mode (output_schema_builder_wrapper)
+    # We stream and take the final result
+    agent_schema = None
+    assistant_answer = ""
+
+    async for schema, answer in internal_tasks.stream_task_schema_iterations(
+        chat_messages=chat_messages,
+        user_email=user_properties.user_email,
+        existing_task=existing_task,
+        is_proxy_agent=True,  # This ensures we use output_schema_builder_wrapper
+    ):
+        # Keep updating with the latest values as they stream
+        agent_schema = schema
+        assistant_answer = answer
+
+    # Convert the response back to the expected format
+    response_agent_schema = None
+    if agent_schema:
+        response_agent_schema = BuildAgentMessage.AgentSchema(
+            agent_name=agent_schema.agent_name,
+            output_json_schema=agent_schema.output_json_schema,
+        )
+
+    return BuildAgentResponse(
+        message=BuildAgentMessage(
+            content=assistant_answer,
+            role="ASSISTANT",
+            agent_schema=response_agent_schema,
+        ),
+    )
 
 
 class CreateAgentRequest(BaseModel):
@@ -113,8 +226,14 @@ async def create_agent(
         task_id=request.id,
         task_schema_id=0,
         name=request.name,
-        input_schema=SerializableTaskIO.from_json_schema(request.input_schema, streamline=request.sanitize_schemas),
-        output_schema=SerializableTaskIO.from_json_schema(request.output_schema, streamline=request.sanitize_schemas),
+        input_schema=SerializableTaskIO.from_json_schema(
+            request.input_schema or {},
+            streamline=request.sanitize_schemas,
+        ),
+        output_schema=SerializableTaskIO.from_json_schema(
+            request.output_schema or {},
+            streamline=request.sanitize_schemas,
+        ),
         created_at=datetime_factory(),
         creation_chat_messages=request.chat_messages,
     )
@@ -205,40 +324,3 @@ async def extract_template(request: ExtractTemplateRequest) -> ExtractTemplateRe
             details=e.serialize_details(),
         )
     return ExtractTemplateResponse(json_schema=json_schema, last_templated_index=last_templated_index)
-
-
-class BuildAgentMessage(BaseModel):
-    content: str
-    role: Literal["USER", "ASSISTANT"]
-
-    class AgentSchema(BaseModel):
-        agent_name: str = Field(description="The name of the agent in Title Case", serialization_alias="agent_name")
-        output_json_schema: dict[str, Any] | None = Field(
-            default=None,
-            description="The JSON schema of the agent output",
-        )
-
-    agent_schema: AgentSchema | None = Field(
-        default=None,
-        description="The agent schema returned as part of the message",
-    )
-
-
-class BuildAgentRequest(BaseModel):
-    messaes: list[BuildAgentMessage] | None = Field(
-        default=None,
-        description="The previous messages of the agent builder process",
-    )
-
-
-class BuildAgentResponse(BaseModel):
-    message: BuildAgentMessage
-
-
-@router.post(
-    "/new",
-    description="Prepare a new agent based on natural language queries, allowing for multiple iterations",
-)
-async def generate_via_chat(
-    request: BuildAgentRequest,
-) -> BuildAgentResponse: ...
