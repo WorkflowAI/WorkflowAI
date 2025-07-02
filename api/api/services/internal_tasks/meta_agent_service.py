@@ -262,6 +262,7 @@ class EditOutputSchemaStructureToolCall(MetaAgentToolCall):
         description="The updated output schema for the agent.",
     )
 
+    # Only for typing compatibility.
     def to_domain(self) -> None:
         return None
 
@@ -273,6 +274,7 @@ class EditOutputSchemaDescriptionAndExamplesToolCall(MetaAgentToolCall):
         description="The updated output schema for the agent.",
     )
 
+    # Only for typing compatibility.    # Only for typing compatibility.
     def to_domain(self) -> None:
         return None
 
