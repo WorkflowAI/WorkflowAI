@@ -136,32 +136,30 @@ class AgentCreationService:
                     ),
                 )
 
-        acc = ""
+        assistant_answer = ""
+        agent_creation_tool_call: CreateAgentToolCall | None = None
         async for chunk in agent_creation_agent(openai_messages):  # pyright: ignore[reportArgumentType]
-            self.logger.info(f"agent_creation_agent Chunk: {chunk}")
+            assistant_answer = chunk.assistant_answer
 
-            has_created_agent = False
-
-            if chunk.assistant_answer:
-                acc += chunk.assistant_answer
-
-            if chunk.agent_creation_tool_call and not has_created_agent:
-                has_created_agent = True
-                agent_creation_result = await self._handle_agent_creation(
-                    user_org=user_org,
-                    group_service=group_service,
-                    run_service=run_service,
-                    event_router=event_router,
-                    feedback_generator=feedback_generator,
-                    agent_creation_tool_call=chunk.agent_creation_tool_call,
-                )
-                yield AgentCreationChatResponse(
-                    assistant_answer=acc,
-                    agent_creation_result=agent_creation_result,
-                )
+            if chunk.agent_creation_tool_call:
+                agent_creation_tool_call = chunk.agent_creation_tool_call
 
             else:
                 yield AgentCreationChatResponse(
-                    assistant_answer=acc,
+                    assistant_answer=assistant_answer,
                     agent_creation_result=None,
                 )
+
+        if agent_creation_tool_call:
+            agent_creation_result = await self._handle_agent_creation(
+                user_org=user_org,
+                group_service=group_service,
+                run_service=run_service,
+                event_router=event_router,
+                feedback_generator=feedback_generator,
+                agent_creation_tool_call=agent_creation_tool_call,
+            )
+            yield AgentCreationChatResponse(
+                assistant_answer=assistant_answer,
+                agent_creation_result=agent_creation_result,
+            )
