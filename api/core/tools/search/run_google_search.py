@@ -5,9 +5,8 @@ import httpx
 TIMEOUT_SECONDS = 30
 
 
-# NOTE: This function's docstring is exposed as public API documentation
-# via the GET /v1/tools/hosted endpoint. Changes to the docstring will
-# be reflected in external documentation.
+# NOTE: Tool descriptions are now defined in api/core/tools/tool_definitions.py
+# This docstring is for internal documentation only.
 async def run_google_search(query: str) -> str:
     """Performs a Google web search using Serper.dev API and returns search results including links, snippets, and related information in JSON format."""
 

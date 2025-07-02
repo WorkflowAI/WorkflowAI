@@ -19,6 +19,7 @@ from api.routers.mcp._mcp_models import (
     ConciseLatestModelResponse,
     ConciseModelResponse,
     EmptyModel,
+    HostedToolItem,
     MajorVersion,
     MCPRun,
     MCPToolReturn,
@@ -34,9 +35,8 @@ from api.routers.openai_proxy._openai_proxy_models import (
     OpenAIProxyChatCompletionResponse,
 )
 from api.services.documentation_service import DocumentationService
-from api.services.tools_service import ToolsService
-from core.domain.tool import Tool
 from core.storage.backend_storage import BackendStorage
+from core.tools.tool_definitions import AVAILABLE_TOOLS
 from core.utils.schema_formatter import format_schema_as_yaml_description
 
 logger = logging.getLogger(__name__)
@@ -601,22 +601,6 @@ async def create_api_key() -> MCPToolReturn[CreateApiKeyResponse]:
     )
 
 
-class HostedToolItem(BaseModel):
-    """A tool hosted by WorkflowAI.
-    To use a WorkflowAI hosted tool:
-    - either refer to the tool name (e.g., '@search-google') in the first system message of
-    the completion request
-    - pass a tool with a corresponding name and no arguments in the `tools` argument of the completion request
-    """
-
-    name: str = Field(description="The tool handle/name (e.g., '@search-google')")
-    description: str = Field(description="Description of what the tool does")
-
-    @classmethod
-    def from_tool(cls, tool: Tool):
-        return cls(name=tool.name, description=tool.description or "")
-
-
 @_mcp.tool()
 async def list_hosted_tools() -> PaginatedMCPToolReturn[None, HostedToolItem]:
     """
@@ -627,12 +611,19 @@ async def list_hosted_tools() -> PaginatedMCPToolReturn[None, HostedToolItem]:
     </when_to_use>
 
     <returns>
-    Returns a list of all hosted tools available in WorkflowAI, including their names, descriptions.
+    Returns a paginated list of all hosted tools available in WorkflowAI, including their names, descriptions, and pricing information.
     </returns>"""
 
     return PaginatedMCPToolReturn(
         success=True,
-        items=[HostedToolItem.from_tool(tool) for tool in ToolsService.hosted_tools()],
+        items=[
+            HostedToolItem(
+                name=tool.name,
+                description=tool.description,
+                price=tool.price,
+            )
+            for tool in AVAILABLE_TOOLS
+        ],
     )
 
 

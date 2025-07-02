@@ -64,9 +64,8 @@ class PerplexityResponse(BaseModel):
         return content
 
 
-# NOTE: These functions' docstrings are exposed as public API documentation
-# via the GET /v1/tools/hosted endpoint. Changes to the docstrings will
-# be reflected in external documentation.
+# NOTE: Tool descriptions are now defined in api/core/tools/tool_definitions.py
+# These docstrings are for internal documentation only.
 async def run_perplexity_search_default(query: str) -> str:
     """Performs a web search using Perplexity's Sonar model and returns comprehensive results with citations."""
     return await _run_perplexity_search(query, PerplexityModel.SONAR)
