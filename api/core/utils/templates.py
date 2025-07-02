@@ -88,15 +88,17 @@ class TemplateManager:
             raise InvalidTemplateError.from_jinja(e)
 
     async def add_template(self, template: str, key: str | None = None) -> tuple[Template, set[str]]:
+        if not key:
+            key = self._key(template)
         async with self._lock:
             try:
-                return self._template_cache[key or self._key(template)]
+                return self._template_cache[key]
             except KeyError:
                 pass
 
         compiled = await self.compile_template(template)
         async with self._lock:
-            self._template_cache[self._key(template)] = compiled
+            self._template_cache[key] = compiled
         return compiled
 
     async def get_template(self, key: str) -> tuple[Template, set[str]] | None:

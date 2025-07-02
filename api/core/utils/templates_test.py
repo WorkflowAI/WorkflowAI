@@ -1,3 +1,5 @@
+# pyright: reportPrivateUsage=false
+
 import pytest
 
 from core.utils.templates import InvalidTemplateError, TemplateManager, extract_variable_schema
@@ -301,3 +303,24 @@ class TestExtractVariableSchema:
                 "image": {},
             },
         }
+
+
+class TestAddTemplate:
+    async def test_add_template(self, template_manager: TemplateManager):
+        await template_manager.add_template("Hello, {{ name }}!")
+        assert len(template_manager._template_cache) == 1
+        assert list(template_manager._template_cache.keys()) == [
+            "ef6da98fa71e430e09204eec97a368c2823a93bf7d6338c29f2aab8643960862",
+        ]
+        # Add again
+        await template_manager.add_template("Hello, {{ name }}!")
+        assert len(template_manager._template_cache) == 1
+        assert template_manager.get_template("ef6da98fa71e430e09204eec97a368c2823a93bf7d6338c29f2aab8643960862")
+
+    async def test_add_template_with_key(self, template_manager: TemplateManager):
+        await template_manager.add_template("Hello, {{ name }}!", key="hello_name")
+        assert len(template_manager._template_cache) == 1
+        assert list(template_manager._template_cache.keys()) == [
+            "hello_name",
+        ]
+        assert template_manager.get_template("hello_name")
