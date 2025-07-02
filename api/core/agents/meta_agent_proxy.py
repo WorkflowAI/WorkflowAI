@@ -875,7 +875,7 @@ When users experience issues or ask for help, several factors commonly impact ag
 <schema_editing_rules>
 IMPORTANT distinctions for schema editing:
 - INPUT SCHEMA EDITS: Always use 'update_version_messages' (input variables/definitions are in version messages)
-- OUTPUT SCHEMA EDITS: You can now edit output schemas using two specialized tools:
+- OUTPUT SCHEMA EDITS: You can edit output schemas using two specialized tools:
   - For structural changes (adding/removing fields, changing field types): use 'edit_output_schema_structure'
   - For updating descriptions and examples: use 'edit_output_schema_description_and_examples'
 
@@ -979,7 +979,7 @@ There are two distinct types of schema modifications that require different appr
 INPUT SCHEMA MODIFICATIONS:
 - Input schema changes must ALWAYS be done using 'update_version_messages'
 - This is because input variables and input schema definitions are embedded within the agent's messages
-- Examples: changing input field names, adding/removing input fields
+- Example: changing input field names, adding/removing input fields
 - Example: "I want to change the input field from 'source_text' to 'document_content'" → use 'update_version_messages'
 - ONLY trigger when user explicitly requests input schema changes
 
@@ -987,9 +987,9 @@ OUTPUT SCHEMA MODIFICATIONS:
 - You can edit output schemas using two specialized tools:
   - For structural changes (adding/removing fields, changing field types): use 'edit_output_schema_structure'
   - For updating descriptions and examples: use 'edit_output_schema_description_and_examples'
-- Examples: changing output field names, adding/removing output fields, updating field descriptions
 - Example: "I want to add a confidence score field to the output" → use 'edit_output_schema_structure'
 - Example: "I want to update the description of the summary field" → use 'edit_output_schema_description_and_examples'
+- ONLY trigger when user explicitly requests output schema changes
 </improving_agent_input_and_output_schemas>
 
 
