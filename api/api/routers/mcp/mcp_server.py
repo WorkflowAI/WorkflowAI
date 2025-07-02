@@ -764,9 +764,10 @@ async def get_code(
         description="The id of the agent. Example: 'agent_id': 'email-filtering-agent' in metadata, or 'email-filtering-agent' in 'model=email-filtering-agent/gpt-4o-latest'.",
     ),
     model: str | None = Field(description="An AI model if any", default=None),
-    schema_id: int | None = Field(description="A schema id if any. Required when using a deployment", default=None),
-    environment: VersionEnvironment | None = Field(
-        description="A deployment environment if any",
+    # TODO: figure out why using an int and the enum did not work
+    schema_id: str | None = Field(description="A schema id if any. Required when using a deployment", default=None),
+    environment: str | None = Field(
+        description="A deployment environment if any. Either 'dev', 'staging', or 'production'",
         default=None,
     ),
     existing_response_format_object: str | None = Field(
@@ -795,8 +796,8 @@ async def get_code(
             sdk=sdk,
             agent_id=agent_id,
             model=model,
-            schema_id=schema_id,
-            environment=environment,
+            schema_id=int(schema_id) if schema_id else None,
+            environment=VersionEnvironment(environment) if environment else None,
             existing_response_format_object=existing_response_format_object,
         ),
     )
