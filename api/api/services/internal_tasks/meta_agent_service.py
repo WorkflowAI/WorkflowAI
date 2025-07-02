@@ -1708,9 +1708,11 @@ class MetaAgentService:
                         updated_output_schema={
                             "type": "object",
                             "properties": {
-                                "updated_field": {"type": "string"},
-                                "description": "Updated description",
-                                "examples": ["Updated example 1", "Updated example 2"],
+                                "updated_field": {
+                                    "type": "string",
+                                    "description": "Updated description",
+                                    "examples": ["Updated example 1", "Updated example 2"],
+                                },
                             },
                         },
                     ),
