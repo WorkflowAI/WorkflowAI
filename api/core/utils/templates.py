@@ -11,6 +11,7 @@ from jinja2.visitor import NodeVisitor
 
 from core.domain.types import TemplateRenderer
 from core.utils.schemas import JsonSchema
+from core.utils.strings import hash_string
 
 # Compiled regepx to check if instructions are a template
 # Jinja templates use  {%%} for expressions {{}} for variables and {# ... #} for comments
@@ -65,11 +66,11 @@ class InvalidTemplateError(Exception):
 class TemplateManager:
     def __init__(self):
         self._lock = asyncio.Lock()
-        self._template_cache = LRUCache[int, tuple[Template, set[str]]](maxsize=10)
+        self._template_cache = LRUCache[str, tuple[Template, set[str]]](maxsize=10)
         self._template_env = Environment(enable_async=True)
 
-    def _key(self, template: str) -> int:
-        return hash(template)
+    def _key(self, template: str) -> str:
+        return hash_string(template)
 
     @classmethod
     def is_template(cls, template: str) -> bool:
@@ -86,10 +87,10 @@ class TemplateManager:
         except TemplateError as e:
             raise InvalidTemplateError.from_jinja(e)
 
-    async def add_template(self, template: str) -> tuple[Template, set[str]]:
+    async def add_template(self, template: str, key: str | None = None) -> tuple[Template, set[str]]:
         async with self._lock:
             try:
-                return self._template_cache[self._key(template)]
+                return self._template_cache[key or self._key(template)]
             except KeyError:
                 pass
 
@@ -98,11 +99,21 @@ class TemplateManager:
             self._template_cache[self._key(template)] = compiled
         return compiled
 
+    async def get_template(self, key: str) -> tuple[Template, set[str]] | None:
+        try:
+            return self._template_cache[key]
+        except KeyError:
+            return None
+
+    @classmethod
+    async def render_compiled(cls, template: Template, data: dict[str, Any]):
+        return await template.render_async(data)
+
     async def render_template(self, template: str, data: dict[str, Any]):
         """Render the template. Returns the variables that were used in the template"""
         compiled, variables = await self.add_template(template)
 
-        rendered = await compiled.render_async(data)
+        rendered = await self.render_compiled(compiled, data)
         return rendered, variables
 
     @classmethod
