@@ -2,15 +2,19 @@ from collections.abc import Mapping
 from datetime import datetime, timedelta
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Query, Response
+from fastapi import APIRouter, Query
 from pydantic import BaseModel, Field, model_validator
 
-from api.dependencies.analytics import UserPropertiesDep
 from api.dependencies.event_router import EventRouterDep
 from api.dependencies.security import RequiredUserOrganizationDep
-from api.dependencies.services import AnalyticsServiceDep, InternalTasksServiceDep
+from api.dependencies.services import (
+    AgentCreationServiceDep,
+    AnalyticsServiceDep,
+    FeedbackTokenGeneratorDep,
+    GroupServiceDep,
+    RunServiceDep,
+)
 from api.dependencies.storage import StorageDep
-from api.routers._agents_v1_models import BuildAgentMessage, BuildAgentRequest
 from api.services.messages.messages_utils import json_schema_for_template
 from api.tags import RouteTags
 from core.domain.analytics_events.analytics_events import CreatedTaskProperties, TaskProperties
@@ -30,39 +34,57 @@ from core.utils.templates import InvalidTemplateError, extract_variable_schema
 router = APIRouter(prefix="/v1/{tenant}/agents", tags=[RouteTags.AGENTS])
 
 
+class BuildAgentRequest(BaseModel):
+    messages: list[ChatMessage]
+
+
+class BuildAgentResponse(BaseModel):
+    assistant_answer: str | None = None
+
+    class NewAgentRedirect(BaseModel):
+        agent_id: str
+        agent_schema_id: int
+        version_id: str
+        run_id: str
+
+    new_agent_redirect: NewAgentRedirect | None = None
+
+
 @router.post(
     "/build/messages",
     description="Prepare a new agent based on natural language queries, allowing for multiple iterations",
+    responses={
+        200: {
+            "content": {
+                "text/event-stream": {
+                    "schema": BuildAgentResponse.model_json_schema(),
+                },
+            },
+        },
+    },
 )
 async def build_agent(
     request: BuildAgentRequest,
-    internal_tasks: InternalTasksServiceDep,
-    user_properties: UserPropertiesDep,
-) -> Response:
-    async def _stream():
-        """Stream BuildAgentMessage chunks as they are generated"""
-        async for agent_schema, assistant_answer in internal_tasks.stream_task_schema_iterations(
-            chat_messages=request.chat_messages,
-            user_email=user_properties.user_email,
-            existing_task=request.existing_schema,
-            is_proxy_agent=True,  # This ensures we use output_schema_builder_wrapper
+    agent_creation_service: AgentCreationServiceDep,
+    group_service: GroupServiceDep,
+    storage: StorageDep,
+    run_service: RunServiceDep,
+    event_router: EventRouterDep,
+    user_org: RequiredUserOrganizationDep,
+    feedback_generator: FeedbackTokenGeneratorDep,
+):
+    async def _stream_response():
+        async for chunk in agent_creation_service.stream_agent_creation(
+            user_org=user_org,
+            group_service=group_service,
+            run_service=run_service,
+            event_router=event_router,
+            feedback_generator=feedback_generator,
+            messages=request.messages,
         ):
-            # Convert the response to the expected format for each chunk
-            response_agent_schema = None
-            if agent_schema:
-                response_agent_schema = BuildAgentMessage.AgentSchema(
-                    agent_name=agent_schema.agent_name,
-                    output_json_schema=agent_schema.output_json_schema,
-                )
+            yield chunk
 
-            # Yield each chunk as a BuildAgentMessage
-            yield BuildAgentMessage(
-                content=assistant_answer,
-                role="ASSISTANT",
-                agent_schema=response_agent_schema,
-            )
-
-    return safe_streaming_response(_stream, media_type="text/event-stream")
+    return safe_streaming_response(_stream_response)
 
 
 class CreateAgentRequest(BaseModel):
