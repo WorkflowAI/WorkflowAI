@@ -5,6 +5,7 @@ import logging
 from typing import Any
 
 import pytest
+from jsonschema import validate
 from jsonschema.validators import validator_for  # pyright: ignore[reportUnknownVariableType]
 from pydantic import BaseModel, Field
 
@@ -375,6 +376,39 @@ class TestStreamlineSchema:
 
         sanitized = streamline_schema(copy.deepcopy(schema))
         assert sanitized == expected
+
+    def test_nullable_enums(self):
+        """Check that null is added as a possible value for an enum"""
+        schema = streamline_schema(
+            {
+                "properties": {
+                    "success": {
+                        "type": "boolean",
+                    },
+                    "error_origin": {
+                        "oneOf": [
+                            {"type": "null"},
+                            {"type": "string", "enum": ["mcp_client", "our_mcp_server"]},
+                        ],
+                    },
+                },
+                "required": [
+                    "error_origin",
+                    "success",
+                ],
+                "type": "object",
+            },
+        )
+        assert schema == {
+            "type": "object",
+            "properties": {
+                "success": {"type": "boolean"},
+                "error_origin": {"type": ["string", "null"], "enum": ["mcp_client", "our_mcp_server", None]},
+            },
+            "required": ["error_origin", "success"],
+        }
+
+        validate({"success": True, "error_origin": None}, schema)
 
 
 class TestHandleInternalRef:

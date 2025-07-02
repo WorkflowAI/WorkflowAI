@@ -287,7 +287,7 @@ def mock_run_detect_chain_of_thought_task():
 
 
 @pytest.fixture(scope="function")
-async def test_client(int_api_client: AsyncClient, httpx_mock: HTTPXMock, patched_broker: InMemoryBroker):
+async def test_client(int_api_client: AsyncClient, httpx_mock: HTTPXMock, patched_broker: PausableInMemoryBroker):
     clt = IntegrationTestClient(int_api_client, httpx_mock, patched_broker)
     await clt.refresh_org_data()
     return clt

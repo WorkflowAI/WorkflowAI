@@ -194,6 +194,13 @@ async def fetch_run_details(
         str | None,
         Field(description="The url of the run to fetch details for"),
     ] = None,
+    truncate: Annotated[
+        bool,
+        Field(
+            description="Whether to truncate extra long fields in the run details. "
+            "Set to true if the run details response is too long",
+        ),
+    ] = False,
 ) -> MCPToolReturn[MCPRun]:
     """<when_to_use>
     To investigate a specific run of a WorkflowAI agent for debugging, improvement, or troubleshooting. This is particularly useful for:
@@ -232,7 +239,7 @@ async def fetch_run_details(
     This data structure provides everything needed for debugging, performance analysis, cost tracking, and understanding the complete execution context of your WorkflowAI agent.
     </returns>"""
     service = await get_mcp_service()
-    return await mcp_wrap(service.fetch_run_details(agent_id, run_id, run_url))
+    return await mcp_wrap(service.fetch_run_details(agent_id, run_id, run_url, truncate=truncate))
 
 
 @_mcp.tool()
@@ -260,6 +267,8 @@ async def get_agent_versions(
     </when_to_use>
     <returns>
     Returns the details of one or more versions of a WorkflowAI agent.
+    Run details are truncated when searching. If you need the full input or messages data, use the
+    `fetch_run_details` tool.
     </returns>"""
     # TODO: remind the agent what an AgentVersion is ?
     service = await get_mcp_service()
@@ -498,7 +507,7 @@ async def search_runs(
     )
 
 
-@_mcp.tool()
+# @_mcp.tool()
 async def get_deployment_confirmation_url(
     agent_id: Annotated[
         str,
@@ -633,7 +642,18 @@ def _get_description_search_documentation_tool() -> str:
 
     available_pages = documentation_service.get_available_pages_descriptions()
 
-    return f"""Search WorkflowAI documentation OR fetch a specific documentation page.
+    return f"""🔍 **CRITICAL: Always search documentation before performing WorkflowAI tasks.**
+
+Search WorkflowAI documentation OR fetch a specific documentation page.
+
+     <mandatory_first_step>
+     **BEFORE starting any WorkflowAI task, you MUST:**
+     1. First, read the "foundations" page to understand core concepts and architecture
+     2. Search or read relevant documentation pages for the specific task you're performing
+     3. Only proceed with other tools after consulting the appropriate documentation
+
+     This ensures you have the correct context and approach for WorkflowAI operations.
+     </mandatory_first_step>
 
      <how_to_use>
      Enable MCP clients to explore WorkflowAI documentation through a dual-mode search tool:
@@ -687,10 +707,10 @@ async def search_documentation(
 
 
 @_mcp.tool()
-async def create_completion(
+async def test_agent(
     # TODO: we should not need the agent id here
     agent_id: str = Field(
-        description="The id of the user's agent. Example: 'agent_id': 'email-filtering-agent' in metadata, or 'email-filtering-agent' in 'model=email-filtering-agent/gpt-4o-latest'.",
+        description="The id of the agent. Example: 'agent_id': 'email-filtering-agent' in metadata, or 'email-filtering-agent' in 'model=email-filtering-agent/gpt-4o-latest'.",
     ),
     # TODO: we should likely split the completion request object
     request: OpenAIProxyChatCompletionRequest = Field(
@@ -698,20 +718,22 @@ async def create_completion(
     ),
     original_run_id: str | None = Field(
         default=None,
-        description="A run ID to repeat. Parameters provided in the request will override the "
-        "parameters in the original completion request",
+        description="Optional run ID to retry/debug a previous run. When provided, the tool will use the original run's configuration (messages, tools, temperature, etc.) as a baseline, then apply any parameters specified in the request to override or modify the behavior. Useful for debugging failed runs or testing variations of successful runs.",
     ),
 ) -> MCPToolReturn[OpenAIProxyChatCompletionResponse]:
-    """Create a completion for an agent.
+    """Test an agent for debugging and development purposes.
 
     <when_to_use>
-    Use create_completion to:
+    Use test_agent to:
     - Test or compare different AI models without local setup
-    - Create a completion for a WorkflowAI agent (new or existing)
-    - Quickly prototype prompts, structured outputs, or templates
     - Debug agent behavior by testing specific inputs
+    - Quickly prototype prompts, structured outputs, or templates
     - Compare model performance (speed, cost, quality)
     - Retry an existing run with different parameters (requires 'original_run_id' to be provided)
+
+    ⚠️ IMPORTANT: This tool is NOT intended for:
+    - Production integrations or applications
+    - Direct API calls from your application code
 
     Supports all OpenAI API features including structured outputs (Pydantic models),
     prompt templates with Jinja2, input variables, and tool calling.

@@ -4,7 +4,7 @@ import { ColumnDoubleCompare20Filled, ColumnDoubleCompare20Regular } from '@flue
 import { isEqual } from 'lodash';
 import { Plus } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
-import { AIModelCombobox } from '@/components/AIModelsCombobox/aiModelCombobox';
+import { ProxyModelCombobox } from '@/components/ProxyModelsCombobox/ProxyModelCombobox';
 import { Button } from '@/components/ui/Button';
 import { SimpleTooltip } from '@/components/ui/Tooltip';
 import { TASK_RUN_ID_PARAM } from '@/lib/constants';
@@ -21,7 +21,7 @@ import { ModelOutputErrorInformation } from './components/ModelOutputErrorInform
 import { useMinimumCostTaskRun } from './hooks/useMinimumCostTaskRun';
 import { useMinimumLatencyTaskRun } from './hooks/useMinimumLatencyTaskRun';
 import { TaskRunner } from './hooks/useTaskRunners';
-import { PlaygroundModels } from './hooks/utils';
+import { PlaygroundModels, PlaygroundModelsReasoning } from './hooks/utils';
 import { PlaygroundModelOutputContent } from './playgroundModelOutputContent';
 
 function computeHasInputChanged(taskRun: RunV1 | undefined, generatedInput: GeneralizedTaskInput | undefined) {
@@ -45,7 +45,9 @@ type ModelOutputProps = {
   minimumCostTaskRun: RunV1 | undefined;
   minimumLatencyTaskRun: RunV1 | undefined;
   models: PlaygroundModels;
+  modelsReasoning: PlaygroundModelsReasoning;
   onModelsChange: (index: number, newModel: Model | null | undefined) => void;
+  onModelsReasoningChange: (index: number, newReasoning: string | undefined) => void;
   outputSchema: JsonSchema | undefined;
   referenceValue: Record<string, unknown> | undefined;
   onShowEditDescriptionModal: () => void;
@@ -72,7 +74,9 @@ function ModelOutput(props: ModelOutputProps) {
     minimumCostTaskRun,
     minimumLatencyTaskRun,
     models,
+    modelsReasoning,
     onModelsChange,
+    onModelsReasoningChange,
     outputSchema,
     referenceValue,
     onShowEditDescriptionModal,
@@ -130,6 +134,13 @@ function ModelOutput(props: ModelOutputProps) {
     [index, onModelsChange]
   );
 
+  const handleReasoningChange = useCallback(
+    (value: string | undefined) => {
+      onModelsReasoningChange(index, value);
+    },
+    [index, onModelsReasoningChange]
+  );
+
   const taskOutput = useMemo(() => {
     const taskRunOutput = taskRun?.task_output;
     if (hasInputChanged) {
@@ -151,18 +162,18 @@ function ModelOutput(props: ModelOutputProps) {
     <div className='flex flex-col sm:flex-1 sm:w-1/3 pt-3 pb-2 sm:pb-4 justify-between overflow-hidden'>
       <div className='flex flex-col w-full'>
         <div className='flex items-center gap-2 justify-between px-2'>
-          <AIModelCombobox
-            value={currentModel || ''}
+          <ProxyModelCombobox
+            value={currentModel ?? undefined}
+            reasoning={modelsReasoning[index] ?? undefined}
+            onReasoningChange={handleReasoningChange}
             onModelChange={handleModelChange}
             models={aiModels}
             noOptionsMessage='Choose Model'
             fitToContent={false}
             open={openModelCombobox}
             setOpen={setOpenModelCombobox}
-            isProxy={isProxy}
+            isProxy={true}
             taskId={taskId}
-            spreadReasoning
-            reasoningEffort={version?.properties.reasoning_effort ?? undefined}
           />
           <CreateTaskRunButton
             taskRunner={taskRunner}
@@ -227,6 +238,8 @@ type PlaygroundOutputProps = Pick<
   | 'taskId'
   | 'tenant'
   | 'taskSchemaId'
+  | 'modelsReasoning'
+  | 'onModelsReasoningChange'
 > & {
   taskRunners: [TaskRunner, TaskRunner, TaskRunner];
   versionsForRuns: Record<string, VersionV1>;

@@ -29,6 +29,7 @@ from core.utils.ids import id_uint32
 from tests.component.common import (
     LEGACY_TEST_JWT,
     IntegrationTestClient,
+    assert_no_warning_or_error,
     create_task,
     extract_stream_chunks,
     fetch_run,
@@ -493,8 +494,7 @@ class TestChainOfThought:
             {"title": "step title", "step": "step explaination"},
         ]
 
-        warnings = [r for r in caplog.records if r.levelname == "WARNING" or r.levelname == "ERROR"]
-        assert not warnings, "should not have any warnings or errors"
+        assert_no_warning_or_error(caplog)
 
     async def test_run_without_steps(self, test_client: IntegrationTestClient):
         task, iteration = await self.setup_task_and_version(test_client, should_use_chain_of_thought=False)
@@ -1444,7 +1444,7 @@ async def test_tool_call_recursion_streaming(test_client: IntegrationTestClient)
         "greeting": "Hello James!",
     }
     assert fetched_run["llm_completions"][0]["tool_calls"] == [
-        {"tool_name": "@search-google", "tool_input_dict": {"query": "bla"}, "id": "some_id"},
+        {"tool_name": "@search-google", "tool_input_dict": {"query": "bla"}, "id": "some_id", "index": 0},
     ]
 
     assert len(fetched_run["llm_completions"]) == 2

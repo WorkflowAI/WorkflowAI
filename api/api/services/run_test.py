@@ -88,7 +88,7 @@ class TestRun:
             cache="always",
             metadata={"key": "value"},
             trigger="user",
-            serializer=lambda run: run,
+            serializer=lambda run, __: run,
             start_time=1,
         )
 
@@ -134,7 +134,7 @@ class TestRun:
             metadata={"key": "value"},
             trigger="user",
             stream_serializer=_chunk_serializer,
-            serializer=lambda run: run,
+            serializer=lambda run, __: run,
             start_time=1,
         )
 
@@ -188,7 +188,7 @@ class TestRun:
             trigger="user",
             source=None,
             stream_serializer=_chunk_serializer,
-            serializer=lambda run: run,
+            serializer=lambda run, __: run,
             start_time=1,
         )
         assert response and isinstance(response, StreamingResponse)

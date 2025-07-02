@@ -2,7 +2,6 @@ import json
 from collections.abc import Callable, Coroutine
 from typing import Any
 
-from api.routers.mcp._mcp_models import MCPToolReturn
 from core.utils.generics import BM
 
 
@@ -22,12 +21,15 @@ class MCPError(Exception):
 async def mcp_wrap(
     coro: Coroutine[Any, Any, BM],
     message: Callable[[BM], str | None] | None = None,
-) -> MCPToolReturn[BM]:
+):
     """Wraps a coroutine to return a MCPToolReturn and handle MCPError"""
+    # TODO: fix circular import
+    from api.routers.mcp._mcp_models import MCPToolReturn
+
     try:
         value = await coro
     except MCPError as e:
-        return MCPToolReturn(
+        return MCPToolReturn[BM](
             success=False,
             error=str(e),
         )

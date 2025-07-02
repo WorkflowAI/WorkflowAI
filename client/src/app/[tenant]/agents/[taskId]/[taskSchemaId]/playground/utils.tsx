@@ -41,3 +41,13 @@ export function combineReviewAspects(props: CombineReviewAspectsProps): string {
 
   return result;
 }
+
+export function getReasoningEffortAndBudget(reasoning: string | undefined): {
+  effort: string | undefined;
+  budget: number | undefined;
+} {
+  const numberValue = Number(reasoning);
+  const effort = isNaN(numberValue) ? reasoning : undefined;
+  const budget = isNaN(numberValue) ? undefined : numberValue;
+  return { effort, budget };
+}
