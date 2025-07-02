@@ -128,20 +128,21 @@ class AgentCreationService:
     ) -> AsyncIterator[AgentCreationChatResponse]:
         openai_messages: list[ChatCompletionUserMessageParam | ChatCompletionAssistantMessageParam] = []
         for msg in messages:
-            if msg.role == "USER":
-                openai_messages.append(
-                    ChatCompletionUserMessageParam(
-                        role="user",
-                        content=msg.content,
-                    ),
-                )
-            elif msg.role == "ASSISTANT":
-                openai_messages.append(
-                    ChatCompletionAssistantMessageParam(
-                        role="assistant",
-                        content=msg.content,
-                    ),
-                )
+            match msg.role:
+                case "USER":
+                    openai_messages.append(
+                        ChatCompletionUserMessageParam(
+                            role="user",
+                            content=msg.content,
+                        ),
+                    )
+                case "ASSISTANT":
+                    openai_messages.append(
+                        ChatCompletionAssistantMessageParam(
+                            role="assistant",
+                            content=msg.content,
+                        ),
+                    )
 
         tools_docs = await self._get_tools_docs()
 
