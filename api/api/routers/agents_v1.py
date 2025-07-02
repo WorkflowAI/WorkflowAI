@@ -93,14 +93,8 @@ class CreateAgentRequest(BaseModel):
         default=False,
         description="Whether the agent is a proxy agent",
     )
-    input_schema: dict[str, Any] | None = Field(
-        default=None,
-        description="The input schema for the agent, none if for a proxy agent",
-    )
-    output_schema: dict[str, Any] | None = Field(
-        default=None,
-        description="The output schema for the agent",
-    )
+    input_schema: dict[str, Any] = Field(description="The input schema for the agent")
+    output_schema: dict[str, Any] = Field(description="The output schema for the agent")
     name: str = Field(
         default="",
         description="The name of the agent, if not provided, a TitleCase version of the id is used",
@@ -173,11 +167,11 @@ async def create_agent(
         task_schema_id=0,
         name=request.name,
         input_schema=SerializableTaskIO.from_json_schema(
-            request.input_schema or {},
+            request.input_schema,
             streamline=request.sanitize_schemas,
         ),
         output_schema=SerializableTaskIO.from_json_schema(
-            request.output_schema or {},
+            request.output_schema,
             streamline=request.sanitize_schemas,
         ),
         created_at=datetime_factory(),
