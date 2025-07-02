@@ -1,9 +1,9 @@
 import asyncio
 import json
-import os
 from pathlib import Path
 from typing import Any, Literal
 
+from core.domain.consts import WORKFLOWAI_RUN_URL
 from core.domain.task_deployment import TaskDeployment
 from core.domain.task_variant import SerializableTaskVariant
 from core.domain.version_environment import VersionEnvironment
@@ -45,7 +45,7 @@ class CodegenService:
     ) -> str:
         variables: dict[str, Any] = {
             "agent_id": agent_id,
-            "run_url": os.environ["WORKFLOWAI_API_URL"],
+            "run_url": WORKFLOWAI_RUN_URL,
             "input_doc": not environment and not schema_id and not input_schema,
         }
         if existing_response_format_object:
