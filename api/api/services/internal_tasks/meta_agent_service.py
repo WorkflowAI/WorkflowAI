@@ -1570,6 +1570,8 @@ class MetaAgentService:
         run_trigger_config: ProxyMetaAgentOutput.RunTriggerConfig | None,
         generate_input_request: GenerateAgentInputToolCallRequest | None,
         updated_version_messages: list[dict[str, Any]] | None = None,
+        updated_output_schema_structure: dict[str, Any] | None = None,
+        updated_output_schema_description_and_examples: dict[str, Any] | None = None,
     ) -> MetaAgentToolCallType | None:
         tool_call_to_return = None
         if improvement_instructions:
@@ -1615,6 +1617,16 @@ class MetaAgentService:
         if generate_input_request:
             tool_call_to_return = GenerateAgentInputToolCall(
                 instructions=generate_input_request.instructions,
+            )
+
+        if updated_output_schema_structure:
+            tool_call_to_return = EditOutputSchemaStructureToolCall(
+                updated_output_schema=updated_output_schema_structure,
+            )
+
+        if updated_output_schema_description_and_examples:
+            tool_call_to_return = EditOutputSchemaDescriptionAndExamplesToolCall(
+                updated_output_schema=updated_output_schema_description_and_examples,
             )
 
         return tool_call_to_return
@@ -1682,41 +1694,6 @@ class MetaAgentService:
         completion_client = integration.completion_client
 
         use_tools = False
-
-        # TODO: remove the "demo" lines below:
-        if messages[-1].content == "edit_output_schema_structure":
-            yield [
-                MetaAgentChatMessage(
-                    role="ASSISTANT",
-                    content="Mock output schema structure message",
-                    tool_call=EditOutputSchemaStructureToolCall(
-                        updated_output_schema={
-                            "type": "object",
-                            "properties": {"updated_field": {"type": "string"}},
-                        },
-                    ),
-                ),
-            ]
-            return
-
-        if messages[-1].content == "edit_output_schema_description_and_examples":
-            yield [
-                MetaAgentChatMessage(
-                    role="ASSISTANT",
-                    content="Mock output schema description and examples message",
-                    tool_call=EditOutputSchemaDescriptionAndExamplesToolCall(
-                        updated_output_schema={
-                            "type": "object",
-                            "properties": {
-                                "updated_field": {"type": "string"},
-                                "description": "Updated description",
-                                "examples": ["Updated example 1", "Updated example 2"],
-                            },
-                        },
-                    ),
-                ),
-            ]
-            return
 
         if messages[-1].kind == "user_deployed_agent_in_playground":
             if (
@@ -2002,6 +1979,9 @@ Please double check:
         generate_input_request_chunk: GenerateAgentInputToolCallRequest | None = None
         updated_version_messages_chunk: list[dict[str, Any]] | None = None
         tool_call_to_return: MetaAgentToolCallType | None = None
+        updated_output_schema_structure_chunk: dict[str, Any] | None = None
+        updated_output_schema_description_and_examples_chunk: dict[str, Any] | None = None
+
         async for chunk in proxy_meta_agent(
             input=proxy_meta_agent_input,
             instructions=instructions,
@@ -2044,6 +2024,12 @@ Please double check:
                 generate_input_request_chunk = chunk.generate_input_request
             if chunk.updated_version_messages:
                 updated_version_messages_chunk = chunk.updated_version_messages
+            if chunk.updated_output_schema_structure:
+                updated_output_schema_structure_chunk = chunk.updated_output_schema_structure
+            if chunk.updated_output_schema_description_and_examples:
+                updated_output_schema_description_and_examples_chunk = (
+                    chunk.updated_output_schema_description_and_examples
+                )
 
         tool_call_to_return = self._extract_tool_call_to_return(
             improvement_instructions_chunk,
@@ -2051,6 +2037,8 @@ Please double check:
             run_trigger_config,
             generate_input_request_chunk,
             updated_version_messages_chunk,
+            updated_output_schema_structure_chunk,
+            updated_output_schema_description_and_examples_chunk,
         )
 
         if tool_call_to_return:
