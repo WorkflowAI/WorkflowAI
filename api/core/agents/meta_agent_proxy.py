@@ -1188,7 +1188,7 @@ TOOL_DEFINITIONS: list[ChatCompletionToolParam] = [
         "type": "function",
         "function": {
             "name": "edit_output_schema_description_and_examples",
-            "description": "Edit the descriptions and examples within the output schema for the current agent. This allows updating field descriptions, examples, without changing the schema structure.",
+            "description": "Edit the descriptions and examples within the output schema for the current agent. This allows updating field descriptions and examples, without changing the schema structure.",
             "parameters": {
                 "type": "object",
                 "properties": {
