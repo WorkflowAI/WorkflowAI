@@ -82,8 +82,6 @@ async def agent_creation_agent(
 
     parsed_tool_call: CreateAgentToolCall | None = None
     async for chunk in response:
-        logging.info(f"inner agent_creation_agent Chunk: {chunk}")
-
         if chunk.choices[0].delta.tool_calls:
             tool_call = chunk.choices[0].delta.tool_calls[0]
             parsed_tool_call = parse_tool_call(tool_call)
