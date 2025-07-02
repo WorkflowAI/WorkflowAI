@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from typing import Any, NamedTuple
 
 from api.dependencies.services import _feedback_token_generator  # pyright: ignore[reportPrivateUsage]
+from api.routers.mcp._mcp_codegen import SDK, CodegenService
 from api.routers.mcp._mcp_errors import MCPError
 from api.routers.mcp._mcp_models import (
     AgentListItem,
@@ -51,8 +52,10 @@ from core.domain.search_query import FieldQuery, SearchOperator
 from core.domain.task_group import TaskGroup, TaskGroupQuery
 from core.domain.task_group_properties import TaskGroupProperties
 from core.domain.task_info import TaskInfo
+from core.domain.task_io import RawMessagesSchema, RawStringMessageSchema
 from core.domain.task_variant import SerializableTaskVariant
 from core.domain.tenant_data import TenantData
+from core.domain.version_environment import VersionEnvironment
 from core.storage import ObjectNotFoundException
 from core.storage.backend_storage import BackendStorage
 from core.storage.task_run_storage import TaskRunStorage
@@ -679,6 +682,48 @@ Your primary purpose is to help developers find the most relevant WorkflowAI doc
 
         except Exception as e:
             _logger.exception("Error processing MCP client feedback", exc_info=e)
+
+    async def generate_code(
+        self,
+        sdk: SDK,
+        agent_id: str,
+        model: str | None,
+        schema_id: int | None,
+        environment: VersionEnvironment | None,
+        existing_response_format_object: str | None,
+    ) -> str:
+        codegen_service = CodegenService()
+
+        variant_id: str | None = None
+
+        if environment:
+            if not schema_id:
+                raise MCPError("Schema ID is required when environment is provided")
+            deployment = await self.storage.task_deployments.get_task_deployment(agent_id, schema_id, environment)
+            variant_id = deployment.properties.task_variant_id
+        else:
+            deployment = None
+
+        if not variant_id:
+            variant = await self.storage.task_variants.get_latest_task_variant(agent_id, schema_id)
+        else:
+            variant = await self.storage.task_version_resource_by_id(agent_id, variant_id)
+
+        return await codegen_service.generate_code(
+            sdk=sdk,
+            model=model or "gpt-4.1",
+            variant=variant
+            or SerializableTaskVariant(
+                id="",
+                name="",
+                task_id=agent_id,
+                task_schema_id=0,
+                input_schema=RawMessagesSchema,
+                output_schema=RawStringMessageSchema,
+            ),
+            deployment=deployment,
+            existing_response_format_object=existing_response_format_object,
+        )
 
 
 def _merge_properties(
