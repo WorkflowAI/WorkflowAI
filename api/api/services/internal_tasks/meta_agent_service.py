@@ -255,6 +255,28 @@ class EditSchemaToolCall(MetaAgentToolCall):
         )
 
 
+class EditOutputSchemaStructureToolCall(MetaAgentToolCall):
+    tool_name: str = "edit_output_schema_structure"
+
+    updated_output_schema: dict[str, Any] = Field(
+        description="The updated output schema for the agent.",
+    )
+
+    def to_domain(self) -> None:
+        return None
+
+
+class EditOutputSchemaDescriptionAndExamplesToolCall(MetaAgentToolCall):
+    tool_name: str = "edit_output_schema_description_and_examples"
+
+    updated_output_schema: dict[str, Any] = Field(
+        description="The updated output schema for the agent.",
+    )
+
+    def to_domain(self) -> None:
+        return None
+
+
 class RunCurrentAgentOnModelsToolCall(MetaAgentToolCall):
     tool_name: str = "run_current_agent_on_models"
 
@@ -354,6 +376,8 @@ MetaAgentToolCallType: TypeAlias = (
     | UpdateVersionMessagesToolCall
     | AddToolToolCall
     | DirectUpdateVersionMessages
+    | EditOutputSchemaStructureToolCall
+    | EditOutputSchemaDescriptionAndExamplesToolCall
 )
 
 
@@ -1658,6 +1682,42 @@ class MetaAgentService:
         completion_client = integration.completion_client
 
         use_tools = False
+
+        # TODO: remove the "demo" lines below:
+        if messages[-1].content == "edit_output_schema_structure":
+            yield [
+                MetaAgentChatMessage(
+                    role="ASSISTANT",
+                    content="Mock output schema structure message",
+                    tool_call=EditOutputSchemaStructureToolCall(
+                        updated_output_schema={
+                            "type": "object",
+                            "properties": {"updated_field": {"type": "string"}},
+                        },
+                    ),
+                ),
+            ]
+            return
+
+        if messages[-1].content == "edit_output_schema_description_and_examples":
+            yield [
+                MetaAgentChatMessage(
+                    role="ASSISTANT",
+                    content="Mock output schema description and examples message",
+                    tool_call=EditOutputSchemaDescriptionAndExamplesToolCall(
+                        updated_output_schema={
+                            "type": "object",
+                            "properties": {
+                                "updated_field": {"type": "string"},
+                                "description": "Updated description",
+                                "examples": ["Updated example 1", "Updated example 2"],
+                            },
+                        },
+                    ),
+                ),
+            ]
+            return
+
         if messages[-1].kind == "user_deployed_agent_in_playground":
             if (
                 agent_deployment
