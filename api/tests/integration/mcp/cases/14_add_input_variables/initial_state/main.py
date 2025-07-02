@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 # Configure the OpenAI client to use WorkflowAI
 client = openai.OpenAI(
     api_key=os.environ.get("WORKFLOWAI_API_KEY"),
-    base_url=os.environ.get("WORKFLOWAI_API_PROXY_URL"),
+    base_url=f"{os.environ.get('WORKFLOWAI_API_URL')}/v1",
 )
 
 
@@ -22,8 +22,8 @@ class EmailPriority(BaseModel):
 
 
 def prioritize_email(email_content: str):
-    completion = client.beta.chat.completions.parse(
-        model="email-prioritizer/gpt-4o-latest",
+    completion = client.chat.completions.create(
+        model="test-email-prioritizer/gpt-4.1-mini",
         messages=[
             {
                 "role": "system",
@@ -44,22 +44,22 @@ Priority Guidelines:
   * Updates from team members about project progress or outcomes
 - LOW: FYI emails, newsletters, marketing, non-urgent personal updates
 
-Be concise but thorough in your analysis.""",
+Be concise but thorough in your analysis.
+
+Respond with a JSON object that has a reasoning and priority (high, medium, low) fields
+""",
             },
             {
                 "role": "user",
-                "content": "Please prioritize this email:\n\n{{email_content}}",
+                "content": f"Please prioritize this email:\n\n{email_content}",
             },
         ],
-        extra_body={
-            "input": {
-                "email_content": email_content,
-            },
-        },
-        response_format=EmailPriority,
     )
 
-    return completion.choices[0].message.parsed
+    content = completion.choices[0].message.content
+    if not content:
+        raise ValueError("No content returned from the model")
+    return EmailPriority.model_validate_json(content)
 
 
 # Example usage
