@@ -1,0 +1,77 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - 'staging/**'
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  # Not running the quality checks since they will be ran on pull requests
+  api-build:
+    # We ignore the api build if the release is client specific
+    # Meaning that branches that start with release/client/ or hotfix/client/ will not trigger the api build
+    if: ${{ !contains(github.ref_name, '/client/') }}
+    uses: ./.github/workflows/.build.yml
+    with:
+      env: staging-preview
+      registry_suffix: staging
+      app_name: workflowai-api-staging-preview
+      service: api
+    secrets:
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      SENTRY_HOOK: ${{ secrets.SENTRY_API_HOOK }}
+      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+
+  client-build:
+    # We ignore the client build if the release is api specific
+    # Meaning that branches that start with release/api/ or hotfix/api/ will not trigger the client build
+    if: ${{ !contains(github.ref_name, '/api/') }}
+    uses: ./.github/workflows/.build.yml
+    with:
+      env: staging-preview
+      registry_suffix: staging
+      app_name: workflowai-app-staging-preview
+      service: client
+      tag_suffix: -staging-preview
+    secrets:
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_RESOURCE_GROUP }}
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      SENTRY_HOOK: ${{ secrets.SENTRY_CLIENT_HOOK }}
+      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      build_args: |
+        ENV_NAME=staging-preview
+        APP_URL=${{ secrets.APP_URL }}
+        API_URL=${{ secrets.API_URL }}
+        NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+        NEXT_PUBLIC_AMPLITUDE_API_KEY=${{ secrets.NEXT_PUBLIC_AMPLITUDE_API_KEY }}
+        NEXT_PUBLIC_SENTRY_DSN=${{ secrets.SENTRY_CLIENT_DSN }}
+        NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+
+  # There is a single container in prod preview
+  api-deploy:
+    needs: [api-build]
+    uses: ./.github/workflows/.deploy.yml
+    with:
+      image_name: ${{ needs.api-build.outputs.image_name }}
+      env: staging-preview
+      full_app_name: workflowai-api-staging-preview
+      channel_id: ${{ vars.SLACK_CHANNEL_ID }}
+    secrets: inherit
+
+  client-deploy:
+    needs: [client-build]
+    uses: ./.github/workflows/.deploy.yml
+    secrets: inherit
+    with:
+      image_name: ${{ needs.client-build.outputs.image_name }}
+      env: staging-preview
+      full_app_name: workflowai-app-staging-preview
