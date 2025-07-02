@@ -709,7 +709,7 @@ class MCPRun(BaseModel):
                     if m.text:
                         m.text = truncate_field(m.text, 10000)
 
-        agent_input = run.task_input
+        agent_input = run.task_input or None
         if agent_input:
             agent_input = {k: v for k, v in agent_input.items() if k != "workflowai.messages"}
             if truncate:
