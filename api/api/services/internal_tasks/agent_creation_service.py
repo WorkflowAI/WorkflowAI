@@ -139,12 +139,10 @@ class AgentCreationService:
         acc = ""
         agent_creation_tool_call: CreateAgentToolCall | None = None
         async for chunk in agent_creation_agent(openai_messages):  # pyright: ignore[reportArgumentType]
-            has_created_agent = False
-
             if chunk.assistant_answer:
                 acc += chunk.assistant_answer
 
-            if chunk.agent_creation_tool_call and not has_created_agent:
+            if chunk.agent_creation_tool_call:
                 agent_creation_tool_call = chunk.agent_creation_tool_call
 
             else:
