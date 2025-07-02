@@ -195,6 +195,10 @@ class CreateAgentToolCall(BaseModel):
         description="Optional user message that provides example interaction or context. Use {{variable_name}} syntax for input variables when applicable. Only include if it adds value to the agent setup.",
         default=None,
     )
+    example_input_variables: dict[str, Any] | None = Field(
+        description="Example input variables that the agent will receive. In case input variables (e.g.{{variable_name}}) are used in either the system message or the user message, provide an example value for each input variable. Keep those values short and concise.",
+        default=None,
+    )
     response_format: dict[str, Any] | None = Field(
         description="JSON schema for structured output when agent needs to return multiple fields or structured data. Always starts with 'type': 'object', 'properties': {...}, 'required': [...]",
         default=None,

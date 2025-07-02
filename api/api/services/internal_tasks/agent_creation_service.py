@@ -50,8 +50,6 @@ class AgentCreationService:
         feedback_generator: FeedbackTokenGenerator,
         agent_creation_tool_call: CreateAgentToolCall,
     ):
-        # TODO: plug actual data from agent tool call
-
         handler = OpenAIProxyHandler(
             group_service=group_service,
             storage=self.storage,
@@ -74,7 +72,6 @@ class AgentCreationService:
                 ),
             )
 
-        # Create a completion request that will be executed
         completion_request = OpenAIProxyChatCompletionRequest(
             model="gpt-4o-latest",
             messages=messages,
@@ -89,6 +86,9 @@ class AgentCreationService:
                     schema=agent_creation_tool_call.response_format,
                 ),
             )
+
+        if agent_creation_tool_call.example_input_variables:
+            completion_request.input = agent_creation_tool_call.example_input_variables
 
         prepared_run = await handler.prepare_run(completion_request, user_org)
 
