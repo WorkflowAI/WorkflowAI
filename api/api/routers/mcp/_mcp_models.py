@@ -4,7 +4,7 @@ from typing import Any, Generic, Literal, TypeAlias, TypeVar
 
 from pydantic import BaseModel, Field
 
-from api.routers.mcp._mcp_utils import truncate_obj
+from api.routers.mcp._mcp_utils import truncate_field, truncate_obj
 from api.schemas.user_identifier import UserIdentifier
 from api.schemas.version_properties import ShortVersionProperties
 from api.services.models import ModelForTask
@@ -704,10 +704,10 @@ class MCPRun(BaseModel):
                 for m in m.content:
                     if m.file and m.file.data:
                         # No need to pass base64 data
-                        m.file.data = truncate_obj(m.file.data, max_field_length=10)
+                        m.file.data = truncate_field(m.file.data, 10)
 
                     if m.text:
-                        m.text = truncate_obj(m.text, max_field_length=10000)
+                        m.text = truncate_field(m.text, 10000)
 
         agent_input = run.task_input
         if agent_input:
@@ -725,7 +725,7 @@ class MCPRun(BaseModel):
             agent_version=AgentVersion.from_domain(version) if version else AgentVersion.from_domain(run.group),
             status="success" if run.status == "success" else "error",
             agent_input=agent_input,
-            messages=run.messages,
+            messages=messages,
             duration_seconds=run.duration_seconds,
             cost_usd=run.cost_usd,
             created_at=run.created_at,
