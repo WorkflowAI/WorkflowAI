@@ -3,6 +3,7 @@
 import pytest
 
 from api.routers.mcp._mcp_codegen import CodegenService
+from core.domain.consts import WORKFLOWAI_RUN_URL
 from core.domain.version_environment import VersionEnvironment
 
 
@@ -16,13 +17,13 @@ class TestCodegenPython:
 # It might be possible to import an existing client instead of creating a new one
 client = OpenAI(
     api_key=os.environ["WORKFLOWAI_API_KEY"],
-    base_url="http://localhost:8000/v1",
+    base_url="__WORKFLOWAI_RUN_URL__/v1",
 )
 # it is also possible to set default values for the the openai library
 # import openai
 #
 # openai.api_key = os.environ["WORKFLOWAI_API_KEY"]
-# openai.base_url = f"http://localhost:8000/v1"
+# openai.base_url = f"__WORKFLOWAI_RUN_URL__/v1"
 """
 
     OPENAI_IMPORT = """from openai import OpenAI # needed if instantiating a client
@@ -31,7 +32,10 @@ client = OpenAI(
     def _compare(self, result: str, expected: str):
         assert (
             result
-            == expected.replace("__PREAMBLE__", self.PREAMBLE).replace("__OPENAI_IMPORT__", self.OPENAI_IMPORT).strip()
+            == expected.replace("__PREAMBLE__", self.PREAMBLE)
+            .replace("__OPENAI_IMPORT__", self.OPENAI_IMPORT)
+            .replace("__WORKFLOWAI_RUN_URL__", WORKFLOWAI_RUN_URL)
+            .strip()
         )
 
     async def test_basic(self, codegen_service: CodegenService):

@@ -51,9 +51,17 @@ Respond with a JSON object that has a reasoning and priority (high, medium, low)
             },
             {
                 "role": "user",
-                "content": f"Please prioritize this email:\n\n{email_content}",
+                "content": "Please prioritize this email:\n\n{{email_content}}",
             },
         ],
+        extra_body={
+            "input": {
+                "email_content": email_content,
+            },
+        },
+        metadata={
+            "agent_id": "test-email-prioritizer",
+        },
     )
 
     content = completion.choices[0].message.content
