@@ -64,8 +64,10 @@ _logger = logging.getLogger(__name__)
 
 
 # Claude Code only support 25k tokens, for example.
-# Overall it's a good practice to limit the tool return tokens to avoid overflowing the coding agents context.
-MAX_TOOL_RETURN_TOKENS = 20000
+# (see: `MAX_MCP_OUTPUT_TOKENS` in https://docs.anthropic.com/en/docs/claude-code/settings#global-configuration)
+# Set to 90% of 25k tokens to maximize data returned while avoiding context overflow.
+# Returning more data is usually valuable for the AI agent.
+MAX_TOOL_RETURN_TOKENS = 22500
 
 
 class MCPService:
