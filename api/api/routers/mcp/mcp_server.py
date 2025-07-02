@@ -179,7 +179,7 @@ async def get_agent(
 
 
 @_mcp.tool()
-async def fetch_run_details(
+async def get_run(
     agent_id: Annotated[
         str | None,
         Field(
@@ -239,7 +239,7 @@ async def fetch_run_details(
     This data structure provides everything needed for debugging, performance analysis, cost tracking, and understanding the complete execution context of your WorkflowAI agent.
     </returns>"""
     service = await get_mcp_service()
-    return await mcp_wrap(service.fetch_run_details(agent_id, run_id, run_url, truncate=truncate))
+    return await mcp_wrap(service.get_run(agent_id, run_id, run_url, truncate=truncate))
 
 
 @_mcp.tool()
