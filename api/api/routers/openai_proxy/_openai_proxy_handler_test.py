@@ -313,7 +313,7 @@ class TestPrepareRunForModel:
     @pytest.mark.parametrize("role", ["user", "assistant", "system"])
     async def test_no_templated_message_no_input(self, proxy_handler: OpenAIProxyHandler, role: MessageRole):
         """Check that we don't set the message in the version properties if input is None"""
-        result = await proxy_handler._prepare_for_model(
+        result = await proxy_handler.prepare_for_model(
             agent_ref=ModelRef(model=Model.GPT_4O_LATEST, agent_id=None),
             tenant_data=PublicOrganizationData(),
             messages=Messages.with_messages(Message.with_text("Hello, world!", role=role)),
@@ -329,7 +329,7 @@ class TestPrepareRunForModel:
         proxy_handler: OpenAIProxyHandler,
     ):
         """When the input is an empty dict, we still use messages in the version properties"""
-        result = await proxy_handler._prepare_for_model(
+        result = await proxy_handler.prepare_for_model(
             agent_ref=ModelRef(model=Model.GPT_4O_LATEST, agent_id=None),
             tenant_data=PublicOrganizationData(),
             messages=Messages.with_messages(
@@ -348,7 +348,7 @@ class TestPrepareRunForModel:
 
     async def test_no_templated_message_with_input_user(self, proxy_handler: OpenAIProxyHandler):
         """Check that we set the message in the version properties if input is not None"""
-        result = await proxy_handler._prepare_for_model(
+        result = await proxy_handler.prepare_for_model(
             agent_ref=ModelRef(model=Model.GPT_4O_LATEST, agent_id=None),
             tenant_data=PublicOrganizationData(),
             messages=Messages.with_messages(Message.with_text("Hello, world!", role="user")),
@@ -362,7 +362,7 @@ class TestPrepareRunForModel:
         assert result.properties.messages == []
 
     async def test_templated_messages(self, proxy_handler: OpenAIProxyHandler):
-        result = await proxy_handler._prepare_for_model(
+        result = await proxy_handler.prepare_for_model(
             agent_ref=ModelRef(model=Model.GPT_4O_LATEST, agent_id=None),
             tenant_data=PublicOrganizationData(),
             messages=Messages.with_messages(
