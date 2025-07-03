@@ -3,12 +3,18 @@ import { useCallback, useMemo, useState } from 'react';
 import { useCopyToClipboard } from 'usehooks-ts';
 import { Button } from '../ui/Button';
 import { displaySuccessToaster } from '../ui/Sonner';
+import { useProxyCompleteMCPIntegrationModal } from './ProxyCompleteMCPIntegrationModal';
 import { ProxyNewAgentClientCombobox } from './components/ProxyNewAgentClientCombobox';
 import { ProxyNewAgentSectionHeader } from './components/ProxyNewAgentSectionHeader';
 
 const allClients = ['Cursor', 'Windsurf', 'Claude Code', 'Github Copilot'];
 
-export function ProxyNewAgentMCPFlowContent() {
+type Props = {
+  close: () => void;
+};
+
+export function ProxyNewAgentMCPFlowContent(props: Props) {
+  const {} = props;
   const [selectedClient, setSelectedClient] = useState<string | undefined>('Cursor');
   const [, copy] = useCopyToClipboard();
 
@@ -52,6 +58,12 @@ export function ProxyNewAgentMCPFlowContent() {
     );
   }, [selectedClient]);
 
+  const { openModal: openCompleteIntegrationModal } = useProxyCompleteMCPIntegrationModal();
+
+  const onIntegrateToCursor = useCallback(() => {
+    openCompleteIntegrationModal();
+  }, [openCompleteIntegrationModal]);
+
   return (
     <div className='flex flex-col bg-gray-50 rounded-[2px] w-full border border-gray-200 shadow-sm'>
       <div className='flex flex-col gap-2 bg-white p-4 shadow-sm'>
@@ -70,6 +82,7 @@ export function ProxyNewAgentMCPFlowContent() {
               variant='newDesign'
               icon={<PlusIcon className='w-4 h-4' />}
               className='bg-gray-700 text-white hover:text-white hover:bg-gray-800 font-medium'
+              onClick={onIntegrateToCursor}
             >{`Add WorkflowAI to ${selectedClient}`}</Button>
           </div>
         )}
@@ -92,11 +105,12 @@ export function ProxyNewAgentMCPFlowContent() {
   );
 }
 
-export function ProxyNewAgentMCPFlow() {
+export function ProxyNewAgentMCPFlow(props: Props) {
+  const { close } = props;
   return (
     <div className='flex gap-5 flex-col w-full h-full p-10 overflow-y-auto'>
       <ProxyNewAgentSectionHeader title='Set up the WorkflowAI MCP Server' number={1} />
-      <ProxyNewAgentMCPFlowContent />
+      <ProxyNewAgentMCPFlowContent close={close} />
     </div>
   );
 }

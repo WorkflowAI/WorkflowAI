@@ -56,7 +56,7 @@ export function ProxyNewAgentModal() {
           </div>
           <div className='flex flex-row items-center justify-center w-full h-[calc(100%-54px)] overflow-hidden'>
             <div className='flex w-[50%] h-full items-center justify-center border-r border-gray-200 overflow-hidden'>
-              <ProxyNewAgentMCPFlow />
+              <ProxyNewAgentMCPFlow close={onClose} />
             </div>
             <div className='flex w-[50%] h-full items-center justify-center overflow-hidden'>
               <ProxyNewAgentEndpointFlow />

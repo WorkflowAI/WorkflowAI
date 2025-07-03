@@ -3,6 +3,7 @@ import { useParsedSearchParams, useRedirectWithParams } from '@/lib/queryString'
 
 export const NEW_TASK_MODAL_OPEN = 'newTaskModalOpen';
 export const NEW_PROXY_AGENT_MODAL_OPEN = 'addAgent';
+export const COMPLETE_PROXY_MCP_INTEGRATION_MODAL_OPEN = 'completeIntegration';
 export const SETUP_MODAL_OPEN = 'setupModalOpen';
 export const DEPLOY_ITERATION_MODAL_OPEN = 'deployIterationModalOpen';
 export const TASK_SETTINGS_MODAL_OPEN = 'taskSettingsModalOpen';
