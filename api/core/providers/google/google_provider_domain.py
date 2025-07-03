@@ -596,6 +596,7 @@ class CompletionRequest(BaseModel):
         # TODO: use responseSchema
 
         responseMimeType: Literal["text/plain", "application/json"] = "text/plain"
+        responseSchema: dict[str, Any] | None = None
         maxOutputTokens: int | None = None
         temperature: float = 0.0
 
