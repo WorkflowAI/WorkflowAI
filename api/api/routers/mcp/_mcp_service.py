@@ -626,7 +626,7 @@ Your primary purpose is to help developers find the most relevant WorkflowAI doc
         models: list[Model],
         lists_of_messages: list[list[OpenAIProxyMessage]],
         sets_of_inputs: list[dict[str, Any]] | list[None],
-        response_format: dict[str, Any],
+        output_schema: dict[str, Any],
         metadata: dict[str, Any],
     ) -> list[OpenAIProxyChatCompletionResponse | MCPError]:
         if not sets_of_inputs:
@@ -643,10 +643,10 @@ Your primary purpose is to help developers find the most relevant WorkflowAI doc
                         response_format=OpenAIProxyResponseFormat(
                             type="json_schema",
                             json_schema=OpenAIProxyResponseFormat.JsonSchema(
-                                schema=response_format,
+                                schema=output_schema,
                             ),
                         )
-                        if response_format
+                        if output_schema
                         else None,
                         metadata=metadata,
                     )

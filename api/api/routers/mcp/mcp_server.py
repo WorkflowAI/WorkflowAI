@@ -815,7 +815,7 @@ async def playground(
         default_factory=list,
         description="Optional list of input variables for prompt templating",
     ),
-    response_format: dict[str, Any] = Field(
+    output_schema: dict[str, Any] = Field(
         default_factory=dict,
         description="Optional JSON Schema for structured output",
     ),
@@ -859,7 +859,7 @@ async def playground(
         models=model_list,
         lists_of_messages=lists_of_messages,
         sets_of_inputs=sets_of_inputs,
-        response_format=response_format,
+        output_schema=output_schema,
         metadata=metadata,
     )
 
