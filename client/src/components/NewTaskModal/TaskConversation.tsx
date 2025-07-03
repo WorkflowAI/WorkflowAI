@@ -128,10 +128,11 @@ type TaskConversationMessagesProps = {
   showRetry: boolean;
   retry: () => void;
   className?: string;
+  showLoadingWhenStreamingStarted?: boolean;
 };
 
 export function TaskConversationMessages(props: TaskConversationMessagesProps) {
-  const { messages, loading, showRetry, retry, className } = props;
+  const { messages, loading, showRetry, retry, className, showLoadingWhenStreamingStarted = false } = props;
   const scrollRef = useRef<HTMLDivElement>(null);
   const hadMessagesRef = useRef(false);
 
@@ -147,6 +148,13 @@ export function TaskConversationMessages(props: TaskConversationMessagesProps) {
   }, [loading, messages]);
 
   const isStreaming = useMemo(() => messages.some((message) => message.streamed), [messages]);
+  const showLoader = useMemo(() => {
+    if (showLoadingWhenStreamingStarted) {
+      return loading;
+    }
+
+    return loading && !isStreaming;
+  }, [loading, isStreaming, showLoadingWhenStreamingStarted]);
 
   return (
     <div ref={scrollRef} className={cn('flex flex-col flex-1 overflow-y-auto px-4 shrink-0', className)}>
@@ -158,7 +166,7 @@ export function TaskConversationMessages(props: TaskConversationMessagesProps) {
         />
       ))}
       {showRetry && <TaskConversationRetryCell retry={retry} />}
-      {loading && !isStreaming && (
+      {showLoader && (
         <TaskConversationMessage
           message={{
             username: WORKFLOW_AI_USERNAME,
@@ -174,11 +182,26 @@ export function TaskConversationMessages(props: TaskConversationMessagesProps) {
 type TaskConversationProps = TaskConversationMessagesProps & TaskConversationInputProps;
 
 export function TaskConversation(props: TaskConversationProps) {
-  const { userMessage, messages, loading, setUserMessage, onSendIteration, showRetry, retry } = props;
+  const {
+    userMessage,
+    messages,
+    loading,
+    setUserMessage,
+    onSendIteration,
+    showRetry,
+    retry,
+    showLoadingWhenStreamingStarted,
+  } = props;
 
   return (
     <div className='flex flex-col h-full'>
-      <TaskConversationMessages messages={messages} loading={loading} showRetry={showRetry} retry={retry} />
+      <TaskConversationMessages
+        messages={messages}
+        loading={loading}
+        showRetry={showRetry}
+        retry={retry}
+        showLoadingWhenStreamingStarted={showLoadingWhenStreamingStarted}
+      />
       <TaskConversationInput
         setUserMessage={setUserMessage}
         onSendIteration={onSendIteration}
