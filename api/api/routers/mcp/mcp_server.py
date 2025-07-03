@@ -809,7 +809,7 @@ async def get_code(
 async def playground(
     models: str = Field(description="The models to use for the playground (comma-separated)"),
     lists_of_messages: list[list[OpenAIProxyMessage]] = Field(
-        description="One or several list of messages to use for the playground. Messages can be templated using Jinja2 templates. When using prompt templating, all lists of messages but accept the same set of variables.",
+        description="One or several list of messages to use for the playground. Messages can be templated using Jinja2 templates. When using prompt templating, all lists of messages must accept the same set of variables.",
     ),
     sets_of_inputs: list[dict[str, Any]] = Field(
         default_factory=list,
