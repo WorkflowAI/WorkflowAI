@@ -1,5 +1,7 @@
+import asyncio
 import logging
-from collections.abc import Iterator
+import time
+from collections.abc import Coroutine, Iterator
 from datetime import datetime, timedelta
 from typing import Any, NamedTuple
 
@@ -28,6 +30,8 @@ from api.routers.openai_proxy._openai_proxy_handler import OpenAIProxyHandler
 from api.routers.openai_proxy._openai_proxy_models import (
     OpenAIProxyChatCompletionRequest,
     OpenAIProxyChatCompletionResponse,
+    OpenAIProxyMessage,
+    OpenAIProxyResponseFormat,
 )
 from api.services import tasks
 from api.services.documentation_service import DocumentationService
@@ -616,6 +620,50 @@ Your primary purpose is to help developers find the most relevant WorkflowAI doc
             # That should never happen since we are not streaming
             raise ValueError("Unexpected response type")
         return res
+
+    async def playground(
+        self,
+        models: list[Model],
+        lists_of_messages: list[list[OpenAIProxyMessage]],
+        sets_of_inputs: list[dict[str, Any]] | list[None],
+        response_format: dict[str, Any],
+        metadata: dict[str, Any],
+    ) -> list[OpenAIProxyChatCompletionResponse | MCPError]:
+        if not sets_of_inputs:
+            sets_of_inputs = [None]
+
+        tasks: list[Coroutine[Any, Any, OpenAIProxyChatCompletionResponse]] = []
+        for model in models:
+            for messages in lists_of_messages:
+                for input_data in sets_of_inputs:
+                    request = OpenAIProxyChatCompletionRequest(
+                        model=model,
+                        messages=messages,
+                        input=input_data,
+                        response_format=OpenAIProxyResponseFormat(
+                            type="json_schema",
+                            json_schema=OpenAIProxyResponseFormat.JsonSchema(
+                                schema=response_format,
+                            ),
+                        )
+                        if response_format
+                        else None,
+                        metadata=metadata,
+                    )
+                    tasks.append(
+                        self.create_completion(
+                            metadata.get("agent_id", "default"),
+                            request=request,
+                            original_run_id=None,
+                            start_time=time.time(),
+                        ),
+                    )
+
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        return [
+            result if isinstance(result, OpenAIProxyChatCompletionResponse) else MCPError(str(result))
+            for result in results
+        ]
 
     async def send_feedback(
         self,
