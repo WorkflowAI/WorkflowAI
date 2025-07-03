@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/Command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/Popover';
 import { ScrollArea } from '@/components/ui/ScrollArea';
-import { embedReasoningInModelID } from '@/lib/modelUtils';
+import { flexibleStringMatch } from '@/lib/searchUtils';
 import { Model, TaskID } from '@/types/aliases';
 import { ModelResponse } from '@/types/workflowAI';
 import { MysteryModelIcon } from '../icons/models/mysteryModelIcon';
@@ -72,8 +72,6 @@ export type AIModelComboboxProps = {
   setOpen?: (open: boolean) => void;
   isProxy?: boolean;
   taskId?: TaskID;
-  spreadReasoning?: boolean;
-  reasoningEffort?: string;
 };
 
 export function AIModelCombobox(props: AIModelComboboxProps) {
@@ -84,14 +82,12 @@ export function AIModelCombobox(props: AIModelComboboxProps) {
     onModelChange,
     models,
     placeholder: placeholderFromParameters,
-    value: rawValue,
+    value,
     fitToContent = true,
     open: propsOpen,
     setOpen: propsSetOpen,
     isProxy = false,
     taskId,
-    spreadReasoning,
-    reasoningEffort,
   } = props;
   const [internalOpen, setInternalOpen] = React.useState(false);
 
@@ -104,7 +100,7 @@ export function AIModelCombobox(props: AIModelComboboxProps) {
 
   const [isReverted, setIsReverted] = useLocalStorage<boolean>('aiModelComboboxOrder', false);
 
-  const modelOptions = useMemo(() => formatAIModels(models, spreadReasoning ?? false), [models, spreadReasoning]);
+  const modelOptions = useMemo(() => formatAIModels(models), [models]);
 
   const placeholder = useMemo(() => {
     if (placeholderFromParameters) {
@@ -118,23 +114,16 @@ export function AIModelCombobox(props: AIModelComboboxProps) {
       // By default we only return models that have the is_latest flag
       return modelOptions.filter((model) => model.isLatest);
     }
-    return modelOptions.filter((option) => option.label.toLowerCase().includes(search.toLowerCase()));
+    return modelOptions.filter((option) => flexibleStringMatch(search, option.label));
   }, [modelOptions, search]);
-
-  const value = useMemo(() => {
-    if (reasoningEffort && spreadReasoning) {
-      return embedReasoningInModelID(rawValue, reasoningEffort);
-    }
-    return rawValue;
-  }, [rawValue, reasoningEffort, spreadReasoning]);
 
   const selectedOption = useMemo(() => {
     const option = modelOptions.find((option) => option.value === value);
     if (option) {
-      return formatAIModel(option.model);
+      return formatAIModel(option.model, models);
     }
     return undefined;
-  }, [modelOptions, value]);
+  }, [modelOptions, value, models]);
 
   const sortedModelOptions = useMemo(() => {
     const comparator = modelComparator(sort, isReverted);

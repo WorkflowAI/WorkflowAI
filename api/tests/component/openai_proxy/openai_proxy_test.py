@@ -6,6 +6,7 @@ from unittest import mock
 import openai
 import pytest
 from openai import AsyncOpenAI, RateLimitError
+from openai.types.chat.chat_completion_chunk import ChoiceDeltaToolCall, ChoiceDeltaToolCallFunction
 from openai.types.chat.chat_completion_message_tool_call import ChatCompletionMessageToolCall, Function
 from openai.types.chat.chat_completion_stream_options_param import ChatCompletionStreamOptionsParam
 from pydantic import BaseModel, Field
@@ -13,10 +14,10 @@ from pydantic import BaseModel, Field
 from core.domain.models.models import Model
 from core.domain.models.providers import Provider
 from core.storage.mongo.mongo_types import AsyncCollection
-from tests.component.common import IntegrationTestClient, openai_endpoint
+from tests.component.common import IntegrationTestClient, openai_endpoint, vertex_url
 from tests.component.openai_proxy.common import fetch_run_from_completion, save_version_from_completion
 from tests.pausable_memory_broker import PausableInMemoryBroker
-from tests.utils import approx
+from tests.utils import approx, request_json_body
 
 
 async def test_raw_string_output(test_client: IntegrationTestClient, openai_client: AsyncOpenAI):
@@ -277,6 +278,60 @@ async def test_with_tools(test_client: IntegrationTestClient, openai_client: Asy
             function=Function(
                 name="test",
                 arguments='{"arg": "value"}',
+            ),
+        ),
+    ]
+
+
+def _tool_call_delta_payload(name: str, arguments: str, id: str = "1"):
+    return {
+        "index": 0,
+        "id": id,
+        "type": "function",
+        "function": {"name": name, "arguments": arguments},
+    }
+
+
+async def test_with_tools_streaming(test_client: IntegrationTestClient, openai_client: AsyncOpenAI):
+    # OpenAI will stream a tool call in 2 different payloads
+    test_client.mock_openai_stream(
+        deltas=None,
+        tool_calls_deltas=[
+            [_tool_call_delta_payload("get_weather", '{"location')],
+            [_tool_call_delta_payload("get_weather", '":"Tokyo"}')],
+        ],
+    )
+    res = await openai_client.chat.completions.create(
+        model="gpt-4o",
+        messages=[],
+        tools=[
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_weather",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "location": {
+                                "type": "string",
+                            },
+                        },
+                    },
+                },
+            },
+        ],
+        stream=True,
+    )
+    chunks = [c async for c in res]
+    assert len(chunks) == 1
+    assert chunks[-1].choices[0].delta.tool_calls == [
+        ChoiceDeltaToolCall(
+            index=0,
+            id="1",
+            type="function",
+            function=ChoiceDeltaToolCallFunction(
+                name="get_weather",
+                arguments='{"location": "Tokyo"}',
             ),
         ),
     ]
@@ -1145,3 +1200,53 @@ async def test_custom_config(test_client: IntegrationTestClient, openai_client: 
         messages=[{"role": "user", "content": "Hello, world!"}],
     )
     assert res.choices[0].message.content == "Hello, world 2!"
+
+
+async def test_model_fallback_failure(test_client: IntegrationTestClient, openai_client: AsyncOpenAI):
+    """Check that when the model fallback we do not retry"""
+    # Vertex will return an JSON response and the schema validation will fail
+    # So we will retry on vertex twice, the second time with an added message
+    test_client.mock_vertex_call(
+        status_code=200,
+        parts=[{"text": '{"greeting": 1}'}],
+        is_reusable=True,
+        model=Model.GEMINI_2_5_FLASH,
+        url=vertex_url(Model.GEMINI_2_5_FLASH, "global"),
+    )
+    # When both fail we should retry on OpenAI twice as well
+    # The generation will also fail
+    test_client.mock_openai_call(json_content={"greeting": 1}, is_reusable=True)
+
+    with pytest.raises(openai.BadRequestError) as e:
+        await openai_client.chat.completions.create(
+            model=Model.GEMINI_2_5_FLASH,
+            messages=[{"role": "user", "content": "Hello, world!"}],
+            response_format={
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "1",
+                    "schema": {"type": "object", "properties": {"greeting": {"type": "string"}}},
+                },
+            },
+        )
+
+    assert "Task output does not match schema" in e.value.message
+
+    await test_client.wait_for_completed_tasks()
+
+    vertex_req = test_client.httpx_mock.get_requests(url=vertex_url(Model.GEMINI_2_5_FLASH, "global"))
+    assert len(vertex_req) == 2
+
+    openai_req = test_client.httpx_mock.get_requests(url="https://api.openai.com/v1/chat/completions")
+    assert len(openai_req) == 2
+
+    # Check that the both openai requets use structured generation
+    for req in openai_req:
+        payload = request_json_body(req)
+        assert payload["response_format"]["type"] == "json_schema"
+
+    # TODO: fetch run
+
+    # run = await fetch_run_from_completion(test_client, res)
+    # assert run
+    # assert run["task_output"] == {"greeting": "Hello, world!"}

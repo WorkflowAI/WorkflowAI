@@ -4,6 +4,7 @@ from typing import Any, Generic, Literal, TypeAlias, TypeVar
 
 from pydantic import BaseModel, Field
 
+from api.routers.mcp._mcp_utils import truncate_field, truncate_obj
 from api.schemas.user_identifier import UserIdentifier
 from api.schemas.version_properties import ShortVersionProperties
 from api.services.models import ModelForTask
@@ -240,7 +241,7 @@ class AgentResponse(BaseModel):
         )
 
 
-T = TypeVar("T", bound=BaseModel)
+T = TypeVar("T", bound=BaseModel | str)
 NullableT = TypeVar("NullableT", bound=BaseModel | None)
 ItemT = TypeVar("ItemT", bound=BaseModel)
 
@@ -688,7 +689,32 @@ class MCPRun(BaseModel):
         version: TaskGroup | None,
         output_schema: dict[str, Any] | None,
         url: str,
+        truncate: bool = True,
     ):
+        messages = run.messages
+        # Truncation is really arbitrary for now
+        # We limit:
+        # - the length of the message text content to 10000 characters, ~3000 tokens
+        # - the size of input data to 1000 characters, ~300 tokens. The input is repeated in the messages
+        # - the size of the file data to 10 characters since base64 data is not really interesting and eats tokens fast
+        # TODO: implement better truncation logic
+        # Note that when we actually fetch messages from the database, the files will have a URL
+        if truncate:
+            for m in messages:
+                for m in m.content:
+                    if m.file and m.file.data:
+                        # No need to pass base64 data
+                        m.file.data = truncate_field(m.file.data, 10)
+
+                    if m.text:
+                        m.text = truncate_field(m.text, 10000)
+
+        agent_input = run.task_input or None
+        if agent_input:
+            agent_input = {k: v for k, v in agent_input.items() if k != "workflowai.messages"}
+            if truncate:
+                agent_input = truncate_obj(agent_input)
+
         return cls(
             id=run.id,
             conversation_id=run.conversation_id or "",  # there is always a conversation id, or is for typing reasons
@@ -698,10 +724,8 @@ class MCPRun(BaseModel):
             # See https://linear.app/workflowai/issue/WOR-4485/stop-storing-non-saved-versions-and-attach-them-to-runs-instead
             agent_version=AgentVersion.from_domain(version) if version else AgentVersion.from_domain(run.group),
             status="success" if run.status == "success" else "error",
-            agent_input={k: v for k, v in run.task_input.items() if k != "workflowai.messages"}
-            if run.task_input
-            else None,
-            messages=run.messages,
+            agent_input=agent_input,
+            messages=messages,
             duration_seconds=run.duration_seconds,
             cost_usd=run.cost_usd,
             created_at=run.created_at,

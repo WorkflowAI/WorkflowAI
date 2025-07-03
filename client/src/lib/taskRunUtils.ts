@@ -20,14 +20,31 @@ export function getContextWindowInformation(
     return undefined;
   }
 
-  const usage = runCompletions.find(
-    (completion) =>
-      !!completion.usage.prompt_token_count &&
-      !!completion.usage.completion_token_count &&
-      !!completion.usage.model_context_window_size
-  )?.usage;
+  // Find the completion with the highest context usage ratio
+  let maxUsageCompletion: LLMCompletionTypedMessages | undefined;
+  let maxUsageRatio = 0;
 
-  if (!usage || !usage.prompt_token_count || !usage.completion_token_count || !usage.model_context_window_size) {
+  for (const completion of runCompletions) {
+    const { prompt_token_count, completion_token_count, model_context_window_size } = completion.usage;
+
+    if (!!prompt_token_count && !!completion_token_count && !!model_context_window_size) {
+      const totalTokens = prompt_token_count + completion_token_count;
+      const usageRatio = totalTokens / model_context_window_size;
+
+      if (usageRatio > maxUsageRatio) {
+        maxUsageRatio = usageRatio;
+        maxUsageCompletion = completion;
+      }
+    }
+  }
+
+  if (!maxUsageCompletion) {
+    return undefined;
+  }
+
+  const usage = maxUsageCompletion.usage;
+
+  if (!usage.prompt_token_count || !usage.completion_token_count || !usage.model_context_window_size) {
     return undefined;
   }
 

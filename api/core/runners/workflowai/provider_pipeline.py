@@ -111,7 +111,11 @@ class ProviderPipeline:
             fallback_model = self._fallback_models.pop(0)
             return get_model_data(fallback_model)
 
-        if not self.model_data.fallback:
+        # Below is the auto fallback logic
+        # We skip if either:
+        # - the model has no fallback
+        # - we have already used a fallback
+        if not self.model_data.fallback or self._has_used_model_fallback:
             return None
 
         match e.code:
@@ -182,13 +186,13 @@ class ProviderPipeline:
 
         return False
 
-    def _use_structured_output(self):
+    def _use_structured_output(self, model_data: ModelData):
         if self._force_structured_generation is not None:
             return self._force_structured_generation
-        return self.model_data.supports_structured_output
+        return model_data.supports_structured_output
 
     def _build(self, provider: AbstractProvider[Any, Any], model_data: FinalModelData) -> PipelineProviderData:
-        return self.builder(provider, model_data, self._use_structured_output())
+        return self.builder(provider, model_data, self._use_structured_output(model_data))
 
     def _iter_with_structured_gen(
         self,

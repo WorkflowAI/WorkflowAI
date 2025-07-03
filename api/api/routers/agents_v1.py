@@ -7,7 +7,13 @@ from pydantic import BaseModel, Field, model_validator
 
 from api.dependencies.event_router import EventRouterDep
 from api.dependencies.security import RequiredUserOrganizationDep
-from api.dependencies.services import AnalyticsServiceDep
+from api.dependencies.services import (
+    AgentCreationServiceDep,
+    AnalyticsServiceDep,
+    FeedbackTokenGeneratorDep,
+    GroupServiceDep,
+    RunServiceDep,
+)
 from api.dependencies.storage import StorageDep
 from api.services.messages.messages_utils import json_schema_for_template
 from api.tags import RouteTags
@@ -22,9 +28,63 @@ from core.domain.task_variant import SerializableTaskVariant
 from core.utils import strings
 from core.utils.fields import datetime_factory
 from core.utils.schema_sanitation import streamline_schema
+from core.utils.stream_response_utils import safe_streaming_response
 from core.utils.templates import InvalidTemplateError, extract_variable_schema
 
 router = APIRouter(prefix="/v1/{tenant}/agents", tags=[RouteTags.AGENTS])
+
+
+class BuildAgentRequest(BaseModel):
+    messages: list[ChatMessage]
+
+
+class BuildAgentResponse(BaseModel):
+    assistant_answer: str | None = None
+
+    class NewAgentRedirect(BaseModel):
+        agent_id: str
+        agent_schema_id: int
+        version_id: str
+        run_id: str
+
+    new_agent_redirect: NewAgentRedirect | None = None
+
+
+@router.post(
+    "/build/messages",
+    description="Prepare a new agent based on natural language queries, allowing for multiple iterations",
+    responses={
+        200: {
+            "content": {
+                "text/event-stream": {
+                    "schema": BuildAgentResponse.model_json_schema(),
+                },
+            },
+        },
+    },
+)
+async def build_agent(
+    request: BuildAgentRequest,
+    agent_creation_service: AgentCreationServiceDep,
+    group_service: GroupServiceDep,
+    storage: StorageDep,
+    run_service: RunServiceDep,
+    event_router: EventRouterDep,
+    user_org: RequiredUserOrganizationDep,
+    feedback_generator: FeedbackTokenGeneratorDep,
+):
+    async def _stream_response():
+        async for chunk in agent_creation_service.stream_agent_creation(
+            user_org=user_org,
+            group_service=group_service,
+            run_service=run_service,
+            event_router=event_router,
+            feedback_generator=feedback_generator,
+            messages=request.messages,
+        ):
+            yield chunk
+
+    return safe_streaming_response(_stream_response)
 
 
 class CreateAgentRequest(BaseModel):
@@ -102,8 +162,14 @@ async def create_agent(
         task_id=request.id,
         task_schema_id=0,
         name=request.name,
-        input_schema=SerializableTaskIO.from_json_schema(request.input_schema, streamline=request.sanitize_schemas),
-        output_schema=SerializableTaskIO.from_json_schema(request.output_schema, streamline=request.sanitize_schemas),
+        input_schema=SerializableTaskIO.from_json_schema(
+            request.input_schema,
+            streamline=request.sanitize_schemas,
+        ),
+        output_schema=SerializableTaskIO.from_json_schema(
+            request.output_schema,
+            streamline=request.sanitize_schemas,
+        ),
         created_at=datetime_factory(),
         creation_chat_messages=request.chat_messages,
     )

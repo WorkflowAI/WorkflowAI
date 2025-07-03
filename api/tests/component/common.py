@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from json import dumps as json_dumps
 from typing import Any, Literal
 
+import pytest
 from freezegun import freeze_time
 from httpx import AsyncClient, HTTPStatusError, Request, Response
 from pytest_httpx import HTTPXMock, IteratorStream
@@ -724,7 +725,7 @@ class IntegrationTestClient:
         self,
         int_api_client: AsyncClient,
         httpx_mock: HTTPXMock,
-        patched_broker: InMemoryBroker,
+        patched_broker: PausableInMemoryBroker,
     ):
         self.int_api_client = int_api_client
         self.httpx_mock = httpx_mock
@@ -1380,3 +1381,8 @@ class IntegrationTestClient:
                         yield event
 
         return list(_iterator())
+
+
+def assert_no_warning_or_error(caplog: pytest.LogCaptureFixture):
+    warnings = [r for r in caplog.records if r.levelname == "WARNING" or r.levelname == "ERROR"]
+    assert not warnings, "should not have any warnings or errors"

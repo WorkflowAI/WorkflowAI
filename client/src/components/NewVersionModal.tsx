@@ -2,7 +2,6 @@
 
 import { Plus, X } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
-import { AIModelCombobox } from '@/components/AIModelsCombobox/aiModelCombobox';
 import { TemperatureSelector } from '@/components/TemperatureSelector/TemperatureSelector';
 import { AlertDialog } from '@/components/ui/AlertDialog';
 import { Button } from '@/components/ui/Button';
@@ -11,6 +10,7 @@ import { Textarea } from '@/components/ui/Textarea';
 import { TaskSchemaParams } from '@/lib/routeFormatter';
 import { Model, UNDEFINED_MODEL } from '@/types/aliases';
 import { ModelResponse } from '@/types/workflowAI';
+import { ProxyModelCombobox } from './ProxyModelsCombobox/ProxyModelCombobox';
 
 export type TaskVersionEditableProperties = {
   instructions: string;
@@ -125,7 +125,13 @@ export function NewGroupModal(props: NewGroupModalProps) {
             <div className='p-4 text-sm flex flex-col gap-2'>
               <SectionLabelWrapper>1. Select Model</SectionLabelWrapper>
               <div>
-                <AIModelCombobox models={models} value={editableProperties.modelId} onModelChange={onModelChange} />
+                <ProxyModelCombobox
+                  value={editableProperties.modelId}
+                  onModelChange={onModelChange}
+                  models={models}
+                  noOptionsMessage='Choose Model'
+                  reasoning={undefined}
+                />
               </div>
             </div>
             <div className='p-4 text-sm flex flex-col gap-2 max-w-[530px]'>

@@ -5,7 +5,7 @@ import re
 import time
 from collections.abc import Sequence
 from copy import deepcopy
-from typing import Any, Callable, Iterable, Literal, NamedTuple, Optional, cast
+from typing import Any, Callable, Iterable, Literal, NamedTuple, Optional, TypeVar, cast
 
 from pydantic import TypeAdapter, ValidationError
 from typing_extensions import override
@@ -50,6 +50,7 @@ from core.providers.base.provider_error import (
 )
 from core.providers.base.provider_options import ProviderOptions
 from core.runners.abstract_runner import AbstractRunner, CacheFetcher
+from core.runners.builder_context import BuilderInterface
 from core.runners.workflowai.internal_tool import build_all_internal_tools
 from core.runners.workflowai.message_builder import MessageBuilder
 from core.runners.workflowai.message_fixer import MessageAutofixer
@@ -92,6 +93,8 @@ logger = logging.getLogger(__name__)
 
 
 MAX_TOOL_CALL_ITERATIONS = 10
+
+_FileVar = TypeVar("_FileVar", bound=File)
 
 
 class BuildUserMessageContentResult(NamedTuple):
@@ -263,31 +266,23 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
 
         return True
 
-    async def _download_file_if_needed(
-        self,
-        provider: AbstractProvider[Any, Any],
-        file: File,
-    ):
-        if not self._should_download_file(provider, file):
-            return False
-
-        await download_file(file)
-        return True
-
-    async def _download_file_and_update_input_if_needed(
+    async def _download_file_and_update_input(
         self,
         provider: AbstractProvider[Any, Any],
         file: FileWithKeyPath,
         input: AgentInput,
     ):
-        downloaded = await self._download_file_if_needed(provider, file)
+        # Check should not be needed here since we only pass files that should effectively be downloaded
+        if file.data:
+            return
 
-        if downloaded:
-            set_at_keypath(
-                input,
-                file.key_path,
-                file.model_dump(mode="json", exclude={"key_path"}, exclude_none=True),
-            )
+        await download_file(file)
+
+        set_at_keypath(
+            input,
+            file.key_path,
+            file.model_dump(mode="json", exclude={"key_path"}, exclude_none=True),
+        )
 
     def _assert_support_for_image_input(self, model_data: ModelData):
         if not model_data.supports_input_image:
@@ -484,6 +479,31 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
 
     _json_schema_regexp = re.compile(r"json[ _-]?schema", re.IGNORECASE)
 
+    def _extract_files_to_download(
+        self,
+        files: list[_FileVar],
+        max_number_of_file_urls: int | None,
+        should_download_file: Callable[[_FileVar], bool],
+    ):
+        # Files that should not be downloaded and that will be passed as links
+        files_as_links: list[_FileVar] = []
+        # files that should be downloaded
+        files_to_download: list[_FileVar] = []
+
+        for f in files:
+            if should_download_file(f):
+                files_to_download.append(f)
+                continue
+            if not f.data:
+                # File does not contain data so we will pass it as a link
+                files_as_links.append(f)
+
+        if max_number_of_file_urls is not None and len(files_as_links) > max_number_of_file_urls:
+            # If limit we need to make sure we
+            files_to_download.extend(files_as_links[max_number_of_file_urls:])
+
+        return files_to_download
+
     async def _handle_files_in_messages(
         self,
         messages: Sequence[Message],
@@ -502,7 +522,11 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
         # files = await self._convert_pdf_to_images(files, model_data)
         # self._check_support_for_files(model_data, files)
 
-        files_to_download = [f for f in files if self._should_download_file(provider, f)]
+        files_to_download = self._extract_files_to_download(
+            files,
+            provider.max_number_of_file_urls,
+            lambda f: self._should_download_file(provider, f),
+        )
         if files_to_download:
             try:
                 async with asyncio.TaskGroup() as tg:
@@ -582,6 +606,44 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
         builder = MessageBuilder(self.template_manager, self.task.input_schema, self._options.messages, logger)
         return await builder.extract(input)
 
+    async def _handle_files_in_input(
+        self,
+        files: list[FileWithKeyPath],
+        model_data: ModelData,
+        provider: AbstractProvider[Any, Any],
+        builder: BuilderInterface | None,
+        input: dict[str, Any],
+        input_copy: dict[str, Any],
+    ):
+        download_start_time = time.time()
+        files = await self._convert_pdf_to_images(files, model_data)
+        self._check_support_for_files(model_data, files)
+
+        files_to_download = self._extract_files_to_download(
+            files,
+            provider.max_number_of_file_urls,
+            lambda f: self._should_download_file(provider, f),
+        )
+        if files_to_download:
+            try:
+                async with asyncio.TaskGroup() as tg:
+                    for file in files_to_download:
+                        # We want to update the provided input because file data
+                        # should be propagated upstream to avoid having to download files twice
+                        tg.create_task(self._download_file_and_update_input(provider, file, input))
+            except* InvalidFileError as eg:
+                raise eg.exceptions[0]
+
+        # Here we update the input copy instead of the provided input
+        # Since the data will just be provided to the provider
+        files, has_inlined_files = self._inline_text_files(files, input_copy)
+
+        download_duration = time.time() - download_start_time
+        if builder:
+            builder.record_file_download_seconds(download_duration)
+
+        return files, has_inlined_files
+
     async def _build_messages(  # noqa: C901
         self,
         template_name: TemplateName,
@@ -628,26 +690,16 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
         input_schema, input_copy, files = extract_files(input_schema, input_copy)
 
         if files:
-            download_start_time = time.time()
-            files = await self._convert_pdf_to_images(files, model_data)
-            self._check_support_for_files(model_data, files)
-            try:
-                async with asyncio.TaskGroup() as tg:
-                    for file in files:
-                        # We want to update the provided input because file data
-                        # should be propagated upstream to avoid having to download files twice
-                        tg.create_task(self._download_file_and_update_input_if_needed(provider, file, input))
-            except* InvalidFileError as eg:
-                raise eg.exceptions[0]
-            # Here we update the input copy instead of the provided input
-            # Since the data will just be provided to the provider
-            files, has_inlined_files = self._inline_text_files(files, input_copy)
+            files, has_inlined_files = await self._handle_files_in_input(
+                files,
+                model_data,
+                provider,
+                builder,
+                input,
+                input_copy,
+            )
 
-            download_duration = time.time() - download_start_time
-            if builder:
-                builder.record_file_download_seconds(download_duration)
         else:
-            download_duration = 0
             has_inlined_files = False
 
         # Extracting image options after files. If the user provides a mask, it will be in image options
@@ -815,9 +867,14 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
         self,
         tool_calls: list[ToolCallRequestWithID] | None,
     ) -> tuple[list[ToolCallRequestWithID] | None, list[ToolCallRequestWithID] | None]:
+        """Split tools into internal and external tools"""
         if not tool_calls:
             return None, None
-        """Split tools into internal and external tools"""
+
+        # First assigning tool call indices
+        for i, tool_call in enumerate(tool_calls):
+            tool_call.index = i
+
         internal_tools: list[ToolCallRequestWithID] = []
         external_tools: list[ToolCallRequestWithID] = []
         for tool_call in tool_calls:

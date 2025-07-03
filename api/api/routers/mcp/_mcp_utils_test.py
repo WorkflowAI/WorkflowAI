@@ -1,6 +1,6 @@
 import pytest
 
-from api.routers.mcp._mcp_utils import extract_agent_id_and_run_id
+from api.routers.mcp._mcp_utils import extract_agent_id_and_run_id, truncate_obj
 
 
 class TestMCPServiceExtractAgentIdAndRunId:
@@ -106,3 +106,32 @@ class TestMCPServiceExtractAgentIdAndRunId:
         agent_id, run_id = extract_agent_id_and_run_id(url)  # pyright: ignore[reportPrivateUsage]
         assert agent_id == expected_agent
         assert run_id == expected_run
+
+
+class TestTruncateObj:
+    def test_truncate_obj(self):
+        obj = {"a": "1234567890"}
+        max_field_length = 5
+        expected = {"a": "12345...Truncated"}
+        assert truncate_obj(obj, max_field_length) == expected
+
+    def test_truncate_obj_list(self):
+        obj = ["1234567890"]
+        max_field_length = 5
+        expected = ["12345...Truncated"]
+        assert truncate_obj(obj, max_field_length) == expected
+
+    def test_truncate_obj_nested(self):
+        obj = {
+            "a": [
+                "1234567890",
+                {"b": "1234567890"},
+            ],
+            "c": "1234567890",
+        }
+        max_field_length = 5
+        expected = {
+            "a": ["12345...Truncated", {"b": "12345...Truncated"}],
+            "c": "12345...Truncated",
+        }
+        assert truncate_obj(obj, max_field_length) == expected
