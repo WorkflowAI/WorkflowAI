@@ -7,7 +7,7 @@ from core.providers.google._google_utils import get_google_json_schema_name, pre
 
 class TestPrepareGoogleJsonSchema:
     def test_simple_schema(self):
-        raw = {
+        raw: dict[str, Any] = {
             "type": "object",
             "properties": {
                 "name": {"type": "string", "description": "The name of the person"},
@@ -24,7 +24,7 @@ class TestPrepareGoogleJsonSchema:
         }
 
     def test_schema_with_unsupported_properties(self):
-        raw = {
+        raw: dict[str, Any] = {
             "type": "object",
             "properties": {
                 "name": {"type": "string", "description": "The name of the person"},
@@ -43,7 +43,7 @@ class TestPrepareGoogleJsonSchema:
         }
 
     def test_schema_with_refs(self):
-        raw = {
+        raw: dict[str, Any] = {
             "type": "object",
             "properties": {
                 "person": {"$ref": "#/$defs/Person"},
@@ -88,8 +88,8 @@ class TestPrepareGoogleJsonSchema:
         assert sanitized == expected
 
     def test_empty_object_properties(self):
-        raw = {
-            "type": "object", 
+        raw: dict[str, Any] = {
+            "type": "object",
             "properties": {},
         }
         sanitized = prepare_google_json_schema(raw)
@@ -100,7 +100,7 @@ class TestPrepareGoogleJsonSchema:
         }
 
     def test_nested_refs(self):
-        raw = {
+        raw: dict[str, Any] = {
             "type": "object",
             "properties": {
                 "data": {"$ref": "#/$defs/NestedData"},
@@ -140,7 +140,7 @@ class TestPrepareGoogleJsonSchema:
         assert sanitized == expected
 
     def test_missing_ref(self):
-        raw = {
+        raw: dict[str, Any] = {
             "type": "object",
             "properties": {
                 "person": {"$ref": "#/$defs/Person"},

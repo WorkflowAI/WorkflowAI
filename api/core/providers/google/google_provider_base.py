@@ -171,7 +171,7 @@ class GoogleProviderBase(HTTPXProvider[_GoogleConfigVar, CompletionResponse], Ge
         # Handle structured output - similar pattern to OpenAI provider
         response_mime_type = "text/plain"
         response_schema = None
-        
+
         if options.output_schema and not options.enabled_tools:
             if model_data.supports_structured_output and options.structured_generation:
                 # Use structured output with responseSchema

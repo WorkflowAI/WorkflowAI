@@ -1,8 +1,12 @@
+# pyright: reportPrivateUsage=false
+from typing import Any
 from unittest.mock import Mock
 
 import httpx
 import pytest
 
+from core.domain.llm_usage import LLMUsage
+from core.domain.models import Provider
 from core.domain.tool_call import ToolCallRequestWithID
 from core.providers.base.provider_error import ProviderInvalidFileError
 from core.providers.google.google_provider_base import GoogleProviderBase
@@ -32,7 +36,7 @@ def test_extract_native_tool_calls_empty_response() -> None:
         ],
         usageMetadata=UsageMetadata(),
     )
-    result = GoogleProviderBase._extract_native_tool_calls(response)  # pyright: ignore[reportPrivateUsage]
+    result = GoogleProviderBase._extract_native_tool_calls(response)
     assert result == []
 
 
@@ -48,7 +52,7 @@ def test_extract_native_tool_calls_no_function_calls() -> None:
         ],
         usageMetadata=UsageMetadata(),
     )
-    result = GoogleProviderBase._extract_native_tool_calls(response)  # pyright: ignore[reportPrivateUsage]
+    result = GoogleProviderBase._extract_native_tool_calls(response)
     assert result == []
 
 
@@ -77,7 +81,7 @@ def test_extract_native_tool_calls_with_function_calls() -> None:
         ],
         usageMetadata=UsageMetadata(),
     )
-    result = GoogleProviderBase._extract_native_tool_calls(response)  # pyright: ignore[reportPrivateUsage]
+    result = GoogleProviderBase._extract_native_tool_calls(response)
     assert result == [
         ToolCallRequestWithID(
             tool_name="@browser-text",
@@ -109,7 +113,7 @@ def test_extract_native_tool_calls_missing_tool_name() -> None:
         ],
         usageMetadata=UsageMetadata(),
     )
-    result = GoogleProviderBase._extract_native_tool_calls(response)  # pyright: ignore[reportPrivateUsage]
+    result = GoogleProviderBase._extract_native_tool_calls(response)
     assert result == [
         ToolCallRequestWithID(
             tool_name="non-existent-tool",
@@ -140,16 +144,22 @@ def test_handle_invalid_argument_raises_provider_invalid_file_error(error_messag
     mock_response.status_code = 400
 
     with pytest.raises(ProviderInvalidFileError):
-        GoogleProviderBase._handle_invalid_argument(error_message, mock_response)  # pyright: ignore[reportPrivateUsage]
+        GoogleProviderBase._handle_invalid_argument(error_message, mock_response)
 
 
-def test_structured_output_logic_with_tools() -> None:
+def test_structured_output_logic_with_tools() -> None:  # noqa: C901
     """Test that structured output is disabled when tools are enabled."""
+    from collections.abc import AsyncGenerator
+    from typing import Callable
     from unittest.mock import Mock, patch
+
+    from core.domain.llm_completion import LLMCompletion
     from core.domain.message import MessageDeprecated
     from core.domain.models import Model
-    from core.providers.base.provider_options import ProviderOptions
+    from core.domain.structured_output import StructuredOutput
     from core.domain.tool import Tool
+    from core.providers.base.models import RawCompletion
+    from core.providers.base.provider_options import ProviderOptions
 
     # Mock the model data to support structured output
     mock_model_data = Mock()
@@ -164,7 +174,7 @@ def test_structured_output_logic_with_tools() -> None:
     mock_tool.description = "Test tool"
     mock_tool.input_schema = {}
     mock_tool.output_schema = None
-    
+
     options = Mock(spec=ProviderOptions)
     options.enabled_tools = [mock_tool]  # Tools are enabled
     options.output_schema = {"type": "object", "properties": {"test": {"type": "string"}}}
@@ -176,40 +186,123 @@ def test_structured_output_logic_with_tools() -> None:
     options.presence_penalty = None
     options.frequency_penalty = None
     options.top_p = None
-    
-    def mock_final_reasoning_budget(reasoning):
+
+    def mock_final_reasoning_budget(reasoning: Any) -> None:
         return None
+
     options.final_reasoning_budget = mock_final_reasoning_budget
 
-    messages = [Mock(spec=MessageDeprecated)]
-    messages[0].role = MessageDeprecated.Role.USER
-    messages[0].image_options = None
+    mock_message = Mock(spec=MessageDeprecated)
+    mock_message.role = MessageDeprecated.Role.USER
+    mock_message.image_options = None
+    messages = [mock_message]
 
     # Create a mock provider instance
-    class MockGoogleProvider(GoogleProviderBase):
-        def _request_url(self, model, stream):
+    class MockGoogleProvider(GoogleProviderBase[Any]):
+        @classmethod
+        def name(cls) -> Provider:
+            return Provider.GOOGLE
+
+        @classmethod
+        def required_env_vars(cls) -> list[str]:
+            return []
+
+        @classmethod
+        def _default_config(cls, index: int) -> Any:
+            return Mock()
+
+        def _request_url(self, model: Any, stream: bool) -> str:
             return "https://mock.url"
-    
+
+        async def _request_headers(self) -> dict[str, str]:
+            return {}
+
+        def _handle_response(self, response: httpx.Response) -> Any:
+            return Mock()
+
+        def _handle_stream_response(self, response: httpx.Response) -> Any:
+            return Mock()
+
+        def _compute_prompt_token_count(self, messages: list[dict[str, Any]], model: Any) -> float:
+            return 0.0
+
+        def _compute_prompt_image_count(self, messages: list[dict[str, Any]]) -> int:
+            return 0
+
+        async def _compute_prompt_audio_token_count(self, messages: list[dict[str, Any]]) -> tuple[int, float]:
+            return (0, 0.0)
+
+        async def check_valid(self) -> bool:
+            return True
+
+        @classmethod
+        def standardize_messages(cls, messages: list[dict[str, Any]]) -> list[Any]:
+            return []
+
+        async def _prepare_completion(
+            self,
+            messages: list[MessageDeprecated],
+            options: ProviderOptions,
+            stream: bool,
+        ) -> tuple[Any, LLMCompletion]:
+            return Mock(), LLMCompletion(
+                messages=[],
+                usage=LLMUsage(),
+                provider=Provider.GOOGLE,
+            )
+
+        async def _single_complete(
+            self,
+            request: Any,
+            output_factory: Callable[[str, bool], StructuredOutput],
+            raw_completion: RawCompletion,
+            options: ProviderOptions,
+        ) -> StructuredOutput:
+            return StructuredOutput(output=None)
+
+        def _single_stream(
+            self,
+            request: Any,
+            output_factory: Callable[[str, bool], StructuredOutput],
+            partial_output_factory: Callable[[Any], StructuredOutput],
+            raw_completion: RawCompletion,
+            options: ProviderOptions,
+        ) -> AsyncGenerator[StructuredOutput, None]:
+            async def _async_gen() -> AsyncGenerator[StructuredOutput, None]:
+                yield StructuredOutput(output=None)
+
+            return _async_gen()
+
     provider = MockGoogleProvider(Mock())
 
-    with patch('core.providers.google.google_provider_base.get_model_data', return_value=mock_model_data), \
-         patch.object(provider, '_convert_messages', return_value=([Mock()], None)), \
-         patch.object(provider, '_safety_settings', return_value=None), \
-         patch.object(provider, '_add_native_tools'):
-        
+    with (
+        patch("core.providers.google.google_provider_base.get_model_data", return_value=mock_model_data),
+        patch.object(provider, "_convert_messages", return_value=([Mock()], None)),
+        patch.object(provider, "_safety_settings", return_value=None),
+        patch.object(provider, "_add_native_tools"),
+    ):
         request = provider._build_request(messages, options, stream=False)
-        
+
         # When tools are enabled, structured output should be disabled
         # responseMimeType should be "text/plain" and responseSchema should be None
+        assert hasattr(request, "generationConfig")
+        assert hasattr(request.generationConfig, "responseMimeType")
+        assert hasattr(request.generationConfig, "responseSchema")
         assert request.generationConfig.responseMimeType == "text/plain"
         assert request.generationConfig.responseSchema is None
 
 
-def test_structured_output_logic_without_tools() -> None:
+def test_structured_output_logic_without_tools() -> None:  # noqa: C901
     """Test that structured output is enabled when tools are disabled."""
+    from collections.abc import AsyncGenerator
+    from typing import Callable
     from unittest.mock import Mock, patch
+
+    from core.domain.llm_completion import LLMCompletion
     from core.domain.message import MessageDeprecated
     from core.domain.models import Model
+    from core.domain.structured_output import StructuredOutput
+    from core.providers.base.models import RawCompletion
     from core.providers.base.provider_options import ProviderOptions
 
     # Mock the model data to support structured output
@@ -231,34 +324,114 @@ def test_structured_output_logic_without_tools() -> None:
     options.presence_penalty = None
     options.frequency_penalty = None
     options.top_p = None
-    
-    def mock_final_reasoning_budget(reasoning):
+
+    def mock_final_reasoning_budget(reasoning: Any) -> None:
         return None
+
     options.final_reasoning_budget = mock_final_reasoning_budget
 
-    messages = [Mock(spec=MessageDeprecated)]
-    messages[0].role = MessageDeprecated.Role.USER
-    messages[0].image_options = None
+    mock_message = Mock(spec=MessageDeprecated)
+    mock_message.role = MessageDeprecated.Role.USER
+    mock_message.image_options = None
+    messages = [mock_message]
 
     # Create a mock provider instance
-    class MockGoogleProvider(GoogleProviderBase):
-        def _request_url(self, model, stream):
+    class MockGoogleProvider(GoogleProviderBase[Any]):
+        @classmethod
+        def name(cls) -> Provider:
+            return Provider.GOOGLE
+
+        @classmethod
+        def required_env_vars(cls) -> list[str]:
+            return []
+
+        @classmethod
+        def _default_config(cls, index: int) -> Any:
+            return Mock()
+
+        def _request_url(self, model: Any, stream: bool) -> str:
             return "https://mock.url"
-    
+
+        async def _request_headers(self) -> dict[str, str]:
+            return {}
+
+        def _handle_response(self, response: httpx.Response) -> Any:
+            return Mock()
+
+        def _handle_stream_response(self, response: httpx.Response) -> Any:
+            return Mock()
+
+        def _compute_prompt_token_count(self, messages: list[dict[str, Any]], model: Any) -> float:
+            return 0.0
+
+        def _compute_prompt_image_count(self, messages: list[dict[str, Any]]) -> int:
+            return 0
+
+        async def _compute_prompt_audio_token_count(self, messages: list[dict[str, Any]]) -> tuple[int, float]:
+            return (0, 0.0)
+
+        async def check_valid(self) -> bool:
+            return True
+
+        @classmethod
+        def standardize_messages(cls, messages: list[dict[str, Any]]) -> list[Any]:
+            return []
+
+        async def _prepare_completion(
+            self,
+            messages: list[MessageDeprecated],
+            options: ProviderOptions,
+            stream: bool,
+        ) -> tuple[Any, LLMCompletion]:
+            return Mock(), LLMCompletion(
+                messages=[],
+                usage=LLMUsage(),
+                provider=Provider.GOOGLE,
+            )
+
+        async def _single_complete(
+            self,
+            request: Any,
+            output_factory: Callable[[str, bool], StructuredOutput],
+            raw_completion: RawCompletion,
+            options: ProviderOptions,
+        ) -> StructuredOutput:
+            return StructuredOutput(output=None)
+
+        def _single_stream(
+            self,
+            request: Any,
+            output_factory: Callable[[str, bool], StructuredOutput],
+            partial_output_factory: Callable[[Any], StructuredOutput],
+            raw_completion: RawCompletion,
+            options: ProviderOptions,
+        ) -> AsyncGenerator[StructuredOutput, None]:
+            async def _async_gen() -> AsyncGenerator[StructuredOutput, None]:
+                yield StructuredOutput(output=None)
+
+            return _async_gen()
+
     provider = MockGoogleProvider(Mock())
 
-    with patch('core.providers.google.google_provider_base.get_model_data', return_value=mock_model_data), \
-         patch.object(provider, '_convert_messages', return_value=([Mock()], None)), \
-         patch.object(provider, '_safety_settings', return_value=None), \
-         patch.object(provider, '_add_native_tools'), \
-         patch('core.providers.google.google_provider_base.prepare_google_json_schema', return_value={"cleaned": "schema"}) as mock_prepare:
-        
+    with (
+        patch("core.providers.google.google_provider_base.get_model_data", return_value=mock_model_data),
+        patch.object(provider, "_convert_messages", return_value=([Mock()], None)),
+        patch.object(provider, "_safety_settings", return_value=None),
+        patch.object(provider, "_add_native_tools"),
+        patch(
+            "core.providers.google.google_provider_base.prepare_google_json_schema",
+            return_value={"cleaned": "schema"},
+        ) as mock_prepare,
+    ):
         request = provider._build_request(messages, options, stream=False)
-        
+
         # When tools are disabled, structured output should be enabled
         # responseMimeType should be "application/json" and responseSchema should be set
+        assert hasattr(request, "generationConfig")
+        assert hasattr(request.generationConfig, "responseMimeType")
+        assert hasattr(request.generationConfig, "responseSchema")
         assert request.generationConfig.responseMimeType == "application/json"
         assert request.generationConfig.responseSchema == {"cleaned": "schema"}
-        
+
         # Verify that the schema preparation function was called
         mock_prepare.assert_called_once()
