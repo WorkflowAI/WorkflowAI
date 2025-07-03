@@ -150,7 +150,7 @@ export function ProxyModelOutputContent(props: Props) {
           streamLoading={streamLoading}
           toolCalls={toolCallsPreview}
           reasoningSteps={reasoningSteps}
-          showDescriptionExamples={undefined}
+          showDescriptionExamples={emptyMode ? 'all' : undefined}
           showDescriptionPopover={false}
           defaultOpenForSteps={true}
         />
