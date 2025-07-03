@@ -14,6 +14,11 @@ export function ProxyNewAgentCreateAgentFirstMessageEntry(props: Props) {
 
   const [localMessage, setLocalMessage] = useState('');
 
+  const handleSendMessage = () => {
+    sendMessage(localMessage);
+    setLocalMessage('');
+  };
+
   return (
     <div className='flex flex-col gap-6 w-full px-6 items-center justify-center'>
       <WorkflowAIIcon className='shrink-0 w-16 h-16' />
@@ -30,8 +35,9 @@ export function ProxyNewAgentCreateAgentFirstMessageEntry(props: Props) {
             onKeyDown={(event) => {
               if (event.key === 'Enter') {
                 event.preventDefault();
-                sendMessage(localMessage);
-                setLocalMessage('');
+                if (localMessage.length > 0) {
+                  handleSendMessage();
+                }
               }
             }}
             autoFocus={true}
@@ -45,7 +51,7 @@ export function ProxyNewAgentCreateAgentFirstMessageEntry(props: Props) {
               localMessage.length === 0 ? 'bg-gray-100 disabled:bg-gray-100' : 'bg-custom-indigo-gradient'
             )}
             disabled={localMessage.length === 0}
-            onClick={() => sendMessage(localMessage)}
+            onClick={handleSendMessage}
           />
         </div>
       </div>
