@@ -1419,6 +1419,212 @@ class TestBuildRequest:
         assert request.contents
         assert request.contents[0].parts[0].text == "-"
 
+    def test_build_request_with_structured_generation_enabled(self, google_provider: GoogleProvider):
+        """Test that structured generation is properly configured when enabled."""
+        output_schema = {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+                "age": {"type": "integer"},
+            },
+            "required": ["name", "age"],
+        }
+
+        request = google_provider._build_request(  # pyright: ignore [reportPrivateUsage]
+            messages=[MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello")],
+            options=ProviderOptions(
+                model=Model.GEMINI_2_5_FLASH,  # This model supports structured output
+                structured_generation=True,
+                output_schema=output_schema,
+            ),
+            stream=False,
+        )
+
+        assert isinstance(request, CompletionRequest)
+        assert request.generationConfig.responseMimeType == "application/json"
+        assert request.generationConfig.responseSchema is not None
+        # Check that the schema was sanitized (Google uses capitalized types)
+        assert request.generationConfig.responseSchema["type"] == "OBJECT"
+        assert request.generationConfig.responseSchema["properties"]["name"]["type"] == "STRING"
+        assert request.generationConfig.responseSchema["properties"]["age"]["type"] == "INTEGER"
+
+    def test_build_request_with_structured_generation_disabled(self, google_provider: GoogleProvider):
+        """Test that structured generation is not used when disabled."""
+        output_schema = {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+            },
+        }
+
+        request = google_provider._build_request(  # pyright: ignore [reportPrivateUsage]
+            messages=[MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello")],
+            options=ProviderOptions(
+                model=Model.GEMINI_2_5_FLASH,  # Using a model that supports structured output for this test
+                structured_generation=False,
+                output_schema=output_schema,
+            ),
+            stream=False,
+        )
+
+        assert isinstance(request, CompletionRequest)
+        # Even with structured_generation=False, JSON mode is still used when output_schema is provided
+        assert request.generationConfig.responseMimeType == "application/json"
+        # But responseSchema should be None since structured_generation=False
+        assert request.generationConfig.responseSchema is None
+
+    def test_build_request_with_structured_generation_no_schema(self, google_provider: GoogleProvider):
+        """Test that structured generation is not used when no output schema is provided."""
+        request = google_provider._build_request(  # pyright: ignore [reportPrivateUsage]
+            messages=[MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello")],
+            options=ProviderOptions(
+                model=Model.GEMINI_2_5_FLASH,  # Using a model that supports structured output for this test
+                structured_generation=True,
+                output_schema=None,
+            ),
+            stream=False,
+        )
+
+        assert isinstance(request, CompletionRequest)
+        assert request.generationConfig.responseMimeType == "text/plain"
+        assert request.generationConfig.responseSchema is None
+
+    def test_build_request_with_json_mode_and_schema(self, google_provider: GoogleProvider):
+        """Test that JSON mode is used when output schema is provided but structured generation is not explicitly enabled."""
+        output_schema = {
+            "type": "object",
+            "properties": {
+                "result": {"type": "string"},
+            },
+        }
+
+        request = google_provider._build_request(  # pyright: ignore [reportPrivateUsage]
+            messages=[MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello")],
+            options=ProviderOptions(
+                model=Model.GEMINI_2_5_FLASH,  # Using a model that supports JSON mode
+                output_schema=output_schema,
+            ),
+            stream=False,
+        )
+
+        assert isinstance(request, CompletionRequest)
+        assert request.generationConfig.responseMimeType == "application/json"
+        assert request.generationConfig.responseSchema is None
+
+    def test_build_request_with_tools_and_output_schema(self, google_provider: GoogleProvider):
+        """Test that MIME type is not set to JSON when tools are enabled, even with output schema."""
+        from core.tools.search.run_google_search import run_google_search
+        from core.utils.tool_utils.tool_utils import build_tool
+
+        tool = build_tool(name="search", func=run_google_search)
+        output_schema = {
+            "type": "object",
+            "properties": {
+                "result": {"type": "string"},
+            },
+        }
+
+        request = google_provider._build_request(  # pyright: ignore [reportPrivateUsage]
+            messages=[MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello")],
+            options=ProviderOptions(
+                model=Model.GEMINI_2_5_FLASH,  # Using a model that supports JSON mode
+                output_schema=output_schema,
+                enabled_tools=[tool],
+            ),
+            stream=False,
+        )
+
+        assert isinstance(request, CompletionRequest)
+        assert request.generationConfig.responseMimeType == "text/plain"
+        assert request.generationConfig.responseSchema is None
+
+    def test_build_request_structured_generation_schema_error_handling(self, google_provider: GoogleProvider):
+        """Test that schema sanitization errors are handled gracefully."""
+        # Create a schema that will cause an error during sanitization
+        invalid_schema = {
+            "type": "object",
+            "properties": {
+                "circular_ref": {"$ref": "#/definitions/circular_ref"},  # This will cause issues
+            },
+        }
+
+        with patch(
+            "core.providers.google.google_provider_utils.sanitize_json_schema",
+            side_effect=Exception("Schema sanitization error"),
+        ):
+            request = google_provider._build_request(  # pyright: ignore [reportPrivateUsage]
+                messages=[MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello")],
+                options=ProviderOptions(
+                    model=Model.GEMINI_2_5_FLASH,  # Using a model that supports structured output
+                    structured_generation=True,
+                    output_schema=invalid_schema,
+                ),
+                stream=False,
+            )
+
+        # Should fallback gracefully without structured generation
+        assert isinstance(request, CompletionRequest)
+        assert request.generationConfig.responseMimeType == "application/json"
+        assert request.generationConfig.responseSchema is None
+
+        # Verify that the error was logged
+        google_provider.logger.error.assert_called_once()  # type: ignore
+
+    def test_build_request_with_complex_output_schema(self, google_provider: GoogleProvider):
+        """Test structured generation with a complex nested schema."""
+        complex_schema = {
+            "type": "object",
+            "properties": {
+                "user": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string"},
+                        "age": {"type": "integer"},
+                        "hobbies": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                        },
+                    },
+                    "required": ["name", "age"],
+                },
+                "metadata": {
+                    "type": "object",
+                    "properties": {
+                        "created_at": {"type": "string", "format": "date-time"},
+                        "tags": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                        },
+                    },
+                },
+            },
+            "required": ["user"],
+        }
+
+        request = google_provider._build_request(  # pyright: ignore [reportPrivateUsage]
+            messages=[MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello")],
+            options=ProviderOptions(
+                model=Model.GEMINI_2_5_FLASH,  # Using a model that supports structured output
+                structured_generation=True,
+                output_schema=complex_schema,
+            ),
+            stream=False,
+        )
+
+        assert isinstance(request, CompletionRequest)
+        assert request.generationConfig.responseMimeType == "application/json"
+        assert request.generationConfig.responseSchema is not None
+        # Verify the schema was properly sanitized
+        assert request.generationConfig.responseSchema["type"] == "OBJECT"
+        assert request.generationConfig.responseSchema["properties"]["user"]["type"] == "OBJECT"
+        assert request.generationConfig.responseSchema["properties"]["user"]["properties"]["name"]["type"] == "STRING"
+        assert request.generationConfig.responseSchema["properties"]["user"]["properties"]["age"]["type"] == "INTEGER"
+        assert request.generationConfig.responseSchema["properties"]["user"]["properties"]["hobbies"]["type"] == "ARRAY"
+        assert (
+            request.generationConfig.responseSchema["properties"]["user"]["properties"]["hobbies"]["items"]["type"]
+            == "STRING"
+        )
+
 
 class TestStream:
     async def test_stream_with_no_candidates(
