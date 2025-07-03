@@ -49,11 +49,11 @@ export function TaskConversationRetryCell(props: TaskConversationRetryCellProps)
   const { retry } = props;
 
   return (
-    <div className='flex w-full gap-3 pt-2 pb-3 border-gray-200 overflow-hidden shrink-0'>
+    <div className='flex w-full gap-2 pt-2 pb-3 border-gray-200 overflow-hidden shrink-0'>
       <MessageAvatar imageUrl={undefined} username={WORKFLOW_AI_USERNAME} />
       <div className='flex-1 flex w-full flex-col gap-1 overflow-hidden font-lato'>
-        <div className='w-full flex pt-1 gap-2 items-center justify-between'>
-          <span className='font-semibold text-gray-700 text-base'>{WORKFLOW_AI_USERNAME}</span>
+        <div className='w-full flex pt-[2px] gap-2 items-center justify-between'>
+          <span className='font-semibold text-gray-900 text-[13px]'>{WORKFLOW_AI_USERNAME}</span>
         </div>
         <div className='flex flex-row gap-2 w-fit items-center'>
           <div className='flex-1 text-sm text-gray-500 whitespace-break-spaces'>Something went wrong.</div>
