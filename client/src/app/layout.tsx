@@ -3,6 +3,7 @@ import { GeistMono } from 'geist/font/mono';
 import { GeistSans } from 'geist/font/sans';
 import type { Metadata } from 'next';
 import { PageViewTracker } from '@/components/PageViewTracker';
+import { ProxyCompleteMCPIntegrationModal } from '@/components/ProxyNewAgentModal/ProxyCompleteMCPIntegrationModal';
 import { ProxyNewAgentModal } from '@/components/ProxyNewAgentModal/ProxyNewAgentModal';
 import { AmplitudeConfigurator } from '@/components/amplitude/AmplitudeConfigurator';
 import { Toaster } from '@/components/ui/Sonner';
@@ -37,6 +38,7 @@ export default function RootLayout({
             <PageViewTracker>
               {/* Only add unauthenticated components here. All the authenticated components are in the [tenant]/layout.tsx */}
               <ProxyNewAgentModal />
+              <ProxyCompleteMCPIntegrationModal />
               {children}
               <Toaster position='bottom-center' />
             </PageViewTracker>
