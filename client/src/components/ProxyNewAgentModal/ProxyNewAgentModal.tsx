@@ -11,7 +11,7 @@ export type ProxyNewAgentModalQueryParams = {
   mode?: 'add' | 'create';
 };
 
-const searchParams: (keyof ProxyNewAgentModalQueryParams)[] = [];
+const searchParams: (keyof ProxyNewAgentModalQueryParams)[] = ['mode'];
 
 export function useProxyNewAgentModal() {
   return useQueryParamModal<ProxyNewAgentModalQueryParams>(NEW_PROXY_AGENT_MODAL_OPEN, searchParams);
