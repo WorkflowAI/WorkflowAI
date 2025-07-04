@@ -16,7 +16,10 @@ So if we apply the principles of Dev UX to how we have built WorkflowAI, we made
 
 So to rethink WorkflowAI as (basically) an SDK, we need to think about a very limited number of core primitives that can be organized by a developer.
 
-Another thing that's interesting is that all the actions that can be performed on primitives should be possible via the UI, code and MCP in some form or another. I don't think it's a matter of **what action can be performed where**, but rather **how can the action be optimized for the different mediums**. For example, the "edit output" action is just **not part of WorkflowAI** period. It is the responsibility of the developer. Our responsibility is to provide the dev with the right tool and documentation.
+Another thing that's interesting is that all the actions that can be performed on primitives should be possible via the UI, code and MCP in some form or another. I don't think it's a matter of **what action can be performed where**, but rather **how can the action be optimized for the different mediums**. For example:
+
+- the "edit output" action is just **not part of WorkflowAI** period. It is the responsibility of the developer. Our responsibility is to provide the dev with the right tool and documentation.
+- the playground should be available via the UI and the MCP (it is already available via code because it's basically a for loop of the completion call). Note that they don't need to have the same shape, running a playground accross 3 different dimensions would be REALLY hard in the UI. Also an "experiment" in the UI should contain the entirety of a user session, not just a run on 3 models. In the UI, the layout should probably resemble the "run" detail view for clarity.
 
 # Primitives:
 
