@@ -66,6 +66,10 @@ claude mcp add workflowai -s user https://api.workflowai.com/mcp/ --transport ht
 
 Replace `YOUR_API_KEY_HERE` with your WorkflowAI API key.
 
+<Callout type="info">
+**Installation Scopes**: The `-s user` flag installs WorkflowAI for your personal use across all projects. For team projects, you can use `-s project` instead to create a shared `.mcp.json` file that can be committed to version control and shared with your team members.
+</Callout>
+
 3. Type the following to verify the server is properly connected:
 
 ```bash
