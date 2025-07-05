@@ -7,7 +7,7 @@ import GitHubSrc from '@/components/Images/GitHubIcon.png';
 import { Button } from '@/components/ui/Button';
 import { SimpleTooltip } from '@/components/ui/Tooltip';
 import { useAuth, useAuthUI } from '@/lib/AuthContext';
-import { NEW_TASK_MODAL_OPEN, useQueryParamModal } from '@/lib/globalModal';
+import { NEW_PROXY_AGENT_MODAL_OPEN, useQueryParamModal } from '@/lib/globalModal';
 import { useRedirectWithParams } from '@/lib/queryString';
 import { signUpRoute } from '@/lib/routeFormatter';
 import { CreditsSection } from './CreditsSection';
@@ -93,16 +93,13 @@ export function SidebarBottomBar(props: SidebarBottomBarProps) {
   const { isLoggedOut } = props;
 
   const { isSignedIn, user, orgState } = useAuth();
-  const { openModal: openNewTaskModal } = useQueryParamModal(NEW_TASK_MODAL_OPEN);
+  const { openModal: openProxyNewAgentModal } = useQueryParamModal(NEW_PROXY_AGENT_MODAL_OPEN);
   const routeForSignUp = signUpRoute();
 
   const onNewTask = useCallback(() => {
     amplitude.track('user.clicked.new_task');
-    openNewTaskModal({
-      mode: 'new',
-      redirectToPlaygrounds: 'true',
-    });
-  }, [openNewTaskModal]);
+    openProxyNewAgentModal();
+  }, [openProxyNewAgentModal]);
 
   const { openUserProfile, openOrganizationProfile, signOut } = useAuthUI();
 
@@ -125,7 +122,7 @@ export function SidebarBottomBar(props: SidebarBottomBarProps) {
               icon={<Plus className='h-4 w-4' strokeWidth={2} />}
               onClick={onNewTask}
             >
-              New
+              Add Agent
             </Button>
           </div>
           <div className='pb-6 px-2.5'>
@@ -143,7 +140,7 @@ export function SidebarBottomBar(props: SidebarBottomBarProps) {
               icon={<Plus className='h-4 w-4' strokeWidth={2} />}
               onClick={onNewTask}
             >
-              New
+              Add Agent
             </Button>
           </div>
 

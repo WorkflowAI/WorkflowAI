@@ -2,13 +2,14 @@
 
 import * as amplitude from '@amplitude/analytics-browser';
 import { AppsList20Regular } from '@fluentui/react-icons';
+import { PlusIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useMemo } from 'react';
 import { useApiKeysModal } from '@/components/ApiKeysModal/ApiKeysModal';
 import { NotFoundForNotMatchingTenant } from '@/components/NotFound';
+import { Button } from '@/components/ui/Button';
 import { PageContainer } from '@/components/v2/PageContainer';
-import { useQueryParamModal } from '@/lib/globalModal';
-import { NEW_TASK_MODAL_OPEN } from '@/lib/globalModal';
+import { NEW_PROXY_AGENT_MODAL_OPEN, useQueryParamModal } from '@/lib/globalModal';
 import { useIsAllowed } from '@/lib/hooks/useIsAllowed';
 import { useIsSameTenant } from '@/lib/hooks/useTaskParams';
 import { taskApiRoute, taskDeploymentsRoute, taskRunsRoute, taskSchemaRoute } from '@/lib/routeFormatter';
@@ -73,16 +74,13 @@ export function TasksContainer(props: TasksContainerProps) {
   );
 
   const { apiKeys } = useOrFetchApiKeys(tenant);
-  const { openModal: openNewTaskModal } = useQueryParamModal(NEW_TASK_MODAL_OPEN);
+  const { openModal: openNewTaskModal } = useQueryParamModal(NEW_PROXY_AGENT_MODAL_OPEN);
   const { openModal: openApiKeysModal } = useApiKeysModal();
 
   const onNewTask = useCallback(() => {
     if (!checkIfSignedIn()) return;
     amplitude.track('user.clicked.new_task');
-    openNewTaskModal({
-      mode: 'new',
-      redirectToPlaygrounds: 'true',
-    });
+    openNewTaskModal();
   }, [openNewTaskModal, checkIfSignedIn]);
 
   if (!isSameTenant) {
@@ -103,12 +101,17 @@ export function TasksContainer(props: TasksContainerProps) {
       showBottomBorder={true}
       showSchema={false}
       rightBarChildren={
-        <ManageApiKeysButton
-          apiKeys={apiKeys}
-          openApiKeysModal={openApiKeysModal}
-          disabled={false}
-          buttonVariant='newDesign'
-        />
+        <div className='flex flex-row gap-2'>
+          <ManageApiKeysButton
+            apiKeys={apiKeys}
+            openApiKeysModal={openApiKeysModal}
+            disabled={false}
+            buttonVariant='newDesign'
+          />
+          <Button variant='newDesign' icon={<PlusIcon className='w-4 h-4' />} onClick={onNewTask}>
+            Add WorkflowAI to Cursor (MCP)
+          </Button>
+        </div>
       }
     >
       <div className='flex w-full h-full p-4'>

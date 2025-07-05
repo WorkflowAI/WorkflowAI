@@ -25,7 +25,7 @@ export function getEnvironmentShorthandName(environment: VersionEnvironment | un
   }
 }
 
-export function getEnvironmentFullName(environment: VersionEnvironment | undefined): string | undefined {
+export function getEnvironmentCapitalizedFullName(environment: VersionEnvironment | undefined): string | undefined {
   if (!environment) {
     return undefined;
   }
