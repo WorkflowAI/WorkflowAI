@@ -45,7 +45,7 @@ from core.providers.google.google_provider_domain import (
     message_or_system_message,
     native_tool_name_to_internal,
 )
-from core.providers.google.google_provider_utils import sanitize_json_schema
+from core.providers.google.google_provider_utils import prepare_google_response_schema
 from core.services.message import merge_messages
 from core.tools import ToolKind
 from core.utils.models.dumps import safe_dump_pydantic_model
@@ -148,6 +148,11 @@ class GoogleProviderBase(HTTPXProvider[_GoogleConfigVar, CompletionResponse], Ge
 
         return user_messages, system_message
 
+    @property
+    def response_schema_allowed_string_formats(self) -> set[str] | None:
+        # By default, allow all string formats in the response schemas
+        return None
+
     @override
     def _build_request(self, messages: list[MessageDeprecated], options: ProviderOptions, stream: bool) -> BaseModel:
         model_data = get_model_data(model=options.model)
@@ -187,7 +192,10 @@ class GoogleProviderBase(HTTPXProvider[_GoogleConfigVar, CompletionResponse], Ge
             and model_data.supports_structured_output
         ):
             try:
-                generation_config.responseSchema = sanitize_json_schema(options.output_schema)
+                generation_config.responseSchema = prepare_google_response_schema(
+                    options.output_schema,
+                    self.response_schema_allowed_string_formats,
+                )
             except Exception as e:
                 # What is in 'options.output_schema' can have a lot of different shapes, hence the generic error handling
                 # Failure to prepare the schema does not prevent the generation from starting, we can just fallback to non-controlled generation

@@ -4,8 +4,9 @@ import pytest
 
 from core.providers.google.google_provider_utils import (
     capitalize_schema_types,
+    prepare_google_response_schema,
     resolve_schema_refs,
-    sanitize_json_schema,
+    restrict_string_formats,
     splat_nulls_recursive,
 )
 
@@ -616,7 +617,7 @@ from core.providers.google.google_provider_utils import (
     ],
 )
 def test_sanitize_json_schema(schema: dict[str, Any], expected: dict[str, Any]):
-    assert sanitize_json_schema(schema) == expected
+    assert prepare_google_response_schema(schema) == expected
 
 
 def test_resolve_schema_refs():
@@ -912,3 +913,275 @@ def test_splat_nulls_recursive_with_type_arrays():
 
     # Descriptions should be preserved
     assert result["properties"]["simple_nullable"]["description"] == "A nullable string"
+
+
+class TestRestrictStringFormats:
+    def test_restrict_string_formats_no_restrictions(self):
+        schema = {
+            "type": "object",
+            "properties": {
+                "email": {"type": "string", "format": "email"},
+                "date": {"type": "string", "format": "date-time"},
+            },
+        }
+        result = restrict_string_formats(schema, None)
+        assert result == schema
+
+    def test_restrict_string_formats_allowed_format(self):
+        schema = {
+            "type": "object",
+            "properties": {
+                "email": {"type": "string", "format": "email"},
+                "date": {"type": "string", "format": "date-time"},
+            },
+        }
+        result = restrict_string_formats(schema, {"email", "date-time"})
+        assert result == schema
+
+    def test_restrict_string_formats_disallowed_format(self):
+        schema = {
+            "type": "object",
+            "properties": {
+                "email": {"type": "string", "format": "email"},
+                "date": {"type": "string", "format": "date-time"},
+                "name": {"type": "string"},
+            },
+        }
+        result = restrict_string_formats(schema, {"date-time"})
+        expected = {
+            "type": "object",
+            "properties": {
+                "email": {"type": "string"},  # format removed
+                "date": {"type": "string", "format": "date-time"},  # format kept
+                "name": {"type": "string"},  # no format, unchanged
+            },
+        }
+        assert result == expected
+
+    def test_restrict_string_formats_enum_allowed(self):
+        schema = {
+            "type": "object",
+            "properties": {
+                "status": {"type": "string", "enum": ["active", "inactive"]},
+            },
+        }
+        result = restrict_string_formats(schema, {"enum"})
+        assert result == schema
+
+    def test_restrict_string_formats_enum_disallowed(self):
+        schema = {
+            "type": "object",
+            "properties": {
+                "status": {"type": "string", "enum": ["active", "inactive"]},
+            },
+        }
+        result = restrict_string_formats(schema, {"date-time"})
+        expected = {
+            "type": "object",
+            "properties": {
+                "status": {"type": "string"},  # enum removed
+            },
+        }
+        assert result == expected
+
+    def test_restrict_string_formats_nested_objects(self):
+        schema = {
+            "type": "object",
+            "properties": {
+                "user": {
+                    "type": "object",
+                    "properties": {
+                        "email": {"type": "string", "format": "email"},
+                        "birth_date": {"type": "string", "format": "date-time"},
+                    },
+                },
+            },
+        }
+        result = restrict_string_formats(schema, {"date-time"})
+        expected = {
+            "type": "object",
+            "properties": {
+                "user": {
+                    "type": "object",
+                    "properties": {
+                        "email": {"type": "string"},  # format removed
+                        "birth_date": {"type": "string", "format": "date-time"},  # format kept
+                    },
+                },
+            },
+        }
+        assert result == expected
+
+    def test_restrict_string_formats_array_items(self):
+        schema = {
+            "type": "object",
+            "properties": {
+                "emails": {
+                    "type": "array",
+                    "items": {"type": "string", "format": "email"},
+                },
+                "dates": {
+                    "type": "array",
+                    "items": {"type": "string", "format": "date-time"},
+                },
+            },
+        }
+        result = restrict_string_formats(schema, {"date-time"})
+        expected = {
+            "type": "object",
+            "properties": {
+                "emails": {
+                    "type": "array",
+                    "items": {"type": "string"},  # format removed
+                },
+                "dates": {
+                    "type": "array",
+                    "items": {"type": "string", "format": "date-time"},  # format kept
+                },
+            },
+        }
+        assert result == expected
+
+    def test_restrict_string_formats_capitalized_types(self):
+        schema = {
+            "type": "OBJECT",
+            "properties": {
+                "email": {"type": "STRING", "format": "email"},
+                "date": {"type": "STRING", "format": "date-time"},
+            },
+        }
+        result = restrict_string_formats(schema, {"date-time"})
+        expected = {
+            "type": "OBJECT",
+            "properties": {
+                "email": {"type": "STRING"},  # format removed
+                "date": {"type": "STRING", "format": "date-time"},  # format kept
+            },
+        }
+        assert result == expected
+
+    def test_restrict_string_formats_union_types(self):
+        schema = {
+            "type": "object",
+            "properties": {
+                "flexible": {"type": ["string", "null"], "format": "email"},
+            },
+        }
+        result = restrict_string_formats(schema, {"date-time"})
+        expected = {
+            "type": "object",
+            "properties": {
+                "flexible": {"type": ["string", "null"]},  # format removed
+            },
+        }
+        assert result == expected
+
+
+class TestPrepareGoogleResponseSchema:
+    def test_prepare_google_response_schema_basic(self):
+        schema = {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+                "age": {"type": "integer"},
+            },
+        }
+        result = prepare_google_response_schema(schema)
+        expected = {
+            "type": "OBJECT",
+            "properties": {
+                "name": {"type": "STRING"},
+                "age": {"type": "INTEGER"},
+            },
+        }
+        assert result == expected
+
+    def test_prepare_google_response_schema_with_format_restriction(self):
+        schema = {
+            "type": "object",
+            "properties": {
+                "email": {"type": "string", "format": "email"},
+                "date": {"type": "string", "format": "date-time"},
+                "name": {"type": "string"},
+            },
+        }
+        result = prepare_google_response_schema(schema, {"date-time"})
+        expected = {
+            "type": "OBJECT",
+            "properties": {
+                "email": {"type": "STRING"},  # format removed
+                "date": {"type": "STRING", "format": "date-time"},  # format kept
+                "name": {"type": "STRING"},  # no format, unchanged
+            },
+        }
+        assert result == expected
+
+    def test_prepare_google_response_schema_with_enum_restriction(self):
+        schema = {
+            "type": "object",
+            "properties": {
+                "status": {"type": "string", "enum": ["active", "inactive"]},
+                "priority": {"type": "string", "format": "email"},
+            },
+        }
+        result = prepare_google_response_schema(schema, {"enum"})
+        expected = {
+            "type": "OBJECT",
+            "properties": {
+                "status": {"type": "STRING", "enum": ["active", "inactive"]},  # enum kept
+                "priority": {"type": "STRING"},  # format removed
+            },
+        }
+        assert result == expected
+
+    def test_prepare_google_response_schema_no_format_restriction(self):
+        schema = {
+            "type": "object",
+            "properties": {
+                "email": {"type": "string", "format": "email"},
+                "date": {"type": "string", "format": "date-time"},
+            },
+        }
+        result = prepare_google_response_schema(schema, None)
+        expected = {
+            "type": "OBJECT",
+            "properties": {
+                "email": {"type": "STRING", "format": "email"},
+                "date": {"type": "STRING", "format": "date-time"},
+            },
+        }
+        assert result == expected
+
+    def test_prepare_google_response_schema_integration_with_provider_options(self):
+        """Test that the function works correctly when used with ProviderOptions"""
+        from core.domain.models import Model
+        from core.providers.base.provider_options import ProviderOptions
+
+        # Create a provider options instance with string format restrictions
+        options = ProviderOptions(
+            model=Model.GEMINI_1_5_PRO_001,
+            google_allowed_string_formats={"enum", "date-time"},
+        )
+
+        # Test schema with various string formats
+        schema = {
+            "type": "object",
+            "properties": {
+                "status": {"type": "string", "enum": ["active", "inactive"]},
+                "email": {"type": "string", "format": "email"},
+                "date": {"type": "string", "format": "date-time"},
+                "name": {"type": "string"},
+            },
+        }
+
+        result = prepare_google_response_schema(schema, options.google_allowed_string_formats)
+        expected = {
+            "type": "OBJECT",
+            "properties": {
+                "status": {"type": "STRING", "enum": ["active", "inactive"]},  # enum kept
+                "email": {"type": "STRING"},  # format removed
+                "date": {"type": "STRING", "format": "date-time"},  # format kept
+                "name": {"type": "STRING"},  # no format, unchanged
+            },
+        }
+        assert result == expected

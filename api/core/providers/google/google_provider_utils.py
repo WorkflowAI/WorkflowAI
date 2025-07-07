@@ -92,6 +92,82 @@ def capitalize_schema_types(schema: dict[str, Any]) -> dict[str, Any]:
     return schema
 
 
+def _handle_string_format_restriction(schema: dict[str, Any], allowed_formats: set[str]) -> dict[str, Any]:
+    """Handle string format restrictions for a single schema node."""
+    schema_type = schema.get("type")
+    is_string_type = (
+        schema_type == "string"
+        or schema_type == "STRING"
+        or (isinstance(schema_type, list) and ("string" in schema_type or "STRING" in schema_type))
+    )
+
+    if not is_string_type:
+        return schema
+
+    # Check if this string field has a format
+    if "format" in schema:
+        format_value = schema["format"]
+        if format_value not in allowed_formats:
+            # Remove the unsupported format
+            schema = {k: v for k, v in schema.items() if k != "format"}
+            logger.warning("Removed unsupported string format", extra={"format": format_value})
+
+    # Handle enum case - if enum is present and allowed, keep it
+    if "enum" in schema and "enum" not in allowed_formats:
+        # Convert enum to a regular string field if enum format is not allowed
+        schema = {k: v for k, v in schema.items() if k != "enum"}
+        logger.warning("Removed enum constraint as enum format is not allowed")
+
+    return schema
+
+
+def _apply_format_restrictions_recursively(schema: dict[str, Any], allowed_formats: set[str]) -> dict[str, Any]:
+    """Apply format restrictions recursively to nested structures."""
+    # Recursively handle object properties
+    if "properties" in schema:
+        new_props = {}
+        for prop_name, prop_schema in schema["properties"].items():
+            new_props[prop_name] = restrict_string_formats(prop_schema, allowed_formats)
+        schema = {**schema, "properties": new_props}
+
+    # Recursively handle array items
+    if "items" in schema:
+        items = schema["items"]
+        if isinstance(items, list):
+            schema = {**schema, "items": [restrict_string_formats(item, allowed_formats) for item in items]}  # pyright: ignore[reportUnknownArgumentType,reportUnknownVariableType]
+        else:
+            schema = {**schema, "items": restrict_string_formats(items, allowed_formats)}
+
+    # Handle oneOf/anyOf/allOf
+    for key in ["oneOf", "anyOf", "allOf"]:
+        if key in schema:
+            schema[key] = [restrict_string_formats(sub_schema, allowed_formats) for sub_schema in schema[key]]  # pyright: ignore[reportUnknownArgumentType]
+
+    return schema
+
+
+def restrict_string_formats(schema: dict[str, Any], allowed_formats: set[str] | None = None) -> dict[str, Any]:
+    """
+    Recursively restrict string formats in a JSON Schema to only the allowed formats.
+
+    Args:
+        schema: The schema to process
+        allowed_formats: Set of allowed string formats (e.g., {"enum", "date-time"})
+                        If None, no restrictions are applied
+
+    Returns:
+        The schema with restricted string formats
+    """
+    if allowed_formats is None:
+        return schema
+
+    # Handle current level
+    schema = _handle_string_format_restriction(schema, allowed_formats)
+
+    # Apply restrictions recursively
+    return _apply_format_restrictions_recursively(schema, allowed_formats)
+
+
 def splat_nulls_recursive(schema: dict[str, Any]) -> dict[str, Any]:
     """Recursively splats nulls throughout an entire schema"""
     # Save fields we want to preserve
@@ -140,9 +216,49 @@ def splat_nulls_recursive(schema: dict[str, Any]) -> dict[str, Any]:
     return schema
 
 
-def sanitize_json_schema(schema: dict[str, Any]) -> dict[str, Any]:
+def prepare_google_response_schema(
+    schema: dict[str, Any],
+    allowed_string_formats: set[str] | None = None,
+) -> dict[str, Any]:
     """Prepare the schema according to Google's standard as defined in:
-    https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/control-generated-output"""
+    https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/control-generated-output
+
+    Args:
+        schema: The JSON schema to prepare
+        allowed_string_formats: Optional set of allowed string formats (e.g., {"enum", "date-time"})
+                               If provided, only these string formats will be kept in the schema.
+                               Common formats include:
+                               - "enum": For string enumeration constraints
+                               - "date-time": For ISO 8601 datetime strings
+                               - "email": For email address strings
+                               - "uri": For URI strings
+                               - "uuid": For UUID strings
+                               - "ipv4": For IPv4 address strings
+                               - "ipv6": For IPv6 address strings
+
+    Returns:
+        dict: The prepared schema compatible with Google's requirements
+
+    Example:
+        >>> schema = {
+        ...     "type": "object",
+        ...     "properties": {
+        ...         "status": {"type": "string", "enum": ["active", "inactive"]},
+        ...         "email": {"type": "string", "format": "email"},
+        ...         "created_at": {"type": "string", "format": "date-time"}
+        ...     }
+        ... }
+        >>> # Allow only enum and date-time formats
+        >>> prepare_google_response_schema(schema, {"enum", "date-time"})
+        {
+            "type": "OBJECT",
+            "properties": {
+                "status": {"type": "STRING", "enum": ["active", "inactive"]},
+                "email": {"type": "STRING"},  # format removed
+                "created_at": {"type": "STRING", "format": "date-time"}  # format kept
+            }
+        }
+    """
 
     schema = copy.deepcopy(schema)
 
@@ -151,6 +267,10 @@ def sanitize_json_schema(schema: dict[str, Any]) -> dict[str, Any]:
 
     # Clean all anyOf, oneOf, allOf at current level, as Google does not support them
     schema = splat_nulls_recursive(schema)
+
+    # Restrict string formats if specified
+    if allowed_string_formats is not None:
+        schema = restrict_string_formats(schema, allowed_string_formats)
 
     # Google use capitalized types, ex: 'STRING' instead of 'string'
     schema = capitalize_schema_types(schema)
