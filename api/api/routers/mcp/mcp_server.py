@@ -33,9 +33,11 @@ from api.routers.mcp._mcp_serializer import tool_serializer
 from api.routers.openai_proxy._openai_proxy_models import (
     OpenAIProxyChatCompletionRequest,
     OpenAIProxyChatCompletionResponse,
+    OpenAIProxyMessage,
 )
 from api.services.documentation_service import DocumentationService
 from api.services.tools_service import ToolsService
+from core.domain.models.model_data_mapping import get_model_id
 from core.domain.tool import Tool
 from core.domain.version_environment import VersionEnvironment
 from core.storage.backend_storage import BackendStorage
@@ -800,6 +802,65 @@ async def get_code(
             environment=VersionEnvironment(environment) if environment else None,
             existing_response_format_object=existing_response_format_object,
         ),
+    )
+
+
+@_mcp.tool()
+async def playground(
+    models: str = Field(description="The models to use for the playground (comma-separated)"),
+    lists_of_messages: list[list[OpenAIProxyMessage]] = Field(
+        description="One or several list of messages to use for the playground. Messages can be templated using Jinja2 templates. When using prompt templating, all lists of messages but accept the same set of variables.",
+    ),
+    sets_of_inputs: list[dict[str, Any]] = Field(
+        default_factory=list,
+        description="Optional list of input variables for prompt templating",
+    ),
+    output_schema: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Optional JSON Schema for structured output",
+    ),
+    metadata: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Optional metadata to attach to all completion requests (passing an 'agent_id' is highly recommended)",
+    ),
+    # TODO: That might be a LOT of tokens. We might need to paginate
+) -> list[OpenAIProxyChatCompletionResponse | MCPError] | MCPError:
+    """
+    You have access to a playground to create a matrix of completions. A run will be executed per:
+    - list of messages
+    - input dictionary
+    - model
+    All runs will be executed in parallel.
+    For example if you supply:
+    - 2 models
+    - 2 lists of messages
+    - 2 sets of input variables
+    You will get 2x2x2=8 completions.
+
+    Supports structured output via response_format parameter.
+    Supports metadata attachment for tracking and observability.
+
+    <when_to_use>
+    Use when you want to test a model with different messages, inputs, and response formats.
+    </when_to_use>
+    <returns>
+    Returns a list of OpenAIProxyChatCompletionResponse objects.
+    </returns>
+    """
+
+    # Parse the models string into a list
+    try:
+        model_list = [get_model_id(model.strip()) for model in models.split(",")]
+    except ValueError as e:
+        return MCPError(str(e))
+
+    service = await get_mcp_service()
+    return await service.playground(
+        models=model_list,
+        lists_of_messages=lists_of_messages,
+        sets_of_inputs=sets_of_inputs,
+        output_schema=output_schema,
+        metadata=metadata,
     )
 
 

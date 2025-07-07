@@ -1523,3 +1523,13 @@ MODEL_ALIASES = _build_aliases()
 
 
 MODEL_COUNT = len([model for model in MODEL_DATAS.values() if isinstance(model, FinalModelData)])
+
+
+def get_model_id(model: str) -> Model:
+    if m := MODEL_ALIASES.get(model):
+        return m
+
+    try:
+        return Model(model)
+    except ValueError:
+        raise ValueError(f"Invalid model: {model}")
