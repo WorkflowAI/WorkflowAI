@@ -208,6 +208,7 @@ class Model(StrEnum):
     QWEN_QWQ_32B_PREVIEW = "qwen-v3p2-32b-instruct"
     QWEN3_235B_A22B = "qwen3-235b-a22b"
     QWEN3_30B_A3B = "qwen3-30b-a3b"
+    QWEN3_32B = "qwen3-32b"
 
     # --------------------------------------------------------------------------
     # DeepSeek Models

@@ -599,6 +599,13 @@ GROQ_PROVIDER_DATA: ProviderDataByModel = {
             source="https://groq.com/pricing/",
         ),
     ),
+    Model.QWEN3_32B: ModelProviderData(
+        text_price=TextPricePerToken(
+            prompt_cost_per_token=0.29 * ONE_MILLION_TH,
+            completion_cost_per_token=0.59 * ONE_MILLION_TH,
+            source="https://groq.com/pricing/",
+        ),
+    ),
 }
 
 MISTRAL_PROVIDER_DATA: ProviderDataByModel = {

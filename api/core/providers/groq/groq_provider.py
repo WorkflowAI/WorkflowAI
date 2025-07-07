@@ -91,6 +91,7 @@ class GroqProvider(HTTPXProvider[GroqConfig, CompletionResponse]):
             Model.LLAMA_4_SCOUT_BASIC: "meta-llama/llama-4-scout-17b-16e-instruct",
             Model.LLAMA_4_MAVERICK_FAST: "meta-llama/llama-4-maverick-17b-128e-instruct",
             Model.LLAMA_4_SCOUT_FAST: "meta-llama/llama-4-scout-17b-16e-instruct",
+            Model.QWEN3_32B: "qwen/qwen3-32b",
         }
 
         return NAME_OVERRIDE_MAP.get(model, model.value)
