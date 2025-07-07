@@ -483,6 +483,5 @@ export function fixProxyInputIfNeeded(input: Record<string, unknown> | undefined
     }
   }
 
-  console.log('fixed', fixed);
   return fixed;
 }
