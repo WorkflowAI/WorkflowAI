@@ -46,6 +46,16 @@ class TextContent(BaseModel):
         return {"type": "text", "text": self.text}
 
 
+class ThinkingContent(BaseModel):
+    type: Literal["thinking"] = "thinking"
+    thinking: str
+    signature: str | None = None
+
+    def to_standard(self) -> TextContentDict:
+        # Convert thinking content to text for standard format
+        return {"type": "text", "text": f"[THINKING]\n{self.thinking}\n[/THINKING]"}
+
+
 class FileSource(BaseModel):
     type: Literal["base64"]
     media_type: str
@@ -162,7 +172,7 @@ class ErrorDetails(BaseModel):
 
 class AnthropicMessage(BaseModel):
     role: Literal["user", "assistant"]
-    content: list[TextContent | DocumentContent | ImageContent | ToolUseContent | ToolResultContent]
+    content: list[TextContent | ThinkingContent | DocumentContent | ImageContent | ToolUseContent | ToolResultContent]
 
     @classmethod
     def content_from_domain(cls, file: File):
@@ -260,6 +270,9 @@ class CompletionRequest(BaseModel):
     # System could be an object if needed
     system: str | None = None
 
+    # Extended thinking for syncing mode
+    thinking: dict[str, Any] | None = None
+
     class Tool(BaseModel):
         name: str
         description: str | None = None
@@ -298,8 +311,14 @@ class ContentBlock(BaseModel):
     text: str
 
 
+class ThinkingBlock(BaseModel):
+    type: Literal["thinking"]
+    thinking: str
+    signature: str | None = None
+
+
 class CompletionResponse(BaseModel):
-    content: list[ContentBlock | ToolUseContent]
+    content: list[ContentBlock | ThinkingBlock | ToolUseContent]
     usage: Usage
     stop_reason: str | None = None
 
@@ -307,6 +326,16 @@ class CompletionResponse(BaseModel):
 class TextDelta(BaseModel):
     type: Literal["text_delta"]
     text: str
+
+
+class ThinkingDelta(BaseModel):
+    type: Literal["thinking_delta"]
+    thinking: str
+
+
+class SignatureDelta(BaseModel):
+    type: Literal["signature_delta"]
+    signature: str
 
 
 class DeltaMessage(BaseModel):
@@ -317,13 +346,13 @@ class DeltaMessage(BaseModel):
 class ContentBlockDelta(BaseModel):
     type: Literal["content_block_delta"]
     index: int
-    delta: TextDelta
+    delta: TextDelta | ThinkingDelta | SignatureDelta
 
 
 class ContentBlockStart(BaseModel):
     type: Literal["content_block_start"]
     index: int
-    content_block: ContentBlock
+    content_block: ContentBlock | ThinkingBlock
 
 
 class ContentBlockStop(BaseModel):
@@ -380,9 +409,9 @@ class CompletionChunk(BaseModel):
     # For message_start
     message: Optional[dict[str, Any]] = None
     # For content_block_start
-    content_block: Optional[ContentBlock | ToolUse] = None
+    content_block: Optional[ContentBlock | ThinkingBlock | ToolUse] = None
     # For content_block_delta
-    delta: Optional[TextDelta | StopReasonDelta | InputJsonDelta] = None
+    delta: Optional[TextDelta | ThinkingDelta | SignatureDelta | StopReasonDelta | InputJsonDelta] = None
     # For message_delta
     usage: Optional[Usage] = None
     index: Optional[int] = None
@@ -393,6 +422,8 @@ class CompletionChunk(BaseModel):
         """Extract the text delta from the chunk"""
         if self.type == "content_block_delta" and isinstance(self.delta, TextDelta):
             return self.delta.text
+        if self.type == "content_block_delta" and isinstance(self.delta, ThinkingDelta):
+            return self.delta.thinking
         if self.type == "message_delta" and isinstance(self.delta, StopReasonDelta):
             return self.delta.stop_reason or self.delta.stop_sequence or ""
         return ""

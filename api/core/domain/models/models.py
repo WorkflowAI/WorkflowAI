@@ -153,6 +153,14 @@ class Model(StrEnum):
     CLAUDE_3_SONNET_20240229 = "claude-3-sonnet-20240229"
     CLAUDE_3_HAIKU_20240307 = "claude-3-haiku-20240307"
 
+    # Claude Extended Thinking Models (Syncing Mode)
+    CLAUDE_4_SONNET_LATEST_THINKING = "claude-sonnet-4-latest-thinking"
+    CLAUDE_4_SONNET_20250514_THINKING = "claude-sonnet-4-20250514-thinking"
+    CLAUDE_4_OPUS_LATEST_THINKING = "claude-opus-4-latest-thinking"
+    CLAUDE_4_OPUS_20250514_THINKING = "claude-opus-4-20250514-thinking"
+    CLAUDE_3_7_SONNET_LATEST_THINKING = "claude-3-7-sonnet-latest-thinking"
+    CLAUDE_3_7_SONNET_20250219_THINKING = "claude-3-7-sonnet-20250219-thinking"
+
     # --------------------------------------------------------------------------
     # Llama Models
     # --------------------------------------------------------------------------

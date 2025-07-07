@@ -51,6 +51,11 @@ _NON_STREAMING_WITH_TOOLS_MODELS = {
 
 
 class AmazonBedrockProvider(HTTPXProvider[AmazonBedrockConfig, CompletionResponse]):
+    @classmethod
+    def _is_thinking_model(cls, model: str) -> bool:
+        """Check if the model is a thinking model (syncing mode)"""
+        return "-thinking" in model
+
     @override
     def _build_request(self, messages: list[MessageDeprecated], options: ProviderOptions, stream: bool) -> BaseModel:
         system_message: AmazonBedrockSystemMessage | None = None
@@ -82,6 +87,8 @@ class AmazonBedrockProvider(HTTPXProvider[AmazonBedrockConfig, CompletionRespons
                 # Presence and frequency penalties are not yet supported by Amazon Bedrock
             ),
             toolConfig=BedrockToolConfig.from_domain(options.enabled_tools, options.tool_choice),
+            # Enable extended thinking for thinking models
+            thinking={"type": "enabled", "budget_tokens": 10000} if self._is_thinking_model(options.model) else None,
         )
 
     @classmethod

@@ -420,6 +420,37 @@ AMAZON_BEDROCK_PROVIDER_DATA: ProviderDataByModel = {
             source="https://aws.amazon.com/bedrock/pricing/",
         ),
     ),
+    # Claude Extended Thinking Models (Syncing Mode) - Amazon Bedrock
+    Model.CLAUDE_4_OPUS_20250514_THINKING: ModelProviderData(
+        text_price=TextPricePerToken(
+            prompt_cost_per_token=15 * ONE_MILLION_TH,
+            completion_cost_per_token=75 * ONE_MILLION_TH,
+            source="https://aws.amazon.com/bedrock/pricing/",
+        ),
+        supports_override=ModelDataSupportsOverride(
+            supports_input_pdf=False,
+        ),
+    ),
+    Model.CLAUDE_4_SONNET_20250514_THINKING: ModelProviderData(
+        text_price=TextPricePerToken(
+            prompt_cost_per_token=3 * ONE_MILLION_TH,
+            completion_cost_per_token=15 * ONE_MILLION_TH,
+            source="https://aws.amazon.com/bedrock/pricing/",
+        ),
+        supports_override=ModelDataSupportsOverride(
+            supports_input_pdf=False,
+        ),
+    ),
+    Model.CLAUDE_3_7_SONNET_20250219_THINKING: ModelProviderData(
+        text_price=TextPricePerToken(
+            prompt_cost_per_token=3 * ONE_MILLION_TH,
+            completion_cost_per_token=15 * ONE_MILLION_TH,
+            source="https://aws.amazon.com/bedrock/pricing/",
+        ),
+        supports_override=ModelDataSupportsOverride(
+            supports_input_pdf=False,
+        ),
+    ),
     Model.LLAMA_3_1_405B: ModelProviderData(
         text_price=TextPricePerToken(
             prompt_cost_per_token=2.4 * ONE_MILLION_TH,
@@ -756,6 +787,28 @@ ANTHROPIC_PROVIDER_DATA: ProviderDataByModel = {
         text_price=TextPricePerToken(
             prompt_cost_per_token=0.25 * ONE_MILLION_TH,
             completion_cost_per_token=1.25 * ONE_MILLION_TH,
+            source="https://docs.anthropic.com/en/docs/about-claude/models/all-models#model-comparison-table",
+        ),
+    ),
+    # Claude Extended Thinking Models (Syncing Mode) - Anthropic
+    Model.CLAUDE_4_OPUS_20250514_THINKING: ModelProviderData(
+        text_price=TextPricePerToken(
+            prompt_cost_per_token=15 * ONE_MILLION_TH,
+            completion_cost_per_token=75 * ONE_MILLION_TH,
+            source="https://docs.anthropic.com/en/docs/about-claude/models/all-models#model-comparison-table",
+        ),
+    ),
+    Model.CLAUDE_4_SONNET_20250514_THINKING: ModelProviderData(
+        text_price=TextPricePerToken(
+            prompt_cost_per_token=3 * ONE_MILLION_TH,
+            completion_cost_per_token=15 * ONE_MILLION_TH,
+            source="https://docs.anthropic.com/en/docs/about-claude/models/all-models#model-comparison-table",
+        ),
+    ),
+    Model.CLAUDE_3_7_SONNET_20250219_THINKING: ModelProviderData(
+        text_price=TextPricePerToken(
+            prompt_cost_per_token=3.00 * ONE_MILLION_TH,
+            completion_cost_per_token=15.00 * ONE_MILLION_TH,
             source="https://docs.anthropic.com/en/docs/about-claude/models/all-models#model-comparison-table",
         ),
     ),

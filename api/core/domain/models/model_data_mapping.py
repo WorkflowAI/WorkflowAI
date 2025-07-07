@@ -1015,6 +1015,85 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             supports_tool_calling=True,
             fallback=ModelFallback.default("cheap"),
         ),
+        # Claude Extended Thinking Models (Syncing Mode)
+        Model.CLAUDE_4_SONNET_LATEST_THINKING: LatestModel(
+            model=Model.CLAUDE_4_SONNET_20250514_THINKING,
+            display_name="Claude 4 Sonnet (latest) with Extended Thinking",
+            is_default=False,
+        ),
+        Model.CLAUDE_4_SONNET_20250514_THINKING: ModelData(
+            display_name="Claude 4 Sonnet (2025-05-14) with Extended Thinking",
+            supports_json_mode=False,
+            supports_input_image=True,
+            supports_input_pdf=True,
+            supports_input_audio=False,
+            max_tokens_data=MaxTokensData(
+                max_tokens=200_000,
+                # See https://docs.anthropic.com/en/docs/about-claude/models/all-models
+                max_output_tokens=64_000,
+                source="https://docs.anthropic.com/en/docs/about-claude/models",
+            ),
+            icon_url="https://workflowai.blob.core.windows.net/workflowai-public/anthropic.svg",
+            release_date=date(2025, 5, 22),
+            # Quality index relative to non-thinking model + 10
+            quality_data=QualityData(gpqa_diamond=80),  # 70 + 10
+            latest_model=Model.CLAUDE_4_SONNET_LATEST_THINKING,
+            provider_name=DisplayedProvider.ANTHROPIC.value,
+            supports_tool_calling=True,
+            fallback=ModelFallback.default("medium"),
+        ),
+        Model.CLAUDE_4_OPUS_LATEST_THINKING: LatestModel(
+            model=Model.CLAUDE_4_OPUS_20250514_THINKING,
+            display_name="Claude 4 Opus (latest) with Extended Thinking",
+            is_default=False,
+        ),
+        Model.CLAUDE_4_OPUS_20250514_THINKING: ModelData(
+            display_name="Claude 4 Opus (2025-05-14) with Extended Thinking",
+            supports_json_mode=False,
+            supports_input_image=True,
+            supports_input_pdf=True,
+            supports_input_audio=False,
+            max_tokens_data=MaxTokensData(
+                max_tokens=200_000,
+                # See https://docs.anthropic.com/en/docs/about-claude/models/all-models
+                max_output_tokens=32_000,
+                source="https://docs.anthropic.com/en/docs/about-claude/models",
+            ),
+            icon_url="https://workflowai.blob.core.windows.net/workflowai-public/anthropic.svg",
+            release_date=date(2025, 5, 22),
+            # Quality index relative to non-thinking model + 10
+            quality_data=QualityData(gpqa_diamond=84.9),  # 74.9 + 10
+            latest_model=Model.CLAUDE_4_OPUS_LATEST_THINKING,
+            provider_name=DisplayedProvider.ANTHROPIC.value,
+            supports_tool_calling=True,
+            fallback=ModelFallback.default("expensive"),
+        ),
+        Model.CLAUDE_3_7_SONNET_LATEST_THINKING: LatestModel(
+            model=Model.CLAUDE_3_7_SONNET_20250219_THINKING,
+            display_name="Claude 3.7 Sonnet (latest) with Extended Thinking",
+            is_default=False,
+        ),
+        Model.CLAUDE_3_7_SONNET_20250219_THINKING: ModelData(
+            display_name="Claude 3.7 Sonnet (2025-02-19) with Extended Thinking",
+            supports_json_mode=False,
+            supports_input_image=True,
+            supports_input_pdf=True,
+            supports_input_audio=False,
+            max_tokens_data=MaxTokensData(
+                max_tokens=200_000,
+                # See https://docs.anthropic.com/en/docs/about-claude/models/all-models
+                max_output_tokens=64_000,
+                source="https://docs.anthropic.com/en/docs/about-claude/models",
+            ),
+            icon_url="https://workflowai.blob.core.windows.net/workflowai-public/anthropic.svg",
+            release_date=date(2025, 2, 19),
+            # Quality index relative to non-thinking model + 10
+            quality_data=QualityData(mmlu=100.8, gpqa=94.8, gpqa_diamond=79.7),  # Original values + 10
+            latest_model=Model.CLAUDE_3_7_SONNET_LATEST_THINKING,
+            provider_name=DisplayedProvider.ANTHROPIC.value,
+            supports_tool_calling=True,
+            fallback=ModelFallback.default("medium"),
+        ),
         Model.LLAMA3_70B_8192: DeprecatedModel(replacement_model=Model.LLAMA_4_SCOUT_BASIC),
         Model.LLAMA3_8B_8192: DeprecatedModel(replacement_model=Model.LLAMA_4_SCOUT_BASIC),
         Model.LLAMA_3_1_405B: ModelData(

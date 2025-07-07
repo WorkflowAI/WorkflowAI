@@ -31,6 +31,10 @@ def _default_resource_ids():
         Model.MISTRAL_LARGE_2_2407: "mistral.mistral-large-2407-v1:0",
         Model.CLAUDE_4_OPUS_20250514: "us.anthropic.claude-opus-4-20250514-v1:0",
         Model.CLAUDE_4_SONNET_20250514: "us.anthropic.claude-sonnet-4-20250514-v1:0",
+        # Claude Extended Thinking Models (Syncing Mode) - same resource IDs but different model mapping
+        Model.CLAUDE_4_OPUS_20250514_THINKING: "us.anthropic.claude-opus-4-20250514-v1:0",
+        Model.CLAUDE_4_SONNET_20250514_THINKING: "us.anthropic.claude-sonnet-4-20250514-v1:0",
+        Model.CLAUDE_3_7_SONNET_20250219_THINKING: "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
     }
 
 

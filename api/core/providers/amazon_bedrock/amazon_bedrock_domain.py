@@ -320,6 +320,9 @@ class CompletionRequest(BaseModel):
 
     inferenceConfig: InferenceConfig
 
+    # Extended thinking support for Amazon Bedrock
+    thinking: dict[str, Any] | None = None
+
 
 class Usage(BaseModel):
     inputTokens: int = 0

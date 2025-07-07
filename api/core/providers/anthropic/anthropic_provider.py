@@ -71,6 +71,11 @@ class AnthropicProvider(HTTPXProvider[AnthropicConfig, CompletionResponse]):
             model_max_output_tokens = DEFAULT_MAX_TOKENS
         return min(requested_max_tokens or DEFAULT_MAX_TOKENS, model_max_output_tokens)
 
+    @classmethod
+    def _is_thinking_model(cls, model: str) -> bool:
+        """Check if the model is a thinking model (syncing mode)"""
+        return "-thinking" in model
+
     @override
     def _build_request(self, messages: list[MessageDeprecated], options: ProviderOptions, stream: bool) -> BaseModel:
         model_data = get_model_data(options.model)
@@ -83,6 +88,9 @@ class AnthropicProvider(HTTPXProvider[AnthropicConfig, CompletionResponse]):
         else:
             system_message = None
 
+        # Build the actual model name (remove -thinking suffix if present)
+        actual_model = options.model.replace("-thinking", "")
+
         request = CompletionRequest(
             # Anthropic requires at least one message
             # So if we have no messages, we add a user message with a dash
@@ -91,13 +99,15 @@ class AnthropicProvider(HTTPXProvider[AnthropicConfig, CompletionResponse]):
             else [
                 AnthropicMessage(role="user", content=[TextContent(text="-")]),
             ],
-            model=options.model,
+            model=actual_model,
             temperature=options.temperature,
             max_tokens=self._max_tokens(model_data, options.max_tokens),
             stream=stream,
             tool_choice=AntToolChoice.from_domain(options.tool_choice),
             top_p=options.top_p,
             system=system_message,
+            # Enable extended thinking for thinking models
+            thinking={"type": "enabled", "budget_tokens": 10000} if self._is_thinking_model(options.model) else None,
             # Presence and frequency penalties are not yet supported by Anthropic
         )
 
@@ -124,7 +134,7 @@ class AnthropicProvider(HTTPXProvider[AnthropicConfig, CompletionResponse]):
 
     @override
     def _extract_content_str(self, response: CompletionResponse) -> str:
-        """Extract the text content from the first content block in the response"""
+        """Extract the text content from the response, combining thinking and text content"""
         if not response.content or len(response.content) == 0:
             raise ProviderInternalError("No content in response")
         if response.stop_reason == "max_tokens":
@@ -132,13 +142,17 @@ class AnthropicProvider(HTTPXProvider[AnthropicConfig, CompletionResponse]):
                 msg="Model returned MAX_TOKENS stop reason, the max tokens limit was exceeded.",
                 raw_completion=str(response.content),
             )
-        if isinstance(
-            response.content[0],
-            ContentBlock,
-        ):
-            return response.content[0].text
 
-        return ""
+        content_parts = []
+
+        for block in response.content:
+            if isinstance(block, ThinkingBlock):
+                # Include thinking content with special markers
+                content_parts.append(f"[THINKING]\n{block.thinking}\n[/THINKING]\n")
+            elif isinstance(block, ContentBlock):
+                content_parts.append(block.text)
+
+        return "".join(content_parts)
 
     @override
     def _extract_usage(self, response: CompletionResponse) -> LLMUsage | None:
@@ -230,7 +244,9 @@ class AnthropicProvider(HTTPXProvider[AnthropicConfig, CompletionResponse]):
                     return self._handle_content_block_start(chunk, tool_call_request_buffer)
                 case "content_block_delta":
                     return self._handle_content_block_delta(chunk, tool_call_request_buffer)
-                case "ping" | "message_stop" | "content_block_stop":
+                case "content_block_stop":
+                    return self._handle_content_block_stop(chunk)
+                case "ping" | "message_stop":
                     return ParsedResponse("")
                 case "error":
                     if chunk.error:
@@ -260,19 +276,25 @@ class AnthropicProvider(HTTPXProvider[AnthropicConfig, CompletionResponse]):
     ) -> ParsedResponse:
         """Handle content_block_start event type."""
         tool_calls: list[ToolCallRequestWithID] = []
-        if chunk.content_block and chunk.content_block.type == "tool_use":
-            if chunk.index is None:
-                raise FailedGenerationError(
-                    f"Missing required fields in content block start, index, id or name: {chunk}",
+        response_text = ""
+
+        if chunk.content_block:
+            if chunk.content_block.type == "tool_use":
+                if chunk.index is None:
+                    raise FailedGenerationError(
+                        f"Missing required fields in content block start, index, id or name: {chunk}",
+                    )
+
+                tool_call_request_buffer[chunk.index] = ToolCallRequestBuffer(
+                    id=chunk.content_block.id,
+                    tool_name=native_tool_name_to_internal(chunk.content_block.name),
+                    tool_input="",
                 )
+            elif chunk.content_block.type == "thinking":
+                # Mark the start of thinking content
+                response_text = "[THINKING]\n"
 
-            tool_call_request_buffer[chunk.index] = ToolCallRequestBuffer(
-                id=chunk.content_block.id,
-                tool_name=native_tool_name_to_internal(chunk.content_block.name),
-                tool_input="",
-            )
-
-        return ParsedResponse("", tool_calls=tool_calls)
+        return ParsedResponse(response_text, tool_calls=tool_calls)
 
     def _handle_content_block_delta(
         self,
@@ -281,30 +303,40 @@ class AnthropicProvider(HTTPXProvider[AnthropicConfig, CompletionResponse]):
     ) -> ParsedResponse:
         """Handle content_block_delta event type."""
         tool_calls: list[ToolCallRequestWithID] = []
-        if chunk.delta and chunk.delta.type == "input_json_delta":
-            if chunk.index not in tool_call_request_buffer:
-                raise FailedGenerationError(
-                    f"Received content block delta for unknown tool call, index: {chunk.index}  ",
-                )
 
-            tool_call_request_buffer[chunk.index].tool_input += chunk.delta.partial_json
-
-            candidate_tool_call = tool_call_request_buffer[chunk.index]
-
-            if candidate_tool_call.id is not None and candidate_tool_call.tool_name is not None:
-                try:
-                    tool_calls.append(
-                        ToolCallRequestWithID(
-                            id=candidate_tool_call.id,
-                            tool_name=native_tool_name_to_internal(candidate_tool_call.tool_name),
-                            tool_input_dict=json.loads(candidate_tool_call.tool_input),
-                        ),
+        if chunk.delta:
+            if chunk.delta.type == "input_json_delta":
+                if chunk.index not in tool_call_request_buffer:
+                    raise FailedGenerationError(
+                        f"Received content block delta for unknown tool call, index: {chunk.index}  ",
                     )
-                except json.JSONDecodeError:
-                    # That means the tool call is not fully streamed yet
-                    pass
+
+                tool_call_request_buffer[chunk.index].tool_input += chunk.delta.partial_json
+
+                candidate_tool_call = tool_call_request_buffer[chunk.index]
+
+                if candidate_tool_call.id is not None and candidate_tool_call.tool_name is not None:
+                    try:
+                        tool_calls.append(
+                            ToolCallRequestWithID(
+                                id=candidate_tool_call.id,
+                                tool_name=native_tool_name_to_internal(candidate_tool_call.tool_name),
+                                tool_input_dict=json.loads(candidate_tool_call.tool_input),
+                            ),
+                        )
+                    except json.JSONDecodeError:
+                        # That means the tool call is not fully streamed yet
+                        pass
 
         return ParsedResponse(chunk.extract_delta(), tool_calls=tool_calls)
+
+    def _handle_content_block_stop(self, chunk: CompletionChunk) -> ParsedResponse:
+        """Handle content_block_stop event type."""
+        # This is a simple approach - in a more sophisticated implementation,
+        # we might track which type of block is ending based on the index
+        # For now, we'll add the closing marker for thinking blocks
+        # This might add extra markers but it's safer than missing them
+        return ParsedResponse("\n[/THINKING]\n")
 
     def _compute_prompt_token_count(
         self,
