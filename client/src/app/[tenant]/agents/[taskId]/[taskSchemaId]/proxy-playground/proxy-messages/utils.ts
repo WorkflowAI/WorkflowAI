@@ -327,8 +327,34 @@ function mergeTextContentInRow(content: ProxyMessageContent[]): ProxyMessageCont
   return result;
 }
 
+export function containsInputVarible(text: string | undefined): boolean {
+  if (!text) {
+    return false;
+  }
+
+  return /\{\{.*\}\}/.test(text);
+}
+
+export function checkForInputVaribleInURLs(content: ProxyMessageContent): boolean {
+  if (content.file !== undefined && content.file.content_type === undefined) {
+    return true;
+  }
+
+  if (content.file?.url === undefined) {
+    return false;
+  }
+
+  return containsInputVarible(content.file.url);
+}
+
 export function cleanMessageContent(content: ProxyMessageContent[]): ProxyMessageContent[] {
+  let containsInputVaribleInURLs = false;
+
   const filteredContent = content.filter((entry) => {
+    if (checkForInputVaribleInURLs(entry)) {
+      containsInputVaribleInURLs = true;
+    }
+
     if (entry.text?.trim() === '') {
       return false;
     }
@@ -354,7 +380,8 @@ export function cleanMessageContent(content: ProxyMessageContent[]): ProxyMessag
     contentType !== 'text' &&
     contentType !== 'toolCallResult' &&
     contentType !== 'toolCallRequest' &&
-    contentType !== undefined
+    contentType !== undefined &&
+    !containsInputVaribleInURLs
   ) {
     return [...mergedContent, createEmptyMessageContent('text')];
   }
@@ -433,4 +460,29 @@ function getTextFromContentToCopy(message: ProxyMessageContent): string | undefi
 
 export function getContentToCopy(message: ProxyMessage): string {
   return message.content.map((content) => getTextFromContentToCopy(content)).join('\n');
+}
+
+export function fixProxyInputIfNeeded(input: Record<string, unknown> | undefined): Record<string, unknown> | undefined {
+  if (!input) return undefined;
+
+  const fixed: Record<string, unknown> = { ...input };
+
+  for (const [key, value] of Object.entries(input)) {
+    if (key === 'image_url' && typeof value === 'string') {
+      // Infer content type from extension (handles query params)
+      let contentType = 'application/octet-stream';
+      if (value.match(/\.(jpg|jpeg)(\?|$)/i)) contentType = 'image/jpeg';
+      else if (value.match(/\.png(\?|$)/i)) contentType = 'image/png';
+      else if (value.match(/\.gif(\?|$)/i)) contentType = 'image/gif';
+      else if (value.match(/\.webp(\?|$)/i)) contentType = 'image/webp';
+      fixed[key] = {
+        content_type: contentType,
+        storage_url: value,
+        url: value,
+      };
+    }
+  }
+
+  console.log('fixed', fixed);
+  return fixed;
 }
