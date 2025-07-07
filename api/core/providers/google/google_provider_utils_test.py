@@ -1154,15 +1154,6 @@ class TestPrepareGoogleResponseSchema:
 
     def test_prepare_google_response_schema_integration_with_provider_options(self):
         """Test that the function works correctly when used with ProviderOptions"""
-        from core.domain.models import Model
-        from core.providers.base.provider_options import ProviderOptions
-
-        # Create a provider options instance with string format restrictions
-        options = ProviderOptions(
-            model=Model.GEMINI_1_5_PRO_001,
-            google_allowed_string_formats={"enum", "date-time"},
-        )
-
         # Test schema with various string formats
         schema = {
             "type": "object",
@@ -1174,7 +1165,7 @@ class TestPrepareGoogleResponseSchema:
             },
         }
 
-        result = prepare_google_response_schema(schema, options.google_allowed_string_formats)
+        result = prepare_google_response_schema(schema)
         expected = {
             "type": "OBJECT",
             "properties": {
