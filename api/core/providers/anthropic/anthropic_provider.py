@@ -1,5 +1,6 @@
 import json
 import logging
+from contextvars import ContextVar
 from typing import Any, AsyncIterator, Literal
 
 from httpx import Response
@@ -60,6 +61,9 @@ class AnthropicConfig(BaseModel):
 
 
 class AnthropicProvider(HTTPXProvider[AnthropicConfig, CompletionResponse]):
+    # Context var to track current content block for thinking content separation
+    _current_content_block_type = ContextVar[str | None]("_current_content_block_type", default=None)
+
     @classmethod
     def _max_tokens(cls, model_data: FinalModelData, requested_max_tokens: int | None) -> int:
         model_max_output_tokens = model_data.max_tokens_data.max_output_tokens
@@ -134,7 +138,7 @@ class AnthropicProvider(HTTPXProvider[AnthropicConfig, CompletionResponse]):
 
     @override
     def _extract_content_str(self, response: CompletionResponse) -> str:
-        """Extract the text content from the response, combining thinking and text content"""
+        """Extract only the text content from the response, excluding thinking content"""
         if not response.content or len(response.content) == 0:
             raise ProviderInternalError("No content in response")
         if response.stop_reason == "max_tokens":
@@ -146,13 +150,25 @@ class AnthropicProvider(HTTPXProvider[AnthropicConfig, CompletionResponse]):
         content_parts = []
 
         for block in response.content:
-            if isinstance(block, ThinkingBlock):
-                # Include thinking content with special markers
-                content_parts.append(f"[THINKING]\n{block.thinking}\n[/THINKING]\n")
-            elif isinstance(block, ContentBlock):
+            if isinstance(block, ContentBlock):
+                # Only include regular text content, not thinking content
                 content_parts.append(block.text)
+            # ThinkingBlocks are handled separately via reasoning steps
 
         return "".join(content_parts)
+
+    @override
+    def _extract_reasoning_steps(self, response: CompletionResponse) -> list[InternalReasoningStep] | None:
+        """Extract thinking content as reasoning steps from the response"""
+        reasoning_steps = []
+
+        for block in response.content:
+            if isinstance(block, ThinkingBlock):
+                reasoning_steps.append(
+                    InternalReasoningStep(explaination=block.thinking),
+                )
+
+        return reasoning_steps if reasoning_steps else None
 
     @override
     def _extract_usage(self, response: CompletionResponse) -> LLMUsage | None:
@@ -186,6 +202,9 @@ class AnthropicProvider(HTTPXProvider[AnthropicConfig, CompletionResponse]):
 
     async def wrap_sse(self, raw: AsyncIterator[bytes], termination_chars: bytes = b""):
         """Custom SSE wrapper for Anthropic's event stream format"""
+        # Initialize the content block type context
+        self._current_content_block_type.set(None)
+
         acc = b""
         async for chunk in raw:
             acc += chunk
@@ -276,7 +295,6 @@ class AnthropicProvider(HTTPXProvider[AnthropicConfig, CompletionResponse]):
     ) -> ParsedResponse:
         """Handle content_block_start event type."""
         tool_calls: list[ToolCallRequestWithID] = []
-        response_text = ""
 
         if chunk.content_block:
             if chunk.content_block.type == "tool_use":
@@ -291,10 +309,13 @@ class AnthropicProvider(HTTPXProvider[AnthropicConfig, CompletionResponse]):
                     tool_input="",
                 )
             elif chunk.content_block.type == "thinking":
-                # Mark the start of thinking content
-                response_text = "[THINKING]\n"
+                # Store the current block type for proper content separation
+                self._current_content_block_type.set("thinking")
+            elif chunk.content_block.type == "text":
+                # Store the current block type for proper content separation
+                self._current_content_block_type.set("text")
 
-        return ParsedResponse(response_text, tool_calls=tool_calls)
+        return ParsedResponse("", tool_calls=tool_calls)
 
     def _handle_content_block_delta(
         self,
@@ -303,6 +324,8 @@ class AnthropicProvider(HTTPXProvider[AnthropicConfig, CompletionResponse]):
     ) -> ParsedResponse:
         """Handle content_block_delta event type."""
         tool_calls: list[ToolCallRequestWithID] = []
+        content = ""
+        reasoning_steps = None
 
         if chunk.delta:
             if chunk.delta.type == "input_json_delta":
@@ -327,16 +350,23 @@ class AnthropicProvider(HTTPXProvider[AnthropicConfig, CompletionResponse]):
                     except json.JSONDecodeError:
                         # That means the tool call is not fully streamed yet
                         pass
+            elif chunk.delta.type == "thinking_delta":
+                # This is thinking content - send it as reasoning_steps
+                reasoning_steps = chunk.delta.thinking
+            elif chunk.delta.type == "text_delta":
+                # This is regular text content
+                content = chunk.delta.text
+            elif chunk.delta.type == "signature_delta":
+                # Signature deltas are part of thinking content but we don't expose them
+                pass
 
-        return ParsedResponse(chunk.extract_delta(), tool_calls=tool_calls)
+        return ParsedResponse(content, reasoning_steps, tool_calls=tool_calls)
 
     def _handle_content_block_stop(self, chunk: CompletionChunk) -> ParsedResponse:
         """Handle content_block_stop event type."""
-        # This is a simple approach - in a more sophisticated implementation,
-        # we might track which type of block is ending based on the index
-        # For now, we'll add the closing marker for thinking blocks
-        # This might add extra markers but it's safer than missing them
-        return ParsedResponse("\n[/THINKING]\n")
+        # Clear the current content block type when a block ends
+        self._current_content_block_type.set(None)
+        return ParsedResponse("")
 
     def _compute_prompt_token_count(
         self,
