@@ -12,9 +12,14 @@ def resolve_schema_refs(schema: dict[str, Any]) -> dict[str, Any]:
     """
     Recursively resolves all $ref references in a JSON Schema by replacing them
     with the actual referenced schema definitions.
+
+    Handles circular references by detecting cycles and preventing infinite recursion.
     """
     # Deep copy the schema to avoid modifying the original
     defs = schema.get("$defs", {})
+
+    # Track currently resolving references to detect cycles
+    resolving_refs: set[str] = set()
 
     def resolve_ref(ref: str) -> dict[str, Any]:
         """Get the schema definition for a reference."""
@@ -25,26 +30,48 @@ def resolve_schema_refs(schema: dict[str, Any]) -> dict[str, Any]:
             raise ValueError(f"Definition not found: {def_name}")
         return copy.deepcopy(defs[def_name])
 
-    def resolve_node(node: Any) -> Any:
+    def resolve_node(node: Any, current_path: str = "") -> Any:
         """Recursively resolve all references in a schema node."""
         if not isinstance(node, (dict, list)):
             return node
 
         if isinstance(node, list):
-            return [resolve_node(item) for item in node]  # pyright: ignore[reportUnknownVariableType]
+            return [resolve_node(item, current_path) for item in node]  # pyright: ignore[reportUnknownVariableType]
 
         if "$ref" in node:
-            # Get the referenced definition
-            ref_def = resolve_ref(node["$ref"])  # pyright: ignore[reportUnknownArgumentType]
-            # Remove $ref from the node
-            resolved = {k: v for k, v in node.items() if k != "$ref"}  # pyright: ignore[reportUnknownVariableType]
-            # Resolve any refs in the definition first
-            ref_def = resolve_node(ref_def)
-            # Merge the resolved definition with any additional properties
-            resolved.update(ref_def)  # pyright: ignore[reportUnknownMemberType]
-            return resolved  # pyright: ignore[reportUnknownVariableType]
+            ref = cast(str, node["$ref"])
 
-        return {k: resolve_node(v) for k, v in node.items()}  # pyright: ignore[reportUnknownVariableType]
+            # Check for circular reference
+            if ref in resolving_refs:
+                logger.warning("Circular reference detected, skipping resolution", extra={"ref": ref})
+                # Return the node as-is to prevent infinite recursion
+                return cast(dict[str, Any], node)
+
+            # Mark this reference as being resolved
+            resolving_refs.add(ref)
+
+            try:
+                # Get the referenced definition
+                ref_def = resolve_ref(ref)
+
+                # Resolve any refs in the definition first
+                ref_def = resolve_node(ref_def, ref)
+
+                # According to JSON Schema spec, $ref should be applied first,
+                # then other keywords in the same object are applied on top
+                # Remove $ref from the node to get additional properties
+                additional_props: dict[str, Any] = {k: v for k, v in node.items() if k != "$ref"}  # pyright: ignore[reportUnknownVariableType]
+
+                # Apply referenced schema first, then overlay additional properties
+                resolved: dict[str, Any] = copy.deepcopy(ref_def)
+                resolved.update(additional_props)
+
+                return resolved  # pyright: ignore[reportUnknownVariableType]
+            finally:
+                # Remove from resolving set when done
+                resolving_refs.discard(ref)
+
+        return {k: resolve_node(v, current_path) for k, v in node.items()}  # pyright: ignore[reportUnknownVariableType]
 
     # Resolve all references in the schema
     resolved = resolve_node(schema)
@@ -75,21 +102,27 @@ def capitalize_schema_types(schema: dict[str, Any]) -> dict[str, Any]:
     """
     Capitalize the types ("type") in a JSON Schema
     """
+    # Create a deep copy to avoid modifying the original schema
+    result = copy.deepcopy(schema)
 
-    # Browse the full schema passed as input and capitalize the types
-    for k, v in schema.items():
+    # Browse the full schema and capitalize the types
+    for k, v in result.items():
         if isinstance(v, dict):
-            capitalize_schema_types(cast(dict[str, Any], v))
+            result[k] = capitalize_schema_types(cast(dict[str, Any], v))
         elif isinstance(v, list):
+            new_list: list[Any] = []
             for item in v:  # pyright: ignore[reportUnknownVariableType]
                 if isinstance(item, dict):
-                    capitalize_schema_types(cast(dict[str, Any], item))
+                    new_list.append(capitalize_schema_types(cast(dict[str, Any], item)))
+                else:
+                    new_list.append(item)  # pyright: ignore[reportUnknownArgumentType]
+            result[k] = new_list
 
         # Handle type capitalization
         if k == "type":
-            schema[k] = _capitalize_type_value(v)
+            result[k] = _capitalize_type_value(v)
 
-    return schema
+    return result
 
 
 def _handle_string_format_restriction(schema: dict[str, Any], allowed_formats: set[str]) -> dict[str, Any]:
@@ -170,9 +203,11 @@ def restrict_string_formats(schema: dict[str, Any], allowed_formats: set[str] | 
 
 def splat_nulls_recursive(schema: dict[str, Any]) -> dict[str, Any]:
     """Recursively splats nulls throughout an entire schema"""
-    # Save fields we want to preserve
+    # Save fields we want to preserve (excluding nullable to avoid overwriting)
     preserved_fields = {
-        k: v for k, v in schema.items() if k not in ["oneOf", "anyOf", "allOf", "properties", "items", "type"]
+        k: v
+        for k, v in schema.items()
+        if k not in ["oneOf", "anyOf", "allOf", "properties", "items", "type", "nullable"]
     }
 
     # Handle direct type arrays (e.g., ["object", "null"])
@@ -195,7 +230,7 @@ def splat_nulls_recursive(schema: dict[str, Any]) -> dict[str, Any]:
     if nullable:
         schema = {**schema, "nullable": True}
 
-    # Restore preserved fields
+    # Restore preserved fields (nullable is now handled separately)
     schema.update(preserved_fields)
 
     # Recursively handle object properties

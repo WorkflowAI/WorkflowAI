@@ -1,3 +1,4 @@
+import copy
 from typing import Any
 
 import pytest
@@ -1165,7 +1166,7 @@ class TestPrepareGoogleResponseSchema:
             },
         }
 
-        result = prepare_google_response_schema(schema)
+        result = prepare_google_response_schema(schema, {"enum", "date-time"})
         expected = {
             "type": "OBJECT",
             "properties": {
@@ -1176,3 +1177,93 @@ class TestPrepareGoogleResponseSchema:
             },
         }
         assert result == expected
+
+
+def test_splat_nulls_recursive_nullable_preservation_bug():
+    """Test the bug where nullable status can be incorrectly overwritten by preserved fields."""
+    schema = {
+        "type": "object",
+        "nullable": False,  # This will be preserved and could overwrite the new nullable status
+        "properties": {
+            "field": {
+                "anyOf": [
+                    {"type": "string"},
+                    {"type": "null"},
+                ],
+                "nullable": False,  # This should NOT overwrite the new nullable: True
+            },
+        },
+    }
+
+    result = splat_nulls_recursive(schema)
+
+    # The field should be nullable=True despite the original nullable=False
+    assert result["properties"]["field"]["nullable"] is True
+    assert result["properties"]["field"]["type"] == "string"
+
+    # The root object should keep its original nullable=False
+    assert result["nullable"] is False
+
+
+def test_capitalize_schema_types_immutability():
+    """Test that capitalize_schema_types doesn't modify the input schema in place."""
+    original_schema = {
+        "type": "object",
+        "properties": {
+            "name": {"type": "string"},
+            "nested": {
+                "type": "object",
+                "properties": {
+                    "value": {"type": "integer"},
+                },
+            },
+        },
+    }
+
+    # Create a copy to compare against
+    original_copy = copy.deepcopy(original_schema)
+
+    # Call the function
+    result = capitalize_schema_types(original_schema)
+
+    # The original schema should remain unchanged
+    assert original_schema == original_copy
+
+    # The result should have capitalized types
+    assert result["type"] == "OBJECT"
+    assert result["properties"]["name"]["type"] == "STRING"
+    assert result["properties"]["nested"]["type"] == "OBJECT"
+    assert result["properties"]["nested"]["properties"]["value"]["type"] == "INTEGER"
+
+
+def test_splat_nulls_recursive_complex_nullable_preservation():
+    """Test that nullable fields in complex nested structures are preserved correctly."""
+    schema = {
+        "type": "object",
+        "properties": {
+            "complex_field": {
+                "anyOf": [
+                    {
+                        "type": "object",
+                        "properties": {
+                            "inner": {"type": "string"},
+                        },
+                    },
+                    {"type": "null"},
+                ],
+                "nullable": False,  # This should be overridden
+                "description": "A complex nullable field",
+                "title": "Complex Field",
+            },
+        },
+    }
+
+    result = splat_nulls_recursive(schema)
+
+    # The complex field should be nullable=True
+    assert result["properties"]["complex_field"]["nullable"] is True
+    assert result["properties"]["complex_field"]["type"] == "object"
+
+    # Other fields should be preserved
+    assert result["properties"]["complex_field"]["description"] == "A complex nullable field"
+    assert result["properties"]["complex_field"]["title"] == "Complex Field"

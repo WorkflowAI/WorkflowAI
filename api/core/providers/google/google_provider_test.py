@@ -1549,7 +1549,7 @@ class TestBuildRequest:
         }
 
         with patch(
-            "core.providers.google.google_provider_utils.sanitize_json_schema",
+            "core.providers.google.google_provider_utils.prepare_google_response_schema",
             side_effect=Exception("Schema sanitization error"),
         ):
             request = google_provider._build_request(  # pyright: ignore [reportPrivateUsage]
