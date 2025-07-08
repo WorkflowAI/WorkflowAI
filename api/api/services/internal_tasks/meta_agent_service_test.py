@@ -1241,6 +1241,7 @@ class TestMetaAgentService:
         mock_model_1.id = "model1"
         mock_model_1.name = "Model 1"
         mock_model_1.quality_index = 100  # Highest quality -> rank 1
+        mock_model_1.speed_index = 500
         mock_model_1.average_cost_per_run_usd = 0.002  # Higher cost -> rank 3
         mock_model_1.context_window_tokens = 4000
         mock_model_1.is_not_supported_reason = None
@@ -1252,6 +1253,7 @@ class TestMetaAgentService:
         mock_model_2.id = "model2"
         mock_model_2.name = "Model 2"
         mock_model_2.quality_index = 80  # Middle quality -> rank 2
+        mock_model_2.speed_index = 500
         mock_model_2.average_cost_per_run_usd = 0.001  # Lowest cost -> rank 1
         mock_model_2.context_window_tokens = 8000
         mock_model_2.is_not_supported_reason = None
@@ -1263,6 +1265,7 @@ class TestMetaAgentService:
         mock_model_3.id = "model3"
         mock_model_3.name = "Model 3"
         mock_model_3.quality_index = 60  # Lowest quality -> rank 3
+        mock_model_3.speed_index = 500
         mock_model_3.average_cost_per_run_usd = 0.0015  # Middle cost -> rank 2
         mock_model_3.context_window_tokens = 2000
         mock_model_3.is_not_supported_reason = None
@@ -1337,6 +1340,7 @@ class TestMetaAgentService:
         mock_model_1.id = "model1"
         mock_model_1.name = "Model 1"
         mock_model_1.quality_index = 100
+        mock_model_1.speed_index = 500
         mock_model_1.average_cost_per_run_usd = 0.001  # Has cost -> better rank
         mock_model_1.context_window_tokens = 4000
         mock_model_1.is_not_supported_reason = None
@@ -1348,6 +1352,7 @@ class TestMetaAgentService:
         mock_model_2.id = "model2"
         mock_model_2.name = "Model 2"
         mock_model_2.quality_index = 80
+        mock_model_2.speed_index = 500
         mock_model_2.average_cost_per_run_usd = None  # No cost data -> worse rank
         mock_model_2.context_window_tokens = 8000
         mock_model_2.is_not_supported_reason = None
@@ -1401,6 +1406,7 @@ class TestMetaAgentService:
         mock_model_1.id = "model1"
         mock_model_1.name = "Model 1"
         mock_model_1.quality_index = 0  # Zero quality
+        mock_model_1.speed_index = 500
         mock_model_1.average_cost_per_run_usd = 0.001  # Has cost
         mock_model_1.context_window_tokens = 4000
         mock_model_1.is_not_supported_reason = None
@@ -1412,6 +1418,7 @@ class TestMetaAgentService:
         mock_model_2.id = "model2"
         mock_model_2.name = "Model 2"
         mock_model_2.quality_index = 100  # High quality
+        mock_model_2.speed_index = 500
         mock_model_2.average_cost_per_run_usd = 0.0  # Zero cost
         mock_model_2.context_window_tokens = 8000
         mock_model_2.is_not_supported_reason = None
@@ -1423,6 +1430,7 @@ class TestMetaAgentService:
         mock_model_3.id = "model3"
         mock_model_3.name = "Model 3"
         mock_model_3.quality_index = 50  # Middle quality
+        mock_model_3.speed_index = 500
         mock_model_3.average_cost_per_run_usd = 0.002  # Higher cost
         mock_model_3.context_window_tokens = 2000
         mock_model_3.is_not_supported_reason = None
@@ -1510,6 +1518,7 @@ class TestMetaAgentService:
         mock_model_1.id = "model1"
         mock_model_1.name = "Model 1"
         mock_model_1.quality_index = 80  # Same quality
+        mock_model_1.speed_index = 500
         mock_model_1.average_cost_per_run_usd = 0.001  # Same cost
         mock_model_1.context_window_tokens = 4000
         mock_model_1.is_not_supported_reason = None
@@ -1521,6 +1530,7 @@ class TestMetaAgentService:
         mock_model_2.id = "model2"
         mock_model_2.name = "Model 2"
         mock_model_2.quality_index = 80  # Same quality
+        mock_model_2.speed_index = 500
         mock_model_2.average_cost_per_run_usd = 0.001  # Same cost
         mock_model_2.context_window_tokens = 8000
         mock_model_2.is_not_supported_reason = None
@@ -1532,6 +1542,7 @@ class TestMetaAgentService:
         mock_model_3.id = "model3"
         mock_model_3.name = "Model 3"
         mock_model_3.quality_index = 100  # Different quality
+        mock_model_3.speed_index = 500
         mock_model_3.average_cost_per_run_usd = 0.002  # Different cost
         mock_model_3.context_window_tokens = 2000
         mock_model_3.is_not_supported_reason = None
@@ -1588,6 +1599,7 @@ class TestMetaAgentService:
         mock_model_1.id = "model1"
         mock_model_1.name = "Model 1"
         mock_model_1.quality_index = 0  # Zero quality
+        mock_model_1.speed_index = 500
         mock_model_1.average_cost_per_run_usd = None  # No cost data
         mock_model_1.context_window_tokens = 4000
         mock_model_1.is_not_supported_reason = None
@@ -1599,6 +1611,7 @@ class TestMetaAgentService:
         mock_model_2.id = "model2"
         mock_model_2.name = "Model 2"
         mock_model_2.quality_index = 100  # High quality
+        mock_model_2.speed_index = 500
         mock_model_2.average_cost_per_run_usd = 0.0  # Zero cost
         mock_model_2.context_window_tokens = 8000
         mock_model_2.is_not_supported_reason = None

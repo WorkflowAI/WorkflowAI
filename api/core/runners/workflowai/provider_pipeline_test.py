@@ -55,6 +55,7 @@ def _final_model_data(
             **model_data.model_dump(),
             "model": model,
             "quality_index": model_data.quality_data.quality_index({}),
+            "speed_index": model_data.speed_data.speed_index({}),
             "fallback": fallback,
             "providers": [],
         },
