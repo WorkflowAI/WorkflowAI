@@ -54,7 +54,7 @@ from tests.utils import fixtures_json, request_json_body
 def amazon_provider():
     with patch.dict(
         os.environ,
-        {"AWS_BEDROCK_ACCESS_KEY": "test_access_key", "AWS_BEDROCK_SECRET_KEY": "test_secret_key"},
+        {"AWS_BEDROCK_API_KEY": "test_api_key"},
     ):
         provider = AmazonBedrockProvider()
     provider.logger = Mock(spec=logging.Logger)
@@ -68,7 +68,7 @@ class TestAmazonBedrockProvider(unittest.TestCase):
 
     def test_required_env_vars(self):
         """Test the required_env_vars method returOpns the correct environment variables."""
-        expected_vars = ["AWS_BEDROCK_ACCESS_KEY", "AWS_BEDROCK_SECRET_KEY"]
+        expected_vars = ["AWS_BEDROCK_API_KEY"]
         self.assertEqual(AmazonBedrockProvider.required_env_vars(), expected_vars)
 
     def test_supports_model(self):
@@ -77,8 +77,7 @@ class TestAmazonBedrockProvider(unittest.TestCase):
         with patch.dict(
             "os.environ",
             {
-                "AWS_BEDROCK_ACCESS_KEY": "test_access_key",
-                "AWS_BEDROCK_SECRET_KEY": "test_secret_key",
+                "AWS_BEDROCK_API_KEY": "test_api_key",
                 "AWS_BEDROCK_MODEL_REGION_MAP": '{"claude-3-opus-20240229": "us-west-2"}',
             },
         ):
@@ -89,8 +88,7 @@ class TestAmazonBedrockProvider(unittest.TestCase):
     @patch.dict(
         "os.environ",
         {
-            "AWS_BEDROCK_ACCESS_KEY": "test_access_key",
-            "AWS_BEDROCK_SECRET_KEY": "test_secret_key",
+            "AWS_BEDROCK_API_KEY": "test_api_key",
             "AWS_BEDROCK_MODEL_REGION_MAP": '{"claude-3-opus-20240229": "us-west-2", "claude-3-sonnet-20240229": "us-west-1"}',
         },
     )
@@ -100,8 +98,7 @@ class TestAmazonBedrockProvider(unittest.TestCase):
         config = provider._default_config(0)  # pyright: ignore [reportPrivateUsage]
 
         self.assertIsInstance(config, AmazonBedrockConfig)
-        self.assertEqual(config.aws_bedrock_access_key, "test_access_key")
-        self.assertEqual(config.aws_bedrock_secret_key, "test_secret_key")
+        self.assertEqual(config.api_key, "test_api_key")
         self.assertEqual(
             config.available_model_x_region_map,
             {
@@ -113,8 +110,7 @@ class TestAmazonBedrockProvider(unittest.TestCase):
     @patch.dict(
         "os.environ",
         {
-            "AWS_BEDROCK_ACCESS_KEY": "test_access_key",
-            "AWS_BEDROCK_SECRET_KEY": "test_secret_key",
+            "AWS_BEDROCK_API_KEY": "test_api_key",
             "AWS_BEDROCK_MODEL_REGION_MAP": "not_json",
         },
         clear=True,
