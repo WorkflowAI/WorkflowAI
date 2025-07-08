@@ -56,10 +56,8 @@ if "WORKFLOWAI_JWK" not in os.environ:
     )
 if "AWS_BEDROCK_MODEL_REGION_MAP" not in os.environ:
     os.environ["AWS_BEDROCK_MODEL_REGION_MAP"] = json.dumps(_PATCHED_BEDROCK_REGION_MAP)
-if "AWS_BEDROCK_SECRET_KEY" not in os.environ:
-    os.environ["AWS_BEDROCK_SECRET_KEY"] = "secret"
-if "AWS_BEDROCK_ACCESS_KEY" not in os.environ:
-    os.environ["AWS_BEDROCK_ACCESS_KEY"] = "access"
+if "AWS_BEDROCK_API_KEY" not in os.environ:
+    os.environ["AWS_BEDROCK_API_KEY"] = "secret"
 if "CLERK_WEBHOOKS_SECRET" not in os.environ:
     os.environ["CLERK_WEBHOOKS_SECRET"] = "whsec_LCi7t70Dv3NryHc386aaOzjgDPl/Ta/D"
 
