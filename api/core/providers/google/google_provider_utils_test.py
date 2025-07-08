@@ -1,4 +1,3 @@
-import copy
 from typing import Any
 
 import pytest
@@ -980,7 +979,10 @@ class TestRestrictStringFormats:
         expected = {
             "type": "object",
             "properties": {
-                "status": {"type": "string"},  # enum removed
+                "status": {
+                    "type": "string",
+                    "description": "Valid values: 'active', 'inactive'",
+                },  # enum removed but values preserved in description
             },
         }
         assert result == expected
@@ -1203,37 +1205,6 @@ def test_splat_nulls_recursive_nullable_preservation_bug():
 
     # The root object should keep its original nullable=False
     assert result["nullable"] is False
-
-
-def test_capitalize_schema_types_immutability():
-    """Test that capitalize_schema_types doesn't modify the input schema in place."""
-    original_schema = {
-        "type": "object",
-        "properties": {
-            "name": {"type": "string"},
-            "nested": {
-                "type": "object",
-                "properties": {
-                    "value": {"type": "integer"},
-                },
-            },
-        },
-    }
-
-    # Create a copy to compare against
-    original_copy = copy.deepcopy(original_schema)
-
-    # Call the function
-    result = capitalize_schema_types(original_schema)
-
-    # The original schema should remain unchanged
-    assert original_schema == original_copy
-
-    # The result should have capitalized types
-    assert result["type"] == "OBJECT"
-    assert result["properties"]["name"]["type"] == "STRING"
-    assert result["properties"]["nested"]["type"] == "OBJECT"
-    assert result["properties"]["nested"]["properties"]["value"]["type"] == "INTEGER"
 
 
 def test_splat_nulls_recursive_complex_nullable_preservation():

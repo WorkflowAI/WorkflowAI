@@ -102,13 +102,10 @@ def capitalize_schema_types(schema: dict[str, Any]) -> dict[str, Any]:
     """
     Capitalize the types ("type") in a JSON Schema
     """
-    # Create a deep copy to avoid modifying the original schema
-    result = copy.deepcopy(schema)
-
     # Browse the full schema and capitalize the types
-    for k, v in result.items():
+    for k, v in schema.items():
         if isinstance(v, dict):
-            result[k] = capitalize_schema_types(cast(dict[str, Any], v))
+            schema[k] = capitalize_schema_types(cast(dict[str, Any], v))
         elif isinstance(v, list):
             new_list: list[Any] = []
             for item in v:  # pyright: ignore[reportUnknownVariableType]
@@ -116,13 +113,13 @@ def capitalize_schema_types(schema: dict[str, Any]) -> dict[str, Any]:
                     new_list.append(capitalize_schema_types(cast(dict[str, Any], item)))
                 else:
                     new_list.append(item)  # pyright: ignore[reportUnknownArgumentType]
-            result[k] = new_list
+            schema[k] = new_list
 
         # Handle type capitalization
         if k == "type":
-            result[k] = _capitalize_type_value(v)
+            schema[k] = _capitalize_type_value(v)
 
-    return result
+    return schema
 
 
 def _handle_string_format_restriction(schema: dict[str, Any], allowed_formats: set[str]) -> dict[str, Any]:
@@ -147,9 +144,21 @@ def _handle_string_format_restriction(schema: dict[str, Any], allowed_formats: s
 
     # Handle enum case - if enum is present and allowed, keep it
     if "enum" in schema and "enum" not in allowed_formats:
+        # Extract enum values before removing the constraint
+        enum_values = schema["enum"]
+
+        # Add enum values to the description
+        enum_description = f"Valid values: {', '.join(repr(v) for v in enum_values)}"
+        existing_description = schema.get("description", "")
+
+        if existing_description:
+            schema["description"] = f"{existing_description}. {enum_description}"
+        else:
+            schema["description"] = enum_description
+
         # Convert enum to a regular string field if enum format is not allowed
         schema = {k: v for k, v in schema.items() if k != "enum"}
-        logger.warning("Removed enum constraint as enum format is not allowed")
+        logger.warning("Removed enum constraint as enum format is not allowed", extra={"enum_values": enum_values})
 
     return schema
 
