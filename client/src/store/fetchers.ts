@@ -551,8 +551,8 @@ export const useOrFetchOrganizationSettings = (pollingInterval?: number) => {
   const isInitialized = useOrganizationSettings((state) => state.isInitialized);
   const fetchOrganizationSettings = useOrganizationSettings((state) => state.fetchOrganizationSettings);
   const { isSignedIn, user, tenantId, tenantSlug } = useAuth();
-  const organizationSettings = useOrganizationSettings((state) =>
-    tenantSlug ? state.settingsForTenant[tenantSlug] : undefined
+  const organizationSettings = useOrganizationSettings(
+    (state) => state.settingsForTenant[tenantSlug ?? ('_' as TenantID)]
   );
 
   useEffect(() => {
