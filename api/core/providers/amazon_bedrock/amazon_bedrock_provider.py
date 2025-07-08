@@ -95,6 +95,10 @@ class AmazonBedrockProvider(HTTPXProvider[AmazonBedrockConfig, CompletionRespons
 
     @override
     async def _request_headers(self, request: dict[str, Any], url: str, model: Model) -> dict[str, str]:
+        if self._config.api_key:
+            return {
+                "Authorization": f"Bearer {self._config.api_key}",
+            }
         return get_auth_headers(
             method="POST",
             url=url,

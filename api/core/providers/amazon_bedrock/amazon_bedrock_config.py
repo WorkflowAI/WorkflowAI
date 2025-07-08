@@ -2,7 +2,7 @@ import json
 import logging
 from typing import Literal, cast
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from core.domain.errors import (
     MissingEnvVariablesError,
@@ -40,8 +40,9 @@ logger = logging.getLogger(__name__)
 class AmazonBedrockConfig(BaseModel):
     provider: Literal[Provider.AMAZON_BEDROCK] = Provider.AMAZON_BEDROCK
 
-    aws_bedrock_access_key: str
-    aws_bedrock_secret_key: str
+    aws_bedrock_access_key: str = ""
+    aws_bedrock_secret_key: str = ""
+    api_key: str = ""
     resource_id_x_model_map: dict[Model, str] = Field(default_factory=_default_resource_ids)
     available_model_x_region_map: dict[Model, str] = Field(default_factory=dict)
     default_region: str = "us-west-2"
@@ -54,6 +55,15 @@ class AmazonBedrockConfig(BaseModel):
             f"secret_key={self.aws_bedrock_secret_key[:4]}****, "
             f"available_models={models}, available_regions={regions})"
         )
+
+    @model_validator(mode="after")
+    def validate_api_key(self):
+        if not self.api_key:
+            if not self.aws_bedrock_access_key or not self.aws_bedrock_secret_key:
+                raise ValueError(
+                    "API key or Access key and secret key are required",
+                )
+        return self
 
     @classmethod
     def from_env(cls, index: int):
@@ -87,6 +97,7 @@ class AmazonBedrockConfig(BaseModel):
         return cls(
             aws_bedrock_access_key=get_provider_config_env("AWS_BEDROCK_ACCESS_KEY", index),
             aws_bedrock_secret_key=get_provider_config_env("AWS_BEDROCK_SECRET_KEY", index),
+            api_key=get_provider_config_env("AWS_BEDROCK_API_KEY", index),
             available_model_x_region_map=_map_model_map("AWS_BEDROCK_MODEL_REGION_MAP", {}),
             resource_id_x_model_map=_map_model_map("AWS_BEDROCK_RESOURCE_ID_MODEL_MAP", _default_resource_ids()),
             default_region=get_provider_config_env("AWS_BEDROCK_DEFAULT_REGION", index, "us-west-2"),
