@@ -22,3 +22,4 @@ class Provider(StrEnum):
     GOOGLE_IMAGEN = "google_vertex_imagen"
     X_AI = "xai"
     OPEN_AI_IMAGE = "openai_image"
+    CEREBRAS = "cerebras"

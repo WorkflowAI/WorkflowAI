@@ -1288,7 +1288,8 @@ export type Provider =
   | 'anthropic'
   | 'groq'
   | 'mistral_ai'
-  | 'google_gemini';
+  | 'google_gemini'
+  | 'cerebras';
 
 export type ProviderSettings = {
   id: string;

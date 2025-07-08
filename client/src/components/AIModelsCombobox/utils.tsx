@@ -70,6 +70,11 @@ export const AI_PROVIDERS_METADATA: Record<Provider, AIProviderMetadata> = {
     icon: <FireworksIcon />,
     documentationUrl: 'https://fireworks.ai/docs/api-reference/introduction',
   },
+  cerebras: {
+    name: 'Cerebras',
+    icon: <SiAnthropic />,
+    documentationUrl: 'https://inference-docs.cerebras.ai/',
+  },
 };
 
 /*
