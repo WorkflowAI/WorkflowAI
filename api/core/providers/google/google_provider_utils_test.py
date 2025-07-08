@@ -979,7 +979,29 @@ class TestRestrictStringFormats:
         expected = {
             "type": "object",
             "properties": {
-                "status": {"type": "string"},  # enum removed
+                "status": {
+                    "type": "string",
+                    "description": "Possible values: active, inactive",
+                },  # enum removed but values preserved in description
+            },
+        }
+        assert result == expected
+
+    def test_restrict_string_formats_enum_disallowed_with_existing_description(self):
+        schema = {
+            "type": "object",
+            "properties": {
+                "status": {"type": "string", "enum": ["active", "inactive"], "description": "The current status"},
+            },
+        }
+        result = restrict_string_formats(schema, {"date-time"})
+        expected = {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "description": "The current status. Possible values: active, inactive",
+                },  # enum removed but values appended to existing description
             },
         }
         assert result == expected
