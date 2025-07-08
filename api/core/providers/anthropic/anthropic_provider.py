@@ -14,7 +14,6 @@ from core.domain.message import MessageDeprecated
 from core.domain.models import Model, Provider
 from core.domain.models.model_data import FinalModelData
 from core.domain.models.utils import get_model_data
-from core.domain.tool import Tool
 from core.domain.tool_call import ToolCallRequestWithID
 from core.providers.anthropic.anthropic_domain import (
     AnthropicErrorResponse,
