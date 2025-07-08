@@ -13,7 +13,6 @@ from core.domain.message import MessageDeprecated
 from core.domain.models import Model, Provider
 from core.domain.tool import Tool
 from core.domain.tool_call import ToolCallRequestWithID
-from core.providers.amazon_bedrock.amazon_bedrock_auth import get_auth_headers
 from core.providers.amazon_bedrock.amazon_bedrock_config import AmazonBedrockConfig
 from core.providers.amazon_bedrock.amazon_bedrock_domain import (
     AmazonBedrockMessage,
@@ -95,20 +94,9 @@ class AmazonBedrockProvider(HTTPXProvider[AmazonBedrockConfig, CompletionRespons
 
     @override
     async def _request_headers(self, request: dict[str, Any], url: str, model: Model) -> dict[str, str]:
-        if self._config.api_key:
-            return {
-                "Authorization": f"Bearer {self._config.api_key}",
-            }
-        return get_auth_headers(
-            method="POST",
-            url=url,
-            headers=httpx.Headers(),
-            aws_access_key=self._config.aws_bedrock_access_key,
-            aws_secret_key=self._config.aws_bedrock_secret_key,
-            aws_session_token=None,
-            region=self._config.region_for_model(model),
-            data=json.dumps(request),
-        )
+        return {
+            "Authorization": f"Bearer {self._config.api_key}",
+        }
 
     @override
     def _request_url(self, model: Model, stream: bool) -> str:
@@ -143,7 +131,7 @@ class AmazonBedrockProvider(HTTPXProvider[AmazonBedrockConfig, CompletionRespons
     @override
     @classmethod
     def required_env_vars(cls) -> list[str]:
-        return ["AWS_BEDROCK_ACCESS_KEY", "AWS_BEDROCK_SECRET_KEY"]
+        return ["AWS_BEDROCK_API_KEY"]
 
     @override
     @classmethod
