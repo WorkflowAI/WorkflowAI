@@ -91,6 +91,15 @@ class ContentBlock(BaseModel):
 
     image: Image | None = None
 
+    class ThinkingContent(BaseModel):
+        thinking: str
+        signature: str | None = None
+
+        def to_standard(self) -> TextContentDict:
+            return {"type": "text", "text": self.thinking}
+
+    thinking: ThinkingContent | None = None
+
     def to_standard(
         self,
     ) -> list[TextContentDict | ImageContentDict | AudioContentDict | ToolCallRequestDict | ToolCallResultDict]:
@@ -99,6 +108,8 @@ class ContentBlock(BaseModel):
             out.append({"text": self.text, "type": "text"})
         if self.image:
             out.append({"image_url": {"url": self.image.to_url()}, "type": "image_url"})
+        if self.thinking:
+            out.append(self.thinking.to_standard())
         if self.toolUse:
             out.append(
                 {
@@ -320,6 +331,12 @@ class CompletionRequest(BaseModel):
 
     inferenceConfig: InferenceConfig
 
+    class Thinking(BaseModel):
+        type: Literal["enabled"]  # 'disabled' is never used
+        budget_tokens: int
+
+    thinking: Thinking | None = None
+
 
 class Usage(BaseModel):
     inputTokens: int = 0
@@ -358,6 +375,11 @@ class StreamedResponse(BaseModel):
 
         toolUse: ToolUseBlockDelta | None = None
 
+        class ThinkingDelta(BaseModel):
+            thinking: str
+
+        thinking: ThinkingDelta | None = None
+
     delta: Delta | None = None
 
     class Start(BaseModel):
@@ -366,6 +388,11 @@ class StreamedResponse(BaseModel):
             toolUseId: _ToolUseID
 
         toolUse: ToolUse | None = None
+
+        class ThinkingBlock(BaseModel):
+            thinking: str | None = None
+
+        thinking: ThinkingBlock | None = None
 
     start: Start | None = None
 

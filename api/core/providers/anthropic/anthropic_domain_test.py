@@ -5,11 +5,16 @@ from core.domain.message import MessageDeprecated
 from core.domain.tool_call import ToolCall, ToolCallRequestWithID
 from core.providers.anthropic.anthropic_domain import (
     AnthropicMessage,
+    CompletionChunk,
+    CompletionRequest,
     DocumentContent,
     ErrorDetails,
     FileSource,
     ImageContent,
+    SignatureDelta,
     TextContent,
+    ThinkingContent,
+    ThinkingDelta,
     ToolResultContent,
     ToolUseContent,
 )
@@ -207,6 +212,161 @@ def test_anthropic_message_from_domain_with_tool_call_error() -> None:
             ),
         ],
     )
+
+
+class TestThinkingContent:
+    def test_thinking_content_to_standard(self) -> None:
+        """Test ThinkingContent conversion to standard format."""
+        thinking_content = ThinkingContent(
+            type="thinking",
+            thinking="Let me think about this problem step by step...",
+            signature="thinking_signature_123",
+        )
+
+        standard = thinking_content.to_standard()
+
+        assert standard == {
+            "type": "text",
+            "text": "Let me think about this problem step by step...",
+        }
+
+    def test_thinking_content_to_standard_without_signature(self) -> None:
+        """Test ThinkingContent conversion without signature."""
+        thinking_content = ThinkingContent(
+            type="thinking",
+            thinking="Analyzing the user's request...",
+        )
+
+        standard = thinking_content.to_standard()
+
+        assert standard == {
+            "type": "text",
+            "text": "Analyzing the user's request...",
+        }
+
+    def test_anthropic_message_with_thinking_content(self) -> None:
+        """Test AnthropicMessage with ThinkingContent."""
+        message = AnthropicMessage(
+            role="assistant",
+            content=[
+                ThinkingContent(
+                    type="thinking",
+                    thinking="I need to analyze this request...",
+                    signature="sig_123",
+                ),
+                TextContent(type="text", text="Here's my response."),
+            ],
+        )
+
+        standard = message.to_standard()
+
+        assert standard == {
+            "role": "assistant",
+            "content": [
+                {"type": "text", "text": "I need to analyze this request..."},
+                {"type": "text", "text": "Here's my response."},
+            ],
+        }
+
+
+class TestCompletionRequestThinking:
+    def test_completion_request_thinking_enabled(self) -> None:
+        """Test CompletionRequest with thinking enabled."""
+        thinking_config = CompletionRequest.Thinking(
+            type="enabled",
+            budget_tokens=1000,
+        )
+
+        request = CompletionRequest(
+            messages=[],
+            model="claude-3-5-sonnet-20241022",
+            max_tokens=4000,
+            temperature=0.7,
+            stream=False,
+            thinking=thinking_config,
+        )
+
+        request_dict = request.model_dump()
+        assert request_dict["thinking"] == {
+            "type": "enabled",
+            "budget_tokens": 1000,
+        }
+
+    def test_completion_request_without_thinking(self) -> None:
+        """Test CompletionRequest without thinking configuration."""
+        request = CompletionRequest(
+            messages=[],
+            model="claude-3-5-sonnet-20241022",
+            max_tokens=4000,
+            temperature=0.7,
+            stream=False,
+        )
+
+        request_dict = request.model_dump()
+        assert request_dict["thinking"] is None
+
+
+class TestThinkingDeltas:
+    def test_thinking_delta_creation(self) -> None:
+        """Test ThinkingDelta creation and attributes."""
+        delta = ThinkingDelta(
+            type="thinking_delta",
+            thinking="First, I need to understand...",
+        )
+
+        assert delta.type == "thinking_delta"
+        assert delta.thinking == "First, I need to understand..."
+
+    def test_signature_delta_creation(self) -> None:
+        """Test SignatureDelta creation and attributes."""
+        delta = SignatureDelta(
+            type="signature_delta",
+            signature="signature_abc123",
+        )
+
+        assert delta.type == "signature_delta"
+        assert delta.signature == "signature_abc123"
+
+    def test_completion_chunk_extract_delta_with_thinking(self) -> None:
+        """Test CompletionChunk.extract_delta with thinking delta."""
+        chunk = CompletionChunk(
+            type="content_block_delta",
+            delta=ThinkingDelta(
+                type="thinking_delta",
+                thinking="Let me consider this approach...",
+            ),
+        )
+
+        delta_text = chunk.extract_delta()
+        assert delta_text == "Let me consider this approach..."
+
+    def test_completion_chunk_extract_delta_with_signature(self) -> None:
+        """Test CompletionChunk.extract_delta with signature delta."""
+        chunk = CompletionChunk(
+            type="content_block_delta",
+            delta=SignatureDelta(
+                type="signature_delta",
+                signature="sig_456",
+            ),
+        )
+
+        delta_text = chunk.extract_delta()
+        assert delta_text == ""  # Signature deltas don't contribute to text output
+
+    def test_completion_chunk_extract_delta_with_text(self) -> None:
+        """Test CompletionChunk.extract_delta with text delta (existing behavior)."""
+        from core.providers.anthropic.anthropic_domain import TextDelta
+
+        chunk = CompletionChunk(
+            type="content_block_delta",
+            delta=TextDelta(
+                type="text_delta",
+                text="This is regular text content.",
+            ),
+        )
+
+        delta_text = chunk.extract_delta()
+        assert delta_text == "This is regular text content."
 
 
 class TestErrorDetails:

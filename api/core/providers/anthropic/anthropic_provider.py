@@ -8,11 +8,13 @@ from typing_extensions import override
 
 from core.domain.errors import UnpriceableRunError
 from core.domain.fields.file import File
+from core.domain.fields.internal_reasoning_steps import InternalReasoningStep
 from core.domain.llm_usage import LLMUsage
 from core.domain.message import MessageDeprecated
 from core.domain.models import Model, Provider
 from core.domain.models.model_data import FinalModelData
 from core.domain.models.utils import get_model_data
+from core.domain.tool import Tool
 from core.domain.tool_call import ToolCallRequestWithID
 from core.providers.anthropic.anthropic_domain import (
     AnthropicErrorResponse,
@@ -24,6 +26,7 @@ from core.providers.anthropic.anthropic_domain import (
     ContentBlock,
     StopReasonDelta,
     TextContent,
+    ThinkingContent,
     ToolUseContent,
     Usage,
 )
@@ -83,6 +86,16 @@ class AnthropicProvider(HTTPXProvider[AnthropicConfig, CompletionResponse]):
         else:
             system_message = None
 
+        thinking_budget = options.final_reasoning_budget(model_data.reasoning)
+        thinking_config = (
+            None
+            if thinking_budget is None
+            else CompletionRequest.Thinking(
+                type="enabled",
+                budget_tokens=thinking_budget,
+            )
+        )
+
         request = CompletionRequest(
             # Anthropic requires at least one message
             # So if we have no messages, we add a user message with a dash
@@ -93,11 +106,12 @@ class AnthropicProvider(HTTPXProvider[AnthropicConfig, CompletionResponse]):
             ],
             model=options.model,
             temperature=options.temperature,
-            max_tokens=self._max_tokens(model_data, options.max_tokens),
+            max_tokens=self._max_tokens(model_data, options.max_tokens) + (thinking_budget or 0),
             stream=stream,
             tool_choice=AntToolChoice.from_domain(options.tool_choice),
             top_p=options.top_p,
             system=system_message,
+            thinking=thinking_config,
             # Presence and frequency penalties are not yet supported by Anthropic
         )
 
@@ -132,11 +146,10 @@ class AnthropicProvider(HTTPXProvider[AnthropicConfig, CompletionResponse]):
                 msg="Model returned MAX_TOKENS stop reason, the max tokens limit was exceeded.",
                 raw_completion=str(response.content),
             )
-        if isinstance(
-            response.content[0],
-            ContentBlock,
-        ):
-            return response.content[0].text
+
+        for block in response.content:
+            if isinstance(block, ContentBlock):
+                return block.text
 
         return ""
 
@@ -144,6 +157,21 @@ class AnthropicProvider(HTTPXProvider[AnthropicConfig, CompletionResponse]):
     def _extract_usage(self, response: CompletionResponse) -> LLMUsage | None:
         # Implement if Anthropic provides usage metrics
         return response.usage.to_domain()
+
+    @override
+    def _extract_reasoning_steps(self, response: CompletionResponse) -> list[InternalReasoningStep] | None:
+        """Extract reasoning steps from thinking content blocks in the response"""
+        reasoning_steps = [
+            InternalReasoningStep(
+                explaination=content_block.thinking,
+                # TODO: We could potentially use the signature field for validation
+                # but for now we'll just include the thinking text
+            )
+            for content_block in response.content
+            if isinstance(content_block, ThinkingContent)
+        ]
+
+        return reasoning_steps if reasoning_steps else None
 
     @override
     @classmethod
@@ -221,6 +249,7 @@ class AnthropicProvider(HTTPXProvider[AnthropicConfig, CompletionResponse]):
     ) -> ParsedResponse:
         try:
             chunk = CompletionChunk.model_validate_json(sse_event)
+
             match chunk.type:
                 case "message_start":
                     return self._handle_message_start(chunk, raw_completion)
@@ -272,6 +301,8 @@ class AnthropicProvider(HTTPXProvider[AnthropicConfig, CompletionResponse]):
                 tool_input="",
             )
 
+        # For thinking content blocks, we don't need to buffer anything at start
+        # The thinking content will be streamed via content_block_delta events
         return ParsedResponse("", tool_calls=tool_calls)
 
     def _handle_content_block_delta(
@@ -281,6 +312,8 @@ class AnthropicProvider(HTTPXProvider[AnthropicConfig, CompletionResponse]):
     ) -> ParsedResponse:
         """Handle content_block_delta event type."""
         tool_calls: list[ToolCallRequestWithID] = []
+        reasoning_steps: str | None = None
+
         if chunk.delta and chunk.delta.type == "input_json_delta":
             if chunk.index not in tool_call_request_buffer:
                 raise FailedGenerationError(
@@ -304,7 +337,11 @@ class AnthropicProvider(HTTPXProvider[AnthropicConfig, CompletionResponse]):
                     # That means the tool call is not fully streamed yet
                     pass
 
-        return ParsedResponse(chunk.extract_delta(), tool_calls=tool_calls)
+        # Handle thinking deltas for reasoning steps
+        elif chunk.delta and chunk.delta.type == "thinking_delta":
+            reasoning_steps = chunk.delta.thinking
+
+        return ParsedResponse(chunk.extract_delta(), tool_calls=tool_calls, reasoning_steps=reasoning_steps)
 
     def _compute_prompt_token_count(
         self,

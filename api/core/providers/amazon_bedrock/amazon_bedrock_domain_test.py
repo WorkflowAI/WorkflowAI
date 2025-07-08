@@ -14,7 +14,11 @@ from core.providers.amazon_bedrock.amazon_bedrock_domain import (
     AmazonBedrockMessage,
     AmazonBedrockSystemMessage,
     BedrockToolConfig,
+    CompletionRequest,
+    CompletionResponse,
     ContentBlock,
+    StreamedResponse,
+    Usage,
 )
 from core.providers.base.provider_error import ModelDoesNotSupportMode
 
@@ -430,3 +434,240 @@ class TestBedrockToolConfig:
         config = BedrockToolConfig.from_domain([tool], None)
         assert config is not None
         assert config.tools[0].toolSpec.description == "Valid description"
+
+
+class TestContentBlockThinkingContent:
+    def test_thinking_content_creation(self):
+        """Test creation of ThinkingContent within ContentBlock."""
+        thinking = ContentBlock.ThinkingContent(
+            thinking="Let me analyze this step by step...",
+            signature="thinking_signature_abc",
+        )
+
+        assert thinking.thinking == "Let me analyze this step by step..."
+        assert thinking.signature == "thinking_signature_abc"
+
+    def test_thinking_content_to_standard(self):
+        """Test ThinkingContent conversion to standard format."""
+        thinking = ContentBlock.ThinkingContent(
+            thinking="I need to think about this problem...",
+        )
+
+        standard = thinking.to_standard()
+        assert standard == {
+            "type": "text",
+            "text": "I need to think about this problem...",
+        }
+
+    def test_content_block_with_thinking(self):
+        """Test ContentBlock with thinking content."""
+        content_block = ContentBlock(
+            thinking=ContentBlock.ThinkingContent(
+                thinking="Analyzing the user's request...",
+                signature="sig_123",
+            ),
+        )
+
+        standard = content_block.to_standard()
+        assert len(standard) == 1
+        assert standard[0] == {
+            "type": "text",
+            "text": "Analyzing the user's request...",
+        }
+
+    def test_content_block_with_text_and_thinking(self):
+        """Test ContentBlock with both text and thinking content."""
+        content_block = ContentBlock(
+            text="Here's my response",
+            thinking=ContentBlock.ThinkingContent(
+                thinking="Let me consider the options...",
+            ),
+        )
+
+        standard = content_block.to_standard()
+        assert len(standard) == 2
+        assert standard[0] == {"type": "text", "text": "Here's my response"}
+        assert standard[1] == {"type": "text", "text": "Let me consider the options..."}
+
+
+class TestCompletionRequestThinking:
+    def test_completion_request_thinking_enabled(self):
+        """Test CompletionRequest with thinking configuration."""
+        thinking_config = CompletionRequest.Thinking(
+            type="enabled",
+            budget_tokens=1500,
+        )
+
+        request = CompletionRequest(
+            system=[],
+            messages=[],
+            inferenceConfig=CompletionRequest.InferenceConfig(
+                maxTokens=4000,
+                temperature=0.7,
+            ),
+            thinking=thinking_config,
+        )
+
+        request_dict = request.model_dump()
+        assert request_dict["thinking"] == {
+            "type": "enabled",
+            "budget_tokens": 1500,
+        }
+
+    def test_completion_request_without_thinking(self):
+        """Test CompletionRequest without thinking configuration."""
+        request = CompletionRequest(
+            system=[],
+            messages=[],
+            inferenceConfig=CompletionRequest.InferenceConfig(
+                maxTokens=4000,
+                temperature=0.7,
+            ),
+        )
+
+        request_dict = request.model_dump()
+        assert request_dict["thinking"] is None
+
+
+class TestStreamedResponseThinking:
+    def test_thinking_delta_creation(self):
+        """Test creation of ThinkingDelta in StreamedResponse."""
+        thinking_delta = StreamedResponse.Delta.ThinkingDelta(
+            thinking="I need to understand the context first...",
+        )
+
+        assert thinking_delta.thinking == "I need to understand the context first..."
+
+    def test_thinking_block_creation(self):
+        """Test creation of ThinkingBlock in StreamedResponse."""
+        thinking_block = StreamedResponse.Start.ThinkingBlock(
+            thinking="Starting to think about this problem...",
+        )
+
+        assert thinking_block.thinking == "Starting to think about this problem..."
+
+    def test_thinking_block_without_content(self):
+        """Test creation of ThinkingBlock without thinking content."""
+        thinking_block = StreamedResponse.Start.ThinkingBlock()
+
+        assert thinking_block.thinking is None
+
+    def test_streamed_response_with_thinking_delta(self):
+        """Test StreamedResponse with thinking delta."""
+        response = StreamedResponse(
+            contentBlockIndex=0,
+            delta=StreamedResponse.Delta(
+                thinking=StreamedResponse.Delta.ThinkingDelta(
+                    thinking="Processing the user's question...",
+                ),
+            ),
+        )
+
+        assert response.contentBlockIndex == 0
+        assert response.delta is not None
+        assert response.delta.thinking is not None
+        assert response.delta.thinking.thinking == "Processing the user's question..."
+
+    def test_streamed_response_with_thinking_start(self):
+        """Test StreamedResponse with thinking start block."""
+        response = StreamedResponse(
+            contentBlockIndex=0,
+            start=StreamedResponse.Start(
+                thinking=StreamedResponse.Start.ThinkingBlock(
+                    thinking="Beginning reasoning process...",
+                ),
+            ),
+        )
+
+        assert response.contentBlockIndex == 0
+        assert response.start is not None
+        assert response.start.thinking is not None
+        assert response.start.thinking.thinking == "Beginning reasoning process..."
+
+    def test_streamed_response_with_mixed_content(self):
+        """Test StreamedResponse with text and thinking deltas."""
+        # Test with text delta
+        text_response = StreamedResponse(
+            contentBlockIndex=0,
+            delta=StreamedResponse.Delta(
+                text="Here's my answer: ",
+            ),
+        )
+
+        assert text_response.delta is not None
+        assert text_response.delta.text == "Here's my answer: "
+        assert text_response.delta.thinking is None
+
+        # Test with thinking delta
+        thinking_response = StreamedResponse(
+            contentBlockIndex=1,
+            delta=StreamedResponse.Delta(
+                thinking=StreamedResponse.Delta.ThinkingDelta(
+                    thinking="Let me verify this approach...",
+                ),
+            ),
+        )
+
+        assert thinking_response.delta is not None
+        assert thinking_response.delta.text is None
+        assert thinking_response.delta.thinking is not None
+        assert thinking_response.delta.thinking.thinking == "Let me verify this approach..."
+
+
+class TestCompletionResponseWithThinking:
+    def test_completion_response_with_thinking_content(self):
+        """Test CompletionResponse containing thinking content blocks."""
+        response = CompletionResponse(
+            stopReason="end_turn",
+            output=CompletionResponse.Output(
+                message=CompletionResponse.Output.Message(
+                    role="assistant",
+                    content=[
+                        ContentBlock(
+                            thinking=ContentBlock.ThinkingContent(
+                                thinking="I should approach this systematically...",
+                                signature="thinking_123",
+                            ),
+                        ),
+                        ContentBlock(text="Based on my analysis, the answer is..."),
+                    ],
+                ),
+            ),
+            usage=Usage(inputTokens=100, outputTokens=150, totalTokens=250),
+        )
+
+        # Check that thinking content is present
+        thinking_blocks = [content for content in response.output.message.content if content.thinking is not None]
+        assert len(thinking_blocks) == 1
+        assert thinking_blocks[0].thinking is not None
+        assert thinking_blocks[0].thinking.thinking == "I should approach this systematically..."
+        assert thinking_blocks[0].thinking.signature == "thinking_123"
+
+        # Check that text content is also present
+        text_blocks = [content for content in response.output.message.content if content.text is not None]
+        assert len(text_blocks) == 1
+        assert text_blocks[0].text == "Based on my analysis, the answer is..."
+
+    def test_completion_response_without_thinking(self):
+        """Test CompletionResponse without thinking content."""
+        response = CompletionResponse(
+            stopReason="end_turn",
+            output=CompletionResponse.Output(
+                message=CompletionResponse.Output.Message(
+                    role="assistant",
+                    content=[
+                        ContentBlock(text="Simple response without thinking."),
+                    ],
+                ),
+            ),
+            usage=Usage(inputTokens=50, outputTokens=75, totalTokens=125),
+        )
+
+        # Check that no thinking content is present
+        thinking_blocks = [content for content in response.output.message.content if content.thinking is not None]
+        assert len(thinking_blocks) == 0
+
+        # Check that text content is present
+        text_blocks = [content for content in response.output.message.content if content.text is not None]
+        assert len(text_blocks) == 1
+        assert text_blocks[0].text == "Simple response without thinking."
