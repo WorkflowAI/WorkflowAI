@@ -390,6 +390,9 @@ from core.providers.google.google_provider_utils import (
                                 "type": "array",
                             },
                             {
+                                "$ref": "#/$defs/ErrorAnalysis",
+                            },
+                            {
                                 "type": "null",
                             },
                         ],
@@ -983,6 +986,30 @@ class TestRestrictStringFormats:
                     "type": "string",
                     "description": "Valid values: 'active', 'inactive'",
                 },  # enum removed but values preserved in description
+            },
+        }
+        assert result == expected
+
+    def test_restrict_string_formats_enum_disallowed_with_existing_description(self):
+        """Test that enum values are appended to existing descriptions."""
+        schema = {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "description": "The current status of the item",
+                    "enum": ["active", "inactive", "pending"],
+                },
+            },
+        }
+        result = restrict_string_formats(schema, {"date-time"})
+        expected = {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "description": "The current status of the item. Valid values: 'active', 'inactive', 'pending'",
+                },
             },
         }
         assert result == expected
