@@ -159,7 +159,7 @@ def model_data():
         latest_model=Model.GPT_4O_LATEST,
         release_date=date(2024, 11, 20),
         quality_data=QualityData(index=100),
-speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+        speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
         provider_name=DisplayedProvider.OPEN_AI.value,
         supports_tool_calling=True,
         fallback=None,
@@ -1899,8 +1899,9 @@ class TestBuildProviderData:
             providers=[],
             release_date=date(2024, 1, 1),
             quality_index=100,
+            speed_index=500,
             quality_data=QualityData(index=100),
-speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
             provider_name=DisplayedProvider.OPEN_AI.value,
             supports_tool_calling=True,
             fallback=None,

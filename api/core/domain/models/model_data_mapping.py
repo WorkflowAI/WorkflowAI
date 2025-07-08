@@ -72,7 +72,7 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             latest_model=Model.GPT_4O_LATEST,
             release_date=date(2024, 11, 20),
             quality_data=QualityData(mmlu=85.70, gpqa=46.00),
-speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
             provider_name=DisplayedProvider.OPEN_AI.value,
             supports_tool_calling=True,
             fallback=_openai_fallback("medium"),
@@ -92,7 +92,6 @@ speed_data=SpeedData(index=500),  # Default speed index, can be updated with rea
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/openai.svg",
             release_date=date(2024, 8, 6),
             quality_data=QualityData(mmlu=88.70, gpqa=53.10),
-speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
             speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
             latest_model=Model.GPT_4O_LATEST,
             provider_name=DisplayedProvider.OPEN_AI.value,
@@ -120,7 +119,7 @@ speed_data=SpeedData(index=500),  # Default speed index, can be updated with rea
             latest_model=Model.GPT_41_LATEST,
             release_date=date(2025, 4, 14),
             quality_data=QualityData(mmlu=90.2, gpqa=66.3),
-speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
             provider_name=DisplayedProvider.OPEN_AI.value,
             supports_tool_calling=True,
             fallback=_openai_fallback("medium"),
@@ -146,7 +145,7 @@ speed_data=SpeedData(index=500),  # Default speed index, can be updated with rea
             latest_model=Model.GPT_41_MINI_LATEST,
             release_date=date(2025, 4, 14),
             quality_data=QualityData(mmlu=87.5, gpqa=65),
-speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
             provider_name=DisplayedProvider.OPEN_AI.value,
             supports_tool_calling=True,
             fallback=_openai_fallback("cheapest", context_exceeded="no"),
@@ -171,7 +170,7 @@ speed_data=SpeedData(index=500),  # Default speed index, can be updated with rea
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/openai.svg",
             release_date=date(2025, 4, 14),
             quality_data=QualityData(mmlu=80, gpqa=50),
-speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
             latest_model=Model.GPT_41_NANO_LATEST,
             provider_name=DisplayedProvider.OPEN_AI.value,
             supports_tool_calling=True,
@@ -203,7 +202,7 @@ speed_data=SpeedData(index=500),  # Default speed index, can be updated with rea
             latest_model=Model.GPT_4O_MINI_LATEST,
             release_date=date(2024, 7, 18),
             quality_data=QualityData(mmlu=82.00, gpqa=40.20),
-speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
             provider_name=DisplayedProvider.OPEN_AI.value,
             supports_tool_calling=True,
             fallback=_openai_fallback("cheapest"),
@@ -226,6 +225,7 @@ speed_data=SpeedData(index=500),  # Default speed index, can be updated with rea
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/openai.svg",
             release_date=date(2025, 4, 23),
             quality_data=QualityData(index=611),  # TODO: a bit difficult to estimate here
+            speed_data=SpeedData(index=500),  # TODO: a bit difficult to estimate heres
             provider_name=DisplayedProvider.OPEN_AI.value,
             supports_tool_calling=False,
             is_default=True,
@@ -262,6 +262,7 @@ speed_data=SpeedData(index=500),  # Default speed index, can be updated with rea
             release_date=date(2025, 6, 3),
             provider_name=DisplayedProvider.OPEN_AI.value,
             quality_data=QualityData(equivalent_to=(Model.GPT_4O_AUDIO_PREVIEW_2024_12_17, 1)),
+            speed_data=SpeedData(index=500),  # TODO: a bit difficult to estimate here
             supports_tool_calling=False,
             aliases=[],
             fallback=ModelFallback(
@@ -294,7 +295,7 @@ speed_data=SpeedData(index=500),  # Default speed index, can be updated with rea
             release_date=date(2024, 12, 17),
             provider_name=DisplayedProvider.OPEN_AI.value,
             quality_data=QualityData(mmlu=88.70, gpqa=53.60),
-speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
             supports_tool_calling=False,
             aliases=["gpt-4o-audio-preview"],
             fallback=ModelFallback(
@@ -338,7 +339,7 @@ speed_data=SpeedData(index=500),  # Default speed index, can be updated with rea
             supports_structured_output=True,
             release_date=date(2025, 1, 31),
             quality_data=QualityData(mmlu=88.70, gpqa=77.00),
-speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
             provider_name=DisplayedProvider.OPEN_AI.value,
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/openai.svg",
             max_tokens_data=MaxTokensData(
@@ -397,7 +398,7 @@ speed_data=SpeedData(index=500),  # Default speed index, can be updated with rea
                 gpqa=74.5,
                 source="https://www.vals.ai/models/openai_o4-mini-2025-04-16",
             ),
-speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
             provider_name=DisplayedProvider.OPEN_AI.value,
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/openai.svg",
             max_tokens_data=MaxTokensData(
@@ -441,7 +442,7 @@ speed_data=SpeedData(index=500),  # Default speed index, can be updated with rea
                 mmlu_pro=85.6,
                 source="https://www.vals.ai/models/openai_o3-2025-04-16",
             ),
-speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
             provider_name=DisplayedProvider.OPEN_AI.value,
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/openai.svg",
             max_tokens_data=MaxTokensData(
@@ -534,7 +535,7 @@ speed_data=SpeedData(index=500),  # Default speed index, can be updated with rea
         #         mmlu_pro=85.6,
         #         source="https://www.vals.ai/models/openai_o3-2025-04-16",
         #     ),
-speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+        # speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
         #     provider_name=DisplayedProvider.OPEN_AI.value,
         #     icon_url="https://workflowai.blob.core.windows.net/workflowai-public/openai.svg",
         #     max_tokens_data=MaxTokensData(
@@ -588,7 +589,7 @@ speed_data=SpeedData(index=500),  # Default speed index, can be updated with rea
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/google.svg",
             release_date=date(2025, 2, 5),
             quality_data=QualityData(mmlu=83.5, gpqa=51.5),
-speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
             provider_name=DisplayedProvider.GOOGLE.value,
             supports_tool_calling=True,
             fallback=ModelFallback.default(
@@ -613,7 +614,7 @@ speed_data=SpeedData(index=500),  # Default speed index, can be updated with rea
             release_date=date(2025, 2, 5),
             latest_model=Model.GEMINI_2_0_FLASH_LATEST,
             quality_data=QualityData(mmlu=76.4, gpqa=74.2),
-speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
             provider_name=DisplayedProvider.GOOGLE.value,
             supports_tool_calling=True,
             fallback=ModelFallback.default(
@@ -646,7 +647,7 @@ speed_data=SpeedData(index=500),  # Default speed index, can be updated with rea
                 mmlu=88.4,
                 source="https://deepmind.google/models/gemini/flash/",
             ),
-speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
             provider_name=DisplayedProvider.GOOGLE.value,
             supports_tool_calling=True,
             fallback=ModelFallback.default(
@@ -679,7 +680,7 @@ speed_data=SpeedData(index=500),  # Default speed index, can be updated with rea
                 mmlu=89.2,
                 source="https://deepmind.google/models/gemini/pro/",
             ),
-speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
             provider_name=DisplayedProvider.GOOGLE.value,
             supports_tool_calling=True,
             fallback=ModelFallback.default(
@@ -709,7 +710,7 @@ speed_data=SpeedData(index=500),  # Default speed index, can be updated with rea
                 mmlu=84.5,
                 source="https://deepmind.google/models/gemini/flash-lite/",
             ),
-speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
             provider_name=DisplayedProvider.GOOGLE.value,
             supports_tool_calling=True,
             fallback=ModelFallback.default(
@@ -742,6 +743,7 @@ speed_data=SpeedData(index=500),  # Default speed index, can be updated with rea
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/google.svg",
             release_date=date(2025, 2, 5),
             quality_data=QualityData(equivalent_to=(Model.GEMINI_2_0_FLASH_001, 0)),
+            speed_data=SpeedData(index=500),
             provider_name=DisplayedProvider.GOOGLE.value,
             supports_tool_calling=True,
             is_default=True,
@@ -778,7 +780,7 @@ speed_data=SpeedData(index=500),  # Default speed index, can be updated with rea
             latest_model=Model.GEMINI_1_5_PRO_LATEST,
             release_date=date(2024, 9, 24),
             quality_data=QualityData(mmlu=85.14, gpqa=59.10),
-speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
             provider_name=DisplayedProvider.GOOGLE.value,
             supports_tool_calling=True,
             fallback=ModelFallback.default("medium", content_moderation=Model.GPT_41_LATEST, context_exceeded="no"),
@@ -812,7 +814,7 @@ speed_data=SpeedData(index=500),  # Default speed index, can be updated with rea
             # https://www.anthropic.com/news/claude-4
             # We only have the mmmlu for now...
             quality_data=QualityData(gpqa_diamond=70),
-speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
             latest_model=Model.CLAUDE_4_SONNET_LATEST,
             provider_name=DisplayedProvider.ANTHROPIC.value,
             supports_tool_calling=True,
@@ -840,7 +842,7 @@ speed_data=SpeedData(index=500),  # Default speed index, can be updated with rea
             # https://www.anthropic.com/news/claude-4
             # We only have the mmmlu for now...
             quality_data=QualityData(gpqa_diamond=74.9),
-speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
             latest_model=Model.CLAUDE_4_OPUS_LATEST,
             provider_name=DisplayedProvider.ANTHROPIC.value,
             supports_tool_calling=True,
@@ -867,7 +869,7 @@ speed_data=SpeedData(index=500),  # Default speed index, can be updated with rea
             release_date=date(2025, 2, 19),
             # TODO: quality index, for now quality index of CLAUDE_3_5_SONNET_20241022 + 1
             quality_data=QualityData(mmlu=90.8, gpqa=84.8, gpqa_diamond=69.7),
-speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
             latest_model=Model.CLAUDE_3_7_SONNET_LATEST,
             provider_name=DisplayedProvider.ANTHROPIC.value,
             supports_tool_calling=True,
@@ -887,7 +889,7 @@ speed_data=SpeedData(index=500),  # Default speed index, can be updated with rea
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/anthropic.svg",
             release_date=date(2024, 10, 22),
             quality_data=QualityData(mmlu=86, gpqa=68),
-speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
             latest_model=Model.CLAUDE_3_5_SONNET_LATEST,
             provider_name=DisplayedProvider.ANTHROPIC.value,
             supports_tool_calling=True,
@@ -909,7 +911,7 @@ speed_data=SpeedData(index=500),  # Default speed index, can be updated with rea
             latest_model=Model.GEMINI_1_5_FLASH_LATEST,
             release_date=date(2024, 9, 24),
             quality_data=QualityData(mmlu=78.9, gpqa=51),
-speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
             provider_name=DisplayedProvider.GOOGLE.value,
             supports_tool_calling=True,
             fallback=ModelFallback.default(
@@ -941,7 +943,7 @@ speed_data=SpeedData(index=500),  # Default speed index, can be updated with rea
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/openai.svg",
             release_date=date(2024, 12, 17),
             quality_data=QualityData(mmlu=90.8, gpqa=78.3),
-speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
             provider_name=DisplayedProvider.OPEN_AI.value,
             supports_tool_calling=True,
             supports_parallel_tool_calls=False,
@@ -976,7 +978,7 @@ speed_data=SpeedData(index=500),  # Default speed index, can be updated with rea
             latest_model=Model.CLAUDE_3_5_SONNET_LATEST,
             release_date=date(2024, 6, 20),
             quality_data=QualityData(mmlu=88.3, gpqa=59.4),
-speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
             provider_name=DisplayedProvider.ANTHROPIC.value,
             supports_tool_calling=True,
             fallback=ModelFallback.default("medium"),
@@ -995,7 +997,7 @@ speed_data=SpeedData(index=500),  # Default speed index, can be updated with rea
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/anthropic.svg",
             release_date=date(2024, 2, 29),
             quality_data=QualityData(mmlu=88.2, gpqa=50.4),
-speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
             provider_name=DisplayedProvider.ANTHROPIC.value,
             supports_tool_calling=True,
             fallback=ModelFallback.default("medium"),
@@ -1015,7 +1017,7 @@ speed_data=SpeedData(index=500),  # Default speed index, can be updated with rea
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/anthropic.svg",
             release_date=date(2024, 3, 7),
             quality_data=QualityData(mmlu=76.7, gpqa=33.3),
-speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
             provider_name=DisplayedProvider.ANTHROPIC.value,
             supports_tool_calling=True,
             fallback=ModelFallback.default("cheap"),
@@ -1039,7 +1041,7 @@ speed_data=SpeedData(index=500),  # Default speed index, can be updated with rea
             latest_model=Model.CLAUDE_3_5_HAIKU_LATEST,
             release_date=date(2024, 10, 22),
             quality_data=QualityData(mmlu=76.7, gpqa=41.6),
-speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
             provider_name=DisplayedProvider.ANTHROPIC.value,
             supports_tool_calling=True,
             fallback=ModelFallback.default("cheap"),
@@ -1059,7 +1061,7 @@ speed_data=SpeedData(index=500),  # Default speed index, can be updated with rea
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/meta.svg",
             release_date=date(2024, 7, 23),
             quality_data=QualityData(mmlu=88.6, gpqa=73.9),
-speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
             provider_name=DisplayedProvider.FIREWORKS.value,
             supports_tool_calling=True,
             fallback=ModelFallback.default("medium"),
@@ -1079,7 +1081,7 @@ speed_data=SpeedData(index=500),  # Default speed index, can be updated with rea
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/meta.svg",
             release_date=date(2024, 12, 6),
             quality_data=QualityData(mmlu=86, gpqa=50.5),
-speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
             provider_name=DisplayedProvider.FIREWORKS.value,
             supports_tool_calling=False,
             fallback=ModelFallback.default("cheap"),
@@ -1098,7 +1100,7 @@ speed_data=SpeedData(index=500),  # Default speed index, can be updated with rea
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/meta.svg",
             release_date=date(2024, 7, 23),
             quality_data=QualityData(mmlu=86, gpqa=48),
-speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
             provider_name=DisplayedProvider.FIREWORKS.value,
             supports_tool_calling=True,
             fallback=ModelFallback.default("cheap"),
@@ -1118,7 +1120,7 @@ speed_data=SpeedData(index=500),  # Default speed index, can be updated with rea
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/meta.svg",
             release_date=date(2024, 7, 23),
             quality_data=QualityData(mmlu=66.7, gpqa=33.8),
-speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
             provider_name=DisplayedProvider.FIREWORKS.value,
             supports_tool_calling=False,
             fallback=ModelFallback.only_model(Model.GEMINI_2_0_FLASH_LITE_001, "cheapest"),
@@ -1147,7 +1149,7 @@ speed_data=SpeedData(index=500),  # Default speed index, can be updated with rea
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/google.svg",
             release_date=date(2024, 10, 3),
             quality_data=QualityData(mmlu=58.7, gpqa=38.4),
-speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
             provider_name=DisplayedProvider.GOOGLE.value,
             supports_tool_calling=True,
             fallback=ModelFallback.default(
@@ -1172,7 +1174,7 @@ speed_data=SpeedData(index=500),  # Default speed index, can be updated with rea
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/qwen.svg",
             release_date=date(2025, 3, 6),
             quality_data=QualityData(mmlu=83.3, gpqa=59.1),
-speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
             provider_name=DisplayedProvider.FIREWORKS.value,
             supports_tool_calling=False,
             fallback=ModelFallback.default("cheap"),
@@ -1191,7 +1193,7 @@ speed_data=SpeedData(index=500),  # Default speed index, can be updated with rea
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/qwen.svg",
             release_date=date(2025, 4, 29),
             quality_data=QualityData(mmlu=87.8, gpqa=70, source="https://qwenlm.github.io/blog/qwen3/"),
-speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
             provider_name=DisplayedProvider.FIREWORKS.value,
             supports_tool_calling=True,
             fallback=ModelFallback.default("cheap"),
@@ -1210,7 +1212,7 @@ speed_data=SpeedData(index=500),  # Default speed index, can be updated with rea
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/qwen.svg",
             release_date=date(2025, 4, 29),
             quality_data=QualityData(mmlu=80, gpqa=62, source="https://qwenlm.github.io/blog/qwen3/"),
-speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
             provider_name=DisplayedProvider.FIREWORKS.value,
             supports_tool_calling=True,
             fallback=ModelFallback.default("cheapest"),
@@ -1232,6 +1234,7 @@ speed_data=SpeedData(index=500),  # Default speed index, can be updated with rea
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/meta.svg",
             release_date=date(2025, 4, 5),
             quality_data=QualityData(equivalent_to=(Model.LLAMA_4_MAVERICK_FAST, 0)),
+            speed_data=SpeedData(index=500),
             provider_name=DisplayedProvider.FIREWORKS.value,
             supports_tool_calling=False,
             supports_structured_output=True,
@@ -1252,6 +1255,7 @@ speed_data=SpeedData(index=500),  # Default speed index, can be updated with rea
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/meta.svg",
             release_date=date(2025, 4, 5),
             quality_data=QualityData(equivalent_to=(Model.LLAMA_4_SCOUT_FAST, 0)),
+            speed_data=SpeedData(index=500),
             provider_name=DisplayedProvider.FIREWORKS.value,
             supports_tool_calling=False,
             supports_structured_output=True,
@@ -1275,7 +1279,7 @@ speed_data=SpeedData(index=500),  # Default speed index, can be updated with rea
                 gpqa_diamond=61.1,
                 source="https://www.vals.ai/models/together_meta-llama_Llama-4-Maverick-17B-128E-Instruct-FP8",
             ),
-speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
             provider_name=DisplayedProvider.GROQ.value,
             supports_tool_calling=True,
             supports_structured_output=True,
@@ -1300,7 +1304,7 @@ speed_data=SpeedData(index=500),  # Default speed index, can be updated with rea
                 gpqa=44.4,
                 source="https://www.vals.ai/models/together_meta-llama_Llama-4-Scout-17B-16E-Instruct",
             ),
-speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
             provider_name=DisplayedProvider.GROQ.value,
             supports_tool_calling=True,
             supports_structured_output=True,
@@ -1320,7 +1324,7 @@ speed_data=SpeedData(index=500),  # Default speed index, can be updated with rea
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/deepseek.svg",
             release_date=date(2024, 12, 30),
             quality_data=QualityData(mmlu=88.5, gpqa=59.1),
-speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
             provider_name=DisplayedProvider.FIREWORKS.value,
             supports_tool_calling=True,
             supports_structured_output=True,
@@ -1342,7 +1346,7 @@ speed_data=SpeedData(index=500),  # Default speed index, can be updated with rea
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/deepseek.svg",
             release_date=date(2025, 1, 20),
             quality_data=QualityData(mmlu=90.8, gpqa=71.5),
-speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
             provider_name=DisplayedProvider.FIREWORKS.value,
             supports_tool_calling=True,
             fallback=ModelFallback.default("expensive"),
@@ -1362,7 +1366,7 @@ speed_data=SpeedData(index=500),  # Default speed index, can be updated with rea
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/deepseek.svg",
             release_date=date(2025, 3, 18),
             quality_data=QualityData(mmlu=90.8, gpqa=71.5),
-speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
             provider_name=DisplayedProvider.FIREWORKS.value,
             supports_tool_calling=True,
             fallback=ModelFallback.default("cheap"),
@@ -1386,8 +1390,8 @@ speed_data=SpeedData(index=500),  # Default speed index, can be updated with rea
                     Model.DEEPSEEK_R1_2501,
                     5,
                 ),
-speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
             ),
+            speed_data=SpeedData(index=500),
             provider_name=DisplayedProvider.FIREWORKS.value,
             supports_tool_calling=False,  # Function calling not supported according to the spec
             fallback=ModelFallback.default("medium"),
@@ -1406,7 +1410,7 @@ speed_data=SpeedData(index=500),  # Default speed index, can be updated with rea
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/deepseek.svg",
             release_date=date(2025, 3, 24),
             quality_data=QualityData(mmlu=88.5, gpqa=59.1),
-speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
             provider_name=DisplayedProvider.FIREWORKS.value,
             supports_tool_calling=True,
             latest_model=Model.DEEPSEEK_V3_LATEST,
@@ -1437,6 +1441,7 @@ speed_data=SpeedData(index=500),  # Default speed index, can be updated with rea
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/google.svg",
             release_date=date(2025, 1, 23),
             quality_data=QualityData(index=50),  # TODO: Update the quality index
+            speed_data=SpeedData(index=500),
             provider_name=DisplayedProvider.GOOGLE.value,
             supports_tool_calling=False,
             latest_model=Model.IMAGEN_3_0_LATEST,
@@ -1458,6 +1463,7 @@ speed_data=SpeedData(index=500),  # Default speed index, can be updated with rea
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/google.svg",
             release_date=date(2024, 7, 31),
             quality_data=QualityData(index=500),  # TODO: Update the quality index
+            speed_data=SpeedData(index=500),
             provider_name=DisplayedProvider.GOOGLE.value,
             supports_tool_calling=False,
             latest_model=Model.IMAGEN_3_0_LATEST,
@@ -1479,6 +1485,7 @@ speed_data=SpeedData(index=500),  # Default speed index, can be updated with rea
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/google.svg",
             release_date=date(2024, 7, 31),
             quality_data=QualityData(index=500),  # TODO: Update the quality index
+            speed_data=SpeedData(index=500),
             provider_name=DisplayedProvider.GOOGLE.value,
             supports_tool_calling=False,
             fallback=None,  # No fallback for image generation

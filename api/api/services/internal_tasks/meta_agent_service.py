@@ -506,6 +506,7 @@ class MetaAgentService:
                 else None,
                 is_default=model.is_default,
                 is_latest=model.is_latest,
+                speed_index=model.speed_index,
             )
             for model in models
         ]
