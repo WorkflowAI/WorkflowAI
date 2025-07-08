@@ -2,7 +2,8 @@ import { DeleteFilled } from '@fluentui/react-icons';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import { useCallback, useMemo } from 'react';
-import { ProviderSettings } from '@/types/workflowAI';
+import { TenantID } from '@/types/aliases';
+import { ProviderSettings, TenantData } from '@/types/workflowAI';
 import { AIProviderMetadata } from '../AIModelsCombobox/utils';
 import { Button } from '../ui/Button';
 
@@ -39,11 +40,21 @@ type ProviderKeyManagementItemProps = {
   providerMetadata: AIProviderMetadata;
   settingsProviders: ProviderSettings[] | undefined;
   setCurrentProvider: (provider: string) => void;
-  deleteProviderConfig: (providerId: string) => Promise<void>;
+  deleteProviderConfig: (providerId: string, tenant: TenantID | undefined) => Promise<void>;
+  organizationSettings: TenantData | undefined;
 };
 
 export function ProviderKeyManagementItem(props: ProviderKeyManagementItemProps) {
-  const { provider, providerMetadata, settingsProviders, setCurrentProvider, deleteProviderConfig } = props;
+  const {
+    provider,
+    providerMetadata,
+    settingsProviders,
+    setCurrentProvider,
+    deleteProviderConfig,
+    organizationSettings,
+  } = props;
+
+  const tenant = organizationSettings?.slug as TenantID;
 
   const settingsProvider = useMemo(
     () => settingsProviders?.find((p) => p.provider === provider),
@@ -56,8 +67,8 @@ export function ProviderKeyManagementItem(props: ProviderKeyManagementItemProps)
 
   const onDeleteKey = useCallback(async () => {
     if (!settingsProvider?.id) return;
-    await deleteProviderConfig(settingsProvider.id);
-  }, [deleteProviderConfig, settingsProvider]);
+    await deleteProviderConfig(settingsProvider.id, tenant);
+  }, [deleteProviderConfig, settingsProvider, tenant]);
 
   return (
     <div className='flex gap-2 items-center py-2 border-b last:border-b-0 justify-between'>

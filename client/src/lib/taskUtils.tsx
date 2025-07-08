@@ -18,10 +18,10 @@ export function getVisibleSchemaIds(task?: SerializableTask) {
 }
 
 export function getNewestSchemaId(task?: SerializableTask): TaskSchemaID {
-  if (!task) return '0' as TaskSchemaID;
+  if (!task) return '1' as TaskSchemaID;
   const visibleSchemaIds = getVisibleSchemaIds(task);
   if (visibleSchemaIds.length === 0) {
-    return (`${task.versions[0].schema_id}` as TaskSchemaID) ?? ('0' as TaskSchemaID);
+    return (`${task.versions[0].schema_id}` as TaskSchemaID) ?? ('1' as TaskSchemaID);
   }
   return visibleSchemaIds[0];
 }
