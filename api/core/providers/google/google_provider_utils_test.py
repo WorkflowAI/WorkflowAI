@@ -981,7 +981,7 @@ class TestRestrictStringFormats:
             "properties": {
                 "status": {
                     "type": "string",
-                    "description": "Possible values: active, inactive",
+                    "description": "Valid values: 'active', 'inactive'",
                 },  # enum removed but values preserved in description
             },
         }
@@ -1000,7 +1000,7 @@ class TestRestrictStringFormats:
             "properties": {
                 "status": {
                     "type": "string",
-                    "description": "The current status. Possible values: active, inactive",
+                    "description": "The current status. Valid values: 'active', 'inactive'",
                 },  # enum removed but values appended to existing description
             },
         }
@@ -1151,6 +1151,27 @@ class TestPrepareGoogleResponseSchema:
             "type": "OBJECT",
             "properties": {
                 "status": {"type": "STRING", "enum": ["active", "inactive"]},  # enum kept
+                "priority": {"type": "STRING"},  # format removed
+            },
+        }
+        assert result == expected
+
+    def test_prepare_google_response_schema_with_enum_disallowed(self):
+        schema = {
+            "type": "object",
+            "properties": {
+                "status": {"type": "string", "enum": ["active", "inactive"]},
+                "priority": {"type": "string", "format": "email"},
+            },
+        }
+        result = prepare_google_response_schema(schema, {"date-time"})
+        expected = {
+            "type": "OBJECT",
+            "properties": {
+                "status": {
+                    "type": "STRING",
+                    "description": "Possible values: active, inactive",
+                },  # enum removed but values preserved in description
                 "priority": {"type": "STRING"},  # format removed
             },
         }
