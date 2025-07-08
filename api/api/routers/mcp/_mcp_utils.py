@@ -1,4 +1,5 @@
 import re
+from typing import Any, cast
 
 from api.routers.mcp._mcp_errors import MCPError
 
@@ -34,3 +35,22 @@ def extract_agent_id_and_run_id(run_url: str) -> tuple[str, str]:
     raise MCPError(
         "Invalid run URL, must be in the format 'https://workflowai.com/workflowai/agents/agent-id/runs/run-id', or you must pass 'agent_id' and 'run_id'",
     )
+
+
+def truncate_field(field: str, max_length: int) -> str:
+    if len(field) > max_length:
+        return f"{field[:max_length]}...Truncated"
+    return field
+
+
+def truncate_obj(obj: Any, max_field_length: int = 1000) -> Any:
+    if obj is None:
+        return None
+    if isinstance(obj, str):
+        return truncate_field(obj, max_field_length)
+
+    if isinstance(obj, dict):
+        return {k: truncate_obj(v, max_field_length) for k, v in cast(dict[str, Any], obj).items()}
+    if isinstance(obj, list):
+        return [truncate_obj(v, max_field_length) for v in cast(list[Any], obj)]
+    return obj

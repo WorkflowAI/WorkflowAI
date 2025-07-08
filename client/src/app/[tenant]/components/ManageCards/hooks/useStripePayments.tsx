@@ -3,7 +3,7 @@ import { StripeElements } from '@stripe/stripe-js';
 import { useCallback } from 'react';
 import { displayErrorToaster, displaySuccessToaster } from '@/components/ui/Sonner';
 import { RequestError } from '@/lib/api/client';
-import { useOrganizationSettings } from '@/store/organization_settings';
+import { useOrFetchOrganizationSettings } from '@/store/fetchers';
 import { usePayments } from '@/store/payments';
 
 function errorMessage(error: unknown, defaultPrefix?: string): string {
@@ -31,7 +31,7 @@ export function useStripePayments() {
   const createPaymentIntent = usePayments((state) => state.createPaymentIntent);
   const addPaymentMethod = usePayments((state) => state.addPaymentMethod);
 
-  const fetchOrganizationSettings = useOrganizationSettings((state) => state.fetchOrganizationSettings);
+  const { fetchSettings: fetchOrganizationSettings } = useOrFetchOrganizationSettings();
 
   const handlePaymentStatus = useCallback(
     async (clientSecret: string, amount: number) => {

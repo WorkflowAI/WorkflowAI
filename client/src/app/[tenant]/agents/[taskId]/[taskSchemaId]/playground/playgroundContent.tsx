@@ -37,7 +37,6 @@ import {
   useTasks,
 } from '@/store';
 import { useAudioTranscriptions } from '@/store/audio_transcriptions';
-import { useOrganizationSettings } from '@/store/organization_settings';
 import { ToolCallName, usePlaygroundChatStore } from '@/store/playgroundChatStore';
 import { useTaskPreview } from '@/store/task_preview';
 import { useUpload } from '@/store/upload';
@@ -347,9 +346,7 @@ export function PlaygroundContent(props: PlaygroundContentBodyProps) {
 
   const createVersion = useVersions((state) => state.createVersion);
 
-  const { noCreditsLeft } = useOrFetchOrganizationSettings();
-
-  const fetchOrganizationSettings = useOrganizationSettings((state) => state.fetchOrganizationSettings);
+  const { noCreditsLeft, fetchSettings: fetchOrganizationSettings } = useOrFetchOrganizationSettings();
 
   const abortControllerRun0 = useRef<AbortController | null>(null);
   const abortControllerRun1 = useRef<AbortController | null>(null);

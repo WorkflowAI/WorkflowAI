@@ -17,22 +17,20 @@ def test_default_resource_ids_are_exhaustive():
 class TestFromEnv:
     @patch.dict(
         os.environ,
-        {"AWS_BEDROCK_ACCESS_KEY": "aws_bedrock_access_key", "AWS_BEDROCK_SECRET_KEY": "aws_bedrock_secret_key"},
+        {"AWS_BEDROCK_API_KEY": "aws_bedrock_api_key"},
         clear=True,
     )
     def test_no_maps(self):
         config = AmazonBedrockConfig.from_env(0)
         assert config.provider == Provider.AMAZON_BEDROCK
-        assert config.aws_bedrock_access_key == "aws_bedrock_access_key"
-        assert config.aws_bedrock_secret_key == "aws_bedrock_secret_key"
+        assert config.api_key == "aws_bedrock_api_key"
         assert config.resource_id_x_model_map == _default_resource_ids(), "resource_id_x_model_map should be set"
         assert config.available_model_x_region_map == {}, "available_model_x_region_map should be empty"
 
     @patch.dict(
         os.environ,
         {
-            "AWS_BEDROCK_ACCESS_KEY": "aws_bedrock_access_key",
-            "AWS_BEDROCK_SECRET_KEY": "aws_bedrock_secret_key",
+            "AWS_BEDROCK_API_KEY": "aws_bedrock_api_key",
             "AWS_BEDROCK_RESOURCE_ID_MODEL_MAP": '{"claude-3-5-haiku-20241022": "resource1"}',
         },
         clear=True,
@@ -44,8 +42,7 @@ class TestFromEnv:
     @patch.dict(
         os.environ,
         {
-            "AWS_BEDROCK_ACCESS_KEY": "aws_bedrock_access_key",
-            "AWS_BEDROCK_SECRET_KEY": "aws_bedrock_secret_key",
+            "AWS_BEDROCK_API_KEY": "aws_bedrock_api_key",
             "AWS_BEDROCK_RESOURCE_ID_MODEL_MAP": '["bla"]',
         },
     )
@@ -60,8 +57,7 @@ def test_amazon_provider_works_with_unknown_model_in_region_map():
         with patch.dict(
             "os.environ",
             {
-                "AWS_BEDROCK_ACCESS_KEY": "test_access_key",
-                "AWS_BEDROCK_SECRET_KEY": "test_secret_key",
+                "AWS_BEDROCK_API_KEY": "test_api_key",
                 "AWS_BEDROCK_MODEL_REGION_MAP": '{"bogus-model": "us-west-2", "claude-3-5-sonnet-20240620": "us-west-2", "claude-3-opus-20240229": "us-west-2"}',
             },
             clear=True,

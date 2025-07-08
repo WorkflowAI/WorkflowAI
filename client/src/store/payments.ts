@@ -2,6 +2,7 @@ import { produce } from 'immer';
 import { useEffect } from 'react';
 import { create } from 'zustand';
 import { client } from '@/lib/api';
+import { TenantID } from '@/types/aliases';
 import {
   AutomaticPaymentRequest,
   CreatePaymentIntentRequest,
@@ -20,8 +21,13 @@ interface PaymentsState {
   addPaymentMethod: (paymentMethodId: string) => Promise<void>;
   getPaymentMethod: () => Promise<void>;
   createPaymentIntent: (amount: number) => Promise<PaymentIntentCreatedResponse>;
-  updateAutomaticPayment: (optIn: boolean, threshold: number | null, balanceToMaintain: number | null) => Promise<void>;
-  deletePaymentMethod: () => Promise<void>;
+  updateAutomaticPayment: (
+    optIn: boolean,
+    threshold: number | null,
+    balanceToMaintain: number | null,
+    tenant: TenantID | undefined
+  ) => Promise<void>;
+  deletePaymentMethod: (tenant: TenantID | undefined) => Promise<void>;
 }
 
 export const usePayments = create<PaymentsState>((set) => ({
@@ -90,32 +96,37 @@ export const usePayments = create<PaymentsState>((set) => ({
     return response;
   },
 
-  updateAutomaticPayment: async (optIn: boolean, threshold: number | null, balanceToMaintain: number | null) => {
+  updateAutomaticPayment: async (
+    optIn: boolean,
+    threshold: number | null,
+    balanceToMaintain: number | null,
+    tenant: TenantID | undefined
+  ) => {
     try {
       await client.put<AutomaticPaymentRequest>(`/api/data/organization/payments/automatic-payments`, {
         opt_in: optIn,
         threshold,
         balance_to_maintain: balanceToMaintain,
       });
-      await useOrganizationSettings.getState().fetchOrganizationSettings();
+      await useOrganizationSettings.getState().fetchOrganizationSettings(tenant);
     } catch (error) {
       console.error(error);
     }
   },
 
-  deletePaymentMethod: async () => {
+  deletePaymentMethod: async (tenant: TenantID | undefined) => {
     try {
       await client.del<void>(`/api/data/organization/payments/payment-methods`);
-      await useOrganizationSettings.getState().fetchOrganizationSettings();
+      await useOrganizationSettings.getState().fetchOrganizationSettings(tenant);
       await usePayments.getState().getPaymentMethod();
     } catch (error) {
       console.error(error);
     }
   },
 
-  retryAutomaticPayment: async () => {
+  retryAutomaticPayment: async (tenant: TenantID | undefined) => {
     await client.post(`/api/data/organization/payments/automatic-payments/retry`, undefined);
-    await useOrganizationSettings.getState().fetchOrganizationSettings();
+    await useOrganizationSettings.getState().fetchOrganizationSettings(tenant);
   },
 }));
 
