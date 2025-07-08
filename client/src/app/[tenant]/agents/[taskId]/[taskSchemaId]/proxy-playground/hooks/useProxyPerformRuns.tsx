@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMap } from 'usehooks-ts';
 import { useAIModels } from '@/store/ai_models';
-import { useOrganizationSettings } from '@/store/organization_settings';
+import { useOrFetchOrganizationSettings } from '@/store/fetchers';
 import { usePlaygroundChatStore } from '@/store/playgroundChatStore';
 import { useProxyChatCompletition } from '@/store/proxyChatCompletition';
 import { useTasks } from '@/store/task';
@@ -172,7 +172,7 @@ export function useProxyPerformRuns(props: Props) {
   const fetchTaskSchema = useTaskSchemas((state) => state.fetchTaskSchema);
   const fetchModels = useAIModels((state) => state.fetchSchemaModels);
   const fetchTaskRunUntilCreated = useFetchTaskRunUntilCreated();
-  const fetchOrganizationSettings = useOrganizationSettings((state) => state.fetchOrganizationSettings);
+  const { fetchSettings: fetchOrganizationSettings } = useOrFetchOrganizationSettings();
   const { performRun: performRunProxy } = useProxyChatCompletition();
 
   const checkAndUpdateSchemaIfNeeded = useCallback(async () => {

@@ -547,14 +547,21 @@ export const useOrFetchTaskSnippet = (
 };
 
 export const useOrFetchOrganizationSettings = (pollingInterval?: number) => {
-  const organizationSettings = useOrganizationSettings((state) => state.settings);
   const isLoading = useOrganizationSettings((state) => state.isLoading);
   const isInitialized = useOrganizationSettings((state) => state.isInitialized);
   const fetchOrganizationSettings = useOrganizationSettings((state) => state.fetchOrganizationSettings);
+  const { isSignedIn, user, tenantId, tenantSlug } = useAuth();
+  const organizationSettings = useOrganizationSettings(
+    (state) => state.settingsForTenant[tenantSlug ?? ('_' as TenantID)]
+  );
+
+  useEffect(() => {
+    fetchOrganizationSettings(tenantSlug);
+  }, [isSignedIn, user?.id, tenantId, tenantSlug, fetchOrganizationSettings]);
 
   useEffect(() => {
     if (organizationSettings === undefined) {
-      fetchOrganizationSettings();
+      fetchOrganizationSettings(tenantSlug);
     }
 
     if (!pollingInterval) {
@@ -562,13 +569,13 @@ export const useOrFetchOrganizationSettings = (pollingInterval?: number) => {
     }
 
     const intervalId = setInterval(() => {
-      fetchOrganizationSettings();
+      fetchOrganizationSettings(tenantSlug);
     }, pollingInterval);
 
     return () => {
       clearInterval(intervalId);
     };
-  }, [organizationSettings, fetchOrganizationSettings, pollingInterval]);
+  }, [organizationSettings, fetchOrganizationSettings, pollingInterval, tenantSlug]);
 
   const noCreditsLeft = useMemo(() => {
     if (!organizationSettings) {
@@ -577,11 +584,16 @@ export const useOrFetchOrganizationSettings = (pollingInterval?: number) => {
     return (organizationSettings.current_credits_usd ?? 0) <= 0;
   }, [organizationSettings]);
 
+  const fetchSettings = useCallback(async () => {
+    await fetchOrganizationSettings(tenantSlug);
+  }, [fetchOrganizationSettings, tenantSlug]);
+
   return {
     organizationSettings,
     isLoading,
     isInitialized,
     noCreditsLeft,
+    fetchSettings,
   };
 };
 

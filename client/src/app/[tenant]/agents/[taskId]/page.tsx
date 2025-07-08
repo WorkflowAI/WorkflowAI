@@ -20,10 +20,10 @@ function TaskPage(props: TaskPageProps) {
   const router = useRouter();
 
   useEffect(() => {
-    if (newestTaskSchemaId) {
+    if (newestTaskSchemaId && currentTask !== undefined) {
       router.push(taskSchemaRoute(tenant, taskId, `${newestTaskSchemaId}` as TaskSchemaID));
     }
-  }, [newestTaskSchemaId, router, tenant, taskId]);
+  }, [newestTaskSchemaId, router, tenant, taskId, currentTask]);
 
   return <Loader centered />;
 }

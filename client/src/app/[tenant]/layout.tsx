@@ -21,13 +21,13 @@ export default function Layout({ children }: Readonly<{ children: React.ReactNod
   const tenant = useTenantID();
 
   const { taskId, tenant: tenantParam } = useTaskParams();
-  const { isSignedIn } = useAuth();
+  const { isSignedIn, tenantSlug } = useAuth();
   const { task } = useOrFetchTask(tenant, taskId);
 
   const showTaskBanner = !isSignedIn && tenant === TENANT_PLACEHOLDER && !!taskId;
 
   const { modelsToAdvertise, dismiss } = useModelToAdvertise();
-  const { state: paymentBannerState } = usePaymentBanners(isSignedIn);
+  const { state: paymentBannerState } = usePaymentBanners(isSignedIn, tenantSlug);
 
   const showBanner = !showTaskBanner && !isSignedIn;
 

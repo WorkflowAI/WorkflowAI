@@ -194,6 +194,13 @@ async def fetch_run_details(
         str | None,
         Field(description="The url of the run to fetch details for"),
     ] = None,
+    truncate: Annotated[
+        bool,
+        Field(
+            description="Whether to truncate extra long fields in the run details. "
+            "Set to true if the run details response is too long",
+        ),
+    ] = False,
 ) -> MCPToolReturn[MCPRun]:
     """<when_to_use>
     To investigate a specific run of a WorkflowAI agent for debugging, improvement, or troubleshooting. This is particularly useful for:
@@ -232,7 +239,7 @@ async def fetch_run_details(
     This data structure provides everything needed for debugging, performance analysis, cost tracking, and understanding the complete execution context of your WorkflowAI agent.
     </returns>"""
     service = await get_mcp_service()
-    return await mcp_wrap(service.fetch_run_details(agent_id, run_id, run_url))
+    return await mcp_wrap(service.fetch_run_details(agent_id, run_id, run_url, truncate=truncate))
 
 
 @_mcp.tool()
@@ -260,6 +267,8 @@ async def get_agent_versions(
     </when_to_use>
     <returns>
     Returns the details of one or more versions of a WorkflowAI agent.
+    Run details are truncated when searching. If you need the full input or messages data, use the
+    `fetch_run_details` tool.
     </returns>"""
     # TODO: remind the agent what an AgentVersion is ?
     service = await get_mcp_service()

@@ -180,6 +180,7 @@ class MCPService:
         agent_id: str | None,
         run_id: str | None,
         run_url: str | None,
+        truncate: bool = False,
     ) -> MCPRun:
         """Fetch details of a specific agent run."""
 
@@ -199,6 +200,7 @@ class MCPService:
             data.version,
             data.variant.output_schema.json_schema if data.variant else None,
             self.tenant.app_run_url(agent_id, run_id),
+            truncate=truncate,
         )
 
     async def _get_agent_stats(

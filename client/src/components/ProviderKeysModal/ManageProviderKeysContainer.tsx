@@ -39,6 +39,7 @@ export function ManageProviderKeysContainer() {
             providerMetadata={metadata}
             setCurrentProvider={setCurrentProvider}
             deleteProviderConfig={deleteProviderConfig}
+            organizationSettings={organizationSettings}
           />
         ))}
       </div>
