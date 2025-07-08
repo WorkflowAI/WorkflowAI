@@ -1101,6 +1101,10 @@ export type ModelMetadata = {
    * The quality index of the model, from 0 to 100. None if not available. Source: artificialanalysis.ai
    */
   quality_index: number;
+  /**
+   * The speed index of the model, from 0 to 1000. Higher values indicate faster performance.
+   */
+  speed_index: number;
 };
 
 export type ModelReasoning = {

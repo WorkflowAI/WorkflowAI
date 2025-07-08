@@ -11,6 +11,7 @@ export const someNewUnknownModel: ModelResponse = {
   providers: ['fireworks'],
   metadata: {
     quality_index: 100,
+    speed_index: 500,
     price_per_input_token_usd: 100,
     price_per_output_token_usd: 100,
     release_date: '2024-04-09',
@@ -31,6 +32,7 @@ export const fixtureModels: ModelResponse[] = [
     providers: ['fireworks'],
     metadata: {
       quality_index: 100,
+      speed_index: 500,
       price_per_input_token_usd: 100,
       price_per_output_token_usd: 100,
       release_date: '2024-04-09',
@@ -49,6 +51,7 @@ export const fixtureModels: ModelResponse[] = [
     providers: ['fireworks'],
     metadata: {
       quality_index: 100,
+      speed_index: 500,
       price_per_input_token_usd: 100,
       price_per_output_token_usd: 100,
       release_date: '2024-04-09',
@@ -67,6 +70,7 @@ export const fixtureModels: ModelResponse[] = [
     providers: ['fireworks'],
     metadata: {
       quality_index: 100,
+      speed_index: 500,
       price_per_input_token_usd: 100,
       price_per_output_token_usd: 100,
       release_date: '2024-04-09',
@@ -85,6 +89,7 @@ export const fixtureModels: ModelResponse[] = [
     providers: ['fireworks'],
     metadata: {
       quality_index: 100,
+      speed_index: 500,
       price_per_input_token_usd: 100,
       price_per_output_token_usd: 100,
       release_date: '2024-04-09',
@@ -103,6 +108,7 @@ export const fixtureModels: ModelResponse[] = [
     providers: ['fireworks'],
     metadata: {
       quality_index: 100,
+      speed_index: 500,
       price_per_input_token_usd: 100,
       price_per_output_token_usd: 100,
       release_date: '2024-04-09',
@@ -121,6 +127,7 @@ export const fixtureModels: ModelResponse[] = [
     providers: ['fireworks'],
     metadata: {
       quality_index: 100,
+      speed_index: 500,
       price_per_input_token_usd: 100,
       price_per_output_token_usd: 100,
       release_date: '2024-04-09',
@@ -139,6 +146,7 @@ export const fixtureModels: ModelResponse[] = [
     providers: ['fireworks'],
     metadata: {
       quality_index: 100,
+      speed_index: 500,
       price_per_input_token_usd: 100,
       price_per_output_token_usd: 100,
       release_date: '2024-04-09',
@@ -157,6 +165,7 @@ export const fixtureModels: ModelResponse[] = [
     providers: ['fireworks'],
     metadata: {
       quality_index: 100,
+      speed_index: 500,
       price_per_input_token_usd: 100,
       price_per_output_token_usd: 100,
       release_date: '2024-04-09',
@@ -175,6 +184,7 @@ export const fixtureModels: ModelResponse[] = [
     providers: ['fireworks'],
     metadata: {
       quality_index: 100,
+      speed_index: 500,
       price_per_input_token_usd: 100,
       price_per_output_token_usd: 100,
       release_date: '2024-04-09',
@@ -193,6 +203,7 @@ export const fixtureModels: ModelResponse[] = [
     providers: ['fireworks'],
     metadata: {
       quality_index: 100,
+      speed_index: 500,
       price_per_input_token_usd: 100,
       price_per_output_token_usd: 100,
       release_date: '2024-04-09',
@@ -211,6 +222,7 @@ export const fixtureModels: ModelResponse[] = [
     providers: ['fireworks'],
     metadata: {
       quality_index: 100,
+      speed_index: 500,
       price_per_input_token_usd: 100,
       price_per_output_token_usd: 100,
       release_date: '2024-04-09',
@@ -229,6 +241,7 @@ export const fixtureModels: ModelResponse[] = [
     providers: ['fireworks'],
     metadata: {
       quality_index: 100,
+      speed_index: 500,
       price_per_input_token_usd: 100,
       price_per_output_token_usd: 100,
       release_date: '2024-04-09',
@@ -247,6 +260,7 @@ export const fixtureModels: ModelResponse[] = [
     providers: ['fireworks'],
     metadata: {
       quality_index: 100,
+      speed_index: 500,
       price_per_input_token_usd: 100,
       price_per_output_token_usd: 100,
       release_date: '2024-04-09',
@@ -265,6 +279,7 @@ export const fixtureModels: ModelResponse[] = [
     providers: ['fireworks'],
     metadata: {
       quality_index: 100,
+      speed_index: 500,
       price_per_input_token_usd: 100,
       price_per_output_token_usd: 100,
       release_date: '2024-04-09',
@@ -283,6 +298,7 @@ export const fixtureModels: ModelResponse[] = [
     providers: ['fireworks'],
     metadata: {
       quality_index: 100,
+      speed_index: 500,
       price_per_input_token_usd: 100,
       price_per_output_token_usd: 100,
       release_date: '2024-04-09',
@@ -301,6 +317,7 @@ export const fixtureModels: ModelResponse[] = [
     providers: ['fireworks'],
     metadata: {
       quality_index: 100,
+      speed_index: 500,
       price_per_input_token_usd: 100,
       price_per_output_token_usd: 100,
       release_date: '2024-04-09',

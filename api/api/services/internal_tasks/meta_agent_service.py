@@ -1076,6 +1076,10 @@ class MetaAgentService:
         models_by_quality = sorted(models, key=lambda m: m.quality_index, reverse=True)
         quality_rankings = {model.id: rank + 1 for rank, model in enumerate(models_by_quality)}
 
+        # Sort by speed (descending - higher speed gets better rank)
+        models_by_speed = sorted(models, key=lambda m: m.speed_index, reverse=True)
+        speed_rankings = {model.id: rank + 1 for rank, model in enumerate(models_by_speed)}
+
         # Sort by cost (ascending - lower cost gets better rank)
         models_by_cost = sorted(model_costs, key=lambda x: x[1])
         cost_rankings = {model.id: rank + 1 for rank, (model, _) in enumerate(models_by_cost)}
@@ -1086,6 +1090,8 @@ class MetaAgentService:
                 name=model.name,
                 quality_index=model.quality_index,
                 quality_index_ranking=quality_rankings[model.id],
+                speed_index=model.speed_index,
+                speed_index_ranking=speed_rankings[model.id],
                 context_window_tokens=model.context_window_tokens,
                 is_supported_for_agent=not bool(model.is_not_supported_reason),
                 is_not_supported_reason=model.is_not_supported_reason or "",

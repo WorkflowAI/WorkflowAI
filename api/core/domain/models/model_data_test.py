@@ -13,6 +13,7 @@ from core.domain.models.model_data import (
     ModelDataMapping,
     ModelReasoningBudget,
     QualityData,
+    SpeedData,
 )
 from core.domain.models.model_provider_data import ModelProviderData, TextPricePerToken
 from core.domain.reasoning_effort import ReasoningEffort
@@ -45,6 +46,7 @@ def _md(**kwargs: Any) -> FinalModelData:
         release_date=date(2024, 11, 6),
         quality_index=100,
         quality_data=QualityData(index=100),
+speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
         provider_name=DisplayedProvider.OPEN_AI.value,
         supports_tool_calling=False,
         model=Model.GPT_3_5_TURBO_1106,
@@ -140,6 +142,7 @@ class TestFinalModelData:
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/openai.svg",
             release_date=date(2024, 11, 6),
             quality_data=QualityData(index=100),
+speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
             quality_index=100,
             provider_name=DisplayedProvider.OPEN_AI.value,
             display_name="GPT-3.5 Turbo (1106)",

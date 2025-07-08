@@ -1,7 +1,7 @@
 from datetime import date
 from typing import get_args
 
-from core.domain.models.model_data import MaxTokensData, ModelData, ModelDataSupports, QualityData
+from core.domain.models.model_data import MaxTokensData, ModelData, ModelDataSupports, QualityData, SpeedData
 from core.domain.models.model_data_mapping import MODEL_DATAS, DisplayedProvider
 from core.domain.models.model_provider_data import ModelDataSupportsOverride
 
@@ -43,6 +43,7 @@ class TestModelDataSupportsOverride:
             ),
             release_date=date(2024, 12, 13),
             quality_data=QualityData(index=400),
+speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
             provider_name=DisplayedProvider.OPEN_AI.value,
             supports_tool_calling=True,
             fallback=None,
@@ -66,6 +67,7 @@ class TestModelDataSupportsOverride:
             ),
             release_date=date(2024, 12, 13),
             quality_data=QualityData(index=400),
+speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
             provider_name=DisplayedProvider.OPEN_AI.value,
             supports_tool_calling=True,
             fallback=None,

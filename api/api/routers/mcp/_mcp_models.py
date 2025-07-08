@@ -27,7 +27,7 @@ from core.utils.token_utils import tokens_from_string
 
 # New sorting type aliases with two-field approach
 AgentSortField: TypeAlias = Literal["last_active_at", "total_cost_usd", "run_count"]
-ModelSortField: TypeAlias = Literal["release_date", "quality_index", "cost"]
+ModelSortField: TypeAlias = Literal["release_date", "quality_index", "speed_index", "cost"]
 SortOrder: TypeAlias = Literal["asc", "desc"]
 
 
@@ -61,6 +61,7 @@ class ConciseModelResponse(BaseModel):
     display_name: str
     supports: ConciseModelSupports
     quality_index: int
+    speed_index: int
     cost_per_input_token_usd: float
     cost_per_output_token_usd: float
     release_date: str
@@ -92,6 +93,7 @@ class ConciseModelResponse(BaseModel):
             display_name=model.display_name,
             supports=ConciseModelSupports.from_domain(model),
             quality_index=model.quality_index,
+            speed_index=model.speed_index,
             cost_per_input_token_usd=provider_data.text_price.prompt_cost_per_token,
             cost_per_output_token_usd=provider_data.text_price.completion_cost_per_token,
             release_date=model.release_date.isoformat(),
@@ -106,6 +108,7 @@ class ConciseModelResponse(BaseModel):
             # TODO:Not great to call get_model_data here. ModelForTask should just use ModelData
             supports=ConciseModelSupports.from_domain(get_model_data(Model(model.id))),
             quality_index=model.quality_index,
+            speed_index=model.speed_index,
             cost_per_input_token_usd=model.price_per_input_token_usd,
             cost_per_output_token_usd=model.price_per_output_token_usd,
             release_date=model.release_date.isoformat(),

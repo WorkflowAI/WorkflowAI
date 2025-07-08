@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from core.domain.agent_run import AgentRun
 from core.domain.fields.file import File
 from core.domain.models._displayed_provider import DisplayedProvider
-from core.domain.models.model_data import MaxTokensData, ModelData, QualityData
+from core.domain.models.model_data import MaxTokensData, ModelData, QualityData, SpeedData
 from core.domain.review import Review
 from core.domain.task_deployment import TaskDeployment
 from core.domain.task_evaluation import TaskEvaluation
@@ -292,6 +292,7 @@ def model_data(**kwargs: Any) -> ModelData:
         icon_url="https://workflowai.blob.core.windows.net/workflowai-public/meta.svg",
         release_date=date(2024, 7, 23),
         quality_data=QualityData(mmlu=86, gpqa=48),
+speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
         provider_name=DisplayedProvider.FIREWORKS.value,
         supports_tool_calling=True,
         fallback=None,
