@@ -36,7 +36,7 @@ export const useOrganizationSettings = create<OrganizationSettingsState>((set) =
       })
     );
     try {
-      const settings = await client.get<TenantData>(`${rootTenantPath(tenant)}/organization/settings`);
+      const settings = await client.get<TenantData>(`${rootTenantPath(tenantToUse)}/organization/settings`);
 
       set(
         produce((state: OrganizationSettingsState) => {
@@ -57,7 +57,7 @@ export const useOrganizationSettings = create<OrganizationSettingsState>((set) =
     const tenantToUse = tenant ?? ('_' as TenantID);
 
     const providerSettings = await client.post<ProviderConfig, ProviderSettings>(
-      `${rootTenantPath()}/organization/settings/providers`,
+      `${rootTenantPath(tenantToUse)}/organization/settings/providers`,
       config
     );
     set(
@@ -74,7 +74,7 @@ export const useOrganizationSettings = create<OrganizationSettingsState>((set) =
   deleteProviderConfig: async (configID: string, tenant: TenantID | undefined) => {
     const tenantToUse = tenant ?? ('_' as TenantID);
 
-    await client.del(`${rootTenantPath()}/organization/settings/providers/${configID}`);
+    await client.del(`${rootTenantPath(tenantToUse)}/organization/settings/providers/${configID}`);
     set(
       produce((state: OrganizationSettingsState) => {
         if (state.settingsForTenant[tenantToUse] === undefined) {
