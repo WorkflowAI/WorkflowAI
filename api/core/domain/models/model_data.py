@@ -22,14 +22,6 @@ _quality_index_weights = {
     "gpqa_diamond": 0.35,
 }
 
-# Speed index weights for different speed metrics
-# Higher values mean faster performance
-_speed_index_weights = {
-    "tokens_per_second": 0.4,
-    "time_to_first_token_ms": 0.3,  # Lower is better, so will be inverted
-    "latency_ms": 0.3,  # Lower is better, so will be inverted
-}
-
 # TODO: add pricing tier to the model data ?
 PricingTier: TypeAlias = Literal["cheapest", "cheap", "medium", "expensive"]
 
@@ -81,21 +73,9 @@ class QualityData(SourcedBaseModel):
 
 
 class SpeedData(SourcedBaseModel):
-    tokens_per_second: float | None = Field(
-        default=None,
-        description="Number of tokens generated per second (higher is better)",
-    )
-    time_to_first_token_ms: float | None = Field(
-        default=None,
-        description="Time to first token in milliseconds (lower is better)",
-    )
-    latency_ms: float | None = Field(
-        default=None,
-        description="Average latency in milliseconds (lower is better)",
-    )
     index: int | None = Field(
         default=None,
-        description="A forced value for the speed index",
+        description="Speed index where higher values indicate better performance",
     )
 
     equivalent_to: tuple[Model, int] | None = Field(
@@ -125,31 +105,8 @@ class SpeedData(SourcedBaseModel):
         if self.equivalent_to:
             return self._speed_index_from_equivalent_model(mapping)
 
-        # We do a weighed sum of the different scores
-        dumped = self.model_dump(exclude_none=True, exclude={"source", "equivalent_to", "index"})
-
-        if not dumped:
-            return 0
-
-        total_score: float = 0
-        for k, v in dumped.items():
-            weight = _speed_index_weights[k]
-            # For metrics where lower is better, invert the score
-            if k in ["time_to_first_token_ms", "latency_ms"]:
-                # Convert to a 0-100 scale where lower latency = higher score
-                # Assuming max reasonable latency is 10000ms, min is 1ms
-                max_latency = 10000
-                min_latency = 1
-                normalized_score = max(0, min(100, 100 * (max_latency - v) / (max_latency - min_latency)))
-                total_score += normalized_score * weight
-            else:
-                # For tokens_per_second, higher is better
-                # Normalize to 0-100 scale assuming max speed is 1000 tokens/sec
-                max_speed = 1000
-                normalized_score = min(100, (v / max_speed) * 100)
-                total_score += normalized_score * weight
-
-        return int(total_score * 10)  # Scale to 1000 to match quality index range
+        # Default speed index if no data is available
+        return 500
 
 
 class MaxTokensData(SourcedBaseModel):
