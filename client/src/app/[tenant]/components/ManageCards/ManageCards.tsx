@@ -70,7 +70,7 @@ function ManageCardsInner(props: ManageCardsProps) {
   const [amountToAdd, setAmountToAdd] = useState<number | undefined>(undefined);
 
   const isAddCreditsButtonActive =
-    !!amountToAdd && !!paymentMethod?.payment_method_id && amountToAdd >= 5 && amountToAdd <= 4902;
+    !!amountToAdd && !!paymentMethod?.payment_method_id && amountToAdd >= 5 && amountToAdd <= 5000;
 
   const reset = useCallback(() => {
     setShowAddPaymentMethod(false);
