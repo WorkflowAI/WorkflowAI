@@ -10,6 +10,7 @@ class Provider(StrEnum):
     # Anthropic is the default provider for Anthropic models
     # Bedrock is ok but it throttles instead of returning 429s
     # Which is very inconvenient
+    CEREBRAS = "cerebras"
     ANTHROPIC = "anthropic"
     AMAZON_BEDROCK = "amazon_bedrock"
     # OpenAI is the default provider for OpenAI models

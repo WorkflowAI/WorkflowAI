@@ -1197,6 +1197,30 @@ GOOGLE_IMAGEN_PROVIDER_DATA: ProviderDataByModel = {
         ),
     ),
 }
+CEREBRAS_PROVIDER_DATA: ProviderDataByModel = {
+    Model.LLAMA_4_SCOUT_FAST: ModelProviderData(
+        text_price=TextPricePerToken(
+            prompt_cost_per_token=0.0,
+            completion_cost_per_token=0.0,
+            source="Cerebras - set to 0 as requested",
+        ),
+    ),
+    Model.LLAMA_3_1_8B: ModelProviderData(
+        text_price=TextPricePerToken(
+            prompt_cost_per_token=0.0,
+            completion_cost_per_token=0.0,
+            source="Cerebras - set to 0 as requested",
+        ),
+    ),
+    Model.LLAMA_3_3_70B: ModelProviderData(
+        text_price=TextPricePerToken(
+            prompt_cost_per_token=0.0,
+            completion_cost_per_token=0.0,
+            source="Cerebras - set to 0 as requested",
+        ),
+    ),
+    # TODO: Add QWEN 3.32BSS ?
+}
 
 type ProviderModelDataMapping = dict[Provider, ProviderDataByModel]
 
@@ -1234,4 +1258,7 @@ MODEL_PROVIDER_DATAS: ProviderModelDataMapping = {
     # ------------------------------------------------------------------------------------------------
     # XAI
     Provider.X_AI: XAI_PROVIDER_DATA,
+    # ------------------------------------------------------------------------------------------------
+    # Cerebras
+    Provider.CEREBRAS: CEREBRAS_PROVIDER_DATA,
 }
