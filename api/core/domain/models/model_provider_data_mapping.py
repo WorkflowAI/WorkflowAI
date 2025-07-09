@@ -1234,6 +1234,34 @@ CEREBRAS_PROVIDER_DATA: ProviderDataByModel = {
             source="Cerebras - set to 0 as requested",
         ),
     ),
+    Model.LLAMA_4_SCOUT_FAST: ModelProviderData(
+        text_price=TextPricePerToken(
+            prompt_cost_per_token=0.0,
+            completion_cost_per_token=0.0,
+            source="Cerebras - set to 0 as requested",
+        ),
+    ),
+    Model.LLAMA_4_SCOUT_BASIC: ModelProviderData(
+        text_price=TextPricePerToken(
+            prompt_cost_per_token=0.0,
+            completion_cost_per_token=0.0,
+            source="Cerebras - set to 0 as requested",
+        ),
+    ),
+    Model.LLAMA_4_MAVERICK_FAST: ModelProviderData(
+        text_price=TextPricePerToken(
+            prompt_cost_per_token=0.0,
+            completion_cost_per_token=0.0,
+            source="Cerebras - set to 0 as requested",
+        ),
+    ),
+    Model.LLAMA_4_MAVERICK_BASIC: ModelProviderData(
+        text_price=TextPricePerToken(
+            prompt_cost_per_token=0.0,
+            completion_cost_per_token=0.0,
+            source="Cerebras - set to 0 as requested",
+        ),
+    ),
 }
 
 type ProviderModelDataMapping = dict[Provider, ProviderDataByModel]

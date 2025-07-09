@@ -1,7 +1,8 @@
 import pytest
 
 from core.domain.models import Model, Provider
-from core.providers.cerebras.cerebras_provider import CerebrasConfig, CerebrasProvider
+from core.providers.cerebras.cerebras_config import CerebrasConfig
+from core.providers.cerebras.cerebras_provider import CerebrasProvider
 
 
 class TestCerebrasProvider:
@@ -17,15 +18,15 @@ class TestCerebrasProvider:
         assert CerebrasProvider.required_env_vars() == ["CEREBRAS_API_KEY"]
 
     def test_default_model(self, cerebras_provider: CerebrasProvider):
-        assert cerebras_provider.default_model() == Model.LLAMA_3_1_8B
+        assert cerebras_provider.default_model() == Model.LLAMA_4_SCOUT_FAST
 
     def test_request_url(self, cerebras_provider: CerebrasProvider):
-        url = cerebras_provider._request_url(Model.LLAMA_3_1_8B, stream=False)
+        url = cerebras_provider._request_url(Model.LLAMA_4_SCOUT_FAST, stream=False)
         assert url == "https://api.cerebras.ai/v1/chat/completions"
 
     @pytest.mark.asyncio
     async def test_request_headers(self, cerebras_provider: CerebrasProvider):
-        headers = await cerebras_provider._request_headers({}, "", Model.LLAMA_3_1_8B)
+        headers = await cerebras_provider._request_headers({}, "", Model.LLAMA_4_SCOUT_FAST)
         assert headers == {"Authorization": "Bearer test_key"}
 
     def test_config_str(self):

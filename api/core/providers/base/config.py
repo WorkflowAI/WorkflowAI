@@ -4,7 +4,7 @@ from pydantic import Field
 
 from core.providers.amazon_bedrock.amazon_bedrock_provider import AmazonBedrockConfig
 from core.providers.anthropic.anthropic_provider import AnthropicConfig
-from core.providers.cerebras.cerebras_provider import CerebrasConfig
+from core.providers.cerebras.cerebras_config import CerebrasConfig
 from core.providers.google.gemini.gemini_api_provider import GoogleGeminiAPIProviderConfig
 from core.providers.google.google_provider import GoogleProviderConfig
 from core.providers.groq.groq_provider import GroqConfig
