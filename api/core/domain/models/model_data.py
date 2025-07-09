@@ -87,7 +87,7 @@ class SpeedIndex(BaseModel):
         return cls(value=output_tokens / duration_seconds)
 
 
-class SpeedData(SourcedBaseModel):
+class SpeedData(BaseModel):
     index: SpeedIndex | None = Field(
         default=None,
         description="Speed index where higher values indicate better performance",
