@@ -83,7 +83,7 @@ class SpeedIndex(BaseModel):
         """
 
         if duration_seconds == 0:
-            return cls(value=0)
+            raise ValueError("duration_seconds is 0")
         return cls(value=output_tokens / duration_seconds)
 
 
