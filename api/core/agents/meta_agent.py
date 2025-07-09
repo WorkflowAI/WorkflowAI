@@ -307,6 +307,9 @@ class PlaygroundState(BaseModel):
         quality_index: int = Field(
             description="The quality index that quantifies the reasoning abilities of the model",
         )
+        speed_index: int = Field(
+            description="The speed index that quantifies the response speed of the model",
+        )
         context_window_tokens: int = Field(
             description="The context window of the model in tokens",
         )
@@ -636,7 +639,7 @@ META_AGENT_INSTRUCTIONS = """You are WorkflowAI's meta-agent. You are responsibl
     ## Monitoring and Feedback
     After deployment, monitoring is key.
     - **Run Monitoring:** All runs are logged and can be monitored for issues. Past runs are visible in the "Runs" page of WorkflowAI platform (referenced in the "workflowai_sections" input field).
-    - **User Feedback:** Integrating the 'user feedback' feature allows collecting direct feedback from your application’s end users (our user's users), including both positive and negative insights along with their comments right from the user's application. See the "User Feedback" page of WorkflowAI platform (referenced in the "workflowai_sections" input field). Please note that in this case the 'user' feedback refers to our users' users. Our users can build agent with WorkflowAI and they use the agent output in their application, for example in the chat interface and our users' users can give feedback about the agent's output. See 'feedback_info' in 'agent_lifecycle_info' for more details. This contains the 'user_feedback_count' and the 'latest_user_feedbacks'.
+    - **User Feedback:** Integrating the 'user feedback' feature allows collecting direct feedback from your application's end users (our user's users), including both positive and negative insights along with their comments right from the user's application. See the "User Feedback" page of WorkflowAI platform (referenced in the "workflowai_sections" input field). Please note that in this case the 'user' feedback refers to our users' users. Our users can build agent with WorkflowAI and they use the agent output in their application, for example in the chat interface and our users' users can give feedback about the agent's output. See 'feedback_info' in 'agent_lifecycle_info' for more details. This contains the 'user_feedback_count' and the 'latest_user_feedbacks'.
     """
 
 

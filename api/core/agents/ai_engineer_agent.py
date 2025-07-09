@@ -325,6 +325,12 @@ class AIEngineerAgentInput(BaseModel):
         quality_index_ranking: int = Field(
             description="The quality index ranking of the model, 1 being the smartest",
         )
+        speed_index: int = Field(
+            description="The speed index that quantifies the response speed of the model",
+        )
+        speed_index_ranking: int = Field(
+            description="The speed index ranking of the model, 1 being the fastest",
+        )
         context_window_tokens: int = Field(
             description="The context window of the model in tokens",
         )

@@ -38,6 +38,7 @@ class ModelForTask(NamedTuple):
     context_window_tokens: int
     provider_name: str
     quality_index: int
+    speed_index: int
     providers: list[Provider]
     supports_structured_output: bool
     model_data: ModelData
@@ -158,6 +159,7 @@ class ModelsService:
                 is_default=is_default,
                 release_date=data.release_date,
                 quality_index=data.quality_index,
+                speed_index=data.speed_index,
                 model_data=data,
                 price_per_input_token_usd=provider_data.text_price.prompt_cost_per_token,
                 price_per_output_token_usd=provider_data.text_price.completion_cost_per_token,
