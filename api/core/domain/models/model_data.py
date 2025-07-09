@@ -1,5 +1,5 @@
 from datetime import date
-from typing import Any, Literal, TypeAlias
+from typing import Any, Literal, Self, TypeAlias
 
 from pydantic import BaseModel, Field
 
@@ -72,8 +72,23 @@ class QualityData(SourcedBaseModel):
         return int((total_score / len(dumped)) * 40)
 
 
+class SpeedIndex(BaseModel):
+    value: float
+
+    @classmethod
+    def from_experiment(cls, output_tokens: int, duration_seconds: float) -> Self:
+        """
+        Calculate the speed index based on an experiment run,
+        Run: typically translating a long text and checking the output token size and the duration of the run.
+        """
+
+        if duration_seconds == 0:
+            return cls(value=0)
+        return cls(value=output_tokens / duration_seconds)
+
+
 class SpeedData(SourcedBaseModel):
-    index: int | None = Field(
+    index: SpeedIndex | None = Field(
         default=None,
         description="Speed index where higher values indicate better performance",
     )
@@ -101,7 +116,7 @@ class SpeedData(SourcedBaseModel):
 
     def speed_index(self, mapping: dict[Model, Any]) -> int:
         if self.index is not None:
-            return self.index
+            return int(self.index.value)
         if self.equivalent_to:
             return self._speed_index_from_equivalent_model(mapping)
 

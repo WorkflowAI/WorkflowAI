@@ -19,6 +19,7 @@ from .model_data import (
     PricingTier,
     QualityData,
     SpeedData,
+    SpeedIndex,
 )
 
 
@@ -72,7 +73,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             latest_model=Model.GPT_4O_LATEST,
             release_date=date(2024, 11, 20),
             quality_data=QualityData(mmlu=85.70, gpqa=46.00),
-            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=1787, duration_seconds=27.6),
+            ),
             provider_name=DisplayedProvider.OPEN_AI.value,
             supports_tool_calling=True,
             fallback=_openai_fallback("medium"),
@@ -92,7 +95,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/openai.svg",
             release_date=date(2024, 8, 6),
             quality_data=QualityData(mmlu=88.70, gpqa=53.10),
-            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=1913, duration_seconds=24),
+            ),
             latest_model=Model.GPT_4O_LATEST,
             provider_name=DisplayedProvider.OPEN_AI.value,
             supports_tool_calling=True,
@@ -119,7 +124,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             latest_model=Model.GPT_41_LATEST,
             release_date=date(2025, 4, 14),
             quality_data=QualityData(mmlu=90.2, gpqa=66.3),
-            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=1884, duration_seconds=38),
+            ),
             provider_name=DisplayedProvider.OPEN_AI.value,
             supports_tool_calling=True,
             fallback=_openai_fallback("medium"),
@@ -145,7 +152,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             latest_model=Model.GPT_41_MINI_LATEST,
             release_date=date(2025, 4, 14),
             quality_data=QualityData(mmlu=87.5, gpqa=65),
-            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=1986, duration_seconds=38),
+            ),
             provider_name=DisplayedProvider.OPEN_AI.value,
             supports_tool_calling=True,
             fallback=_openai_fallback("cheapest", context_exceeded="no"),
@@ -170,7 +179,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/openai.svg",
             release_date=date(2025, 4, 14),
             quality_data=QualityData(mmlu=80, gpqa=50),
-            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=2002, duration_seconds=19),
+            ),
             latest_model=Model.GPT_41_NANO_LATEST,
             provider_name=DisplayedProvider.OPEN_AI.value,
             supports_tool_calling=True,
@@ -202,7 +213,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             latest_model=Model.GPT_4O_MINI_LATEST,
             release_date=date(2024, 7, 18),
             quality_data=QualityData(mmlu=82.00, gpqa=40.20),
-            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=1914, duration_seconds=28),
+            ),
             provider_name=DisplayedProvider.OPEN_AI.value,
             supports_tool_calling=True,
             fallback=_openai_fallback("cheapest"),
@@ -225,7 +238,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/openai.svg",
             release_date=date(2025, 4, 23),
             quality_data=QualityData(index=611),  # TODO: a bit difficult to estimate here
-            speed_data=SpeedData(index=500),  # TODO: a bit difficult to estimate heres
+            speed_data=SpeedData(
+                index=SpeedIndex(value=10),  # difficult to estimate, assigne low value
+            ),
             provider_name=DisplayedProvider.OPEN_AI.value,
             supports_tool_calling=False,
             is_default=True,
@@ -262,7 +277,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             release_date=date(2025, 6, 3),
             provider_name=DisplayedProvider.OPEN_AI.value,
             quality_data=QualityData(equivalent_to=(Model.GPT_4O_AUDIO_PREVIEW_2024_12_17, 1)),
-            speed_data=SpeedData(index=500),  # TODO: a bit difficult to estimate here
+            speed_data=SpeedData(
+                index=SpeedIndex(value=10),  # difficult to estimate, assigne low value
+            ),
             supports_tool_calling=False,
             aliases=[],
             fallback=ModelFallback(
@@ -295,7 +312,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             release_date=date(2024, 12, 17),
             provider_name=DisplayedProvider.OPEN_AI.value,
             quality_data=QualityData(mmlu=88.70, gpqa=53.60),
-            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(
+                index=SpeedIndex(value=10),  # difficult to estimate, assigne low value
+            ),
             supports_tool_calling=False,
             aliases=["gpt-4o-audio-preview"],
             fallback=ModelFallback(
@@ -339,7 +358,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             supports_structured_output=True,
             release_date=date(2025, 1, 31),
             quality_data=QualityData(mmlu=88.70, gpqa=77.00),
-            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=2252, duration_seconds=18),
+            ),
             provider_name=DisplayedProvider.OPEN_AI.value,
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/openai.svg",
             max_tokens_data=MaxTokensData(
@@ -398,7 +419,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
                 gpqa=74.5,
                 source="https://www.vals.ai/models/openai_o4-mini-2025-04-16",
             ),
-            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=2650, duration_seconds=33),
+            ),
             provider_name=DisplayedProvider.OPEN_AI.value,
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/openai.svg",
             max_tokens_data=MaxTokensData(
@@ -442,7 +465,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
                 mmlu_pro=85.6,
                 source="https://www.vals.ai/models/openai_o3-2025-04-16",
             ),
-            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=2200, duration_seconds=80),
+            ),
             provider_name=DisplayedProvider.OPEN_AI.value,
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/openai.svg",
             max_tokens_data=MaxTokensData(
@@ -589,7 +614,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/google.svg",
             release_date=date(2025, 2, 5),
             quality_data=QualityData(mmlu=83.5, gpqa=51.5),
-            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=1821, duration_seconds=13),
+            ),
             provider_name=DisplayedProvider.GOOGLE.value,
             supports_tool_calling=True,
             fallback=ModelFallback.default(
@@ -614,7 +641,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             release_date=date(2025, 2, 5),
             latest_model=Model.GEMINI_2_0_FLASH_LATEST,
             quality_data=QualityData(mmlu=76.4, gpqa=74.2),
-            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=1805, duration_seconds=14),
+            ),
             provider_name=DisplayedProvider.GOOGLE.value,
             supports_tool_calling=True,
             fallback=ModelFallback.default(
@@ -647,7 +676,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
                 mmlu=88.4,
                 source="https://deepmind.google/models/gemini/flash/",
             ),
-            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=2821, duration_seconds=13.4),
+            ),
             provider_name=DisplayedProvider.GOOGLE.value,
             supports_tool_calling=True,
             fallback=ModelFallback.default(
@@ -680,7 +711,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
                 mmlu=89.2,
                 source="https://deepmind.google/models/gemini/pro/",
             ),
-            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=1890, duration_seconds=73),
+            ),
             provider_name=DisplayedProvider.GOOGLE.value,
             supports_tool_calling=True,
             fallback=ModelFallback.default(
@@ -710,7 +743,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
                 mmlu=84.5,
                 source="https://deepmind.google/models/gemini/flash-lite/",
             ),
-            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=2900, duration_seconds=9),
+            ),
             provider_name=DisplayedProvider.GOOGLE.value,
             supports_tool_calling=True,
             fallback=ModelFallback.default(
@@ -743,7 +778,7 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/google.svg",
             release_date=date(2025, 2, 5),
             quality_data=QualityData(equivalent_to=(Model.GEMINI_2_0_FLASH_001, 0)),
-            speed_data=SpeedData(index=500),
+            speed_data=SpeedData(index=SpeedIndex.from_experiment(output_tokens=2200, duration_seconds=15)),
             provider_name=DisplayedProvider.GOOGLE.value,
             supports_tool_calling=True,
             is_default=True,
@@ -780,7 +815,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             latest_model=Model.GEMINI_1_5_PRO_LATEST,
             release_date=date(2024, 9, 24),
             quality_data=QualityData(mmlu=85.14, gpqa=59.10),
-            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=1905, duration_seconds=35),
+            ),
             provider_name=DisplayedProvider.GOOGLE.value,
             supports_tool_calling=True,
             fallback=ModelFallback.default("medium", content_moderation=Model.GPT_41_LATEST, context_exceeded="no"),
@@ -814,7 +851,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             # https://www.anthropic.com/news/claude-4
             # We only have the mmmlu for now...
             quality_data=QualityData(gpqa_diamond=70),
-            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=2648, duration_seconds=32),
+            ),
             latest_model=Model.CLAUDE_4_SONNET_LATEST,
             provider_name=DisplayedProvider.ANTHROPIC.value,
             supports_tool_calling=True,
@@ -842,7 +881,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             # https://www.anthropic.com/news/claude-4
             # We only have the mmmlu for now...
             quality_data=QualityData(gpqa_diamond=74.9),
-            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=2648, duration_seconds=56.6),
+            ),
             latest_model=Model.CLAUDE_4_OPUS_LATEST,
             provider_name=DisplayedProvider.ANTHROPIC.value,
             supports_tool_calling=True,
@@ -869,7 +910,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             release_date=date(2025, 2, 19),
             # TODO: quality index, for now quality index of CLAUDE_3_5_SONNET_20241022 + 1
             quality_data=QualityData(mmlu=90.8, gpqa=84.8, gpqa_diamond=69.7),
-            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=2640, duration_seconds=40),
+            ),
             latest_model=Model.CLAUDE_3_7_SONNET_LATEST,
             provider_name=DisplayedProvider.ANTHROPIC.value,
             supports_tool_calling=True,
@@ -889,7 +932,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/anthropic.svg",
             release_date=date(2024, 10, 22),
             quality_data=QualityData(mmlu=86, gpqa=68),
-            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=543, duration_seconds=11),
+            ),
             latest_model=Model.CLAUDE_3_5_SONNET_LATEST,
             provider_name=DisplayedProvider.ANTHROPIC.value,
             supports_tool_calling=True,
@@ -911,7 +956,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             latest_model=Model.GEMINI_1_5_FLASH_LATEST,
             release_date=date(2024, 9, 24),
             quality_data=QualityData(mmlu=78.9, gpqa=51),
-            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=1857, duration_seconds=16.7),
+            ),
             provider_name=DisplayedProvider.GOOGLE.value,
             supports_tool_calling=True,
             fallback=ModelFallback.default(
@@ -943,7 +990,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/openai.svg",
             release_date=date(2024, 12, 17),
             quality_data=QualityData(mmlu=90.8, gpqa=78.3),
-            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=2248, duration_seconds=62),
+            ),
             provider_name=DisplayedProvider.OPEN_AI.value,
             supports_tool_calling=True,
             supports_parallel_tool_calls=False,
@@ -978,7 +1027,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             latest_model=Model.CLAUDE_3_5_SONNET_LATEST,
             release_date=date(2024, 6, 20),
             quality_data=QualityData(mmlu=88.3, gpqa=59.4),
-            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=2655, duration_seconds=40),
+            ),
             provider_name=DisplayedProvider.ANTHROPIC.value,
             supports_tool_calling=True,
             fallback=ModelFallback.default("medium"),
@@ -997,7 +1048,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/anthropic.svg",
             release_date=date(2024, 2, 29),
             quality_data=QualityData(mmlu=88.2, gpqa=50.4),
-            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=2692, duration_seconds=96),
+            ),
             provider_name=DisplayedProvider.ANTHROPIC.value,
             supports_tool_calling=True,
             fallback=ModelFallback.default("medium"),
@@ -1017,7 +1070,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/anthropic.svg",
             release_date=date(2024, 3, 7),
             quality_data=QualityData(mmlu=76.7, gpqa=33.3),
-            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=640, duration_seconds=6),
+            ),
             provider_name=DisplayedProvider.ANTHROPIC.value,
             supports_tool_calling=True,
             fallback=ModelFallback.default("cheap"),
@@ -1041,7 +1096,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             latest_model=Model.CLAUDE_3_5_HAIKU_LATEST,
             release_date=date(2024, 10, 22),
             quality_data=QualityData(mmlu=76.7, gpqa=41.6),
-            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=706, duration_seconds=15),
+            ),
             provider_name=DisplayedProvider.ANTHROPIC.value,
             supports_tool_calling=True,
             fallback=ModelFallback.default("cheap"),
@@ -1061,7 +1118,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/meta.svg",
             release_date=date(2024, 7, 23),
             quality_data=QualityData(mmlu=88.6, gpqa=73.9),
-            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=2431, duration_seconds=32),
+            ),
             provider_name=DisplayedProvider.FIREWORKS.value,
             supports_tool_calling=True,
             fallback=ModelFallback.default("medium"),
@@ -1081,7 +1140,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/meta.svg",
             release_date=date(2024, 12, 6),
             quality_data=QualityData(mmlu=86, gpqa=50.5),
-            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=2568, duration_seconds=10),
+            ),
             provider_name=DisplayedProvider.FIREWORKS.value,
             supports_tool_calling=False,
             fallback=ModelFallback.default("cheap"),
@@ -1100,7 +1161,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/meta.svg",
             release_date=date(2024, 7, 23),
             quality_data=QualityData(mmlu=86, gpqa=48),
-            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=2396, duration_seconds=18),
+            ),
             provider_name=DisplayedProvider.FIREWORKS.value,
             supports_tool_calling=True,
             fallback=ModelFallback.default("cheap"),
@@ -1120,7 +1183,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/meta.svg",
             release_date=date(2024, 7, 23),
             quality_data=QualityData(mmlu=66.7, gpqa=33.8),
-            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=1680, duration_seconds=4.2),
+            ),
             provider_name=DisplayedProvider.FIREWORKS.value,
             supports_tool_calling=False,
             fallback=ModelFallback.only_model(Model.GEMINI_2_0_FLASH_LITE_001, "cheapest"),
@@ -1149,7 +1214,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/google.svg",
             release_date=date(2024, 10, 3),
             quality_data=QualityData(mmlu=58.7, gpqa=38.4),
-            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=2236, duration_seconds=12),
+            ),
             provider_name=DisplayedProvider.GOOGLE.value,
             supports_tool_calling=True,
             fallback=ModelFallback.default(
@@ -1174,7 +1241,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/qwen.svg",
             release_date=date(2025, 3, 6),
             quality_data=QualityData(mmlu=83.3, gpqa=59.1),
-            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=2316, duration_seconds=11.4),
+            ),
             provider_name=DisplayedProvider.FIREWORKS.value,
             supports_tool_calling=False,
             fallback=ModelFallback.default("cheap"),
@@ -1193,7 +1262,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/qwen.svg",
             release_date=date(2025, 4, 29),
             quality_data=QualityData(mmlu=87.8, gpqa=70, source="https://qwenlm.github.io/blog/qwen3/"),
-            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=2120, duration_seconds=49),
+            ),
             provider_name=DisplayedProvider.FIREWORKS.value,
             supports_tool_calling=True,
             fallback=ModelFallback.default("cheap"),
@@ -1212,7 +1283,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/qwen.svg",
             release_date=date(2025, 4, 29),
             quality_data=QualityData(mmlu=80, gpqa=62, source="https://qwenlm.github.io/blog/qwen3/"),
-            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=2300, duration_seconds=45),
+            ),
             provider_name=DisplayedProvider.FIREWORKS.value,
             supports_tool_calling=True,
             fallback=ModelFallback.default("cheapest"),
@@ -1234,7 +1307,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/meta.svg",
             release_date=date(2025, 4, 5),
             quality_data=QualityData(equivalent_to=(Model.LLAMA_4_MAVERICK_FAST, 0)),
-            speed_data=SpeedData(index=500),
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=2000, duration_seconds=16.3),
+            ),
             provider_name=DisplayedProvider.FIREWORKS.value,
             supports_tool_calling=False,
             supports_structured_output=True,
@@ -1255,7 +1330,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/meta.svg",
             release_date=date(2025, 4, 5),
             quality_data=QualityData(equivalent_to=(Model.LLAMA_4_SCOUT_FAST, 0)),
-            speed_data=SpeedData(index=500),
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=1878, duration_seconds=15),
+            ),
             provider_name=DisplayedProvider.FIREWORKS.value,
             supports_tool_calling=False,
             supports_structured_output=True,
@@ -1279,7 +1356,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
                 gpqa_diamond=61.1,
                 source="https://www.vals.ai/models/together_meta-llama_Llama-4-Maverick-17B-128E-Instruct-FP8",
             ),
-            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=2491, duration_seconds=5.8),
+            ),
             provider_name=DisplayedProvider.GROQ.value,
             supports_tool_calling=True,
             supports_structured_output=True,
@@ -1304,7 +1383,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
                 gpqa=44.4,
                 source="https://www.vals.ai/models/together_meta-llama_Llama-4-Scout-17B-16E-Instruct",
             ),
-            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=2532, duration_seconds=4.8),
+            ),
             provider_name=DisplayedProvider.GROQ.value,
             supports_tool_calling=True,
             supports_structured_output=True,
@@ -1324,7 +1405,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/deepseek.svg",
             release_date=date(2024, 12, 30),
             quality_data=QualityData(mmlu=88.5, gpqa=59.1),
-            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=2290, duration_seconds=24),
+            ),
             provider_name=DisplayedProvider.FIREWORKS.value,
             supports_tool_calling=True,
             supports_structured_output=True,
@@ -1346,7 +1429,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/deepseek.svg",
             release_date=date(2025, 1, 20),
             quality_data=QualityData(mmlu=90.8, gpqa=71.5),
-            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=2435, duration_seconds=32.9),
+            ),
             provider_name=DisplayedProvider.FIREWORKS.value,
             supports_tool_calling=True,
             fallback=ModelFallback.default("expensive"),
@@ -1366,7 +1451,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/deepseek.svg",
             release_date=date(2025, 3, 18),
             quality_data=QualityData(mmlu=90.8, gpqa=71.5),
-            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=2300, duration_seconds=67),
+            ),
             provider_name=DisplayedProvider.FIREWORKS.value,
             supports_tool_calling=True,
             fallback=ModelFallback.default("cheap"),
@@ -1391,7 +1478,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
                     5,
                 ),
             ),
-            speed_data=SpeedData(index=500),
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=2400, duration_seconds=31),
+            ),
             provider_name=DisplayedProvider.FIREWORKS.value,
             supports_tool_calling=False,  # Function calling not supported according to the spec
             fallback=ModelFallback.default("medium"),
@@ -1410,7 +1499,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/deepseek.svg",
             release_date=date(2025, 3, 24),
             quality_data=QualityData(mmlu=88.5, gpqa=59.1),
-            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=1519, duration_seconds=8),
+            ),
             provider_name=DisplayedProvider.FIREWORKS.value,
             supports_tool_calling=True,
             latest_model=Model.DEEPSEEK_V3_LATEST,
@@ -1441,7 +1532,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/google.svg",
             release_date=date(2025, 1, 23),
             quality_data=QualityData(index=50),  # TODO: Update the quality index
-            speed_data=SpeedData(index=500),
+            speed_data=SpeedData(
+                index=SpeedIndex(value=10),  # Hard to estimate, assign low value
+            ),
             provider_name=DisplayedProvider.GOOGLE.value,
             supports_tool_calling=False,
             latest_model=Model.IMAGEN_3_0_LATEST,
@@ -1463,7 +1556,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/google.svg",
             release_date=date(2024, 7, 31),
             quality_data=QualityData(index=500),  # TODO: Update the quality index
-            speed_data=SpeedData(index=500),
+            speed_data=SpeedData(
+                index=SpeedIndex(value=10),  # Hard to estimate, assign low value
+            ),
             provider_name=DisplayedProvider.GOOGLE.value,
             supports_tool_calling=False,
             latest_model=Model.IMAGEN_3_0_LATEST,
@@ -1485,7 +1580,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/google.svg",
             release_date=date(2024, 7, 31),
             quality_data=QualityData(index=500),  # TODO: Update the quality index
-            speed_data=SpeedData(index=500),
+            speed_data=SpeedData(
+                index=SpeedIndex(value=10),  # Hard to estimate, assign low value
+            ),
             provider_name=DisplayedProvider.GOOGLE.value,
             supports_tool_calling=False,
             fallback=None,  # No fallback for image generation

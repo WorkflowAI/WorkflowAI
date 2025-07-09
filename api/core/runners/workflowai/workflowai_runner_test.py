@@ -22,7 +22,15 @@ from core.domain.fields.internal_reasoning_steps import InternalReasoningStep
 from core.domain.message import Message, MessageContent, MessageDeprecated, Messages
 from core.domain.metrics import Metric
 from core.domain.models import Model, Provider
-from core.domain.models.model_data import FinalModelData, LatestModel, MaxTokensData, ModelData, QualityData, SpeedData
+from core.domain.models.model_data import (
+    FinalModelData,
+    LatestModel,
+    MaxTokensData,
+    ModelData,
+    QualityData,
+    SpeedData,
+    SpeedIndex,
+)
 from core.domain.models.model_data_mapping import MODEL_DATAS, DisplayedProvider
 from core.domain.run_output import RunOutput
 from core.domain.structured_output import StructuredOutput
@@ -159,7 +167,7 @@ def model_data():
         latest_model=Model.GPT_4O_LATEST,
         release_date=date(2024, 11, 20),
         quality_data=QualityData(index=100),
-        speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+        speed_data=SpeedData(index=SpeedIndex(value=500)),  # Default speed index, can be updated with real data later
         provider_name=DisplayedProvider.OPEN_AI.value,
         supports_tool_calling=True,
         fallback=None,
@@ -1901,7 +1909,9 @@ class TestBuildProviderData:
             quality_index=100,
             speed_index=500,
             quality_data=QualityData(index=100),
-            speed_data=SpeedData(index=500),  # Default speed index, can be updated with real data later
+            speed_data=SpeedData(
+                index=SpeedIndex(value=500),
+            ),
             provider_name=DisplayedProvider.OPEN_AI.value,
             supports_tool_calling=True,
             fallback=None,

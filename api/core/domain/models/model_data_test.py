@@ -14,6 +14,7 @@ from core.domain.models.model_data import (
     ModelReasoningBudget,
     QualityData,
     SpeedData,
+    SpeedIndex,
 )
 from core.domain.models.model_provider_data import ModelProviderData, TextPricePerToken
 from core.domain.reasoning_effort import ReasoningEffort
@@ -47,7 +48,7 @@ def _md(**kwargs: Any) -> FinalModelData:
         quality_index=100,
         speed_index=500,
         quality_data=QualityData(index=100),
-        speed_data=SpeedData(index=500),
+        speed_data=SpeedData(index=SpeedIndex(value=500)),
         provider_name=DisplayedProvider.OPEN_AI.value,
         supports_tool_calling=False,
         model=Model.GPT_3_5_TURBO_1106,
@@ -143,7 +144,7 @@ class TestFinalModelData:
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/openai.svg",
             release_date=date(2024, 11, 6),
             quality_data=QualityData(index=100),
-            speed_data=SpeedData(index=500),
+            speed_data=SpeedData(index=SpeedIndex(value=500)),
             quality_index=100,
             speed_index=500,
             provider_name=DisplayedProvider.OPEN_AI.value,
@@ -216,7 +217,7 @@ class TestModelDataSpeedIndex:
     @pytest.mark.parametrize(
         "speed_data, expected_index",
         [
-            pytest.param(SpeedData(index=800), 800, id="index"),
+            pytest.param(SpeedData(index=SpeedIndex(value=800)), 800, id="index"),
             pytest.param(
                 SpeedData(equivalent_to=(Model.O3_2025_04_16_MEDIUM_REASONING_EFFORT, 50)),
                 650,
@@ -227,7 +228,7 @@ class TestModelDataSpeedIndex:
     )
     def test_speed_index(self, speed_data: SpeedData, expected_index: int):
         mapping = {
-            Model.O3_2025_04_16_MEDIUM_REASONING_EFFORT: _md(speed_data=SpeedData(index=600)),
+            Model.O3_2025_04_16_MEDIUM_REASONING_EFFORT: _md(speed_data=SpeedData(index=SpeedIndex(value=600))),
         }
         assert speed_data.speed_index(mapping) == expected_index
 
