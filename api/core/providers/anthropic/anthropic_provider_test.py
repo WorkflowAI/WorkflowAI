@@ -62,22 +62,95 @@ def _output_factory(x: str, _: bool):
 
 class TestMaxTokens:
     @pytest.mark.parametrize(
-        ("model", "requested_max_tokens", "expected_max_tokens"),
+        ("model", "requested_max_tokens", "thinking_budget", "expected_max_tokens"),
         [
-            pytest.param(Model.CLAUDE_3_5_HAIKU_LATEST, 10, 10, id="Requested less than default"),
-            pytest.param(Model.CLAUDE_3_7_SONNET_20250219, None, 8192, id="Default"),
-            pytest.param(Model.CLAUDE_3_7_SONNET_20250219, 50_000, 50_000, id="Requested less than max"),
-            pytest.param(Model.CLAUDE_3_7_SONNET_20250219, 100_000, 64_000, id="Requested more than max"),
+            pytest.param(Model.CLAUDE_3_5_HAIKU_LATEST, 10, None, 10, id="Requested less than default, no thinking"),
+            pytest.param(Model.CLAUDE_3_7_SONNET_20250219, None, None, 8192, id="Default, no thinking"),
+            pytest.param(
+                Model.CLAUDE_3_7_SONNET_20250219,
+                50_000,
+                None,
+                50_000,
+                id="Requested less than max, no thinking",
+            ),
+            pytest.param(
+                Model.CLAUDE_3_7_SONNET_20250219,
+                100_000,
+                None,
+                64_000,
+                id="Requested more than max, no thinking",
+            ),
+            pytest.param(Model.CLAUDE_3_7_SONNET_20250219, 10, 500, 510, id="Requested with thinking budget"),
+            pytest.param(Model.CLAUDE_3_7_SONNET_20250219, None, 1000, 9192, id="Default with thinking budget"),
+            pytest.param(
+                Model.CLAUDE_3_7_SONNET_20250219,
+                50_000,
+                2000,
+                52_000,
+                id="Requested with thinking budget less than max",
+            ),
+            pytest.param(
+                Model.CLAUDE_3_7_SONNET_20250219,
+                62_000,
+                3000,
+                64_000,
+                id="Requested with thinking budget exceeds max",
+            ),
+            pytest.param(
+                Model.CLAUDE_3_7_SONNET_20250219,
+                100_000,
+                5000,
+                64_000,
+                id="Both requested and thinking exceed max",
+            ),
         ],
     )
     def test_max_tokens(
         self,
         anthropic_provider: AnthropicProvider,
         model: Model,
-        requested_max_tokens: int,
+        requested_max_tokens: int | None,
+        thinking_budget: int | None,
         expected_max_tokens: int,
     ):
-        assert anthropic_provider._max_tokens(get_model_data(model), requested_max_tokens) == expected_max_tokens
+        assert (
+            anthropic_provider._max_tokens(get_model_data(model), requested_max_tokens, thinking_budget)
+            == expected_max_tokens
+        )
+
+    def test_max_tokens_with_missing_model_data(self, anthropic_provider: AnthropicProvider):
+        """Test that the method handles missing model max tokens by using default."""
+        # Create a mock model data with no max_output_tokens
+        model_data = get_model_data(Model.CLAUDE_3_7_SONNET_20250219)
+        original_max_output_tokens = model_data.max_tokens_data.max_output_tokens
+
+        # Temporarily set max_output_tokens to None to test the fallback
+        model_data.max_tokens_data.max_output_tokens = None
+
+        try:
+            result = anthropic_provider._max_tokens(model_data, 1000, 500)
+            # Should use DEFAULT_MAX_TOKENS (8192) as the ceiling
+            assert result == 1500  # requested 1000 + thinking 500
+        finally:
+            # Restore original value
+            model_data.max_tokens_data.max_output_tokens = original_max_output_tokens
+
+    def test_max_tokens_with_missing_model_data_exceeds_default(self, anthropic_provider: AnthropicProvider):
+        """Test that the method handles missing model max tokens when requested exceeds default."""
+        # Create a mock model data with no max_output_tokens
+        model_data = get_model_data(Model.CLAUDE_3_7_SONNET_20250219)
+        original_max_output_tokens = model_data.max_tokens_data.max_output_tokens
+
+        # Temporarily set max_output_tokens to None to test the fallback
+        model_data.max_tokens_data.max_output_tokens = None
+
+        try:
+            result = anthropic_provider._max_tokens(model_data, 10000, 2000)
+            # Should use DEFAULT_MAX_TOKENS (8192) as the ceiling
+            assert result == 8192  # min(10000 + 2000, 8192) = 8192
+        finally:
+            # Restore original value
+            model_data.max_tokens_data.max_output_tokens = original_max_output_tokens
 
 
 class TestBuildRequest:

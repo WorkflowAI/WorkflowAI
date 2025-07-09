@@ -63,7 +63,12 @@ class AnthropicConfig(BaseModel):
 
 class AnthropicProvider(HTTPXProvider[AnthropicConfig, CompletionResponse]):
     @classmethod
-    def _max_tokens(cls, model_data: FinalModelData, requested_max_tokens: int | None) -> int:
+    def _max_tokens(
+        cls,
+        model_data: FinalModelData,
+        requested_max_tokens: int | None,
+        thinking_budget: int | None,
+    ) -> int:
         model_max_output_tokens = model_data.max_tokens_data.max_output_tokens
         if not model_max_output_tokens:
             logging.warning(
@@ -71,7 +76,11 @@ class AnthropicProvider(HTTPXProvider[AnthropicConfig, CompletionResponse]):
                 extra={"model": model_data.model},
             )
             model_max_output_tokens = DEFAULT_MAX_TOKENS
-        return min(requested_max_tokens or DEFAULT_MAX_TOKENS, model_max_output_tokens)
+
+        total_required_tokens = (requested_max_tokens or DEFAULT_MAX_TOKENS) + (thinking_budget or 0)
+
+        # Make sure whe nnever exceed model_max_output_tokens
+        return min(total_required_tokens, model_max_output_tokens)
 
     @override
     def _build_request(self, messages: list[MessageDeprecated], options: ProviderOptions, stream: bool) -> BaseModel:
@@ -105,7 +114,7 @@ class AnthropicProvider(HTTPXProvider[AnthropicConfig, CompletionResponse]):
             ],
             model=options.model,
             temperature=options.temperature,
-            max_tokens=self._max_tokens(model_data, options.max_tokens) + (thinking_budget or 0),
+            max_tokens=self._max_tokens(model_data, options.max_tokens, thinking_budget),
             stream=stream,
             tool_choice=AntToolChoice.from_domain(options.tool_choice),
             top_p=options.top_p,

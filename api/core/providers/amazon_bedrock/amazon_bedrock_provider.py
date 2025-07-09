@@ -89,6 +89,10 @@ class AmazonBedrockProvider(HTTPXProvider[AmazonBedrockConfig, CompletionRespons
         if options.max_tokens:
             max_tokens = options.max_tokens + (thinking_budget or 0)
 
+            if model_data.max_tokens_data.max_output_tokens:
+                # Make sure we never exceed the model's max output tokens
+                max_tokens = min(max_tokens, model_data.max_tokens_data.max_output_tokens)
+
         return CompletionRequest(
             system=[system_message] if system_message else [],
             messages=user_messages,

@@ -293,7 +293,7 @@ class CompletionRequest(BaseModel):
     tools: list[Tool] | None = None
 
     class Thinking(BaseModel):
-        type: Literal["enabled"]  # 'disabled' is never used
+        type: Literal["enabled"] = "enabled"  # 'disabled' is never used
         budget_tokens: int
 
     thinking: Thinking | None = None
