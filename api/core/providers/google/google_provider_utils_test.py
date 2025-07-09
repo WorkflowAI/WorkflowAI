@@ -1170,7 +1170,7 @@ class TestPrepareGoogleResponseSchema:
             "properties": {
                 "status": {
                     "type": "STRING",
-                    "description": "Possible values: active, inactive",
+                    "description": "Valid values: 'active', 'inactive'",
                 },  # enum removed but values preserved in description
                 "priority": {"type": "STRING"},  # format removed
             },
