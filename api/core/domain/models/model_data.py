@@ -98,9 +98,6 @@ class SpeedData(SourcedBaseModel):
         description="When data is not available for a model, we can use the speed index of an equivalent model",
     )
 
-    # TODO: remove the default value
-    source: str = ""
-
     def _speed_index_from_equivalent_model(self, mapping: dict[Model, Any]) -> int:
         if not self.equivalent_to:
             raise ValueError("Equivalent model is none")
