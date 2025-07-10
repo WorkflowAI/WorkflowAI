@@ -39,6 +39,10 @@ def xai_models() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             supports_tool_calling=True,
             supports_structured_output=True,
             fallback=ModelFallback.default("medium"),
+            speed_data=SpeedData(
+                # TODO: speed data
+                index=SpeedIndex.from_experiment(output_tokens=2300, duration_seconds=42),
+            ),
         ),
         Model.GROK_3_BETA: ModelData(
             display_name="Grok 3 (beta)",
