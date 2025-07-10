@@ -5,12 +5,12 @@ from enum import StrEnum
 # that the higher the provider is in the enum the more
 # changes it will get to be selected
 class Provider(StrEnum):
+    CEREBRAS = "cerebras"  # Cerebras is faster than Groqs
     GROQ = "groq"
     FIREWORKS = "fireworks"
     # Anthropic is the default provider for Anthropic models
     # Bedrock is ok but it throttles instead of returning 429s
     # Which is very inconvenient
-    CEREBRAS = "cerebras"
     ANTHROPIC = "anthropic"
     AMAZON_BEDROCK = "amazon_bedrock"
     # OpenAI is the default provider for OpenAI models

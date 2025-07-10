@@ -18,10 +18,7 @@ from core.providers.base.provider_error import (
     ContentModerationError,
     FailedGenerationError,
     MaxTokensExceededError,
-    ModelDoesNotSupportMode,
     ProviderError,
-    ProviderInternalError,
-    ProviderInvalidFileError,
     StructuredGenerationError,
     UnknownProviderError,
 )
@@ -38,18 +35,26 @@ from core.providers.cerebras.cerebras_domain import (
     CompletionResponse,
     JSONSchemaResponseFormat,
     StreamedResponse,
-    StreamOptions,
-    Tool,
     ToolFunction,
     parse_tool_call_or_raise,
 )
+from core.providers.cerebras.cerebras_domain import (
+    Tool as CerebrasTool,
+)
+from core.providers.cerebras.cerebras_utils import prepare_cerebras_json_schema
 from core.providers.google.google_provider_domain import (
     native_tool_name_to_internal,
 )
-from core.providers.openai._openai_utils import prepare_openai_json_schema
 
 
 class CerebrasProvider(HTTPXProvider[CerebrasConfig, CompletionResponse]):
+    # Mapping from internal model IDs to Cerebras-specific model IDs
+    MODEL_ID_MAPPING = {
+        Model.LLAMA_4_SCOUT_FAST: "llama-4-scout-17b-16e-instruct",
+        Model.LLAMA_3_1_8B: "llama3.1-8b",
+        Model.LLAMA_3_3_70B: "llama-3.3-70b",
+    }
+
     def _response_format(self, options: ProviderOptions, model_data: ModelData):
         if options.output_schema is None:
             return None
@@ -64,39 +69,38 @@ class CerebrasProvider(HTTPXProvider[CerebrasConfig, CompletionResponse]):
         return JSONSchemaResponseFormat(
             json_schema=CerebrasSchema(
                 name=get_unique_schema_name(options.task_name, options.output_schema),
-                json_schema=prepare_openai_json_schema(options.output_schema),
+                json_schema=prepare_cerebras_json_schema(options.output_schema),
             ),
         )
 
     @override
     def _build_request(self, messages: list[MessageDeprecated], options: ProviderOptions, stream: bool) -> BaseModel:
+        # Map internal model ID to Cerebras-specific model ID
+        cerebras_model_id = self.MODEL_ID_MAPPING.get(options.model, options.model)
+
         message: list[CerebrasMessage | CerebrasToolMessage] = []
         for m in messages:
             if m.tool_call_results:
                 message.extend(CerebrasToolMessage.from_domain(m))
             else:
-                message.append(CerebrasMessage.from_domain(m))
+                message.append(CerebrasMessage.from_domain(m, cerebras_model_id))
 
         model_data = get_model_data(options.model)
 
         completion_request = CompletionRequest(
             messages=message,
-            model=options.model,
+            model=cerebras_model_id,
             temperature=options.temperature,
-            max_tokens=options.max_tokens,
+            max_completion_tokens=options.max_tokens,
             stream=stream,
-            stream_options=StreamOptions(include_usage=True) if stream else None,
             response_format=self._response_format(options, model_data),
             tool_choice=CompletionRequest.tool_choice_from_domain(options.tool_choice),
             top_p=options.top_p,
-            presence_penalty=options.presence_penalty,
-            frequency_penalty=options.frequency_penalty,
-            parallel_tool_calls=options.parallel_tool_calls,
         )
 
         if options.enabled_tools is not None and options.enabled_tools != []:
             completion_request.tools = [
-                Tool(
+                CerebrasTool(
                     type="function",
                     function=ToolFunction(
                         name=tool.name,
@@ -107,6 +111,20 @@ class CerebrasProvider(HTTPXProvider[CerebrasConfig, CompletionResponse]):
                 )
                 for tool in options.enabled_tools
             ]
+
+        # Log request details for debugging
+        request_dict = completion_request.model_dump(mode="json", exclude_none=True, by_alias=True)
+        self.logger.info(
+            "Cerebras API request",
+            extra={
+                "model": cerebras_model_id,
+                "stream": stream,
+                "message_count": len(message),
+                "has_tools": bool(completion_request.tools),
+                "has_response_format": bool(completion_request.response_format),
+                "request_payload": request_dict,
+            },
+        )
 
         return completion_request
 
@@ -198,6 +216,22 @@ class CerebrasProvider(HTTPXProvider[CerebrasConfig, CompletionResponse]):
         return super()._unknown_error_message(response)
 
     @override
+    def _handle_error_status_code(self, response: Response):
+        """Override to provide specific error handling for Cerebras API errors."""
+        if response.status_code == 400:
+            self.logger.error(
+                "Cerebras 400 Bad Request - Check request format, model compatibility, and parameters",
+                extra={
+                    "response_text": response.text,
+                    "request_url": str(response.request.url) if response.request else None,
+                    "status_code": response.status_code,
+                },
+            )
+
+        # Call parent implementation for standard error handling
+        super()._handle_error_status_code(response)
+
+    @override
     @classmethod
     def requires_downloading_file(cls, file: File, model: Model) -> bool:
         return False
@@ -286,13 +320,27 @@ class CerebrasProvider(HTTPXProvider[CerebrasConfig, CompletionResponse]):
         messages: list[dict[str, Any]],
         model: Model,
     ) -> float:
-        raise NotImplementedError("Token counting is not implemented for Cerebras")
+        """Return the number of tokens used by a list of messages.
+
+        Uses a similar approach to OpenAI's token counting with boilerplate tokens.
+        """
+        CEREBRAS_BOILERPLATE_TOKENS = 3
+        CEREBRAS_MESSAGE_BOILERPLATE_TOKENS = 4
+
+        num_tokens = CEREBRAS_BOILERPLATE_TOKENS
+
+        for message in messages:
+            domain_message = self.cerebras_message_or_tool_message(message)
+            num_tokens += domain_message.token_count(model)
+            num_tokens += CEREBRAS_MESSAGE_BOILERPLATE_TOKENS
+
+        return num_tokens
 
     def _compute_prompt_image_count(
         self,
         messages: list[dict[str, Any]],
     ) -> int:
-        # Cerebras includes image usage in the prompt token count, so we do not need to add those separately
+        # Cerebras does not support images
         return 0
 
     async def _compute_prompt_audio_token_count(
@@ -317,16 +365,12 @@ class CerebrasProvider(HTTPXProvider[CerebrasConfig, CompletionResponse]):
         return tool_calls
 
     def _invalid_argument_error(self, payload: CerebrasError, response: Response) -> ProviderError:
-        message = payload.error
+        message = payload.message
         lower_msg = message.lower()
         match lower_msg:
-            case m if "maximum prompt length" in m:
+            case m if "please reduce the length of the messages" in m:
                 error_cls = MaxTokensExceededError
-            case m if "response does not contain a valid jpg or png image" in m:
-                error_cls = ProviderInvalidFileError
-            case m if "prefill bootstrap failed for request" in m:
-                error_cls = ProviderInternalError
-            case m if "model does not support formatted output" in m:
+            case m if "JSON schema fields" in m:
                 error_cls = StructuredGenerationError
             case _:
                 error_cls = UnknownProviderError
@@ -334,32 +378,50 @@ class CerebrasProvider(HTTPXProvider[CerebrasConfig, CompletionResponse]):
 
     @override
     def _unknown_error(self, response: Response) -> ProviderError:
+        # Log detailed error information for debugging
+        self.logger.error(
+            "Cerebras API error",
+            extra={
+                "status_code": response.status_code,
+                "response_text": response.text,
+                "response_headers": dict(response.headers),
+                "request_url": str(response.request.url) if response.request else None,
+                "request_method": response.request.method if response.request else None,
+            },
+        )
+
         try:
             payload = CerebrasError.model_validate_json(response.text)
 
-            match payload.code:
-                case "Client specified an invalid argument":
-                    return self._invalid_argument_error(payload, response)
-                case _:
-                    pass
+            # Log parsed error details
+            self.logger.error(
+                "Parsed Cerebras error details",
+                extra={
+                    "error_message": payload.message,
+                    "error_type": payload.type,
+                    "error_param": payload.param,
+                    "error_code": payload.code,
+                },
+            )
 
-            lowed_msg = payload.error.lower()
-
-            if "unsupported content-type encountered when downloading image" in lowed_msg:
-                return ModelDoesNotSupportMode(
-                    msg=payload.error or f"Unknown error status {response.status_code}",
-                    response=response,
-                )
+            # Handle specific error types
+            if payload.type == "invalid_request_error":
+                return self._invalid_argument_error(payload, response)
 
             return UnknownProviderError(
-                msg=payload.error or f"Unknown error status {response.status_code}",
+                msg=payload.message or f"Unknown error status {response.status_code}",
                 response=response,
             )
-        except Exception:
-            self.logger.exception("failed to parse Cerebras error response", extra={"response": response.text})
+        except Exception as e:
+            self.logger.exception(
+                "failed to parse Cerebras error response",
+                extra={
+                    "response": response.text,
+                    "parse_error": str(e),
+                },
+            )
         return UnknownProviderError(msg=f"Unknown error status {response.status_code}", response=response)
 
     @override
     def default_model(self) -> Model:
         return Model.LLAMA_4_SCOUT_FAST
-

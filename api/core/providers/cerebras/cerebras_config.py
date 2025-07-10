@@ -13,4 +13,3 @@ class CerebrasConfig(BaseModel):
 
     def __str__(self):
         return f"CerebrasConfig(url={self.url}, api_key={self.api_key[:4]}****)"
-
