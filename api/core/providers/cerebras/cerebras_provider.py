@@ -64,7 +64,6 @@ class CerebrasProvider(HTTPXProvider[CerebrasConfig, CompletionResponse]):
             # any response format, so we return None when structured generation is disabled
             # to be able to use the structured output
             return None
-            # return JSONResponseFormat()
 
         return JSONSchemaResponseFormat(
             json_schema=CerebrasSchema(
@@ -111,20 +110,6 @@ class CerebrasProvider(HTTPXProvider[CerebrasConfig, CompletionResponse]):
                 )
                 for tool in options.enabled_tools
             ]
-
-        # Log request details for debugging
-        request_dict = completion_request.model_dump(mode="json", exclude_none=True, by_alias=True)
-        self.logger.info(
-            "Cerebras API request",
-            extra={
-                "model": cerebras_model_id,
-                "stream": stream,
-                "message_count": len(message),
-                "has_tools": bool(completion_request.tools),
-                "has_response_format": bool(completion_request.response_format),
-                "request_payload": request_dict,
-            },
-        )
 
         return completion_request
 
@@ -209,27 +194,6 @@ class CerebrasProvider(HTTPXProvider[CerebrasConfig, CompletionResponse]):
     @override
     def _extract_usage(self, response: CompletionResponse) -> LLMUsage | None:
         return response.usage.to_domain() if response.usage else None
-
-    @override
-    def _unknown_error_message(self, response: Response):
-        self.logger.warning("Unknown error message should not be used for Cerebras", extra={"response": response.text})
-        return super()._unknown_error_message(response)
-
-    @override
-    def _handle_error_status_code(self, response: Response):
-        """Override to provide specific error handling for Cerebras API errors."""
-        if response.status_code == 400:
-            self.logger.error(
-                "Cerebras 400 Bad Request - Check request format, model compatibility, and parameters",
-                extra={
-                    "response_text": response.text,
-                    "request_url": str(response.request.url) if response.request else None,
-                    "status_code": response.status_code,
-                },
-            )
-
-        # Call parent implementation for standard error handling
-        super()._handle_error_status_code(response)
 
     @override
     @classmethod
@@ -378,31 +342,8 @@ class CerebrasProvider(HTTPXProvider[CerebrasConfig, CompletionResponse]):
 
     @override
     def _unknown_error(self, response: Response) -> ProviderError:
-        # Log detailed error information for debugging
-        self.logger.error(
-            "Cerebras API error",
-            extra={
-                "status_code": response.status_code,
-                "response_text": response.text,
-                "response_headers": dict(response.headers),
-                "request_url": str(response.request.url) if response.request else None,
-                "request_method": response.request.method if response.request else None,
-            },
-        )
-
         try:
             payload = CerebrasError.model_validate_json(response.text)
-
-            # Log parsed error details
-            self.logger.error(
-                "Parsed Cerebras error details",
-                extra={
-                    "error_message": payload.message,
-                    "error_type": payload.type,
-                    "error_param": payload.param,
-                    "error_code": payload.code,
-                },
-            )
 
             # Handle specific error types
             if payload.type == "invalid_request_error":
