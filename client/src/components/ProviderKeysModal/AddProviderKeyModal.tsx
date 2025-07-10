@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/Input';
 import { displayErrorToaster, displaySuccessToaster } from '@/components/ui/Sonner';
 import { RequestError } from '@/lib/api/client';
 import { ProviderConfig } from '@/store/organization_settings';
+import { TenantID } from '@/types/aliases';
 import { Provider, ProviderSettings } from '@/types/workflowAI';
 import { TenantData } from '@/types/workflowAI';
 import { AI_PROVIDERS_METADATA } from '../AIModelsCombobox/utils';
@@ -205,19 +206,23 @@ type AddProviderKeyModalProps = {
   organizationSettings: TenantData | undefined;
   open: boolean;
   onClose: (keyWasCreated: boolean) => void;
-  addProviderConfig: (provider: ProviderConfig) => Promise<void>;
+  addProviderConfig: (provider: ProviderConfig, tenant: TenantID | undefined) => Promise<void>;
 };
 
 export function AddProviderKeyModal(props: AddProviderKeyModalProps) {
   const { currentProvider, organizationSettings, open, onClose, addProviderConfig } = props;
+  const tenant = organizationSettings?.slug as TenantID;
 
   const onSetProviderConfig = useCallback(
     async (provider: Provider, value: Record<string, unknown>) => {
       try {
-        await addProviderConfig({
-          provider,
-          ...value,
-        });
+        await addProviderConfig(
+          {
+            provider,
+            ...value,
+          },
+          tenant
+        );
         displaySuccessToaster('Provider Key Added');
         onClose(true);
       } catch (e: unknown) {
@@ -228,7 +233,7 @@ export function AddProviderKeyModal(props: AddProviderKeyModalProps) {
         throw e;
       }
     },
-    [addProviderConfig, onClose]
+    [addProviderConfig, onClose, tenant]
   );
 
   const onOpenChange = useCallback(

@@ -4,7 +4,6 @@ import { CircularProgress } from '@/components/ui/CircularProgress';
 import { formatCurrency } from '@/lib/formatters/numberFormatters';
 import { signUpRoute } from '@/lib/routeFormatter';
 import { useOrFetchOrganizationSettings } from '@/store';
-import { useOrganizationSettings } from '@/store/organization_settings';
 import { ManageCards } from './ManageCards/ManageCards';
 
 type CreditsSectionProps = {
@@ -13,13 +12,11 @@ type CreditsSectionProps = {
 
 export function CreditsSection(props: CreditsSectionProps) {
   const { isSignedIn } = props;
-  const { organizationSettings } = useOrFetchOrganizationSettings(30000);
-
-  const fetchOrganizationSettings = useOrganizationSettings((state) => state.fetchOrganizationSettings);
+  const { organizationSettings, fetchSettings } = useOrFetchOrganizationSettings(30000);
 
   const onHovering = useCallback(() => {
-    fetchOrganizationSettings();
-  }, [fetchOrganizationSettings]);
+    fetchSettings();
+  }, [fetchSettings]);
 
   const addedCredits = organizationSettings?.added_credits_usd;
   const currentCredits = organizationSettings?.current_credits_usd;

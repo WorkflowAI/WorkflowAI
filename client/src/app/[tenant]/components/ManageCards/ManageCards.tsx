@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { STRIPE_PUBLISHABLE_KEY } from '@/lib/constants';
 import { useParsedSearchParams, useRedirectWithParams } from '@/lib/queryString';
 import { useOrFetchPayments, usePayments } from '@/store/payments';
+import { TenantID } from '@/types/aliases';
 import { TenantData } from '@/types/workflowAI';
 import { ManageCardsContent } from './ManageCardsContent';
 import { ManageCardsTooltipContent } from './ManageCardsTooltipContent';
@@ -78,6 +79,8 @@ function ManageCardsInner(props: ManageCardsProps) {
     setAmountToAdd(undefined);
   }, []);
 
+  const tenantId = organizationSettings?.slug as TenantID | undefined;
+
   useEffect(() => {
     if (isOpen) {
       reset();
@@ -118,15 +121,15 @@ function ManageCardsInner(props: ManageCardsProps) {
   }, [addCredits, amountToAdd, reset, setIsOpen]);
 
   const onDeletePaymentMethod = useCallback(async () => {
-    await deletePaymentMethod();
+    await deletePaymentMethod(tenantId);
     reset();
-  }, [deletePaymentMethod, reset]);
+  }, [deletePaymentMethod, reset, tenantId]);
 
   const onUpdatePaymentMethod = useCallback(async () => {
-    await deletePaymentMethod();
+    await deletePaymentMethod(tenantId);
     reset();
     setShowAddPaymentMethod(true);
-  }, [deletePaymentMethod, reset, setShowAddPaymentMethod]);
+  }, [deletePaymentMethod, reset, setShowAddPaymentMethod, tenantId]);
 
   const onDismissForcedTooltip = useCallback(
     (event: React.MouseEvent) => {

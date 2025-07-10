@@ -18,6 +18,32 @@ from core.domain.reasoning_effort import ReasoningEffort
 
 def xai_models() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
     return {
+        Model.GROK_4_0709: ModelData(
+            display_name="Grok 4 (0709)",
+            supports_json_mode=True,
+            supports_input_image=True,
+            supports_input_pdf=True,
+            supports_input_audio=False,
+            max_tokens_data=MaxTokensData(
+                max_tokens=256_000,
+                source="https://docs.x.ai/docs/models/grok-4-0709",
+            ),
+            icon_url="https://workflowai.blob.core.windows.net/workflowai-public/xai.svg",
+            release_date=date(2025, 7, 9),
+            quality_data=QualityData(
+                mmlu_pro=87.0,
+                gpqa_diamond=88.0,
+                source="https://x.com/ArtificialAnlys/status/1943166841150644622",
+            ),
+            provider_name=DisplayedProvider.X_AI.value,
+            supports_tool_calling=True,
+            supports_structured_output=True,
+            fallback=ModelFallback.default("medium"),
+            speed_data=SpeedData(
+                # TODO: speed data
+                index=SpeedIndex.from_experiment(output_tokens=2300, duration_seconds=42),
+            ),
+        ),
         Model.GROK_3_BETA: ModelData(
             display_name="Grok 3 (beta)",
             supports_json_mode=True,

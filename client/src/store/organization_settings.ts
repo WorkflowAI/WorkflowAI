@@ -2,6 +2,7 @@ import { produce } from 'immer';
 import { create } from 'zustand';
 import { client } from '@/lib/api';
 import { JsonSchema } from '@/types';
+import { TenantID } from '@/types/aliases';
 import { Provider, ProviderSettings, TenantData } from '../types/workflowAI/models';
 import { rootTenantPath } from './utils';
 
@@ -10,33 +11,36 @@ export type ProviderConfig = {
 };
 
 interface OrganizationSettingsState {
-  settings: TenantData | undefined;
+  settingsForTenant: Record<TenantID, TenantData>;
   isLoading: boolean;
   isInitialized: boolean;
-  fetchOrganizationSettings: () => Promise<void>;
-  addProviderConfig: (config: ProviderConfig) => Promise<void>;
-  deleteProviderConfig: (configID: string) => Promise<void>;
+  fetchOrganizationSettings: (tenant: TenantID | undefined) => Promise<void>;
+  addProviderConfig: (config: ProviderConfig, tenant: TenantID | undefined) => Promise<void>;
+  deleteProviderConfig: (configID: string, tenant: TenantID | undefined) => Promise<void>;
   isLoadingProviderSchemas: boolean;
   providerSchemas: Record<Provider, JsonSchema> | undefined;
   fetchProviderSchemas: () => Promise<void>;
 }
 
 export const useOrganizationSettings = create<OrganizationSettingsState>((set) => ({
-  settings: undefined,
+  settingsForTenant: {},
   isLoading: false,
   isInitialized: false,
-  fetchOrganizationSettings: async () => {
+
+  fetchOrganizationSettings: async (tenant: TenantID | undefined) => {
+    const tenantToUse = tenant ?? ('_' as TenantID);
+
     set(
       produce((state: OrganizationSettingsState) => {
         state.isLoading = true;
       })
     );
     try {
-      const settings = await client.get<TenantData>(`${rootTenantPath()}/organization/settings`);
+      const settings = await client.get<TenantData>(`${rootTenantPath(tenantToUse)}/organization/settings`);
 
       set(
         produce((state: OrganizationSettingsState) => {
-          state.settings = settings;
+          state.settingsForTenant[tenantToUse] = settings;
         })
       );
     } finally {
@@ -48,35 +52,45 @@ export const useOrganizationSettings = create<OrganizationSettingsState>((set) =
       );
     }
   },
-  addProviderConfig: async (config: ProviderConfig) => {
+
+  addProviderConfig: async (config: ProviderConfig, tenant: TenantID | undefined) => {
+    const tenantToUse = tenant ?? ('_' as TenantID);
+
     const providerSettings = await client.post<ProviderConfig, ProviderSettings>(
-      `${rootTenantPath()}/organization/settings/providers`,
+      `${rootTenantPath(tenantToUse)}/organization/settings/providers`,
       config
     );
     set(
       produce((state: OrganizationSettingsState) => {
-        if (state.settings === undefined) {
-          state.settings = { providers: [] };
+        if (state.settingsForTenant[tenantToUse] === undefined) {
+          state.settingsForTenant[tenantToUse] = { providers: [] };
         }
-        state.settings.providers?.push(providerSettings);
+        state.settingsForTenant[tenantToUse].providers?.push(providerSettings);
         return state;
       })
     );
   },
-  deleteProviderConfig: async (configID: string) => {
-    await client.del(`${rootTenantPath()}/organization/settings/providers/${configID}`);
+
+  deleteProviderConfig: async (configID: string, tenant: TenantID | undefined) => {
+    const tenantToUse = tenant ?? ('_' as TenantID);
+
+    await client.del(`${rootTenantPath(tenantToUse)}/organization/settings/providers/${configID}`);
     set(
       produce((state: OrganizationSettingsState) => {
-        if (state.settings === undefined) {
+        if (state.settingsForTenant[tenantToUse] === undefined) {
           return state;
         }
-        state.settings.providers = state.settings.providers?.filter((provider) => provider.id !== configID);
+        state.settingsForTenant[tenantToUse].providers = state.settingsForTenant[tenantToUse].providers?.filter(
+          (provider) => provider.id !== configID
+        );
         return state;
       })
     );
   },
+
   providerSchemas: undefined,
   isLoadingProviderSchemas: false,
+
   fetchProviderSchemas: async () => {
     set({ isLoadingProviderSchemas: true });
     try {
