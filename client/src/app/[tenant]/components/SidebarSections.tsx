@@ -1,6 +1,8 @@
 import {
   ArrowSwapFilled,
   ArrowSwapRegular,
+  BeakerFilled,
+  BeakerRegular,
   ClipboardTaskListLtr20Filled,
   ClipboardTaskListLtr20Regular,
   CloudFilled,
@@ -34,6 +36,7 @@ import {
   taskBenchmarksRoute,
   taskCostRoute,
   taskDeploymentsRoute,
+  taskExperimentsRoute,
   taskFeedbackRoute,
   taskReviewsRoute,
   taskRunsRoute,
@@ -137,6 +140,17 @@ export function generateSections(showActivityIndicator: boolean, isInDemoMode: b
       title: 'COMPARE',
       showActivityIndicator: false,
       items: [
+        {
+          title: 'Experiments',
+          icon: <BeakerRegular className={iconClassName} />,
+          iconSelected: <BeakerFilled className={iconClassName} />,
+          routeBuilder: taskExperimentsRoute,
+          // Should match /tasks/:taskId/:taskSchemaId/experiments
+          matchRegex: pageRegexMap[Page.Experiments],
+          isEnabled: true,
+          isHidden: false,
+          style: SectionItemStyle.Link,
+        },
         {
           title: 'Side by Side',
           icon: <DataUsageRegular className={iconClassName} />,

@@ -7,6 +7,7 @@ import { ObjectKeyType } from '@/lib/schemaUtils';
 import { extractSchemaRefName, getSubSchema } from '@/types';
 import { EvaluationButtonView } from './EvaluationButtonView';
 import { FieldDescriptionExamples } from './FieldDescriptionExamples';
+import { FieldViewerAnnotationHoverContainer } from './FieldViewerAnnotationHoverContainer';
 import { FieldViewerContent } from './FieldViewerContent';
 import { FieldViewerError } from './FieldViewerError';
 import { FieldViewerLabel } from './FieldViewerLabel';
@@ -174,19 +175,21 @@ export function FieldViewer(props: FieldViewerProps) {
               onMouseEnter={() => setIsHovering(true)}
               onMouseLeave={() => setIsHovering(false)}
             >
-              {fieldViewerLabel}
-              {rest.showDescriptionExamples && (
-                <FieldDescriptionExamples
-                  schema={subSchema}
-                  fieldType={subSchemaFieldType}
-                  className={cx('w-full px-3 py-2', {
-                    'pl-7': subSchemaFieldType === 'array',
-                    'bg-white border-l border-r border-gray-200': subSchemaFieldType === 'object',
-                  })}
-                  showExamples={showExamples}
-                  onShowEditDescriptionModal={rest.onShowEditDescriptionModal}
-                />
-              )}
+              <FieldViewerAnnotationHoverContainer className='flex-1 flex flex-col w-full items-start'>
+                {fieldViewerLabel}
+                {rest.showDescriptionExamples && (
+                  <FieldDescriptionExamples
+                    schema={subSchema}
+                    fieldType={subSchemaFieldType}
+                    className={cx('w-full px-3 py-2', {
+                      'pl-7': subSchemaFieldType === 'array',
+                      'bg-white border-l border-r border-gray-200': subSchemaFieldType === 'object',
+                    })}
+                    showExamples={showExamples}
+                    onShowEditDescriptionModal={rest.onShowEditDescriptionModal}
+                  />
+                )}
+              </FieldViewerAnnotationHoverContainer>
               {isValueVisible && (
                 <FieldViewerContent
                   value={fieldValue}
@@ -216,7 +219,7 @@ export function FieldViewer(props: FieldViewerProps) {
               )}
             </div>
           ) : (
-            <div className='flex-1 flex flex-col w-full'>
+            <FieldViewerAnnotationHoverContainer className='flex-1 flex flex-col w-full'>
               <div className='flex-1 flex flex-row w-full items-center'>
                 {fieldViewerLabel}
                 {isValueVisible && (
@@ -274,7 +277,7 @@ export function FieldViewer(props: FieldViewerProps) {
                   onShowEditDescriptionModal={rest.onShowEditDescriptionModal}
                 />
               )}
-            </div>
+            </FieldViewerAnnotationHoverContainer>
           )}
         </div>
       </div>

@@ -103,6 +103,9 @@ export const taskReviewsRoute = (tenant: TenantID, taskId: TaskID, taskSchemaId:
 export const taskSideBySideRoute = (tenant: TenantID, taskId: TaskID, taskSchemaId: TaskSchemaID, params?: Params) =>
   `${taskSchemaRoute(tenant, taskId, taskSchemaId)}/side-by-side${stringifyQueryParams(params)}`;
 
+export const taskExperimentsRoute = (tenant: TenantID, taskId: TaskID, taskSchemaId: TaskSchemaID, params?: Params) =>
+  `${taskSchemaRoute(tenant, taskId, taskSchemaId)}/experiments${stringifyQueryParams(params)}`;
+
 export const taskFeedbackRoute = (tenant: TenantID, taskId: TaskID, taskSchemaId: TaskSchemaID, params?: Params) =>
   `${taskSchemaRoute(tenant, taskId, taskSchemaId)}/feedback${stringifyQueryParams(params)}`;
 

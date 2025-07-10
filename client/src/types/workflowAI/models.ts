@@ -3034,3 +3034,25 @@ export type OpenAIProxyChatCompletionRequest = {
   reasoning?: OpenAIProxyReasoning | null;
   [key: string]: unknown;
 };
+
+export type Experiment = {
+  id: string;
+  title?: string | null;
+  description?: string | null;
+  prompt?: string | null;
+  result?: string | null;
+  output_schema?: JsonSchema | null;
+};
+
+export type ExperimentSummary = {
+  id: string;
+  name?: string | null;
+};
+
+export type Annotation = {
+  id: string;
+  comment: string | null;
+  type: 'approval' | 'question' | 'issue' | 'suggestion';
+  timestamp: string;
+  user: string;
+};

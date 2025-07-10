@@ -30,6 +30,8 @@ const buttonVariants = cva(
           'text-gray-900 border-gray-300 shadow-sm border border-input bg-background hover:bg-gray-100 disabled:bg-gray-100 disabled:text-gray-400',
         newDesignIndigo:
           'text-white shadow-sm border-none bg-custom-indigo-gradient hover:bg-custom-indigo-gradient-hover disabled:bg-custom-indigo-gradient disabled:text-white disabled:opacity-50',
+        newDesignDark:
+          'text-white shadow-sm border-none bg-gray-800 hover:bg-gray-600 disabled:bg-gray-400 text-white disabled:opacity-50',
         newDesignGray:
           'text-gray-800 border-none bg-gray-100 hover:bg-gray-200 disabled:bg-gray-100 disabled:text-gray-400 disabled:opacity-50',
         newDesignText: 'text-gray-900 hover:text-gray-500 disabled:text-gray-400',

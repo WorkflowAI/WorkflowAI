@@ -55,6 +55,7 @@ type ReadonlyValueProps = Pick<
   | 'showDescriptionExamples'
   | 'hideCopyValue'
   | 'supportTextWrapping'
+  | 'supportAnnotations'
 > & {
   icon?: React.ReactNode;
 };

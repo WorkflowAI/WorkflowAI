@@ -5,12 +5,13 @@ import { TaskID, TaskSchemaID, TenantID } from '@/types/aliases';
 import { TaskSchemaParams, tasksRoute } from '../routeFormatter';
 
 export function useTaskParams() {
-  const { tenant, taskId, taskSchemaId, taskRunId, exampleId, mode } = useParams<{
+  const { tenant, taskId, taskSchemaId, taskRunId, exampleId, experimentId, mode } = useParams<{
     tenant?: TenantID;
     taskId?: TaskID;
     taskSchemaId?: TaskSchemaID;
     taskRunId?: string;
     exampleId?: string;
+    experimentId?: string;
     mode?: string;
   }>();
   // Forcing a default tenant value of '_' to avoid undefined tenant values
@@ -22,6 +23,7 @@ export function useTaskParams() {
     taskSchemaId,
     taskRunId,
     exampleId,
+    experimentId,
     mode,
   };
 }

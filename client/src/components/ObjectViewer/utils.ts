@@ -42,6 +42,7 @@ export interface ValueViewerProps<T, S extends JsonValueSchema = JsonValueSchema
     onProgress?: (progress: number) => void
   ) => Promise<string | undefined>;
   hideCopyValue?: boolean;
+  supportAnnotations?: boolean;
 }
 
 export function stringifyNil(value: string | number | boolean | null | undefined) {
