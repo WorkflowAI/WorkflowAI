@@ -102,6 +102,15 @@ class ToolResultContent(BaseModel):
         }
 
 
+class ThinkingContent(BaseModel):
+    type: Literal["thinking"]
+    thinking: str
+    signature: str | None = None
+
+    def to_standard(self) -> TextContentDict:
+        return {"type": "text", "text": self.thinking}
+
+
 class ErrorDetails(BaseModel):
     message: str | None = None
     code: str | None = None
@@ -162,7 +171,7 @@ class ErrorDetails(BaseModel):
 
 class AnthropicMessage(BaseModel):
     role: Literal["user", "assistant"]
-    content: list[TextContent | DocumentContent | ImageContent | ToolUseContent | ToolResultContent]
+    content: list[TextContent | DocumentContent | ImageContent | ToolUseContent | ToolResultContent | ThinkingContent]
 
     @classmethod
     def content_from_domain(cls, file: File):
@@ -195,7 +204,9 @@ class AnthropicMessage(BaseModel):
     def from_domain(cls, message: MessageDeprecated):
         role = _role_to_map[message.role]
 
-        content: list[TextContent | DocumentContent | ImageContent | ToolUseContent | ToolResultContent] = []
+        content: list[
+            TextContent | DocumentContent | ImageContent | ToolUseContent | ToolResultContent | ThinkingContent
+        ] = []
         if message.content:
             content.append(TextContent(type="text", text=message.content))
 
@@ -281,6 +292,12 @@ class CompletionRequest(BaseModel):
     # https://docs.anthropic.com/en/api/messages#body-tools
     tools: list[Tool] | None = None
 
+    class Thinking(BaseModel):
+        type: Literal["enabled"] = "enabled"  # 'disabled' is never used
+        budget_tokens: int
+
+    thinking: Thinking | None = None
+
 
 class Usage(BaseModel):
     input_tokens: int | None = None
@@ -298,8 +315,14 @@ class ContentBlock(BaseModel):
     text: str
 
 
+class ThinkingBlock(BaseModel):
+    type: Literal["thinking"]
+    thinking: str
+    signature: str | None = None
+
+
 class CompletionResponse(BaseModel):
-    content: list[ContentBlock | ToolUseContent]
+    content: list[ContentBlock | ToolUseContent | ThinkingContent]
     usage: Usage
     stop_reason: str | None = None
 
@@ -309,9 +332,14 @@ class TextDelta(BaseModel):
     text: str
 
 
-class DeltaMessage(BaseModel):
-    type: Literal["text_delta"]
-    text: str
+class ThinkingDelta(BaseModel):
+    type: Literal["thinking_delta"]
+    thinking: str
+
+
+class SignatureDelta(BaseModel):
+    type: Literal["signature_delta"]
+    signature: str
 
 
 class ContentBlockDelta(BaseModel):
@@ -380,9 +408,9 @@ class CompletionChunk(BaseModel):
     # For message_start
     message: Optional[dict[str, Any]] = None
     # For content_block_start
-    content_block: Optional[ContentBlock | ToolUse] = None
+    content_block: Optional[ContentBlock | ToolUse | ThinkingBlock] = None
     # For content_block_delta
-    delta: Optional[TextDelta | StopReasonDelta | InputJsonDelta] = None
+    delta: Optional[TextDelta | StopReasonDelta | InputJsonDelta | ThinkingDelta | SignatureDelta] = None
     # For message_delta
     usage: Optional[Usage] = None
     index: Optional[int] = None
@@ -391,8 +419,13 @@ class CompletionChunk(BaseModel):
 
     def extract_delta(self) -> str:
         """Extract the text delta from the chunk"""
-        if self.type == "content_block_delta" and isinstance(self.delta, TextDelta):
-            return self.delta.text
+        if self.type == "content_block_delta":
+            if isinstance(self.delta, TextDelta):
+                return self.delta.text
+            if isinstance(self.delta, ThinkingDelta):
+                return self.delta.thinking
+            if isinstance(self.delta, SignatureDelta):
+                return ""  # Signature deltas don't contribute to text output
         if self.type == "message_delta" and isinstance(self.delta, StopReasonDelta):
             return self.delta.stop_reason or self.delta.stop_sequence or ""
         return ""

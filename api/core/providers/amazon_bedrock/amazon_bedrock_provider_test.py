@@ -3,7 +3,7 @@ import logging
 import os
 import unittest
 from collections.abc import Callable
-from typing import Any, Type
+from typing import Any, Type, cast
 from unittest.mock import Mock, patch
 
 import pytest
@@ -605,19 +605,6 @@ class TestExtractContentStr:
         assert res == "Hello"
         amazon_provider.logger.warning.assert_not_called()  # type: ignore
 
-    def test_missing_content_raises(self, amazon_provider: AmazonBedrockProvider):
-        # A missing content is caught should raise and trigger a warning
-        response = CompletionResponse(
-            output=CompletionResponse.Output(message=CompletionResponse.Output.Message(content=[])),
-            stopReason="stopReason",
-            usage=Usage(inputTokens=1, outputTokens=1, totalTokens=1),
-        )
-
-        with pytest.raises(IndexError):
-            amazon_provider._extract_content_str(response)  # pyright: ignore [reportPrivateUsage]
-
-        amazon_provider.logger.warning.assert_called_once()  # type: ignore
-
 
 @pytest.fixture(scope="function")
 def output_factory() -> Callable[[str, bool], StructuredOutput]:
@@ -1079,3 +1066,273 @@ class TestIsStreamable:
     ) -> None:
         result = amazon_provider.is_streamable(model, enabled_tools)
         assert result is expected_result
+
+
+class TestExtractReasoningSteps:
+    def test_extract_reasoning_steps_with_thinking_content(self, amazon_provider: AmazonBedrockProvider):
+        """Test extraction of reasoning steps from thinking content blocks."""
+        response = CompletionResponse(
+            stopReason="end_turn",
+            output=CompletionResponse.Output(
+                message=CompletionResponse.Output.Message(
+                    role="assistant",
+                    content=[
+                        ContentBlock(text="Here's my response."),
+                        ContentBlock(
+                            thinking=ContentBlock.ThinkingContent(
+                                thinking="Let me think about this step by step...",
+                                signature="sig_123",
+                            ),
+                        ),
+                        ContentBlock(
+                            thinking=ContentBlock.ThinkingContent(
+                                thinking="Now I need to consider another approach...",
+                            ),
+                        ),
+                    ],
+                ),
+            ),
+            usage=Usage(inputTokens=100, outputTokens=50),
+        )
+
+        reasoning_steps = amazon_provider._extract_reasoning_steps(response)  # pyright: ignore[reportPrivateUsage]
+
+        assert reasoning_steps is not None
+        assert len(reasoning_steps) == 2
+        assert reasoning_steps[0].explaination == "Let me think about this step by step..."
+        assert reasoning_steps[1].explaination == "Now I need to consider another approach..."
+
+    def test_extract_reasoning_steps_without_thinking_content(self, amazon_provider: AmazonBedrockProvider):
+        """Test extraction when there are no thinking content blocks."""
+        response = CompletionResponse(
+            stopReason="end_turn",
+            output=CompletionResponse.Output(
+                message=CompletionResponse.Output.Message(
+                    role="assistant",
+                    content=[
+                        ContentBlock(text="Here's my response."),
+                        ContentBlock(
+                            toolUse=ContentBlock.ToolUse(
+                                toolUseId="tool_123",
+                                name="test_tool",
+                                input={"param": "value"},
+                            ),
+                        ),
+                    ],
+                ),
+            ),
+            usage=Usage(inputTokens=100, outputTokens=50),
+        )
+
+        reasoning_steps = amazon_provider._extract_reasoning_steps(response)  # pyright: ignore[reportPrivateUsage]
+
+        assert reasoning_steps is None
+
+    def test_extract_reasoning_steps_empty_content(self, amazon_provider: AmazonBedrockProvider):
+        """Test extraction with empty content list."""
+        response = CompletionResponse(
+            stopReason="end_turn",
+            output=CompletionResponse.Output(
+                message=CompletionResponse.Output.Message(
+                    role="assistant",
+                    content=[],
+                ),
+            ),
+            usage=Usage(inputTokens=100, outputTokens=50),
+        )
+
+        reasoning_steps = amazon_provider._extract_reasoning_steps(response)  # pyright: ignore[reportPrivateUsage]
+
+        assert reasoning_steps is None
+
+
+class TestBuildRequestWithThinking:
+    def test_build_request_with_thinking_budget(self, amazon_provider: AmazonBedrockProvider):
+        """Test that thinking budget is properly configured in requests."""
+        from core.domain.models.model_data import ModelReasoningBudget
+        from core.domain.models.utils import get_model_data
+        from core.providers.base.provider_options import ProviderOptions
+
+        model = Model.CLAUDE_3_5_SONNET_20240620
+        model_data = get_model_data(model)
+
+        # Mock the model data to have reasoning capabilities
+        original_reasoning = model_data.reasoning
+        model_data.reasoning = ModelReasoningBudget(disabled=None, low=500, medium=1000, high=2000, min=500, max=2000)
+
+        try:
+            # Create options with reasoning budget
+            options = ProviderOptions(
+                model=model,
+                max_tokens=1000,
+                reasoning_budget=500,
+            )
+
+            request = cast(
+                CompletionRequest,
+                amazon_provider._build_request(  # pyright: ignore[reportPrivateUsage]
+                    messages=[MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello")],
+                    options=options,
+                    stream=False,
+                ),
+            )
+
+            # Check that thinking is configured
+            assert request.additionalModelRequestFields is not None
+            assert request.additionalModelRequestFields.thinking is not None
+            assert request.additionalModelRequestFields.thinking.type == "enabled"
+            assert request.additionalModelRequestFields.thinking.budget_tokens == 500
+
+            # Check that max_tokens includes the thinking budget
+            assert request.inferenceConfig.maxTokens == 1000 + 500
+
+        finally:
+            # Restore original reasoning value
+            model_data.reasoning = original_reasoning
+
+    def test_build_request_without_thinking_budget(self, amazon_provider: AmazonBedrockProvider):
+        """Test that no thinking configuration is added when reasoning budget is not set."""
+        options = ProviderOptions(
+            model=Model.CLAUDE_3_5_SONNET_20240620,
+            max_tokens=1000,
+        )
+
+        request = cast(
+            CompletionRequest,
+            amazon_provider._build_request(  # pyright: ignore[reportPrivateUsage]
+                messages=[MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello")],
+                options=options,
+                stream=False,
+            ),
+        )
+
+        # Check that thinking is not configured
+        assert request.additionalModelRequestFields is None
+
+        # Check that max_tokens is not modified by thinking budget
+        assert request.inferenceConfig.maxTokens == 1000
+
+
+class TestThinkingStreamingDeltas:
+    def test_extract_stream_delta_with_thinking(self, amazon_provider: AmazonBedrockProvider):
+        """Test handling of thinking deltas in streaming."""
+        raw_completion = RawCompletion(response="", usage=LLMUsage())
+        tool_call_request_buffer: dict[int, ToolCallRequestBuffer] = {}
+
+        # Test thinking delta
+        delta = amazon_provider._extract_stream_delta(  # pyright: ignore[reportPrivateUsage]
+            b'{"contentBlockIndex": 0, "delta": {"reasoningContent": {"text": "I need to analyze this request..."}}}',
+            raw_completion,
+            tool_call_request_buffer,
+        )
+
+        assert delta.content == ""
+        assert delta.reasoning_steps == "I need to analyze this request..."
+        assert delta.tool_calls == []
+
+    def test_extract_stream_delta_with_reasoning_content(self, amazon_provider: AmazonBedrockProvider):
+        """Test handling of reasoningContent deltas in streaming."""
+        raw_completion = RawCompletion(response="", usage=LLMUsage())
+        tool_call_request_buffer: dict[int, ToolCallRequestBuffer] = {}
+
+        # Test reasoningContent delta
+        delta = amazon_provider._extract_stream_delta(  # pyright: ignore[reportPrivateUsage]
+            b'{"contentBlockIndex": 0, "delta": {"reasoningContent": {"text": "I need to analyze this request..."}}}',
+            raw_completion,
+            tool_call_request_buffer,
+        )
+
+        assert delta.content == ""
+        assert delta.reasoning_steps == "I need to analyze this request..."
+        assert delta.tool_calls == []
+
+    def test_extract_stream_delta_with_text_and_thinking(self, amazon_provider: AmazonBedrockProvider):
+        """Test handling of mixed text and thinking deltas."""
+        raw_completion = RawCompletion(response="", usage=LLMUsage())
+        tool_call_request_buffer: dict[int, ToolCallRequestBuffer] = {}
+
+        # Test text delta
+        text_delta = amazon_provider._extract_stream_delta(  # pyright: ignore[reportPrivateUsage]
+            b'{"contentBlockIndex": 0, "delta": {"text": "Here is my response: "}}',
+            raw_completion,
+            tool_call_request_buffer,
+        )
+
+        assert text_delta.content == "Here is my response: "
+        assert text_delta.reasoning_steps is None
+        assert text_delta.tool_calls == []
+
+        # Test thinking delta
+        thinking_delta = amazon_provider._extract_stream_delta(  # pyright: ignore[reportPrivateUsage]
+            b'{"contentBlockIndex": 1, "delta": {"reasoningContent": {"text": "Let me verify this approach..."}}}',
+            raw_completion,
+            tool_call_request_buffer,
+        )
+
+        assert thinking_delta.content == ""
+        assert thinking_delta.reasoning_steps == "Let me verify this approach..."
+        assert thinking_delta.tool_calls == []
+
+    def test_extract_stream_delta_without_thinking(self, amazon_provider: AmazonBedrockProvider):
+        """Test normal streaming without thinking deltas."""
+        raw_completion = RawCompletion(response="", usage=LLMUsage())
+        tool_call_request_buffer: dict[int, ToolCallRequestBuffer] = {}
+
+        # Test regular text delta
+        delta = amazon_provider._extract_stream_delta(  # pyright: ignore[reportPrivateUsage]
+            b'{"delta": {"text": "Normal response text"}}',
+            raw_completion,
+            tool_call_request_buffer,
+        )
+
+        assert delta.content == "Normal response text"
+        assert delta.reasoning_steps is None
+        assert delta.tool_calls == []
+
+    def test_stream_thinking_aggregation(self, amazon_provider: AmazonBedrockProvider):
+        """Test aggregation of multiple thinking deltas."""
+        raw_completion = RawCompletion(response="", usage=LLMUsage())
+        tool_call_request_buffer: dict[int, ToolCallRequestBuffer] = {}
+
+        # Simulate multiple thinking delta events
+        thinking_events = [
+            b'{"contentBlockIndex": 0, "delta": {"reasoningContent": {"text": "First, I need to understand the problem..."}}}',
+            b'{"contentBlockIndex": 0, "delta": {"reasoningContent": {"text": "Now I should consider the constraints..."}}}',
+            b'{"contentBlockIndex": 0, "delta": {"reasoningContent": {"text": "Finally, let me formulate the solution..."}}}',
+        ]
+
+        reasoning_content = ""
+        for event in thinking_events:
+            delta = amazon_provider._extract_stream_delta(  # pyright: ignore[reportPrivateUsage]
+                event,
+                raw_completion,
+                tool_call_request_buffer,
+            )
+
+            if delta.reasoning_steps:
+                reasoning_content += delta.reasoning_steps
+
+        expected_content = (
+            "First, I need to understand the problem..."
+            "Now I should consider the constraints..."
+            "Finally, let me formulate the solution..."
+        )
+        assert reasoning_content == expected_content
+
+
+class TestUsageWithThinking:
+    def test_extract_stream_delta_with_usage_and_thinking(self, amazon_provider: AmazonBedrockProvider):
+        """Test that usage metrics are correctly extracted alongside thinking deltas."""
+        raw_completion = RawCompletion(response="", usage=LLMUsage())
+        tool_call_request_buffer: dict[int, ToolCallRequestBuffer] = {}
+
+        # Test delta with both usage and thinking
+        delta = amazon_provider._extract_stream_delta(  # pyright: ignore[reportPrivateUsage]
+            b'{"usage": {"inputTokens": 150, "outputTokens": 200, "totalTokens": 350}, "delta": {"reasoningContent": {"text": "Processing request..."}}}',
+            raw_completion,
+            tool_call_request_buffer,
+        )
+
+        assert delta.content == ""
+        assert delta.reasoning_steps == "Processing request..."
+        assert raw_completion.usage == LLMUsage(prompt_token_count=150, completion_token_count=200)

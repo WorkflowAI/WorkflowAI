@@ -9,6 +9,8 @@ from core.domain.models.model_data import (
     ModelFallback,
     ModelReasoningBudget,
     QualityData,
+    SpeedData,
+    SpeedIndex,
 )
 from core.domain.models.models import Model
 from core.domain.reasoning_effort import ReasoningEffort
@@ -55,6 +57,9 @@ def xai_models() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
                 gpqa=73.7,
                 source="https://www.vals.ai/models/grok_grok-3-fast-beta",
             ),
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=2300, duration_seconds=42),
+            ),
             provider_name=DisplayedProvider.X_AI.value,
             supports_tool_calling=True,
             supports_structured_output=True,
@@ -76,6 +81,9 @@ def xai_models() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
                 mmlu_pro=79.9,
                 gpqa=73.7,
                 source="https://www.vals.ai/models/grok_grok-3-fast-beta",
+            ),
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=2300, duration_seconds=35),
             ),
             provider_name=DisplayedProvider.X_AI.value,
             supports_tool_calling=True,
@@ -99,6 +107,9 @@ def xai_models() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
                 mmlu_pro=81.4,
                 gpqa=79,
                 source="https://www.vals.ai/models/grok_grok-3-mini-fast-beta-high-reasoning",
+            ),
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=2140, duration_seconds=16),
             ),
             provider_name=DisplayedProvider.X_AI.value,
             supports_tool_calling=True,
@@ -130,6 +141,9 @@ def xai_models() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
                 mmlu_pro=81.4,
                 gpqa=79,
                 source="https://www.vals.ai/models/grok_grok-3-mini-fast-beta-high-reasoning",
+            ),
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=2076, duration_seconds=14.9),
             ),
             provider_name=DisplayedProvider.X_AI.value,
             supports_tool_calling=True,

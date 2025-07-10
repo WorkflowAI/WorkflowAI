@@ -9,6 +9,8 @@ from core.domain.models.model_data import (
     ModelFallback,
     ModelReasoningBudget,
     QualityData,
+    SpeedData,
+    SpeedIndex,
 )
 from core.domain.models.models import Model
 
@@ -36,6 +38,9 @@ def mistral_models() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             latest_model=Model.MISTRAL_LARGE_2_LATEST,
             release_date=date(2024, 7, 24),
             quality_data=QualityData(mmlu=84, gpqa=46.09),
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=2751, duration_seconds=27),
+            ),
             provider_name=DisplayedProvider.MISTRAL_AI.value,
             supports_tool_calling=True,
             fallback=ModelFallback.default("medium"),
@@ -58,6 +63,9 @@ def mistral_models() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             latest_model=Model.MISTRAL_LARGE_LATEST,
             release_date=date(2024, 11, 24),
             quality_data=QualityData(mmlu=84, gpqa=59.1),
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=2300, duration_seconds=95),
+            ),
             provider_name=DisplayedProvider.MISTRAL_AI.value,
             supports_tool_calling=True,
             fallback=ModelFallback.default("medium"),
@@ -80,6 +88,9 @@ def mistral_models() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             latest_model=Model.PIXTRAL_LARGE_LATEST,
             release_date=date(2024, 11, 24),
             quality_data=QualityData(mmlu=70.1, gpqa=39.3),
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=2500, duration_seconds=31),
+            ),
             provider_name=DisplayedProvider.MISTRAL_AI.value,
             supports_tool_calling=True,
             fallback=ModelFallback.default("medium"),
@@ -97,6 +108,9 @@ def mistral_models() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/mistral.svg",
             release_date=date(2024, 9, 17),
             quality_data=QualityData(mmlu=69.2, gpqa=39),
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=2171, duration_seconds=26.8),
+            ),
             provider_name=DisplayedProvider.MISTRAL_AI.value,
             supports_tool_calling=True,
             fallback=ModelFallback.default("cheapest"),
@@ -114,6 +128,9 @@ def mistral_models() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/mistral.svg",
             release_date=date(2024, 10, 24),
             quality_data=QualityData(mmlu=33.9, gpqa=33.59),
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=2133, duration_seconds=9),
+            ),
             provider_name=DisplayedProvider.MISTRAL_AI.value,
             supports_tool_calling=True,
             fallback=ModelFallback.only_model(Model.GEMINI_2_0_FLASH_LITE_001, "cheapest"),
@@ -131,6 +148,9 @@ def mistral_models() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/mistral.svg",
             release_date=date(2024, 10, 24),
             quality_data=QualityData(mmlu=63.4, gpqa=33.8),
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=2182, duration_seconds=13),
+            ),
             provider_name=DisplayedProvider.MISTRAL_AI.value,
             supports_tool_calling=True,
             fallback=ModelFallback.default("cheapest"),
@@ -152,6 +172,9 @@ def mistral_models() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/mistral.svg",
             release_date=date(2025, 3, 17),
             quality_data=QualityData(mmlu=52.9, gpqa=33.8),
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=2293, duration_seconds=20),
+            ),
             provider_name=DisplayedProvider.MISTRAL_AI.value,
             supports_tool_calling=True,
             latest_model=Model.MISTRAL_SMALL_LATEST,
@@ -170,6 +193,9 @@ def mistral_models() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/mistral.svg",
             release_date=date(2025, 1, 13),
             quality_data=QualityData(mmlu=52.9, gpqa=33.8),
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=2289, duration_seconds=17),
+            ),
             provider_name=DisplayedProvider.MISTRAL_AI.value,
             supports_tool_calling=True,
             latest_model=Model.MISTRAL_SMALL_LATEST,
@@ -188,6 +214,9 @@ def mistral_models() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/mistral.svg",
             release_date=date(2024, 9, 24),
             quality_data=QualityData(mmlu=52.9, gpqa=33.8),
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=2407, duration_seconds=17.5),
+            ),
             provider_name=DisplayedProvider.MISTRAL_AI.value,
             supports_tool_calling=True,
             latest_model=Model.MISTRAL_SMALL_LATEST,
@@ -209,6 +238,9 @@ def mistral_models() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/mistral.svg",
             release_date=date(2025, 1, 13),
             quality_data=QualityData(mmlu=63.47, gpqa=38.35),
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=2218, duration_seconds=20),
+            ),
             provider_name=DisplayedProvider.MISTRAL_AI.value,
             supports_tool_calling=True,
             fallback=ModelFallback.default("cheap"),
@@ -227,6 +259,9 @@ def mistral_models() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/mistral.svg",
             release_date=date(2024, 7, 24),
             quality_data=QualityData(mmlu=63.47, gpqa=38.35),
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=2011, duration_seconds=18),
+            ),
             provider_name=DisplayedProvider.MISTRAL_AI.value,
             supports_tool_calling=True,
             fallback=ModelFallback.default("cheapest"),
@@ -249,6 +284,9 @@ def mistral_models() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
                 gpqa_diamond=57.1,
                 source="https://mistral.ai/news/mistral-medium-3",
             ),
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=2479, duration_seconds=32.9),
+            ),
             provider_name=DisplayedProvider.MISTRAL_AI.value,
             supports_tool_calling=True,
             fallback=ModelFallback.default("cheap"),
@@ -268,6 +306,9 @@ def mistral_models() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             quality_data=QualityData(
                 gpqa_diamond=68.18,
                 source="https://huggingface.co/mistralai/Magistral-Small-2506",
+            ),
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=2500, duration_seconds=74),
             ),
             provider_name=DisplayedProvider.MISTRAL_AI.value,
             supports_tool_calling=True,
@@ -290,6 +331,9 @@ def mistral_models() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             quality_data=QualityData(
                 gpqa_diamond=79.8,
                 source="https://mistral.ai/news/magistral",
+            ),
+            speed_data=SpeedData(
+                index=SpeedIndex.from_experiment(output_tokens=2500, duration_seconds=85),
             ),
             provider_name=DisplayedProvider.MISTRAL_AI.value,
             supports_tool_calling=True,

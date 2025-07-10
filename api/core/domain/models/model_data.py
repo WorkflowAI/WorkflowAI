@@ -1,5 +1,5 @@
 from datetime import date
-from typing import Any, Literal, TypeAlias
+from typing import Any, Literal, Self, TypeAlias
 
 from pydantic import BaseModel, Field
 
@@ -70,6 +70,55 @@ class QualityData(SourcedBaseModel):
         for k, v in dumped.items():
             total_score += v * _quality_index_weights[k]
         return int((total_score / len(dumped)) * 40)
+
+
+class SpeedIndex(BaseModel):
+    value: float
+
+    @classmethod
+    def from_experiment(cls, output_tokens: int, duration_seconds: float) -> Self:
+        """
+        Calculate the speed index based on an experiment run,
+        Run: typically translating a long text and checking the output token size and the duration of the run.
+        """
+
+        if duration_seconds == 0:
+            raise ValueError("duration_seconds is 0")
+        return cls(value=output_tokens / duration_seconds)
+
+
+class SpeedData(BaseModel):
+    index: SpeedIndex | None = Field(
+        default=None,
+        description="Speed index where higher values indicate better performance",
+    )
+
+    equivalent_to: tuple[Model, int] | None = Field(
+        default=None,
+        description="When data is not available for a model, we can use the speed index of an equivalent model",
+    )
+
+    def _speed_index_from_equivalent_model(self, mapping: dict[Model, Any]) -> int:
+        if not self.equivalent_to:
+            raise ValueError("Equivalent model is none")
+
+        model, offset = self.equivalent_to
+
+        raw_data = mapping[model]
+        if not isinstance(raw_data, ModelData):
+            raise ValueError(f"Equivalent model {model} is not a ModelData")
+        if raw_data.speed_data.equivalent_to is not None:
+            raise ValueError(f"Equivalent model {model} has an equivalent model of its own")
+        return raw_data.speed_data.speed_index(mapping) + offset
+
+    def speed_index(self, mapping: dict[Model, Any]) -> int:
+        if self.index is not None:
+            return int(self.index.value)
+        if self.equivalent_to:
+            return self._speed_index_from_equivalent_model(mapping)
+
+        # Default speed index if no data is available
+        return 500
 
 
 class MaxTokensData(SourcedBaseModel):
@@ -251,6 +300,10 @@ class ModelData(ModelDataSupports):
         description="The quality data of the model which allows computing the quality index",
     )
 
+    speed_data: SpeedData = Field(
+        description="The speed data of the model which allows computing the speed index",
+    )
+
     provider_name: str = Field(
         description="The name of the provider for the model",
     )
@@ -288,6 +341,8 @@ class FinalModelData(ModelData):
     )
 
     quality_index: int
+
+    speed_index: int
 
     def supported_by_provider(self, provider: Provider) -> bool:
         return any(p == provider for p, _ in self.providers)
