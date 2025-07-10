@@ -8,9 +8,11 @@ from pydantic import BaseModel
 from typing_extensions import override
 
 from core.domain.fields.file import File
+from core.domain.fields.internal_reasoning_steps import InternalReasoningStep
 from core.domain.llm_usage import LLMUsage
 from core.domain.message import MessageDeprecated
 from core.domain.models import Model, Provider
+from core.domain.models.utils import get_model_data
 from core.domain.tool import Tool
 from core.domain.tool_call import ToolCallRequestWithID
 from core.providers.amazon_bedrock.amazon_bedrock_config import AmazonBedrockConfig
@@ -48,6 +50,8 @@ _NON_STREAMING_WITH_TOOLS_MODELS = {
     Model.MISTRAL_LARGE_2_2407,
 }
 
+DEFAULT_MAX_TOKENS_BUFFER = 8192
+
 
 class AmazonBedrockProvider(HTTPXProvider[AmazonBedrockConfig, CompletionResponse]):
     @override
@@ -71,16 +75,49 @@ class AmazonBedrockProvider(HTTPXProvider[AmazonBedrockConfig, CompletionRespons
                     )
                     system_message.text += message.content
                 system_message = AmazonBedrockSystemMessage.from_domain(message)
+
+        model_data = get_model_data(options.model)
+        thinking_budget = options.final_reasoning_budget(model_data.reasoning)
+        thinking_config = (
+            None
+            if thinking_budget is None
+            else CompletionRequest.AdditionalModelRequestFields(
+                thinking=CompletionRequest.AdditionalModelRequestFields.Thinking(
+                    type="enabled",
+                    budget_tokens=thinking_budget,
+                ),
+            )
+        )
+
+        max_tokens = None
+        if options.max_tokens:
+            max_tokens = options.max_tokens + (thinking_budget or 0)
+
+            if model_data.max_tokens_data.max_output_tokens:
+                # Make sure we never exceed the model's max output tokens
+                max_tokens = min(max_tokens, model_data.max_tokens_data.max_output_tokens)
+
+        elif thinking_budget:
+            # If no max_tokens is provided in the options but we have a thinking budget, we need to set a max_tokens that is higher than the thinking budget.s
+            if model_data.max_tokens_data.max_output_tokens:
+                max_tokens = min(
+                    thinking_budget + DEFAULT_MAX_TOKENS_BUFFER,
+                    model_data.max_tokens_data.max_output_tokens,
+                )
+            else:
+                max_tokens = thinking_budget + DEFAULT_MAX_TOKENS_BUFFER
+
         return CompletionRequest(
             system=[system_message] if system_message else [],
             messages=user_messages,
             inferenceConfig=CompletionRequest.InferenceConfig(
                 temperature=options.temperature,
-                maxTokens=options.max_tokens,
+                maxTokens=max_tokens,
                 topP=options.top_p,
                 # Presence and frequency penalties are not yet supported by Amazon Bedrock
             ),
             toolConfig=BedrockToolConfig.from_domain(options.enabled_tools, options.tool_choice),
+            additionalModelRequestFields=thinking_config,
         )
 
     @classmethod
@@ -112,21 +149,36 @@ class AmazonBedrockProvider(HTTPXProvider[AmazonBedrockConfig, CompletionRespons
 
     @override
     def _extract_content_str(self, response: CompletionResponse) -> str:
-        try:
-            content = response.output.message.content[0]
-            content_str = content.text
-        except IndexError as e:
+        has_tool_use = False
+        for content in response.output.message.content:
+            if content.toolUse:
+                has_tool_use = True
+            if content.text:
+                return content.text
+
+        if not has_tool_use:
             self.logger.warning("Empty content found in response", extra={"response": response.model_dump()})
-            raise e
-        if not content_str:
-            if not content.toolUse:
-                self.logger.warning("Empty content found in response", extra={"response": response.model_dump()})
-            return ""
-        return content_str
+
+        return ""
 
     @override
     def _extract_usage(self, response: CompletionResponse) -> LLMUsage | None:
         return response.usage.to_domain()
+
+    @override
+    def _extract_reasoning_steps(self, response: CompletionResponse) -> list[InternalReasoningStep] | None:
+        """Extract reasoning steps from thinking content blocks in the response"""
+        reasoning_steps = [
+            InternalReasoningStep(
+                explaination=content.thinking.thinking,
+                # TODO: We could potentially use the signature field for validation
+                # but for now we'll just include the thinking text
+            )
+            for content in response.output.message.content
+            if content.thinking
+        ]
+
+        return reasoning_steps if reasoning_steps else None
 
     @override
     @classmethod
@@ -205,6 +257,7 @@ class AmazonBedrockProvider(HTTPXProvider[AmazonBedrockConfig, CompletionRespons
     ) -> ParsedResponse:
         raw = StreamedResponse.model_validate_json(sse_event)
         completion_text = raw.delta.text if (raw.delta and raw.delta.text) else ""
+        reasoning_steps: str | None = None
 
         if raw.usage:
             raw_completion.usage = raw.usage.to_domain()
@@ -214,13 +267,17 @@ class AmazonBedrockProvider(HTTPXProvider[AmazonBedrockConfig, CompletionRespons
                 raise ValueError("Can't parse tool call input without a content block index")
             self._handle_tool_start(raw.start.toolUse, raw.contentBlockIndex, tool_call_request_buffer)
 
+        # Handle reasoning content deltas for reasoning steps
+        if raw.delta and raw.delta.reasoningContent:
+            reasoning_steps = raw.delta.reasoningContent.text
+
         tool_calls: list[ToolCallRequestWithID] = []
         if raw.delta and raw.delta.toolUse:
             if raw.contentBlockIndex is None:
                 raise ValueError("Can't parse tool call input without a content block index")
             tool_calls = self._handle_tool_input(raw.delta.toolUse, raw.contentBlockIndex, tool_call_request_buffer)
 
-        return ParsedResponse(completion_text, tool_calls=tool_calls)
+        return ParsedResponse(completion_text, tool_calls=tool_calls, reasoning_steps=reasoning_steps)
 
     def _handle_tool_start(
         self,

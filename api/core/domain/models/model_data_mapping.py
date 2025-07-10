@@ -858,6 +858,11 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             provider_name=DisplayedProvider.ANTHROPIC.value,
             supports_tool_calling=True,
             fallback=ModelFallback.default("medium"),
+            reasoning=ModelReasoningBudget(
+                min=1024,
+                max=32000,
+            ),  # Claude docs mention that reasoning tokens 32k are rarely used.
+            # https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking
         ),
         Model.CLAUDE_4_OPUS_LATEST: LatestModel(
             model=Model.CLAUDE_4_OPUS_20250514,
@@ -888,6 +893,11 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             provider_name=DisplayedProvider.ANTHROPIC.value,
             supports_tool_calling=True,
             fallback=ModelFallback.default("expensive"),
+            reasoning=ModelReasoningBudget(
+                min=1024,
+                max=32000,
+            ),  # Claude docs mention that reasoning tokens 32k are rarely used.
+            # https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking
         ),
         Model.CLAUDE_3_7_SONNET_LATEST: LatestModel(
             model=Model.CLAUDE_3_7_SONNET_20250219,
@@ -917,6 +927,11 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             provider_name=DisplayedProvider.ANTHROPIC.value,
             supports_tool_calling=True,
             fallback=ModelFallback.default("medium"),
+            reasoning=ModelReasoningBudget(
+                min=1024,
+                max=32000,
+            ),  # Claude docs mention that reasoning tokens 32k are rarely used.
+            # https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking
         ),
         Model.CLAUDE_3_5_SONNET_20241022: ModelData(
             display_name="Claude 3.5 Sonnet (2024-10-22)",
