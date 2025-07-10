@@ -511,7 +511,7 @@ class TestCompletionRequestThinking:
         )
 
         request_dict = request.model_dump()
-        assert request_dict["thinking"] == {
+        assert request_dict["additionalModelRequestFields"]["thinking"] == {
             "type": "enabled",
             "budget_tokens": 1500,
         }
@@ -528,7 +528,7 @@ class TestCompletionRequestThinking:
         )
 
         request_dict = request.model_dump()
-        assert request_dict["thinking"] is None
+        assert request_dict["additionalModelRequestFields"] is None
 
 
 class TestStreamedResponseThinking:

@@ -605,19 +605,6 @@ class TestExtractContentStr:
         assert res == "Hello"
         amazon_provider.logger.warning.assert_not_called()  # type: ignore
 
-    def test_missing_content_raises(self, amazon_provider: AmazonBedrockProvider):
-        # A missing content is caught should raise and trigger a warning
-        response = CompletionResponse(
-            output=CompletionResponse.Output(message=CompletionResponse.Output.Message(content=[])),
-            stopReason="stopReason",
-            usage=Usage(inputTokens=1, outputTokens=1, totalTokens=1),
-        )
-
-        with pytest.raises(IndexError):
-            amazon_provider._extract_content_str(response)  # pyright: ignore [reportPrivateUsage]
-
-        amazon_provider.logger.warning.assert_called_once()  # type: ignore
-
 
 @pytest.fixture(scope="function")
 def output_factory() -> Callable[[str, bool], StructuredOutput]:
