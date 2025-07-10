@@ -1135,6 +1135,13 @@ FIREWORKS_PROVIDER_DATA: ProviderDataByModel = {
 }
 
 XAI_PROVIDER_DATA: ProviderDataByModel = {
+    Model.GROK_4_0709: ModelProviderData(
+        text_price=TextPricePerToken(
+            prompt_cost_per_token=3 * ONE_MILLION_TH,
+            completion_cost_per_token=15 * ONE_MILLION_TH,
+            source="https://docs.x.ai/docs/models/grok-4-0709",
+        ),
+    ),
     Model.GROK_3_BETA: ModelProviderData(
         text_price=TextPricePerToken(
             prompt_cost_per_token=3 * ONE_MILLION_TH,
