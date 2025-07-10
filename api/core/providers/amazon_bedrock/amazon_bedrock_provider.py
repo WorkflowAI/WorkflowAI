@@ -50,6 +50,8 @@ _NON_STREAMING_WITH_TOOLS_MODELS = {
     Model.MISTRAL_LARGE_2_2407,
 }
 
+DEFAULT_MAX_TOKENS_BUFFER = 8192
+
 
 class AmazonBedrockProvider(HTTPXProvider[AmazonBedrockConfig, CompletionResponse]):
     @override
@@ -79,9 +81,11 @@ class AmazonBedrockProvider(HTTPXProvider[AmazonBedrockConfig, CompletionRespons
         thinking_config = (
             None
             if thinking_budget is None
-            else CompletionRequest.Thinking(
-                type="enabled",
-                budget_tokens=thinking_budget,
+            else CompletionRequest.AdditionalModelRequestFields(
+                thinking=CompletionRequest.AdditionalModelRequestFields.Thinking(
+                    type="enabled",
+                    budget_tokens=thinking_budget,
+                ),
             )
         )
 
@@ -93,6 +97,10 @@ class AmazonBedrockProvider(HTTPXProvider[AmazonBedrockConfig, CompletionRespons
                 # Make sure we never exceed the model's max output tokens
                 max_tokens = min(max_tokens, model_data.max_tokens_data.max_output_tokens)
 
+        elif thinking_budget:
+            # If no max_tokens is provided in the options but we have a thinking budget, we need to set a max_tokens that is higher than the thinking budget.
+            max_tokens = thinking_budget + DEFAULT_MAX_TOKENS_BUFFER
+
         return CompletionRequest(
             system=[system_message] if system_message else [],
             messages=user_messages,
@@ -103,7 +111,7 @@ class AmazonBedrockProvider(HTTPXProvider[AmazonBedrockConfig, CompletionRespons
                 # Presence and frequency penalties are not yet supported by Amazon Bedrock
             ),
             toolConfig=BedrockToolConfig.from_domain(options.enabled_tools, options.tool_choice),
-            thinking=thinking_config,
+            additionalModelRequestFields=thinking_config,
         )
 
     @classmethod
@@ -135,17 +143,17 @@ class AmazonBedrockProvider(HTTPXProvider[AmazonBedrockConfig, CompletionRespons
 
     @override
     def _extract_content_str(self, response: CompletionResponse) -> str:
-        try:
-            content = response.output.message.content[0]
-            content_str = content.text
-        except IndexError as e:
+        has_tool_use = False
+        for content in response.output.message.content:
+            if content.toolUse:
+                has_tool_use = True
+            if content.text:
+                return content.text
+
+        if not has_tool_use:
             self.logger.warning("Empty content found in response", extra={"response": response.model_dump()})
-            raise e
-        if not content_str:
-            if not content.toolUse:
-                self.logger.warning("Empty content found in response", extra={"response": response.model_dump()})
-            return ""
-        return content_str
+
+        return ""
 
     @override
     def _extract_usage(self, response: CompletionResponse) -> LLMUsage | None:
@@ -253,9 +261,9 @@ class AmazonBedrockProvider(HTTPXProvider[AmazonBedrockConfig, CompletionRespons
                 raise ValueError("Can't parse tool call input without a content block index")
             self._handle_tool_start(raw.start.toolUse, raw.contentBlockIndex, tool_call_request_buffer)
 
-        # Handle thinking deltas for reasoning steps
-        if raw.delta and raw.delta.thinking:
-            reasoning_steps = raw.delta.thinking.thinking
+        # Handle reasoning content deltas for reasoning steps
+        if raw.delta and raw.delta.reasoningContent:
+            reasoning_steps = raw.delta.reasoningContent.text
 
         tool_calls: list[ToolCallRequestWithID] = []
         if raw.delta and raw.delta.toolUse:

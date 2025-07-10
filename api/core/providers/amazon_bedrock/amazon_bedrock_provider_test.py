@@ -1242,6 +1242,22 @@ class TestThinkingStreamingDeltas:
         assert delta.reasoning_steps == "I need to analyze this request..."
         assert delta.tool_calls == []
 
+    def test_extract_stream_delta_with_reasoning_content(self, amazon_provider: AmazonBedrockProvider):
+        """Test handling of reasoningContent deltas in streaming."""
+        raw_completion = RawCompletion(response="", usage=LLMUsage())
+        tool_call_request_buffer: dict[int, ToolCallRequestBuffer] = {}
+
+        # Test reasoningContent delta
+        delta = amazon_provider._extract_stream_delta(  # pyright: ignore[reportPrivateUsage]
+            b'{"contentBlockIndex": 0, "delta": {"reasoningContent": {"text": "I need to analyze this request..."}}}',
+            raw_completion,
+            tool_call_request_buffer,
+        )
+
+        assert delta.content == ""
+        assert delta.reasoning_steps == "I need to analyze this request..."
+        assert delta.tool_calls == []
+
     def test_extract_stream_delta_with_text_and_thinking(self, amazon_provider: AmazonBedrockProvider):
         """Test handling of mixed text and thinking deltas."""
         raw_completion = RawCompletion(response="", usage=LLMUsage())
@@ -1324,7 +1340,7 @@ class TestUsageWithThinking:
 
         # Test delta with both usage and thinking
         delta = amazon_provider._extract_stream_delta(  # pyright: ignore[reportPrivateUsage]
-            b'{"usage": {"inputTokens": 150, "outputTokens": 200, "totalTokens": 350}, "delta": {"thinking": {"thinking": "Processing request..."}}}',
+            b'{"usage": {"inputTokens": 150, "outputTokens": 200, "totalTokens": 350}, "delta": {"reasoningContent": {"text": "Processing request..."}}}',
             raw_completion,
             tool_call_request_buffer,
         )

@@ -493,7 +493,7 @@ class TestContentBlockThinkingContent:
 class TestCompletionRequestThinking:
     def test_completion_request_thinking_enabled(self):
         """Test CompletionRequest with thinking configuration."""
-        thinking_config = CompletionRequest.Thinking(
+        thinking_config = CompletionRequest.AdditionalModelRequestFields.Thinking(
             type="enabled",
             budget_tokens=1500,
         )
@@ -505,7 +505,7 @@ class TestCompletionRequestThinking:
                 maxTokens=4000,
                 temperature=0.7,
             ),
-            thinking=thinking_config,
+            additionalModelRequestFields=thinking_config,
         )
 
         request_dict = request.model_dump()

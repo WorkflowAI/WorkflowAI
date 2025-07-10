@@ -326,16 +326,19 @@ class CompletionRequest(BaseModel):
     # https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InferenceConfiguration.html
     class InferenceConfig(BaseModel):
         maxTokens: int | None = None
-        temperature: float | None = None
         topP: float | None = None
+        temperature: float | None = None
 
     inferenceConfig: InferenceConfig
 
-    class Thinking(BaseModel):
-        type: Literal["enabled"]  # 'disabled' is never used
-        budget_tokens: int
+    class AdditionalModelRequestFields(BaseModel):
+        class Thinking(BaseModel):
+            type: Literal["enabled"]  # 'disabled' is never used
+            budget_tokens: int
 
-    thinking: Thinking | None = None
+        thinking: Thinking | None = None
+
+    additionalModelRequestFields: AdditionalModelRequestFields | None = None
 
 
 class Usage(BaseModel):
@@ -375,10 +378,11 @@ class StreamedResponse(BaseModel):
 
         toolUse: ToolUseBlockDelta | None = None
 
-        class ThinkingDelta(BaseModel):
-            thinking: str
+        class ReasoningContentDelta(BaseModel):
+            text: str | None = None
+            signature: str | None = None
 
-        thinking: ThinkingDelta | None = None
+        reasoningContent: ReasoningContentDelta | None = None
 
     delta: Delta | None = None
 
