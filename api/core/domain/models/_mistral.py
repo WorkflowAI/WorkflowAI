@@ -27,6 +27,7 @@ def mistral_models() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
         Model.MISTRAL_LARGE_2_2407: ModelData(
             display_name="Mistral Large 2 (24-07)",
             supports_json_mode=True,
+            supports_structured_output=True,
             supports_input_image=False,
             supports_input_pdf=False,
             supports_input_audio=False,
@@ -52,6 +53,7 @@ def mistral_models() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
         Model.MISTRAL_LARGE_2411: ModelData(
             display_name="Mistral Large 2 (24-11)",
             supports_json_mode=True,
+            supports_structured_output=True,
             supports_input_image=False,
             supports_input_pdf=False,
             supports_input_audio=False,
@@ -77,6 +79,7 @@ def mistral_models() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
         Model.PIXTRAL_LARGE_2411: ModelData(
             display_name="PixTral Large (24-11)",
             supports_json_mode=True,
+            supports_structured_output=True,
             supports_input_image=True,
             supports_input_pdf=True,
             supports_input_audio=False,
@@ -98,6 +101,7 @@ def mistral_models() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
         Model.PIXTRAL_12B_2409: ModelData(
             display_name="PixTral (12B-2409)",
             supports_json_mode=True,
+            supports_structured_output=True,
             supports_input_image=True,
             supports_input_pdf=True,
             supports_input_audio=False,
@@ -118,6 +122,7 @@ def mistral_models() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
         Model.MINISTRAL_3B_2410: ModelData(
             display_name="MiniStral (3B-2410)",
             supports_json_mode=True,
+            supports_structured_output=True,
             supports_input_image=False,
             supports_input_pdf=False,
             supports_input_audio=False,
@@ -138,6 +143,7 @@ def mistral_models() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
         Model.MINISTRAL_8B_2410: ModelData(
             display_name="MiniStral (8B-2410)",
             supports_json_mode=True,
+            supports_structured_output=True,
             supports_input_image=False,
             supports_input_pdf=False,
             supports_input_audio=False,
@@ -162,6 +168,7 @@ def mistral_models() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
         Model.MISTRAL_SMALL_2503: ModelData(
             display_name="Mistral Small (25-03)",
             supports_json_mode=True,
+            supports_structured_output=True,
             supports_input_image=True,
             supports_input_pdf=True,
             supports_input_audio=False,
@@ -183,6 +190,7 @@ def mistral_models() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
         Model.MISTRAL_SMALL_2501: ModelData(
             display_name="Mistral Small (25-01)",
             supports_json_mode=True,
+            supports_structured_output=True,
             supports_input_image=False,
             supports_input_pdf=False,
             supports_input_audio=False,
@@ -204,6 +212,7 @@ def mistral_models() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
         Model.MISTRAL_SMALL_2409: ModelData(
             display_name="Mistral Small (24-09)",
             supports_json_mode=True,
+            supports_structured_output=True,
             supports_input_image=False,
             supports_input_pdf=False,
             supports_input_audio=False,
@@ -228,6 +237,7 @@ def mistral_models() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
         Model.CODESTRAL_2501: ModelData(
             display_name="CodeStral Mamba (25-01)",
             supports_json_mode=True,
+            supports_structured_output=True,
             supports_input_image=False,
             supports_input_pdf=False,
             supports_input_audio=False,
@@ -269,6 +279,7 @@ def mistral_models() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
         Model.MISTRAL_MEDIUM_2505: ModelData(
             display_name="Mistral Medium 3 (25-05)",
             supports_json_mode=True,
+            supports_structured_output=True,
             supports_input_image=True,
             supports_input_pdf=True,
             supports_input_audio=False,
@@ -294,6 +305,7 @@ def mistral_models() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
         Model.MAGISTRAL_SMALL_2506: ModelData(
             display_name="Magistral Small (25-06)",
             supports_json_mode=True,
+            supports_structured_output=True,
             supports_input_image=True,
             supports_input_pdf=True,
             supports_input_audio=False,
@@ -319,6 +331,7 @@ def mistral_models() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
         Model.MAGISTRAL_MEDIUM_2506: ModelData(
             display_name="Magistral Medium (25-06)",
             supports_json_mode=True,
+            supports_structured_output=True,
             supports_input_image=True,
             supports_input_pdf=True,
             supports_input_audio=False,

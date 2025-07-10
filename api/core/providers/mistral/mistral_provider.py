@@ -1,3 +1,4 @@
+import copy
 import json
 from typing import Any, Literal
 
@@ -8,6 +9,8 @@ from typing_extensions import override
 from core.domain.llm_usage import LLMUsage
 from core.domain.message import MessageDeprecated
 from core.domain.models import Model, Provider
+from core.domain.models.model_data_supports import ModelDataSupports
+from core.domain.models.utils import get_model_data
 from core.domain.tool_call import ToolCallRequestWithID
 from core.providers.base.abstract_provider import RawCompletion
 from core.providers.base.httpx_provider import HTTPXProvider
@@ -24,6 +27,7 @@ from core.providers.base.utils import get_provider_config_env
 from core.providers.google.google_provider_domain import (
     native_tool_name_to_internal,
 )
+from core.providers.openai._openai_utils import get_openai_json_schema_name, prepare_openai_json_schema
 from core.utils.json_utils import safe_extract_dict_from_json
 
 from .mistral_domain import (
@@ -31,8 +35,10 @@ from .mistral_domain import (
     CompletionRequest,
     CompletionResponse,
     DeltaMessage,
+    JSONSchemaResponseFormat,
     MistralAIMessage,
     MistralError,
+    MistralSchema,
     MistralTool,
     MistralToolMessage,
     ResponseFormat,
@@ -64,6 +70,8 @@ class MistralAIProvider(HTTPXProvider[MistralAIConfig, CompletionResponse]):
             else:
                 domain_messages.append(MistralAIMessage.from_domain(m))
 
+        model_data = get_model_data(options.model)
+
         request = CompletionRequest(
             messages=domain_messages,
             model=MODEL_MAP.get(options.model, options.model),
@@ -75,17 +83,39 @@ class MistralAIProvider(HTTPXProvider[MistralAIConfig, CompletionResponse]):
             presence_penalty=options.presence_penalty,
             frequency_penalty=options.frequency_penalty,
             parallel_tool_calls=options.parallel_tool_calls,
+            response_format=self._response_format(options, supports=model_data),
         )
-        if not options.output_schema:
-            request.response_format = ResponseFormat(type="text")
 
         if options.enabled_tools is not None and options.enabled_tools != []:
-            # Can't use json_object with tools
+            # Can't use json_object/json_schema with tools
             # 400 from Mistral AI when doing so: "Cannot use json response type with tools","type":"invalid_request_error"
             request.response_format = ResponseFormat(type="text")
             request.tools = [MistralTool.from_domain(tool) for tool in options.enabled_tools]
 
         return request
+
+    def _response_format(
+        self,
+        options: ProviderOptions,
+        supports: ModelDataSupports,
+    ) -> ResponseFormat | JSONSchemaResponseFormat:
+        if options.output_schema is None or (
+            not supports.supports_json_mode and not supports.supports_structured_output
+        ):
+            return ResponseFormat(type="text")
+
+        if not supports.supports_structured_output or not options.output_schema or not options.structured_generation:
+            return ResponseFormat(type="json_object")
+
+        task_name = options.task_name or ""
+
+        schema = copy.deepcopy(options.output_schema)
+        return JSONSchemaResponseFormat(
+            json_schema=MistralSchema(
+                name=get_openai_json_schema_name(task_name, schema),
+                schema=prepare_openai_json_schema(schema),
+            ),
+        )
 
     @classmethod
     def mistral_message_or_tool_message(cls, messag_dict: dict[str, Any]) -> MistralAIMessage | MistralToolMessage:
