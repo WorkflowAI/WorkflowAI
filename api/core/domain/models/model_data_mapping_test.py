@@ -324,6 +324,9 @@ class TestModelFallback:
         Model.GEMINI_2_5_FLASH_PREVIEW_0417,
         Model.GEMINI_2_5_FLASH_PREVIEW_0520,
         Model.GEMINI_2_5_FLASH_THINKING_PREVIEW_0417,
+        Model.LLAMA_4_SCOUT_FAST,  # Cerebras is free for now so we can't find cheaper
+        Model.LLAMA_3_3_70B,  # Cerebras is free for now so we can't find cheaper
+        Model.LLAMA_3_1_8B,  # Cerebras is free for now so we can't find cheaper
     }
 
     _IGNORE_PROVIDERS = {

@@ -1145,7 +1145,7 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             ),
             provider_name=DisplayedProvider.CEREBRAS.value,
             supports_tool_calling=False,
-            fallback=ModelFallback.default("cheap"),
+            fallback=ModelFallback.default("cheapest"),
         ),
         # https://fireworks.ai/models/fireworks/llama-v3p1-70b-instruct
         Model.LLAMA_3_1_70B: ModelData(
