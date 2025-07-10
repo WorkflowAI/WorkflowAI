@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { fixProxyInputIfNeeded } from '@/app/[tenant]/agents/[taskId]/[taskSchemaId]/proxy-playground/proxy-messages/utils';
 import { ObjectViewer } from '@/components';
 import { InitInputFromSchemaMode } from '@/lib/schemaUtils';
 import { initInputFromSchema } from '@/lib/schemaUtils';
@@ -21,10 +22,15 @@ export function ProxyInputVariablesView(props: Props) {
     return initInputFromSchema(inputSchema, inputSchema.$defs, InitInputFromSchemaMode.VOID);
   }, [inputSchema]);
 
+  const fixedInput = useMemo(() => {
+    if (!input) return input;
+    return fixProxyInputIfNeeded(input);
+  }, [input]);
+
   const generatedInputWithVoid = useMemo(() => {
-    if (!input) return voidInput;
-    return mergeTaskInputAndVoid(input, voidInput);
-  }, [input, voidInput]);
+    if (!fixedInput) return voidInput;
+    return mergeTaskInputAndVoid(fixedInput, voidInput);
+  }, [fixedInput, voidInput]);
 
   return (
     <div className='flex flex-col h-full w-full overflow-hidden'>
