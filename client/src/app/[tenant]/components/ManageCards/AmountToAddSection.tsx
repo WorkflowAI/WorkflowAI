@@ -13,7 +13,7 @@ export function AmountToAddSection(props: AmountToAddSectionProps) {
       <div className='flex flex-col gap-1'>
         <div className='text-gray-900 font-medium text-[13px]'>Amount to Add</div>
         <CurrencyInput amount={amountToAdd} setAmount={setAmountToAdd} />
-        <div className='text-gray-500 font-normal text-[12px]'>Enter an amount between $5 and $4902</div>
+        <div className='text-gray-500 font-normal text-[12px]'>Enter an amount between $5 and $5000</div>
       </div>
     </div>
   );
