@@ -1221,7 +1221,7 @@ class TestThinkingStreamingDeltas:
 
         # Test thinking delta
         delta = amazon_provider._extract_stream_delta(  # pyright: ignore[reportPrivateUsage]
-            b'{"contentBlockIndex": 0, "delta": {"thinking": {"thinking": "I need to analyze this request..."}}}',
+            b'{"contentBlockIndex": 0, "delta": {"reasoningContent": {"text": "I need to analyze this request..."}}}',
             raw_completion,
             tool_call_request_buffer,
         )
@@ -1264,7 +1264,7 @@ class TestThinkingStreamingDeltas:
 
         # Test thinking delta
         thinking_delta = amazon_provider._extract_stream_delta(  # pyright: ignore[reportPrivateUsage]
-            b'{"contentBlockIndex": 1, "delta": {"thinking": {"thinking": "Let me verify this approach..."}}}',
+            b'{"contentBlockIndex": 1, "delta": {"reasoningContent": {"text": "Let me verify this approach..."}}}',
             raw_completion,
             tool_call_request_buffer,
         )
@@ -1296,9 +1296,9 @@ class TestThinkingStreamingDeltas:
 
         # Simulate multiple thinking delta events
         thinking_events = [
-            b'{"contentBlockIndex": 0, "delta": {"thinking": {"thinking": "First, I need to understand the problem..."}}}',
-            b'{"contentBlockIndex": 0, "delta": {"thinking": {"thinking": "Now I should consider the constraints..."}}}',
-            b'{"contentBlockIndex": 0, "delta": {"thinking": {"thinking": "Finally, let me formulate the solution..."}}}',
+            b'{"contentBlockIndex": 0, "delta": {"reasoningContent": {"text": "First, I need to understand the problem..."}}}',
+            b'{"contentBlockIndex": 0, "delta": {"reasoningContent": {"text": "Now I should consider the constraints..."}}}',
+            b'{"contentBlockIndex": 0, "delta": {"reasoningContent": {"text": "Finally, let me formulate the solution..."}}}',
         ]
 
         reasoning_content = ""
