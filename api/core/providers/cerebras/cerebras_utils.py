@@ -27,7 +27,7 @@ def prepare_cerebras_json_schema(schema: dict[str, Any]) -> dict[str, Any]:
     return schema
 
 
-def _process_cerebras_schema(schema: dict[str, Any]) -> None:
+def _process_cerebras_schema(schema: dict[str, Any]) -> None:  # noqa: C901
     """Recursively process a schema for Cerebras compatibility.
 
     Converts array types like ["string", "null"] to anyOf format,
@@ -113,10 +113,7 @@ def _make_property_nullable(prop_schema: dict[str, Any]) -> None:
         elif isinstance(current_type, list):
             # Convert array type to anyOf format and ensure null is included
             type_list = cast(list[Any], current_type)
-            any_of_schemas: list[dict[str, Any]] = []
-
-            for single_type in type_list:
-                any_of_schemas.append({"type": single_type})
+            any_of_schemas = [{"type": single_type} for single_type in type_list]
 
             # Ensure null is included
             has_null = any(schema_item.get("type") == "null" for schema_item in any_of_schemas)
@@ -148,9 +145,7 @@ def _convert_array_types_to_anyof(schema: dict[str, Any]) -> None:
         type_value = schema["type"]
         if isinstance(type_value, list) and len(cast(list[Any], type_value)) > 1:
             # Convert array type to anyOf
-            any_of_schemas: list[dict[str, Any]] = []
-            for single_type in cast(list[Any], type_value):
-                any_of_schemas.append({"type": single_type})
+            any_of_schemas = [{"type": single_type} for single_type in cast(list[Any], type_value)]
 
             # Replace the type field with anyOf
             del schema["type"]
