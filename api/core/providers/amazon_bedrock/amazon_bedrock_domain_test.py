@@ -493,9 +493,11 @@ class TestContentBlockThinkingContent:
 class TestCompletionRequestThinking:
     def test_completion_request_thinking_enabled(self):
         """Test CompletionRequest with thinking configuration."""
-        thinking_config = CompletionRequest.AdditionalModelRequestFields.Thinking(
-            type="enabled",
-            budget_tokens=1500,
+        thinking_config = CompletionRequest.AdditionalModelRequestFields(
+            thinking=CompletionRequest.AdditionalModelRequestFields.Thinking(
+                type="enabled",
+                budget_tokens=1500,
+            ),
         )
 
         request = CompletionRequest(
@@ -532,11 +534,11 @@ class TestCompletionRequestThinking:
 class TestStreamedResponseThinking:
     def test_thinking_delta_creation(self):
         """Test creation of ThinkingDelta in StreamedResponse."""
-        thinking_delta = StreamedResponse.Delta.ThinkingDelta(
-            thinking="I need to understand the context first...",
+        reasoning_content = StreamedResponse.Delta.ReasoningContentDelta(
+            text="I need to understand the context first...",
         )
 
-        assert thinking_delta.thinking == "I need to understand the context first..."
+        assert reasoning_content.text == "I need to understand the context first..."
 
     def test_thinking_block_creation(self):
         """Test creation of ThinkingBlock in StreamedResponse."""
@@ -557,16 +559,16 @@ class TestStreamedResponseThinking:
         response = StreamedResponse(
             contentBlockIndex=0,
             delta=StreamedResponse.Delta(
-                thinking=StreamedResponse.Delta.ThinkingDelta(
-                    thinking="Processing the user's question...",
+                reasoningContent=StreamedResponse.Delta.ReasoningContentDelta(
+                    text="Processing the user's question...",
                 ),
             ),
         )
 
         assert response.contentBlockIndex == 0
         assert response.delta is not None
-        assert response.delta.thinking is not None
-        assert response.delta.thinking.thinking == "Processing the user's question..."
+        assert response.delta.reasoningContent is not None
+        assert response.delta.reasoningContent.text == "Processing the user's question..."
 
     def test_streamed_response_with_thinking_start(self):
         """Test StreamedResponse with thinking start block."""
@@ -596,22 +598,22 @@ class TestStreamedResponseThinking:
 
         assert text_response.delta is not None
         assert text_response.delta.text == "Here's my answer: "
-        assert text_response.delta.thinking is None
+        assert text_response.delta.reasoningContent is None
 
         # Test with thinking delta
         thinking_response = StreamedResponse(
             contentBlockIndex=1,
             delta=StreamedResponse.Delta(
-                thinking=StreamedResponse.Delta.ThinkingDelta(
-                    thinking="Let me verify this approach...",
+                reasoningContent=StreamedResponse.Delta.ReasoningContentDelta(
+                    text="Let me verify this approach...",
                 ),
             ),
         )
 
         assert thinking_response.delta is not None
         assert thinking_response.delta.text is None
-        assert thinking_response.delta.thinking is not None
-        assert thinking_response.delta.thinking.thinking == "Let me verify this approach..."
+        assert thinking_response.delta.reasoningContent is not None
+        assert thinking_response.delta.reasoningContent.text == "Let me verify this approach..."
 
 
 class TestCompletionResponseWithThinking:

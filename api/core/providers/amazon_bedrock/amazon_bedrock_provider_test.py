@@ -1191,9 +1191,10 @@ class TestBuildRequestWithThinking:
             )
 
             # Check that thinking is configured
-            assert request.thinking is not None
-            assert request.thinking.type == "enabled"
-            assert request.thinking.budget_tokens == 500
+            assert request.additionalModelRequestFields is not None
+            assert request.additionalModelRequestFields.thinking is not None
+            assert request.additionalModelRequestFields.thinking.type == "enabled"
+            assert request.additionalModelRequestFields.thinking.budget_tokens == 500
 
             # Check that max_tokens includes the thinking budget
             assert request.inferenceConfig.maxTokens == 1000 + 500
@@ -1219,7 +1220,7 @@ class TestBuildRequestWithThinking:
         )
 
         # Check that thinking is not configured
-        assert request.thinking is None
+        assert request.additionalModelRequestFields is None
 
         # Check that max_tokens is not modified by thinking budget
         assert request.inferenceConfig.maxTokens == 1000
