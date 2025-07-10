@@ -324,6 +324,9 @@ class TestModelFallback:
         Model.GEMINI_2_5_FLASH_PREVIEW_0417,
         Model.GEMINI_2_5_FLASH_PREVIEW_0520,
         Model.GEMINI_2_5_FLASH_THINKING_PREVIEW_0417,
+    }
+
+    _INGORE_PRICE_ALWAYS = {
         Model.LLAMA_4_SCOUT_FAST,  # Cerebras is free for now so we can't find cheaper
         Model.LLAMA_3_3_70B,  # Cerebras is free for now so we can't find cheaper
         Model.LLAMA_3_1_8B,  # Cerebras is free for now so we can't find cheaper
@@ -336,6 +339,9 @@ class TestModelFallback:
         Model.GEMINI_1_5_FLASH_8B,
         Model.GEMINI_2_5_FLASH,
         Model.GEMINI_2_5_FLASH_PREVIEW_0520,
+        Model.LLAMA_4_SCOUT_FAST,  # Cerebras is free for now so we can't find cheaper
+        Model.LLAMA_3_3_70B,  # Cerebras is free for now so we can't find cheaper
+        Model.LLAMA_3_1_8B,  # Cerebras is free for now so we can't find cheaper
     }
 
     @pytest.mark.parametrize("model_data", _FILTERED_MODEL_DATA)
@@ -394,8 +400,10 @@ class TestModelFallback:
 
             max_price = 2 * current_text_price.prompt_cost_per_token
 
-            # We never ignore the price for rate limit
-            if model_data.model in self._IGNORE_PRICE and fallback_type not in {"rate_limit", "default"}:
+            # We never ignore the price for rate limit, except for the models that are always free
+            if model_data.model in self._INGORE_PRICE_ALWAYS or (
+                model_data.model in self._IGNORE_PRICE and fallback_type not in {"rate_limit", "default"}
+            ):
                 assert model_data.fallback.pricing_tier == "cheapest", (
                     "Fallback pricing tier should be cheapest when pricing is ignored"
                 )
