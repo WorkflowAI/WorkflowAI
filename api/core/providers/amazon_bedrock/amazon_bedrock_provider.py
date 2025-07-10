@@ -98,8 +98,14 @@ class AmazonBedrockProvider(HTTPXProvider[AmazonBedrockConfig, CompletionRespons
                 max_tokens = min(max_tokens, model_data.max_tokens_data.max_output_tokens)
 
         elif thinking_budget:
-            # If no max_tokens is provided in the options but we have a thinking budget, we need to set a max_tokens that is higher than the thinking budget.
-            max_tokens = thinking_budget + DEFAULT_MAX_TOKENS_BUFFER
+            # If no max_tokens is provided in the options but we have a thinking budget, we need to set a max_tokens that is higher than the thinking budget.s
+            if model_data.max_tokens_data.max_output_tokens:
+                max_tokens = min(
+                    thinking_budget + DEFAULT_MAX_TOKENS_BUFFER,
+                    model_data.max_tokens_data.max_output_tokens,
+                )
+            else:
+                max_tokens = thinking_budget + DEFAULT_MAX_TOKENS_BUFFER
 
         return CompletionRequest(
             system=[system_message] if system_message else [],
