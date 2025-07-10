@@ -82,6 +82,7 @@ def setup_environment():
             "SLACK_BOT_TOKEN": "",
             "SLACK_CUSTOMERS_CHANNEL_ID": "",
             "CUSTOMER_SERVICE_DISABLED": "true",
+            "CEREBRAS_API_KEY": "sk-proj-123",
         },
         clear=True,
     ):
