@@ -168,7 +168,6 @@ def mistral_models() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
         Model.MISTRAL_SMALL_2503: ModelData(
             display_name="Mistral Small (25-03)",
             supports_json_mode=True,
-            supports_structured_output=True,
             supports_input_image=True,
             supports_input_pdf=True,
             supports_input_audio=False,
