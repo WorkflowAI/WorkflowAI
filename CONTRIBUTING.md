@@ -85,7 +85,7 @@ speed_data=SpeedData(
 )
 ```
 
-Example script to run a translation on a model:****
+Example script to run a translation on a model:
 
 ```python
 from typing import Optional
