@@ -12,3 +12,4 @@ class DisplayedProvider(StrEnum):
     GROQ = "Groq"
     AMAZON_BEDROCK = "Amazon Bedrock"
     X_AI = "xAI"
+    CEREBRAS = "Cerebras"

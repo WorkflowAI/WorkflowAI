@@ -1156,11 +1156,11 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             release_date=date(2024, 12, 6),
             quality_data=QualityData(mmlu=86, gpqa=50.5),
             speed_data=SpeedData(
-                index=SpeedIndex.from_experiment(output_tokens=2568, duration_seconds=10),
+                index=SpeedIndex.from_experiment(output_tokens=2587, duration_seconds=1.5),
             ),
-            provider_name=DisplayedProvider.FIREWORKS.value,
+            provider_name=DisplayedProvider.CEREBRAS.value,
             supports_tool_calling=False,
-            fallback=ModelFallback.default("cheap"),
+            fallback=ModelFallback.default("cheapest"),
         ),
         # https://fireworks.ai/models/fireworks/llama-v3p1-70b-instruct
         Model.LLAMA_3_1_70B: ModelData(
@@ -1199,9 +1199,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             release_date=date(2024, 7, 23),
             quality_data=QualityData(mmlu=66.7, gpqa=33.8),
             speed_data=SpeedData(
-                index=SpeedIndex.from_experiment(output_tokens=1680, duration_seconds=4.2),
+                index=SpeedIndex.from_experiment(output_tokens=2229, duration_seconds=1.7),
             ),
-            provider_name=DisplayedProvider.FIREWORKS.value,
+            provider_name=DisplayedProvider.CEREBRAS.value,
             supports_tool_calling=False,
             fallback=ModelFallback.only_model(Model.GEMINI_2_0_FLASH_LITE_001, "cheapest"),
         ),
@@ -1399,9 +1399,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
                 source="https://www.vals.ai/models/together_meta-llama_Llama-4-Scout-17B-16E-Instruct",
             ),
             speed_data=SpeedData(
-                index=SpeedIndex.from_experiment(output_tokens=2532, duration_seconds=4.8),
+                index=SpeedIndex.from_experiment(output_tokens=1871, duration_seconds=2.7),
             ),
-            provider_name=DisplayedProvider.GROQ.value,
+            provider_name=DisplayedProvider.CEREBRAS.value,
             supports_tool_calling=True,
             supports_structured_output=True,
             fallback=ModelFallback.default("cheapest"),

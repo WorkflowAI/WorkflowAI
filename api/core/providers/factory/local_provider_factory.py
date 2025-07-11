@@ -12,6 +12,7 @@ from core.domain.tenant_data import ProviderConfig
 from core.providers.amazon_bedrock.amazon_bedrock_provider import AmazonBedrockProvider
 from core.providers.anthropic.anthropic_provider import AnthropicProvider
 from core.providers.base.abstract_provider import AbstractProvider, ProviderConfigVar
+from core.providers.cerebras.cerebras_provider import CerebrasProvider
 from core.providers.factory.abstract_provider_factory import AbstractProviderFactory
 from core.providers.fireworks.fireworks_provider import FireworksAIProvider
 from core.providers.google.gemini.gemini_api_provider import GoogleGeminiAPIProvider
@@ -39,6 +40,7 @@ _provider_cls: list[type[AbstractProvider[Any, Any]]] = [
     XAIProvider,
     OpenAIImageProvider,
     GoogleImagenVertexProvider,
+    CerebrasProvider,
 ]
 
 _logger = logging.getLogger("LocalProviderFactory")
