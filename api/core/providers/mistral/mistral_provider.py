@@ -112,6 +112,8 @@ class MistralAIProvider(HTTPXProvider[MistralAIConfig, CompletionResponse]):
         return ResponseFormat(
             type="json_schema",
             json_schema=MistralSchema(
+                # Uses OpenAI Screma preparation which is pretty standard in the industry.
+                # The docs doesn't mention any specifics for Mistral schemas. https://docs.mistral.ai/capabilities/structured-output/custom_structured_output/
                 name=get_openai_json_schema_name(task_name, schema),
                 schema=prepare_openai_json_schema(schema),
             ),
