@@ -52,6 +52,7 @@ type Props = {
   supportCopy?: boolean;
   onTextareaFocus?: () => void;
   onTextareaBlur?: () => void;
+  autofocus?: boolean;
 };
 
 export function ProxyMessageView(props: Props) {
@@ -75,6 +76,7 @@ export function ProxyMessageView(props: Props) {
     onTextareaFocus,
     onTextareaBlur,
     supportCopy = true,
+    autofocus = false,
   } = props;
 
   const { tenant, taskId } = useParams();
@@ -252,6 +254,7 @@ export function ProxyMessageView(props: Props) {
                       supportObjectViewerIfPossible={message.role === 'assistant'}
                       onFocus={onTextareaFocus}
                       onBlur={onTextareaBlur}
+                      autofocus={autofocus}
                     />
                   </div>
                 )}
