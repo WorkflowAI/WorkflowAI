@@ -60,6 +60,7 @@ When adding a new model, you must provide:
 - `max_tokens_data`: Maximum token limits for input and output
 - `release_date`: When the model was released
 - `quality_data`: Performance metrics (MMLU, GPQA scores, etc.)
+- `speed_data`: Speed index of the model
 - `provider_name`: Name of the provider
 - `supports_*` flags: What capabilities the model supports (JSON mode, images, etc.)
 - `fallback`: Optional fallback configuration for error handling
@@ -68,6 +69,116 @@ When deprecating a model, make sure to replace every case where the model is use
 
 - the model will no longer be supported by the provider in the near future
 - the model has a clear replacement model and using the original model is not recommended
+
+##### Computing model speed index
+
+To compute the speed index of a model, you can run a pretty lenghty generation on the new model and measure the time it takes.
+
+Then you can feed the model speed_data with the metadata (output tokens count and duration) from the run:
+
+
+Ex:
+
+```python
+speed_data=SpeedData(
+    index=SpeedIndex.from_experiment(output_tokens=2252, duration_seconds=18),
+)
+```
+
+Example script to run a translation on a model:****
+
+```python
+from typing import Optional
+
+import openai
+
+client = openai.OpenAI(
+    api_key="INSERT_API_KEY_HERE",
+    base_url="https://run.workflowai.com/v1",
+)
+
+
+def translate_to_french(
+    text: str, context: Optional[str] = None, tone: Optional[str] = None
+):
+    system_prompt = """You are an expert French translator with deep knowledge of French language, culture, and nuances. Your task is to translate text to French while preserving meaning, tone, and cultural context.
+
+For each translation, provide:
+
+**Translated Text**: The French translation that accurately conveys the meaning and tone of the original text.
+
+Consider:
+- Regional variations (France vs. Quebec vs. other French-speaking regions)
+- Formal vs. informal register
+- Cultural context and idioms
+- Technical terminology when applicable
+- Tone and style preservation
+"""
+
+    user_prompt = """
+    Text to translate: {{text}}
+
+    Please provide a high-quality French translation with appropriate cultural and linguistic considerations.
+    """
+
+    response = client.chat.completions.create(
+        model="gemini-2.0-flash-001",  # pick the model here
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        metadata={
+            "agent_id": "french-translation",
+        },
+        extra_body={
+            "input": {
+                "text": text,
+            },
+        },
+    )
+
+    return response.choices[0].message.content
+
+
+# Example usage and testing
+if __name__ == "__main__":
+    text = """Geoffrey Everest Hinton (born 1947) is a British-Canadian computer scientist, cognitive scientist, and cognitive psychologist known for his work on artificial neural networks, which earned him the title "the Godfather of AI".[9]
+
+Hinton is University Professor Emeritus at the University of Toronto. From 2013 to 2023, he divided his time working for Google (Google Brain) and the University of Toronto before publicly announcing his departure from Google in May 2023, citing concerns about the many risks of artificial intelligence (AI) technology.[10][11] In 2017, he co-founded and became the chief scientific advisor of the Vector Institute in Toronto.[12][13]
+
+With David Rumelhart and Ronald J. Williams, Hinton was co-author of a highly cited paper published in 1986 that popularised the backpropagation algorithm for training multi-layer neural networks,[14] although they were not the first to propose the approach.[15] Hinton is viewed as a leading figure in the deep learning community.[21] The image-recognition milestone of the AlexNet designed in collaboration with his students Alex Krizhevsky[22] and Ilya Sutskever for the ImageNet challenge 2012[8] was a breakthrough in the field of computer vision.[23]
+
+Hinton received the 2018 Turing Award, often referred to as the "Nobel Prize of Computing", together with Yoshua Bengio and Yann LeCun for their work on deep learning.[24] They are sometimes referred to as the "Godfathers of Deep Learning"[25][26] and have continued to give public talks together.[27][28] He was also awarded, along with John Hopfield, the 2024 Nobel Prize in Physics for foundational discoveries and inventions that enable machine learning with artificial neural networks.[29][30]
+
+In May 2023, Hinton announced his resignation from Google to be able to "freely speak out about the risks of A.I."[31] He has voiced concerns about deliberate misuse by malicious actors, technological unemployment, and existential risk from artificial general intelligence.[32] He noted that establishing safety guidelines will require cooperation among those competing in use of AI in order to avoid the worst outcomes.[33] After receiving the Nobel Prize, he called for urgent research into AI safety to figure out how to control AI systems smarter than humans.[34][35][36]
+
+Education
+Hinton was born on 6 December 1947[37] in Wimbledon, England, and was educated at Clifton College in Bristol.[38] In 1967, he enrolled as an undergraduate student at King's College, Cambridge, and after repeatedly switching between different fields, like natural sciences, history of art, and philosophy, he eventually graduated with a Bachelor of Arts degree in experimental psychology at the University of Cambridge in 1970.[37][39] He spent a year apprenticing carpentry before returning to academic studies.[40] From 1972 to 1975, he continued his study at the University of Edinburgh, where he was awarded a PhD in artificial intelligence in 1978 for research supervised by Christopher Longuet-Higgins, who favored the symbolic AI approach over the neural network approach.[39][41][42][40]
+
+Career and research
+After his PhD, Hinton initially worked at the University of Sussex and at the MRC Applied Psychology Unit. After having difficulty getting funding in Britain,[40] he worked in the US at the University of California, San Diego and Carnegie Mellon University.[37] He was the founding director of the Gatsby Charitable Foundation Computational Neuroscience Unit at University College London.[37] He is currently[43] University Professor Emeritus in the computer science department at the University of Toronto, where he has been affiliated since 1987.[44]
+
+Upon arrival in Canada, Geoffrey Hinton was appointed at the Canadian Institute for Advanced Research (CIFAR) in 1987 as a Fellow in CIFAR's first research program, Artificial Intelligence, Robotics & Society.[45] In 2004, Hinton and collaborators successfully proposed the launch of a new program at CIFAR, "Neural Computation and Adaptive Perception"[46] (NCAP), which today is named "Learning in Machines & Brains". Hinton would go on to lead NCAP for ten years.[47] Among the members of the program are Yoshua Bengio and Yann LeCun, with whom Hinton would go on to win the ACM A.M. Turing Award in 2018.[48] All three Turing winners continue to be members of the CIFAR Learning in Machines & Brains program.[49]
+
+Hinton taught a free online course on Neural Networks on the education platform Coursera in 2012.[50] He co-founded DNNresearch Inc. in 2012 with his two graduate students Alex Krizhevsky and Ilya Sutskever at the University of Toronto’s department of computer science. In March 2013, Google acquired DNNresearch Inc. for $44 million, and Hinton planned to "divide his time between his university research and his work at Google".[51][52][53]
+
+Hinton's research concerns ways of using neural networks for machine learning, memory, perception, and symbol processing. He has written or co-written more than 200 peer-reviewed publications.[1][54]
+
+While Hinton was a postdoc at UC San Diego, David E. Rumelhart and Hinton and Ronald J. Williams applied the backpropagation algorithm to multi-layer neural networks. Their experiments showed that such networks can learn useful internal representations of data.[14] In a 2018 interview,[55] Hinton said that "David E. Rumelhart came up with the basic idea of backpropagation, so it's his invention". Although this work was important in popularising backpropagation, it was not the first to suggest the approach.[15] Reverse-mode automatic differentiation, of which backpropagation is a special case, was proposed by Seppo Linnainmaa in 1970, and Paul Werbos proposed to use it to train neural networks in 1974.[15]
+
+In 1985, Hinton co-invented Boltzmann machines with David Ackley and Terry Sejnowski.[56] His other contributions to neural network research include distributed representations, time delay neural network, mixtures of experts, Helmholtz machines and product of experts.[57] An accessible introduction to Geoffrey Hinton's research can be found in his articles in Scientific American in September 1992 and October 1993.[58] In 2007, Hinton coauthored an unsupervised learning paper titled Unsupervised learning of image transformations.[59] In 2008, he developed the visualization method t-SNE with Laurens van der Maaten.[60][61]
+
+In October and November 2017, Hinton published two open access research papers on the theme of capsule neural networks,[62][63] which, according to Hinton, are "finally something that works well".[64]
+
+At the 2022 Conference on Neural Information Processing Systems (NeurIPS), Hinton introduced a new learning algorithm for neural networks that he calls the "Forward-Forward" algorithm. The idea of the new algorithm is to replace the traditional forward-backward passes of backpropagation with two forward passes, one with positive (i.e. real) data and the other with negative data that could be generated solely by the network.[65][66]
+
+In May 2023, Hinton publicly announced his resignation from Google. He explained his decision by saying that he wanted to "freely speak out about the risks of A.I." and added that a part of him now regrets his life's work.[10][31]
+
+Notable former PhD students and postdoctoral researchers from his group include Peter Dayan,[67] Sam Roweis,[67] Max Welling,[67] Richard Zemel,[41][2] Brendan Frey,[3] Radford M. Neal,[4] Yee Whye Teh,[5] Ruslan Salakhutdinov,[6] Ilya Sutskever,[7] Yann LeCun,[68] Alex Graves,[67] Zoubin Ghahramani,[67] and Peter Fitzhugh Brown.[69]"""
+
+    print(translate_to_french(text))
+
+```
 
 #### Model provider data
 
@@ -152,3 +263,4 @@ async def get_items():
     """
     ...
 ```
+
