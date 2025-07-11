@@ -303,7 +303,7 @@ class CompletionRequest(BaseModel):
     stop: str | None = None
     random_seed: int | None = None
     messages: list[MistralAIMessage | MistralToolMessage]
-    response_format: ResponseFormatUnion = Field(default_factory=ResponseFormat)
+    response_format: ResponseFormat
     tools: list[MistralTool] | None = None
     tool_choice: MistralToolChoiceEnum | MistralToolChoice | None = None
     safe_prompt: bool | None = None
