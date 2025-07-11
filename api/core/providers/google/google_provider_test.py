@@ -1535,7 +1535,7 @@ class TestBuildRequest:
         )
 
         assert isinstance(request, CompletionRequest)
-        assert request.generationConfig.responseMimeType == "text/plain"
+        assert request.generationConfig.responseMimeType == "application/json"
         assert request.generationConfig.responseSchema is None
 
     def test_build_request_structured_generation_schema_error_handling(self, google_provider: GoogleProvider):

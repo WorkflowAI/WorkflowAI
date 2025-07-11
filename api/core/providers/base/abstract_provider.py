@@ -802,7 +802,7 @@ class AbstractProvider(ABC, Generic[ProviderConfigVar, ProviderRequestVar]):
         """An opportunity for the provider to override the template name"""
         return template
 
-    def sanitize_model_data(self, model_data: ModelData):
+    def sanitize_model_data(self, model_data: ModelData, are_tools_enabled: bool):
         """An opportunity for the provider to override the model data. Object should be updated in place"""
         pass
 

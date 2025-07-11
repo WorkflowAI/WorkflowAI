@@ -1105,6 +1105,7 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
         model_data: FinalModelData,
         is_structured_generation_enabled: bool,
     ) -> tuple[AbstractProvider[Any, Any], TemplateName, ProviderOptions, FinalModelData]:
+        enabled_tools = list(self._all_tools())
         provider_options = ProviderOptions(
             model=model_data.model,
             temperature=self._options.temperature,
@@ -1126,7 +1127,7 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
         )
 
         model_data_copy = model_data.model_copy()
-        provider.sanitize_model_data(model_data_copy)
+        provider.sanitize_model_data(model_data_copy, len(enabled_tools) > 0)
         self._check_tool_calling_support(model_data)
 
         # Overriding the structured generation flag if the model does not support it

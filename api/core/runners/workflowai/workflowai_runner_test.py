@@ -1923,7 +1923,7 @@ class TestBuildProviderData:
         patched_provider_factory: Mock,
         model_data: FinalModelData,
     ):
-        def side_effect(model_data: ModelData):
+        def side_effect(model_data: ModelData, are_tools_enabled: bool):
             model_data.supports_structured_output = False
 
         patched_provider_factory.azure_openai.sanitize_model_data.side_effect = side_effect

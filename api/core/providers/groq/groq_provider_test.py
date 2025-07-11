@@ -370,7 +370,7 @@ class TestSanitizeModelData:
             supports_tool_calling=True,
             fallback=None,
         )
-        groq_provider.sanitize_model_data(model_data)
+        groq_provider.sanitize_model_data(model_data, are_tools_enabled=False)
         assert model_data.supports_structured_output is False
 
 

@@ -176,8 +176,7 @@ class GoogleProviderBase(HTTPXProvider[_GoogleConfigVar, CompletionResponse], Ge
             temperature=options.temperature,
             maxOutputTokens=options.max_tokens,
             responseMimeType="application/json"
-            if (model_data.supports_json_mode and not options.enabled_tools and options.output_schema)
-            # Google does not allow setting the response mime type at all when using tools.
+            if model_data.supports_json_mode and options.output_schema
             else "text/plain",
             thinking_config=thinking_config,
             presencePenalty=options.presence_penalty,
@@ -192,6 +191,7 @@ class GoogleProviderBase(HTTPXProvider[_GoogleConfigVar, CompletionResponse], Ge
             and model_data.supports_structured_output
         ):
             try:
+                generation_config.responseMimeType = "application/json"
                 generation_config.responseSchema = prepare_google_response_schema(
                     options.output_schema,
                     self.response_schema_allowed_string_formats,

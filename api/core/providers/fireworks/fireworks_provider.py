@@ -522,9 +522,13 @@ class FireworksAIProvider(HTTPXProvider[FireworksConfig, CompletionResponse]):
                 return template
 
     @override
-    def sanitize_model_data(self, model_data: ModelData):
+    def sanitize_model_data(self, model_data: ModelData, are_tools_enabled: bool):
         model_data.supports_input_image = True
         model_data.supports_input_pdf = True
+
+        # Structured generation is not supported when tools are enabled
+        if are_tools_enabled:
+            model_data.supports_structured_output = False
 
     @classmethod
     def _extract_native_tool_calls(cls, response: CompletionResponse) -> list[ToolCallRequestWithID]:
