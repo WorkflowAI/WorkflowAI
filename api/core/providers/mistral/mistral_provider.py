@@ -9,6 +9,7 @@ from typing_extensions import override
 from core.domain.llm_usage import LLMUsage
 from core.domain.message import MessageDeprecated
 from core.domain.models import Model, Provider
+from core.domain.models.model_data import ModelData
 from core.domain.models.model_data_supports import ModelDataSupports
 from core.domain.models.utils import get_model_data
 from core.domain.tool_call import ToolCallRequestWithID
@@ -86,7 +87,6 @@ class MistralAIProvider(HTTPXProvider[MistralAIConfig, CompletionResponse]):
         )
 
         if options.enabled_tools is not None and options.enabled_tools != []:
-            # Can't use json_object/json_schema with tools
             # 400 from Mistral AI when doing so: "Cannot use json response type with tools","type":"invalid_request_error"
             request.response_format = ResponseFormat(type="text")
             request.tools = [MistralTool.from_domain(tool) for tool in options.enabled_tools]
@@ -226,6 +226,12 @@ class MistralAIProvider(HTTPXProvider[MistralAIConfig, CompletionResponse]):
     @classmethod
     def name(cls) -> Provider:
         return Provider.MISTRAL_AI
+
+    @override
+    def sanitize_model_data(self, model_data: ModelData, are_tools_enabled: bool):
+        # Structured generation is not supported when tools are enabled
+        if are_tools_enabled:
+            model_data.supports_structured_output = False
 
     @override
     @classmethod
