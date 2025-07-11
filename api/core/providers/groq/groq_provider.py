@@ -331,7 +331,7 @@ class GroqProvider(HTTPXProvider[GroqConfig, CompletionResponse]):
         return 0, None
 
     @override
-    def sanitize_model_data(self, model_data: ModelData):
+    def sanitize_model_data(self, model_data: ModelData, are_tools_enabled: bool):
         # Groq does not support structured output yet
         model_data.supports_structured_output = False
         model_data.supports_input_audio = False
