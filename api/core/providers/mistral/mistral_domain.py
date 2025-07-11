@@ -37,7 +37,7 @@ class MistralSchema(BaseModel):
 
 
 class ResponseFormat(BaseModel):
-    type: Literal["json_object", "text", "json_schema"] = "json_object"
+    type: Literal["json_object", "text", "json_schema"]
     json_schema: MistralSchema | None = None
 
 

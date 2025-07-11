@@ -110,6 +110,7 @@ class MistralAIProvider(HTTPXProvider[MistralAIConfig, CompletionResponse]):
 
         schema = copy.deepcopy(options.output_schema)
         return ResponseFormat(
+            type="json_schema",
             json_schema=MistralSchema(
                 name=get_openai_json_schema_name(task_name, schema),
                 schema=prepare_openai_json_schema(schema),
