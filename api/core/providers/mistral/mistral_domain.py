@@ -30,23 +30,19 @@ from core.utils.json_utils import safe_extract_dict_from_json
 from core.utils.token_utils import tokens_from_string
 
 
-class ResponseFormat(BaseModel):
-    type: Literal["json_object", "text", "json_schema"] = "json_object"
-
-
 class MistralSchema(BaseModel):
     strict: bool = True
     name: str
-    schema: dict[str, Any]
+    schema_: dict[str, Any] = Field(alias="schema")
 
 
-class JSONSchemaResponseFormat(BaseModel):
-    type: Literal["json_schema"] = "json_schema"
-    json_schema: MistralSchema
+class ResponseFormat(BaseModel):
+    type: Literal["json_object", "text", "json_schema"] = "json_object"
+    json_schema: MistralSchema | None = None
 
 
 # Union type for all response formats
-ResponseFormatUnion = ResponseFormat | JSONSchemaResponseFormat
+ResponseFormatUnion = ResponseFormat
 
 
 class MistralTool(BaseModel):

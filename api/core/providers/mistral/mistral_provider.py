@@ -35,7 +35,6 @@ from .mistral_domain import (
     CompletionRequest,
     CompletionResponse,
     DeltaMessage,
-    JSONSchemaResponseFormat,
     MistralAIMessage,
     MistralError,
     MistralSchema,
@@ -98,7 +97,7 @@ class MistralAIProvider(HTTPXProvider[MistralAIConfig, CompletionResponse]):
         self,
         options: ProviderOptions,
         supports: ModelDataSupports,
-    ) -> ResponseFormat | JSONSchemaResponseFormat:
+    ) -> ResponseFormat:
         if options.output_schema is None or (
             not supports.supports_json_mode and not supports.supports_structured_output
         ):
@@ -110,7 +109,7 @@ class MistralAIProvider(HTTPXProvider[MistralAIConfig, CompletionResponse]):
         task_name = options.task_name or ""
 
         schema = copy.deepcopy(options.output_schema)
-        return JSONSchemaResponseFormat(
+        return ResponseFormat(
             json_schema=MistralSchema(
                 name=get_openai_json_schema_name(task_name, schema),
                 schema=prepare_openai_json_schema(schema),
