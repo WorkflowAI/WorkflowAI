@@ -100,10 +100,11 @@ async def browser_text_with_proxy_setting(url: str, proxy_setting: ProxySetting 
             result = await func(url, proxy_setting)
             if result.error:
                 error_details = f"{result.content if result and result.content else ''} {result.error if result and result.error else ''}"
-                logger.warning(
-                    "Error fetching url content",
-                    extra={"url": url, "error": error_details},
-                )
+                # Silencing warning as it generates too much noise
+                # logger.warning(
+                #     "Error fetching url content",
+                #     extra={"url": url, "error": error_details},
+                # )
                 continue
             if result.content:
                 return result.content
