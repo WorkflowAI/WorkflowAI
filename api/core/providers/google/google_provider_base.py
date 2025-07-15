@@ -45,6 +45,7 @@ from core.providers.google.google_provider_domain import (
     message_or_system_message,
     native_tool_name_to_internal,
 )
+from core.providers.google.google_provider_utils import prepare_google_response_schema
 from core.services.message import merge_messages
 from core.tools import ToolKind
 from core.utils.models.dumps import safe_dump_pydantic_model
@@ -147,6 +148,11 @@ class GoogleProviderBase(HTTPXProvider[_GoogleConfigVar, CompletionResponse], Ge
 
         return user_messages, system_message
 
+    @property
+    def response_schema_allowed_string_formats(self) -> set[str] | None:
+        # By default, allow all string formats in the response schemas
+        return None
+
     @override
     def _build_request(self, messages: list[MessageDeprecated], options: ProviderOptions, stream: bool) -> BaseModel:
         model_data = get_model_data(model=options.model)
@@ -178,6 +184,23 @@ class GoogleProviderBase(HTTPXProvider[_GoogleConfigVar, CompletionResponse], Ge
             frequencyPenalty=options.frequency_penalty,
             topP=options.top_p,
         )
+
+        if (
+            self.is_structured_generation_supported
+            and options.structured_generation
+            and options.output_schema
+            and model_data.supports_structured_output
+        ):
+            try:
+                generation_config.responseSchema = prepare_google_response_schema(
+                    options.output_schema,
+                    self.response_schema_allowed_string_formats,
+                )
+            except Exception as e:
+                # What is in 'options.output_schema' can have a lot of different shapes, hence the generic error handling
+                # Failure to prepare the schema does not prevent the generation from starting, we can just fallback to non-controlled generation
+                self.logger.error("Failed to prepare Google controlled generation schema", extra={"error": e})
+
         if messages[0].image_options and messages[0].image_options.image_count:
             generation_config.responseModalities = ["IMAGE", "TEXT"]
 
@@ -194,6 +217,10 @@ class GoogleProviderBase(HTTPXProvider[_GoogleConfigVar, CompletionResponse], Ge
         self._add_native_tools(options, completion_request)
 
         return completion_request
+
+    @property
+    def is_structured_generation_supported(self) -> bool:
+        return True
 
     def _raw_prompt(self, request_json: dict[str, Any]) -> list[dict[str, Any]]:
         """Extract the raw prompt from the request JSON"""

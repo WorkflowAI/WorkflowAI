@@ -19,6 +19,7 @@ def sort_models(
         sort_by: Field to sort by
             - "release_date": Sort by release_date
             - "quality_index": Sort by quality_index
+            - "speed_index": Sort by speed_index
             - "cost": Sort by combined input+output cost
         order: Sort direction
             - "asc": Ascending order (lowest to highest)
@@ -39,6 +40,9 @@ def sort_models(
     elif sort_by == "quality_index":
         # Sort by quality index, with model id as secondary key
         concrete_models.sort(key=lambda x: (x.quality_index, x.id), reverse=reverse_sort)
+    elif sort_by == "speed_index":
+        # Sort by speed index, with model id as secondary key
+        concrete_models.sort(key=lambda x: (x.speed_index, x.id), reverse=reverse_sort)
     elif sort_by == "cost":
         # Sort by combined cost, with model id as secondary key
         concrete_models.sort(

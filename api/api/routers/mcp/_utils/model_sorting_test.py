@@ -11,6 +11,7 @@ from api.routers.mcp._utils.model_sorting import sort_models
 def create_test_model(
     model_id: str,
     quality_index: int = 50,
+    speed_index: int = 500,
     cost_per_input_token_usd: float = 0.001,
     cost_per_output_token_usd: float = 0.002,
     release_date: str = "2024-01-01",
@@ -28,6 +29,7 @@ def create_test_model(
             reasoning=False,
         ),
         quality_index=quality_index,
+        speed_index=speed_index,
         cost_per_input_token_usd=cost_per_input_token_usd,
         cost_per_output_token_usd=cost_per_output_token_usd,
         release_date=release_date,
@@ -121,6 +123,43 @@ class TestSortModels:
         sorted_models = sort_models(models, "quality_index", "desc")
 
         # Should be sorted by id when quality is the same (reverse order due to desc)
+        assert [m.id for m in sorted_models] == ["zebra", "beta", "alpha"]
+
+    def test_sort_by_speed_index_desc(self):
+        """Test sorting by speed index (highest first)."""
+        models: list[ConciseModelResponse | ConciseLatestModelResponse] = [
+            create_test_model("model1", speed_index=300),
+            create_test_model("model2", speed_index=800),
+            create_test_model("model3", speed_index=600),
+        ]
+
+        sorted_models = sort_models(models, "speed_index", "desc")
+
+        assert [m.id for m in sorted_models] == ["model2", "model3", "model1"]
+
+    def test_sort_by_speed_index_asc(self):
+        """Test sorting by speed index (lowest first)."""
+        models: list[ConciseModelResponse | ConciseLatestModelResponse] = [
+            create_test_model("model1", speed_index=300),
+            create_test_model("model2", speed_index=800),
+            create_test_model("model3", speed_index=600),
+        ]
+
+        sorted_models = sort_models(models, "speed_index", "asc")
+
+        assert [m.id for m in sorted_models] == ["model1", "model3", "model2"]
+
+    def test_sort_by_speed_index_same_speed(self):
+        """Test stable sorting when models have same speed index."""
+        models: list[ConciseModelResponse | ConciseLatestModelResponse] = [
+            create_test_model("zebra", speed_index=500),
+            create_test_model("alpha", speed_index=500),
+            create_test_model("beta", speed_index=500),
+        ]
+
+        sorted_models = sort_models(models, "speed_index", "desc")
+
+        # Should be sorted by id when speed is the same (reverse order due to desc)
         assert [m.id for m in sorted_models] == ["zebra", "beta", "alpha"]
 
     def test_sort_by_cost_asc(self):
@@ -258,17 +297,18 @@ class TestSortModels:
         assert sorted_models is original_list
         assert [m.id for m in models] == ["model2", "model1"]
 
-    @pytest.mark.parametrize("sort_by", ["release_date", "quality_index", "cost"])
+    @pytest.mark.parametrize("sort_by", ["release_date", "quality_index", "speed_index", "cost"])
     @pytest.mark.parametrize("order", ["asc", "desc"])
     def test_sort_preserves_model_data(
         self,
-        sort_by: Literal["release_date", "quality_index", "cost"],
+        sort_by: Literal["release_date", "quality_index", "speed_index", "cost"],
         order: Literal["asc", "desc"],
     ):
         """Test that sorting doesn't modify model data."""
         model = create_test_model(
             "test_model",
             quality_index=75,
+            speed_index=600,
             cost_per_input_token_usd=0.001,
             cost_per_output_token_usd=0.002,
             release_date="2024-06-15",
@@ -282,6 +322,7 @@ class TestSortModels:
         assert isinstance(sorted_model, ConciseModelResponse)
         assert sorted_model.id == "test_model"
         assert sorted_model.quality_index == 75
+        assert sorted_model.speed_index == 600
         assert sorted_model.cost_per_input_token_usd == 0.001
         assert sorted_model.cost_per_output_token_usd == 0.002
         assert sorted_model.release_date == "2024-06-15"

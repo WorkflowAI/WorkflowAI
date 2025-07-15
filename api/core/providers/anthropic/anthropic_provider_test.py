@@ -23,10 +23,15 @@ from core.domain.tool_call import ToolCallRequestWithID
 from core.providers.anthropic.anthropic_domain import (
     AnthropicMessage,
     AntToolChoice,
+    CompletionChunk,
     CompletionRequest,
     CompletionResponse,
     ContentBlock,
+    SignatureDelta,
     TextContent,
+    ThinkingContent,
+    ThinkingDelta,
+    ToolUseContent,
     Usage,
 )
 from core.providers.anthropic.anthropic_provider import AnthropicConfig, AnthropicProvider
@@ -57,22 +62,95 @@ def _output_factory(x: str, _: bool):
 
 class TestMaxTokens:
     @pytest.mark.parametrize(
-        ("model", "requested_max_tokens", "expected_max_tokens"),
+        ("model", "requested_max_tokens", "thinking_budget", "expected_max_tokens"),
         [
-            pytest.param(Model.CLAUDE_3_5_HAIKU_LATEST, 10, 10, id="Requested less than default"),
-            pytest.param(Model.CLAUDE_3_7_SONNET_20250219, None, 8192, id="Default"),
-            pytest.param(Model.CLAUDE_3_7_SONNET_20250219, 50_000, 50_000, id="Requested less than max"),
-            pytest.param(Model.CLAUDE_3_7_SONNET_20250219, 100_000, 64_000, id="Requested more than max"),
+            pytest.param(Model.CLAUDE_3_5_HAIKU_LATEST, 10, None, 10, id="Requested less than default, no thinking"),
+            pytest.param(Model.CLAUDE_3_7_SONNET_20250219, None, None, 8192, id="Default, no thinking"),
+            pytest.param(
+                Model.CLAUDE_3_7_SONNET_20250219,
+                50_000,
+                None,
+                50_000,
+                id="Requested less than max, no thinking",
+            ),
+            pytest.param(
+                Model.CLAUDE_3_7_SONNET_20250219,
+                100_000,
+                None,
+                64_000,
+                id="Requested more than max, no thinking",
+            ),
+            pytest.param(Model.CLAUDE_3_7_SONNET_20250219, 10, 500, 510, id="Requested with thinking budget"),
+            pytest.param(Model.CLAUDE_3_7_SONNET_20250219, None, 1000, 9192, id="Default with thinking budget"),
+            pytest.param(
+                Model.CLAUDE_3_7_SONNET_20250219,
+                50_000,
+                2000,
+                52_000,
+                id="Requested with thinking budget less than max",
+            ),
+            pytest.param(
+                Model.CLAUDE_3_7_SONNET_20250219,
+                62_000,
+                3000,
+                64_000,
+                id="Requested with thinking budget exceeds max",
+            ),
+            pytest.param(
+                Model.CLAUDE_3_7_SONNET_20250219,
+                100_000,
+                5000,
+                64_000,
+                id="Both requested and thinking exceed max",
+            ),
         ],
     )
     def test_max_tokens(
         self,
         anthropic_provider: AnthropicProvider,
         model: Model,
-        requested_max_tokens: int,
+        requested_max_tokens: int | None,
+        thinking_budget: int | None,
         expected_max_tokens: int,
     ):
-        assert anthropic_provider._max_tokens(get_model_data(model), requested_max_tokens) == expected_max_tokens
+        assert (
+            anthropic_provider._max_tokens(get_model_data(model), requested_max_tokens, thinking_budget)
+            == expected_max_tokens
+        )
+
+    def test_max_tokens_with_missing_model_data(self, anthropic_provider: AnthropicProvider):
+        """Test that the method handles missing model max tokens by using default."""
+        # Create a mock model data with no max_output_tokens
+        model_data = get_model_data(Model.CLAUDE_3_7_SONNET_20250219)
+        original_max_output_tokens = model_data.max_tokens_data.max_output_tokens
+
+        # Temporarily set max_output_tokens to None to test the fallback
+        model_data.max_tokens_data.max_output_tokens = None
+
+        try:
+            result = anthropic_provider._max_tokens(model_data, 1000, 500)
+            # Should use DEFAULT_MAX_TOKENS (8192) as the ceiling
+            assert result == 1500  # requested 1000 + thinking 500
+        finally:
+            # Restore original value
+            model_data.max_tokens_data.max_output_tokens = original_max_output_tokens
+
+    def test_max_tokens_with_missing_model_data_exceeds_default(self, anthropic_provider: AnthropicProvider):
+        """Test that the method handles missing model max tokens when requested exceeds default."""
+        # Create a mock model data with no max_output_tokens
+        model_data = get_model_data(Model.CLAUDE_3_7_SONNET_20250219)
+        original_max_output_tokens = model_data.max_tokens_data.max_output_tokens
+
+        # Temporarily set max_output_tokens to None to test the fallback
+        model_data.max_tokens_data.max_output_tokens = None
+
+        try:
+            result = anthropic_provider._max_tokens(model_data, 10000, 2000)
+            # Should use DEFAULT_MAX_TOKENS (8192) as the ceiling
+            assert result == 8192  # min(10000 + 2000, 8192) = 8192
+        finally:
+            # Restore original value
+            model_data.max_tokens_data.max_output_tokens = original_max_output_tokens
 
 
 class TestBuildRequest:
@@ -196,6 +274,70 @@ class TestBuildRequest:
         assert request.messages == [
             AnthropicMessage(role="user", content=[TextContent(text="-")]),
         ]
+
+    def test_build_request_with_thinking_budget(self, anthropic_provider: AnthropicProvider):
+        """Test that thinking budget is properly configured in requests."""
+        from core.domain.models.model_data import ModelReasoningBudget
+        from core.domain.models.utils import get_model_data
+        from core.providers.base.provider_options import ProviderOptions
+
+        model = Model.CLAUDE_3_5_SONNET_20241022
+        model_data = get_model_data(model)
+
+        # Mock the model data to have reasoning capabilities
+        original_reasoning = model_data.reasoning
+        model_data.reasoning = ModelReasoningBudget(disabled=None, low=500, medium=1000, high=2000, min=500, max=2000)
+
+        try:
+            # Create options with reasoning budget
+            options = ProviderOptions(
+                model=model,
+                max_tokens=1000,
+                reasoning_budget=500,
+            )
+
+            request = cast(
+                CompletionRequest,
+                anthropic_provider._build_request(  # pyright: ignore[reportPrivateUsage]
+                    messages=[MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello")],
+                    options=options,
+                    stream=False,
+                ),
+            )
+
+            # Check that thinking is configured
+            assert request.thinking is not None
+            assert request.thinking.type == "enabled"
+            assert request.thinking.budget_tokens == 500
+
+            # Check that max_tokens includes the thinking budget
+            assert request.max_tokens == 1000 + 500
+
+        finally:
+            # Restore original reasoning value
+            model_data.reasoning = original_reasoning
+
+    def test_build_request_without_thinking_budget(self, anthropic_provider: AnthropicProvider):
+        """Test that no thinking configuration is added when reasoning budget is not set."""
+        options = ProviderOptions(
+            model=Model.CLAUDE_3_5_SONNET_20241022,
+            max_tokens=1000,
+        )
+
+        request = cast(
+            CompletionRequest,
+            anthropic_provider._build_request(  # pyright: ignore[reportPrivateUsage]
+                messages=[MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello")],
+                options=options,
+                stream=False,
+            ),
+        )
+
+        # Check that thinking is not configured
+        assert request.thinking is None
+
+        # Check that max_tokens is not modified
+        assert request.max_tokens == 1000
 
 
 class TestSingleStream:
@@ -1045,3 +1187,158 @@ class TestStandardizeMessages:
             {"role": "assistant", "content": "You are a helpful assistant."},
             {"role": "user", "content": [{"type": "text", "text": "Hello"}]},
         ]
+
+
+class TestExtractReasoningSteps:
+    def test_extract_reasoning_steps_with_thinking_content(self, anthropic_provider: AnthropicProvider):
+        """Test extraction of reasoning steps from thinking content blocks."""
+        response = CompletionResponse(
+            content=[
+                ContentBlock(type="text", text="Here's my response."),
+                ThinkingContent(
+                    type="thinking",
+                    thinking="Let me think about this step by step...",
+                    signature="sig_123",
+                ),
+                ThinkingContent(
+                    type="thinking",
+                    thinking="Now I need to consider another approach...",
+                ),
+            ],
+            usage=Usage(input_tokens=100, output_tokens=50),
+        )
+
+        reasoning_steps = anthropic_provider._extract_reasoning_steps(response)  # pyright: ignore[reportPrivateUsage]
+
+        assert reasoning_steps is not None
+        assert len(reasoning_steps) == 2
+        assert reasoning_steps[0].explaination == "Let me think about this step by step..."
+        assert reasoning_steps[1].explaination == "Now I need to consider another approach..."
+
+    def test_extract_reasoning_steps_without_thinking_content(self, anthropic_provider: AnthropicProvider):
+        """Test extraction when there are no thinking content blocks."""
+        response = CompletionResponse(
+            content=[
+                ContentBlock(type="text", text="Here's my response."),
+                ToolUseContent(
+                    type="tool_use",
+                    id="tool_123",
+                    name="test_tool",
+                    input={"param": "value"},
+                ),
+            ],
+            usage=Usage(input_tokens=100, output_tokens=50),
+        )
+
+        reasoning_steps = anthropic_provider._extract_reasoning_steps(response)  # pyright: ignore[reportPrivateUsage]
+
+        assert reasoning_steps is None
+
+    def test_extract_reasoning_steps_empty_content(self, anthropic_provider: AnthropicProvider):
+        """Test extraction with empty content list."""
+        response = CompletionResponse(
+            content=[],
+            usage=Usage(input_tokens=100, output_tokens=50),
+        )
+
+        reasoning_steps = anthropic_provider._extract_reasoning_steps(response)  # pyright: ignore[reportPrivateUsage]
+
+        assert reasoning_steps is None
+
+
+class TestThinkingStreamingDeltas:
+    def test_handle_content_block_delta_with_thinking(self, anthropic_provider: AnthropicProvider):
+        """Test handling of thinking deltas in streaming."""
+
+        _raw_completion = RawCompletion(response="", usage=LLMUsage())
+        tool_call_request_buffer: dict[int, ToolCallRequestBuffer] = {}
+
+        # Create a chunk with thinking delta
+        chunk = CompletionChunk(
+            type="content_block_delta",
+            index=0,
+            delta=ThinkingDelta(
+                type="thinking_delta",
+                thinking="I need to analyze this request...",
+            ),
+        )
+
+        delta = anthropic_provider._handle_content_block_delta(  # pyright: ignore[reportPrivateUsage]
+            chunk,
+            tool_call_request_buffer,
+        )
+
+        assert delta.content == "I need to analyze this request..."
+        assert delta.reasoning_steps == "I need to analyze this request..."
+        assert delta.tool_calls == []
+
+    def test_handle_content_block_delta_with_signature(self, anthropic_provider: AnthropicProvider):
+        """Test handling of signature deltas in streaming."""
+
+        _raw_completion = RawCompletion(response="", usage=LLMUsage())
+        tool_call_request_buffer: dict[int, ToolCallRequestBuffer] = {}
+
+        # Create a chunk with signature delta
+        chunk = CompletionChunk(
+            type="content_block_delta",
+            index=0,
+            delta=SignatureDelta(
+                type="signature_delta",
+                signature="sig_456",
+            ),
+        )
+
+        delta = anthropic_provider._handle_content_block_delta(  # pyright: ignore[reportPrivateUsage]
+            chunk,
+            tool_call_request_buffer,
+        )
+
+        assert delta.content == ""  # Signature deltas don't contribute to text output
+        assert delta.reasoning_steps is None
+        assert delta.tool_calls == []
+
+    def test_stream_with_thinking_deltas(self, anthropic_provider: AnthropicProvider):
+        """Test streaming with thinking deltas integrated."""
+        raw_completion = RawCompletion(response="", usage=LLMUsage())
+        tool_call_request_buffer: dict[int, ToolCallRequestBuffer] = {}
+
+        # Test sequence of thinking deltas
+        thinking_events = [
+            {
+                "type": "content_block_delta",
+                "index": 0,
+                "delta": {
+                    "type": "thinking_delta",
+                    "thinking": "First, I need to understand the problem...",
+                },
+            },
+            {
+                "type": "content_block_delta",
+                "index": 0,
+                "delta": {
+                    "type": "thinking_delta",
+                    "thinking": "Now I should consider the options...",
+                },
+            },
+            {
+                "type": "content_block_delta",
+                "index": 0,
+                "delta": {
+                    "type": "signature_delta",
+                    "signature": "thinking_signature_123",
+                },
+            },
+        ]
+
+        reasoning_content = ""
+        for event in thinking_events:
+            delta = anthropic_provider._extract_stream_delta(  # pyright: ignore[reportPrivateUsage]
+                json.dumps(event).encode(),
+                raw_completion,
+                tool_call_request_buffer,
+            )
+
+            if delta.reasoning_steps:
+                reasoning_content += delta.reasoning_steps
+
+        assert reasoning_content == "First, I need to understand the problem...Now I should consider the options..."
