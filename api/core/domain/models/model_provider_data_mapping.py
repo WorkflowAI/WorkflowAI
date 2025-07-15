@@ -592,10 +592,10 @@ GROQ_PROVIDER_DATA: ProviderDataByModel = {
             source="https://groq.com/pricing/",
         ),
     ),
-    Model.QWEN_QWQ_32B: ModelProviderData(
+    Model.QWEN3_32B: ModelProviderData(
         text_price=TextPricePerToken(
             prompt_cost_per_token=0.29 * ONE_MILLION_TH,
-            completion_cost_per_token=0.39 * ONE_MILLION_TH,
+            completion_cost_per_token=0.59 * ONE_MILLION_TH,
             source="https://groq.com/pricing/",
         ),
     ),
@@ -1044,14 +1044,6 @@ FIREWORKS_PROVIDER_DATA: ProviderDataByModel = {
     #     ),
     #     # see: https://docs.fireworks.ai/guides/function-calling#supported-models
     # ),
-    Model.QWEN_QWQ_32B: ModelProviderData(
-        text_price=TextPricePerToken(
-            prompt_cost_per_token=0.90 * ONE_MILLION_TH,
-            completion_cost_per_token=0.90 * ONE_MILLION_TH,
-            source="https://fireworks.ai/pricing",
-        ),
-        # see: https://docs.fireworks.ai/guides/function-calling#supported-models
-    ),
     Model.DEEPSEEK_V3_2412: ModelProviderData(
         text_price=TextPricePerToken(
             prompt_cost_per_token=0.90 * ONE_MILLION_TH,
