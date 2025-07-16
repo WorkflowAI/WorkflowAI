@@ -1,0 +1,235 @@
+---
+title: Features
+---
+import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
+import { Cards, Card } from 'fumadocs-ui/components/card';
+
+Learn about the features of the WorkflowAI Playground.
+
+<Cards>
+  <Card
+    href="#version-comparison-features"
+    title="Version comparison features"
+    description="Track versions, compare models, and analyze price & latency"
+  />
+  <Card
+    href="#easy-iteration-features-this-name-needs-work" 
+    title="Easy iteration features"
+    description="AI-powered prompt improvement and input generation"
+  />
+  <Card
+    href="#collaboration-features"
+    title="Collaboration features" 
+    description="Share playgrounds and deploy without code changes"
+  />
+  <Card
+    href="#additional-playground-feature-details"
+    title="Additional playground feature details"
+    description="Parameters, schema display, and advanced settings"
+  />
+</Cards>
+
+## Version comparison features
+
+### Versioning
+
+TODO: clean up
+
+Track, compare, and manage different versions of your prompts to maintain a history of improvements and easily revert changes.
+
+To learn more about the different parameters that comprise a version, check out the [Additional Playground Feature Details](#additional-playground-feature-details) section
+
+### Model Comparison
+
+The playground provides access to 100+ models from multiple AI providers including OpenAI, Anthropic, Google, Meta, and others.
+
+Utilize our unified model access to:
+- Compare model performance across providers using the same prompt
+- Test newer models as they become available without additional setup
+- Evaluate [price and latency] (#price-and-latency-visibility-for-all-runs) differences between models
+- Experiment with different models during development without code changes
+
+You can test and compare models across different providers without needing to set up individual API keys for each service. Model access is handled through WorkflowAI directly.
+
+[View all supported models →](/reference/supported-models)
+
+
+### Price and Latency Visibility for All Runs
+
+For each output, WorkflowAI also displays:
+- 💰 Cost: The total price in USD for generating this output
+- ⚡ Latency: How long it took to get a response from the model, in seconds
+- 📊 Context window usage: How much of the model's maximum token limit was used, shown as a percentage
+
+> WorkflowAI Cloud offers a price-match guarantee, meaning that you're not charged more than the price per token of the model you're using. Learn more about the price-match guarantee [here](https://workflowai.com/pricing).
+
+<div style={{ position: 'relative', paddingTop: '56.25%' }}>
+  <iframe
+    src="https://customer-turax1sz4f7wbpuv.cloudflarestream.com/045750fa2005dc315713368a503ebd29/iframe?autoplay=false&muted=false&controls=true"
+    style={{ 
+      border: 'none', 
+      position: 'absolute', 
+      top: 0, 
+      left: 0,
+      height: '100%', 
+      width: '100%' 
+    }}
+    allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
+    allowFullScreen={true}
+  ></iframe>
+</div>
+
+### Output Diff Mode
+
+Compare LLM outputs side-by-side with visual highlighting to easily spot differences between models and prompt variations.
+You can enable diff mode to highlight the differences between LLM outputs, making it easy to spot differences in how models handle your task. Diff mode can be especially helpful for text-heavy outputs, like texts summarizations or composition.
+
+<div style={{ position: 'relative', paddingTop: '56.25%' }}>
+  <iframe
+    src="https://customer-turax1sz4f7wbpuv.cloudflarestream.com/a4407bafc47b930a877f00ffe1f7644a/iframe?autoplay=false&muted=false&controls=true"
+    style={{ 
+      border: 'none', 
+      position: 'absolute', 
+      top: 0, 
+      left: 0,
+      height: '100%', 
+      width: '100%' 
+    }}
+    allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
+    allowFullScreen={true}
+  ></iframe>
+</div>
+
+## Easy iteration features (this name needs work)
+
+### AI-Powered Prompt Improvement
+
+TODO: add
+
+### AI-Generated Inputs
+
+TODO: add more
+
+
+## Collaboration features
+
+### Easy Playground State Sharing
+
+Every playground configuration automatically generates a unique shareable URL. Whether you adjust your version, switch models, or change inputs, your exact setup is captured in the URL. Share these links with teammates to let them instantly reproduce your results and see exactly what you tested.
+
+### Code-Free Deployments
+
+#### Why use deployments?
+
+- ✅ Update models or prompts without involving your engineering team
+- ✅ Save costs by switching to newer, cheaper models without code changes
+- ✅ Improve output quality by adjusting prompts in real-time based on user feedback
+- ✅ Use different versions across environments (development, staging, production)
+
+#### How to deploy?
+
+If you just ran a version in the playground that you want to deploy, you can deploy it directly from there.
+
+1. Find the deploy button (circled arrow icon) in the output column:
+   - Top of the column (next to model name)
+   - Metadata section (below output)
+2. Select your target environment: production, staging, or dev
+3. Click the deploy button
+4. If this is the first time you deploy a version of this agent, you will need to update your code. You can find updated code on the Code page, or ask the MCP to update your code for you [TODO: clarify phrasing/process re: the MCP]
+
+
+For more information on deployments, see the [Deployments](/docsv2/content/docs/deployments/index.mdx) page.
+
+## Additional playground feature details
+
+Here is a breakdown of all the aspects of your agent that you can see in the playground:
+
+####  Version Message(s)
+
+In the most common case, agents will have a single version message. This is typically the system message that tells your agent what to do. 
+
+Version messages are the constant part of your agent's prompt. They are the part that is always the same, no matter what the user inputs.
+
+TODO add more
+
+#### Temperature
+
+Temperature is a parameter that controls the randomness of the LLM's outputs. WorkflowAI provides three preset temperature settings:
+<Accordions defaultValue="Precise (Default)">
+<Accordion title="Precise (Default)">
+The recommended and default setting for all tasks
+- Best for tasks requiring accuracy and consistency
+- Ideal for factual responses, code generation, or structured data extraction
+- Produces reliable, repeatable results
+</Accordion>
+<Accordion title="Balanced">
+Moderate setting that balances creativity and coherence
+- Good for general-purpose tasks
+- Works well for most conversational and analytical tasks
+- Provides reasonable variation while maintaining relevance
+</Accordion>
+<Accordion title="Creative">
+Maximum diversity and exploration
+- Best for tasks requiring unique or innovative outputs
+- Ideal for brainstorming, creative writing, or generating alternatives
+- Produces more varied but potentially less focused results
+</Accordion>
+<Accordion title="Custom">
+User-defined temperature setting
+- Allows precise control over the temperature value
+- For advanced users who understand the impact of temperature
+</Accordion>
+</Accordions>
+"Precise" is automatically selected as the default temperature setting for all new features to ensure consistent and reliable outputs. You can adjust this in the Parameters section of the Playground if your use case requires more variation.
+
+####   Descriptions and Examples
+Descriptions and Examples are optional fields available for string-based fields that can be used to provide additional, field-specific information to the LLM. If you find that the prompt instructions alone are not guiding the LLM to handle a specific field, you can add or modify the description or examples to help the LLM understand the field better.
+- **Description**: A description of the field can including what it is and/or what it is used for.
+- **Examples**: You can add one or multiple examples of a field to help the LLM understand what the field formatting should look like.
+
+
+There are a few different ways to edit Examples and Descriptions on the playground:
+
+<Accordions>
+<Accordion title="In all cases">
+Asking the playground agent to make an update on your behalf by describing the change
+</Accordion>
+<Accordion title="If output is currently displayed">
+Hovering over a field name, then hover over the description/examples modal and tap Edit
+</Accordion>
+<Accordion title="If no output is displayed">
+Hovering over a description or example and tap Edit
+</Accordion>
+</Accordions>
+
+Here's an example of how to edit the description and examples for a field:
+
+<div style={{ position: 'relative', paddingTop: '56.25%' }}>
+  <iframe
+    src="https://customer-turax1sz4f7wbpuv.cloudflarestream.com/b631d5bd71c86c9c2ae7e4f52f97de1f/iframe?autoplay=false&muted=false&controls=true"
+    style={{ 
+      border: 'none', 
+      position: 'absolute', 
+      top: 0, 
+      left: 0,
+      height: '100%', 
+      width: '100%' 
+    }}
+    allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
+    allowFullScreen={true}
+  ></iframe>
+</div>
+
+#### Advanced settings
+
+TODO: add explanation of each of the advanced settings
+
+#### Structured Output Schema Display
+
+If your agent is using a structured output schema, the playground clearly displays all fields and their types in an easy to read format. 
+
+If you want to update your output schema, you can do so by:
+- (Recommended) Updating the agent's code in your codebase directly, with the help of the MCP
+- If you're building your agent in the web app only:
+    - Got to the Schemas tab in the sidebar
+    - Select **Add or Update Fields**
