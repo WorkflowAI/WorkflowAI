@@ -91,7 +91,7 @@ Follow these steps:
 
 ### 2. Gather Context
 
-Use `mcp_workflowai_get_run` to examine the details of the problematic run(s):
+Use `get_run` to examine the details of the problematic run(s):
 
 - Analyze all aspects of the run: prompt structure, output format (including field examples and descriptions), input content, output content, tools called, and model(s) used
 - Examine any error messages or unexpected outputs in the included runs
@@ -99,7 +99,7 @@ Use `mcp_workflowai_get_run` to examine the details of the problematic run(s):
 
 ### 3. Debug Errors
 
-Use `mcp_workflowai_search_documentation` to research relevant errors and debugging methods:
+Use `search_documentation` to research relevant errors and debugging methods:
 
 - Gather information from the documentation about common error patterns
 - Cross-reference documentation guidance with the actual run data to ensure relevance
@@ -121,8 +121,3 @@ If an issue with a prompt is identified:
 - Maintain as much of the original instructions (content and form) as possible
 - Preserve the same verbosity level unless the user requests otherwise
 - Ensure the prompt remains generic - any additions based on specific input/output examples must be clearly labeled as "example"
-- Consider the specific content of the prompt input when tailoring improvements
-- Avoid mentioning "JSON" in the improved prompt
-- Do not add markdown formatting to the improved prompt
-- Only add tool capabilities (using "@`tool_name`" format) if explicitly requested by the user and the tool is available in the provided tool descriptions
-
