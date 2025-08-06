@@ -15,6 +15,7 @@ from core.domain.message import MessageDeprecated
 from core.domain.models import Model, Provider
 from core.domain.models.model_data import MaxTokensData, ModelData, QualityData
 from core.domain.models.model_data_mapping import DisplayedProvider
+from core.domain.models.model_provider_data_mapping import GROQ_PROVIDER_DATA
 from core.domain.structured_output import StructuredOutput
 from core.domain.tool import Tool
 from core.providers.base.models import RawCompletion
@@ -30,7 +31,7 @@ from core.providers.base.provider_error import (
 )
 from core.providers.base.provider_options import ProviderOptions
 from core.providers.groq.groq_domain import Choice, CompletionResponse, GroqMessage, Usage
-from core.providers.groq.groq_provider import GroqConfig, GroqProvider
+from core.providers.groq.groq_provider import NAME_OVERRIDE_MAP, GroqConfig, GroqProvider
 from core.utils.json_utils import extract_json_str
 from tests.utils import fixture_bytes, fixtures_json
 
@@ -537,3 +538,9 @@ class TestUnknownError:
 )
 def test_is_content_moderation_completion(message: str, expected_result: bool):
     assert GroqProvider.is_content_moderation_completion(message) == expected_result  # pyright: ignore [reportPrivateUsage]
+
+
+def test_name_override_map_exhaustive():
+    supported_models = set(GROQ_PROVIDER_DATA)
+    models_in_map = set(NAME_OVERRIDE_MAP)
+    assert supported_models == models_in_map
