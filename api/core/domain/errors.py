@@ -247,10 +247,10 @@ class InvalidFileError(DefaultError):
 
 
 class JSONSchemaValidationError(ValueError):
-    def __init__(self, *args: Any, json_str: str | None = None):
+    def __init__(self, *args: Any, json_str: str | None = None, validation_errors: list[Any] | None = None):
         super().__init__(*args)
-
         self.json_str = json_str
+        self.validation_errors = validation_errors or []
 
 
 class InvalidRunOptionsError(DefaultError):
