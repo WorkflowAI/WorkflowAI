@@ -18,7 +18,7 @@ ENV PYTHONUNBUFFERED=1 \
 # ffmpeg is needed for audio processing
 # poppler is needed for pdf processing
 # Other upgrades are due for CVEs
-RUN apk update && apk add --no-cache ffmpeg poppler-utils \
+RUN apk update && apk add --no-cache ffmpeg poppler-utils sqlite-libs>=3.48.0-r3 \
     && apk upgrade --available --no-cache libssl3 libcrypto3 libxml2 xz-libs sqlite-libs
 
 FROM python-base AS builder

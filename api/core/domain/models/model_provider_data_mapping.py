@@ -599,6 +599,20 @@ GROQ_PROVIDER_DATA: ProviderDataByModel = {
             source="https://groq.com/pricing/",
         ),
     ),
+    Model.GPT_OSS_20B: ModelProviderData(
+        text_price=TextPricePerToken(
+            prompt_cost_per_token=0.10 * ONE_MILLION_TH,
+            completion_cost_per_token=0.50 * ONE_MILLION_TH,
+            source="https://console.groq.com/docs/model/openai/gpt-oss-20b",
+        ),
+    ),
+    Model.GPT_OSS_120B: ModelProviderData(
+        text_price=TextPricePerToken(
+            prompt_cost_per_token=0.15 * ONE_MILLION_TH,
+            completion_cost_per_token=0.75 * ONE_MILLION_TH,
+            source="https://console.groq.com/docs/model/openai/gpt-oss-120b",
+        ),
+    ),
 }
 
 MISTRAL_PROVIDER_DATA: ProviderDataByModel = {
@@ -736,6 +750,13 @@ ANTHROPIC_PROVIDER_DATA: ProviderDataByModel = {
             prompt_cost_per_token=15 * ONE_MILLION_TH,
             completion_cost_per_token=75 * ONE_MILLION_TH,
             source="https://docs.anthropic.com/en/docs/about-claude/models/all-models#model-comparison-table",
+        ),
+    ),
+    Model.CLAUDE_4_1_OPUS_20250805: ModelProviderData(
+        text_price=TextPricePerToken(
+            prompt_cost_per_token=15 * ONE_MILLION_TH,
+            completion_cost_per_token=75 * ONE_MILLION_TH,
+            source="https://www.anthropic.com/pricing#api",
         ),
     ),
     Model.CLAUDE_4_SONNET_20250514: ModelProviderData(

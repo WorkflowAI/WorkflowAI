@@ -14,7 +14,6 @@
   "python.testing.unittestEnabled": false,
   "python.testing.pytestEnabled": true,
   "python.testing.pytestArgs": ["-vv", "-s"],
-  "python.languageServer": "Pylance",
   "python.analysis.autoImportCompletions": true,
   "editor.suggestSelection": "first",
   "editor.quickSuggestions": {

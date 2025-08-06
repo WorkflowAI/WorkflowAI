@@ -49,6 +49,19 @@ class GroqConfig(BaseModel):
         return f"GroqConfig(api_key={self.api_key[:4]}****)"
 
 
+NAME_OVERRIDE_MAP = {
+    Model.LLAMA_3_3_70B: "llama-3.3-70b-versatile",
+    Model.LLAMA_3_1_8B: "llama-3.1-8b-instant",
+    # The fast version of llama 4 is simply a way to target groq
+    # instead of fireworks for llama 4 models
+    Model.LLAMA_4_MAVERICK_FAST: "meta-llama/llama-4-maverick-17b-128e-instruct",
+    Model.LLAMA_4_SCOUT_FAST: "meta-llama/llama-4-scout-17b-16e-instruct",
+    Model.QWEN3_32B: "qwen/qwen3-32b",
+    Model.GPT_OSS_20B: "openai/gpt-oss-20b",
+    Model.GPT_OSS_120B: "openai/gpt-oss-120b",
+}
+
+
 class GroqProvider(HTTPXProvider[GroqConfig, CompletionResponse]):
     _content_moderation_regexp = re.compile(r"(can't|not)[^\.]*(help|assist|going)[^\.]*with that", re.IGNORECASE)
 
@@ -81,19 +94,6 @@ class GroqProvider(HTTPXProvider[GroqConfig, CompletionResponse]):
         return [GroqMessage.model_validate(m).to_standard() for m in messages]
 
     def model_str(self, model: Model) -> str:
-        NAME_OVERRIDE_MAP = {
-            Model.LLAMA_3_3_70B: "llama-3.3-70b-versatile",
-            Model.LLAMA_3_1_70B: "llama-3.1-70b-versatile",
-            Model.LLAMA_3_1_8B: "llama-3.1-8b-instant",
-            # The fast version of llama 4 is simply a way to target groq
-            # instead of fireworks for llama 4 models
-            Model.LLAMA_4_MAVERICK_BASIC: "meta-llama/llama-4-maverick-17b-128e-instruct",
-            Model.LLAMA_4_SCOUT_BASIC: "meta-llama/llama-4-scout-17b-16e-instruct",
-            Model.LLAMA_4_MAVERICK_FAST: "meta-llama/llama-4-maverick-17b-128e-instruct",
-            Model.LLAMA_4_SCOUT_FAST: "meta-llama/llama-4-scout-17b-16e-instruct",
-            Model.QWEN3_32B: "qwen/qwen3-32b",
-        }
-
         return NAME_OVERRIDE_MAP.get(model, model.value)
 
     @override
