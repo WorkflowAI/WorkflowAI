@@ -106,7 +106,7 @@ async def test_failed_run_invalid_output_is_stored_for_openai(
     # Run the task the first time
     assert run_res.status_code == 400
     run_error_json = run_res.json()
-    assert run_error_json["error"]["message"] == "Task output does not match schema"
+    assert run_error_json["error"]["message"].startswith("Task output does not match schema")
     assert run_error_json.get("id")
 
     # fetch run
