@@ -876,7 +876,7 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/anthropic.svg",
             release_date=date(2025, 5, 22),
             # https://www.anthropic.com/news/claude-4
-            # We only have the mmmlu for now...
+            # We only have the gpqa_diamond for now...
             quality_data=QualityData(gpqa_diamond=74.9),
             latest_model=Model.CLAUDE_4_OPUS_LATEST,
             provider_name=DisplayedProvider.ANTHROPIC.value,
@@ -897,9 +897,12 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             ),
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/anthropic.svg",
             release_date=date(2025, 8, 6),
-            # https://www.anthropic.com/news/claude-4
-            # We only have the mmmlu for now...
-            quality_data=QualityData(gpqa_diamond=74.9),
+            quality_data=QualityData(
+                # https://www.anthropic.com/news/claude-opus-4-1
+                # Only have the gpqa_diamond for now
+                gpqa_diamond=80.9,
+                source="https://www.anthropic.com/news/claude-opus-4-1",
+            ),
             latest_model=Model.CLAUDE_4_OPUS_LATEST,
             provider_name=DisplayedProvider.ANTHROPIC.value,
             supports_tool_calling=True,
