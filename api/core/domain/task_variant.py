@@ -87,7 +87,8 @@ class SerializableTaskVariant(BaseModel):
             )
             return output
         except JSONSchemaValidationError as e:
-            raise JSONSchemaValidationError("Task output does not match schema") from e
+            # Pass through the detailed error message from the enhanced validator
+            raise JSONSchemaValidationError(f"Task output does not match schema: {e}") from e
 
     def output_json_schema(self) -> JsonSchema:
         return JsonSchema(schema=self.output_schema.json_schema)
