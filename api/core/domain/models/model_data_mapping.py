@@ -903,7 +903,6 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
                 gpqa_diamond=80.9,
                 source="https://www.anthropic.com/news/claude-opus-4-1",
             ),
-            latest_model=Model.CLAUDE_4_OPUS_LATEST,
             provider_name=DisplayedProvider.ANTHROPIC.value,
             supports_tool_calling=True,
             fallback=ModelFallback.default("expensive"),
