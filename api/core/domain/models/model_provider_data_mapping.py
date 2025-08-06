@@ -738,6 +738,13 @@ ANTHROPIC_PROVIDER_DATA: ProviderDataByModel = {
             source="https://docs.anthropic.com/en/docs/about-claude/models/all-models#model-comparison-table",
         ),
     ),
+    Model.CLAUDE_4_1_OPUS_20250805: ModelProviderData(
+        text_price=TextPricePerToken(
+            prompt_cost_per_token=15 * ONE_MILLION_TH,
+            completion_cost_per_token=75 * ONE_MILLION_TH,
+            source="https://www.anthropic.com/pricing#api",
+        ),
+    ),
     Model.CLAUDE_4_SONNET_20250514: ModelProviderData(
         text_price=TextPricePerToken(
             prompt_cost_per_token=3 * ONE_MILLION_TH,
