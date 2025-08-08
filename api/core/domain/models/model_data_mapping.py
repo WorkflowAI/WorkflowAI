@@ -102,6 +102,8 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             supports_input_pdf=False,
             supports_input_audio=False,
             supports_structured_output=True,
+            supports_temperature=False,
+            supports_top_p=False,
             max_tokens_data=MaxTokensData(
                 max_tokens=400_000,
                 max_output_tokens=128_000,
@@ -128,14 +130,16 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             supports_input_pdf=False,
             supports_input_audio=False,
             supports_structured_output=True,
+            supports_temperature=False,
+            supports_top_p=False,
             max_tokens_data=MaxTokensData(
                 max_tokens=400_000,
                 max_output_tokens=128_000,
-                source="https://platform.openai.com/docs/models/gpt-5",
+                source="https://platform.openai.com/docs/models/gpt-5-mini",
             ),
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/openai.svg",
             release_date=date(2025, 8, 7),
-            # https://www.vals.ai/benchmarks/mmlu_pro-08-07-2025
+            # https://www.vals.ai/models/openai_gpt-5-mini
             quality_data=QualityData(gpqa=80.3, mmlu_pro=82.5),
             provider_name=DisplayedProvider.OPEN_AI.value,
             supports_tool_calling=True,
@@ -149,10 +153,12 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             supports_input_pdf=False,
             supports_input_audio=False,
             supports_structured_output=True,
+            supports_temperature=False,
+            supports_top_p=False,
             max_tokens_data=MaxTokensData(
                 max_tokens=400_000,
                 max_output_tokens=128_000,
-                source="https://platform.openai.com/docs/models/gpt-5",
+                source="https://platform.openai.com/docs/models/gpt-5-nano",
             ),
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/openai.svg",
             release_date=date(2025, 8, 7),
