@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { TaskID, TaskSchemaID, TenantID } from '@/types/aliases';
 import { rootTenantPath } from './utils';
+import { safeLocalStorageGetItem, safeLocalStorageSetItem, safeLocalStorageRemoveItem } from '@/lib/localStorage';
 
 export type RecentTasksEntry = {
   taskId: TaskID;
@@ -41,7 +42,11 @@ export const useRecentTasksStore = create<RecentTasksStore>()(
     }),
     {
       name: 'recent-tasks-storage',
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => ({
+        getItem: (name: string) => safeLocalStorageGetItem(name),
+        setItem: (name: string, value: string) => safeLocalStorageSetItem(name, value),
+        removeItem: (name: string) => safeLocalStorageRemoveItem(name),
+      })),
     }
   )
 );
