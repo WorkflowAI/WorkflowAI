@@ -202,9 +202,43 @@ async def get_run(
         bool,
         Field(
             description="Whether to truncate extra long fields in the run details. "
-            "Set to true if the run details response is too long",
+            "Set to true if the run details response is too long. "
+            "When true, long text fields will be cut off and marked with "
+            "'...Truncated[offset=X,shown=Y,total=Z]' where X is the starting position, "
+            "Y is the number of characters shown, and Z is the total length.",
         ),
     ] = False,
+    field_selector: Annotated[
+        str | None,
+        Field(
+            description="Optional selector to extract and return specific field(s) from the run data. "
+            "Use dot notation for nested fields (e.g., 'agent_input.email_body' or 'messages[1].content[0].text'). "
+            "Supports wildcards like 'messages[*].content[0].text' to select multiple matching fields. "
+            "When specified, ONLY the content of matching field(s) is returned (not the full run structure), "
+            "and offset/limit parameters control pagination within the selected content. "
+            "When not specified, the full run structure is returned with offset/limit applying to ALL text fields.",
+        ),
+    ] = None,
+    offset: Annotated[
+        int,
+        Field(
+            description="Character position to start reading from in text fields. "
+            "Default is 0 (start of field). When field_selector is specified, this controls where to start "
+            "reading within the selected field(s). When field_selector is not specified, this applies to "
+            "ALL text fields during truncation. Use the offset value from a previous "
+            "'Truncated[offset=X,shown=Y,total=Z]' marker to continue reading where you left off.",
+        ),
+    ] = 0,
+    limit: Annotated[
+        int,
+        Field(
+            description="Maximum number of characters to return for text fields. "
+            "Default is 10000. When field_selector is specified, this limits the content returned for "
+            "the selected field(s). When field_selector is not specified, this becomes the truncation "
+            "limit for ALL text fields in the full response. Check the 'shown' value in truncation "
+            "markers to see how many characters were actually returned.",
+        ),
+    ] = 10000,
 ) -> MCPToolReturn[MCPRun]:
     """<when_to_use>
     To investigate a specific run of a WorkflowAI agent for debugging, improvement, or troubleshooting. This is particularly useful for:
@@ -243,7 +277,7 @@ async def get_run(
     This data structure provides everything needed for debugging, performance analysis, cost tracking, and understanding the complete execution context of your WorkflowAI agent.
     </returns>"""
     service = await get_mcp_service()
-    return await mcp_wrap(service.get_run(agent_id, run_id, run_url, truncate=truncate))
+    return await mcp_wrap(service.get_run(agent_id, run_id, run_url, truncate=truncate, field_selector=field_selector, offset=offset, limit=limit))
 
 
 @_mcp.tool()
