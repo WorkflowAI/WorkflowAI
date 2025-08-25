@@ -216,7 +216,7 @@ class ClickhouseClient(TaskRunStorage):
         if search_fields:
             for q in search_fields:
                 w &= ClickhouseRun.to_clause(q)
-        return w
+        return self._with_tenant(w)
 
     @override
     async def count_filtered_task_runs(
