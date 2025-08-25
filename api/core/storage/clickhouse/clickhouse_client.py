@@ -184,11 +184,13 @@ class ClickhouseClient(TaskRunStorage):
         order_by: Sequence[str] | None = None,
         distincts: Sequence[str] | None = None,
         unique_by_conversation: bool = False,
+        prewhere: W | None = None,
     ):
         q, parameters = Q(
             "runs",
             select=select,
             where=self._with_tenant(where),
+            prewhere=prewhere,
             limit=limit,
             offset=offset,
             order_by=order_by if order_by is not None else self._default_order_by(),
@@ -273,11 +275,17 @@ class ClickhouseClient(TaskRunStorage):
             )
 
             w = W("cache_hash", type="String", value=cache_hash)
-            w &= W("task_schema_id", type="UInt16", value=task_schema_id)
+            w &= W("task_schema_id", type="UInt16", value=task_schema_id) & W(
+                "tenant_uid",
+                type="UInt32",
+                value=self.tenant_uid,
+            )
             if success_only:
                 w &= W("error_payload", type="String", value="") & W("output", type="String", value="", operator="!=")
 
-            result = await self._runs(task_id[0], ClickhouseRun.select_not_heavy(), w, limit=1)
+            prewhere = W("cache_hash", type="String", value=cache_hash)
+
+            result = await self._runs(task_id[0], ClickhouseRun.select_not_heavy(), w, prewhere=prewhere, limit=1)
             if not result:
                 return None
             return result[0]
