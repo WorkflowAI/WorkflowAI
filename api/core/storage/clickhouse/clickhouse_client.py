@@ -68,12 +68,13 @@ class ClickhouseClient(TaskRunStorage):
         query: str,
         column_formats: dict[str, str | dict[str, str]] | None = None,
         parameters: list[Any] | dict[str, Any] | None = None,
+        settings: dict[str, Any] | None = None,
     ):
         # See https://github.com/ClickHouse/clickhouse-connect/issues/141
         # It looks like right now, the async part of the stream is the connection opening
         # not the actual streaming so we should rely on query directly for now
         client = await self.client()
-        return await client.query(query, column_formats=column_formats, parameters=parameters)  # pyright: ignore[reportUnknownMemberType]
+        return await client.query(query, column_formats=column_formats, parameters=parameters, settings=settings)  # pyright: ignore[reportUnknownMemberType]
 
     class InsertSettings(TypedDict):
         async_insert: NotRequired[Literal[0, 1]]
@@ -185,6 +186,7 @@ class ClickhouseClient(TaskRunStorage):
         distincts: Sequence[str] | None = None,
         unique_by_conversation: bool = False,
         prewhere: W | None = None,
+        settings: dict[str, Any] | None = None,
     ):
         q, parameters = Q(
             "runs",
@@ -205,6 +207,7 @@ class ClickhouseClient(TaskRunStorage):
         result = await self.query(
             q,
             parameters=parameters,
+            settings=settings,
         )
 
         def _map_row(row: Sequence[Any]):
@@ -285,7 +288,14 @@ class ClickhouseClient(TaskRunStorage):
 
             prewhere = W("cache_hash", type="String", value=cache_hash)
 
-            result = await self._runs(task_id[0], ClickhouseRun.select_not_heavy(), w, prewhere=prewhere, limit=1)
+            result = await self._runs(
+                task_id[0],
+                ClickhouseRun.select_not_heavy(),
+                w,
+                prewhere=prewhere,
+                limit=1,
+                settings={"max_memory_usage": 1024 * 1024 * 100, "max_execution_time": (timeout_ms or 1000) * 0.001},
+            )
             if not result:
                 return None
             return result[0]
