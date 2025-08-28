@@ -14358,20 +14358,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"dotenv-cli@npm:^8.0.0":
-  version: 8.0.0
-  resolution: "dotenv-cli@npm:8.0.0"
-  dependencies:
-    cross-spawn: "npm:^7.0.6"
-    dotenv: "npm:^16.3.0"
-    dotenv-expand: "npm:^10.0.0"
-    minimist: "npm:^1.2.6"
-  bin:
-    dotenv: cli.js
-  checksum: 10c0/000469632758b7b44aaaa80cbbbd7f0c94dc170ec02e51aa8d8280341a0108fb7407954c23054257b77235b064033efdb8745836633eb6fd1586924953cf0528
-  languageName: node
-  linkType: hard
-
 "dotenv-expand@npm:^10.0.0":
   version: 10.0.0
   resolution: "dotenv-expand@npm:10.0.0"
@@ -14383,13 +14369,6 @@ __metadata:
   version: 16.4.3
   resolution: "dotenv@npm:16.4.3"
   checksum: 10c0/c6a572b2dab5d71accb7064c90b38dfd4068c2487be859a0f053460fcaa685a7718e78db51d643b32e0736b318988c31f8c45cb4ab99cd620278f537177cb0ab
-  languageName: node
-  linkType: hard
-
-"dotenv@npm:^16.3.0":
-  version: 16.4.7
-  resolution: "dotenv@npm:16.4.7"
-  checksum: 10c0/be9f597e36a8daf834452daa1f4cc30e5375a5968f98f46d89b16b983c567398a330580c88395069a77473943c06b877d1ca25b4afafcdd6d4adb549e8293462
   languageName: node
   linkType: hard
 
@@ -24265,7 +24244,6 @@ __metadata:
     autoprefixer: "npm:^10.4.17"
     cross-spawn: "npm:^7.0.6"
     dompurify: "npm:^3.2.5"
-    dotenv-cli: "npm:^8.0.0"
     eslint: "npm:^8.57.0"
     eslint-config-next: "npm:14.2.25"
     eslint-config-prettier: "npm:^9.1.0"

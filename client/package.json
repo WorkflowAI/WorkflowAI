@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "dotenv -e ../.env -- next dev --turbo",
+    "dev": "next dev --turbo",
     "build": "next build && cp -r .next/static .next/standalone/client/.next && cp -r public .next/standalone/client/",
     "start": "node .next/standalone/client/server.js",
     "lint": "next lint",

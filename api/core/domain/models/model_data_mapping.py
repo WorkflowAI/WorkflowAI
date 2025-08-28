@@ -739,6 +739,28 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
                 context_exceeded="no",
             ),
         ),
+        Model.GEMINI_2_5_FLASH_IMAGE_PREVIEW: ModelData(
+            display_name="Gemini 2.5 Flash Preview (Image Generation)",
+            supports_json_mode=False,
+            supports_input_image=True,
+            supports_input_pdf=True,
+            supports_input_audio=False,
+            supports_output_image=True,
+            supports_structured_output=False,
+            supports_system_messages=False,
+            max_tokens_data=MaxTokensData(
+                max_tokens=32_768 + 32_768,
+                max_output_tokens=32_768,
+                source="https://cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/2-5-flash#image",
+            ),
+            icon_url="https://workflowai.blob.core.windows.net/workflowai-public/google.svg",
+            release_date=date(2025, 8, 28),
+            quality_data=QualityData(equivalent_to=(Model.GEMINI_2_5_FLASH, -1)),
+            provider_name=DisplayedProvider.GOOGLE.value,
+            supports_tool_calling=False,
+            is_default=True,
+            fallback=None,  # No fallback for exp models
+        ),
         Model.GEMINI_2_5_FLASH_PREVIEW_0417: DeprecatedModel(replacement_model=Model.GEMINI_2_5_FLASH),
         Model.GEMINI_2_5_FLASH_PREVIEW_0520: DeprecatedModel(
             replacement_model=Model.GEMINI_2_5_FLASH,
@@ -858,7 +880,7 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             quality_data=QualityData(equivalent_to=(Model.GEMINI_2_0_FLASH_001, 0)),
             provider_name=DisplayedProvider.GOOGLE.value,
             supports_tool_calling=True,
-            is_default=True,
+            is_default=False,
             fallback=None,  # No fallback for exp models
         ),
         Model.GEMINI_2_0_FLASH_LATEST: LatestModel(

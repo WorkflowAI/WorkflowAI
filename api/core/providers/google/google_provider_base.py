@@ -52,6 +52,7 @@ from core.utils.models.dumps import safe_dump_pydantic_model
 MODELS_THAT_REQUIRE_DOWNLOADING_FILES = {
     Model.GEMINI_2_0_FLASH_THINKING_EXP_1219,
     Model.GEMINI_2_0_FLASH_EXP,
+    Model.GEMINI_2_5_FLASH_IMAGE_PREVIEW,
     Model.GEMINI_EXP_1206,
     Model.GEMINI_2_0_FLASH_THINKING_EXP_0121,
 }

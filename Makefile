@@ -53,3 +53,6 @@ mongo.migrate:
 	PYTHONPATH=./api:./scripts poetry run python scripts/mongo_migrate.py ${ARGS}
 
 
+.PHONY: client
+client:
+	cd client && dotenv -f ../.env run -- yarn dev
