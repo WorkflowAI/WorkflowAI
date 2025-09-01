@@ -307,6 +307,7 @@ def Q(
     f: str,
     select: Sequence[str] | None = None,
     where: W | None = None,
+    prewhere: W | None = None,
     limit: int | None = None,
     offset: int | None = None,
     order_by: Sequence[str] | None = None,
@@ -318,13 +319,16 @@ def Q(
         components.append(f"DISTINCT ON ({', '.join(distincts)})")
 
     components.append(f"{', '.join(select) if select else '*'} FROM {f}")
+    parameters: dict[str, Any] | None = {}
 
-    if where and (s := where.to_sql()):
+    if prewhere and (s := prewhere.to_sql()):
+        components.append(f"PREWHERE {s[0]}")
+        parameters.update(s[1])
+
+    if where and (s := where.to_sql(param_start=len(parameters))):
         components.append(f"WHERE {s[0]}")
-        parameters = s[1]
-    else:
-        # We should at least be filtering by tenant
-        parameters = None
+        parameters.update(s[1])
+
     if order_by:
         components.append(f"ORDER BY {', '.join(order_by)}")
     if limit_by:

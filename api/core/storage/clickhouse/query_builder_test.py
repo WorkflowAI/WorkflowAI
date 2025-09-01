@@ -96,6 +96,25 @@ class TestToSQL:
         assert sql[0] == "status NOT IN ({v0_0:String}, {v0_1:String})"
         assert sql[1] == {"v0_0": "active", "v0_1": "pending"}
 
+    def test_prewhere_clause(self) -> None:
+        # Test PREWHERE clause in query builder
+        prewhere = W("status", "active") & W("created_at", "2023-01-01", operator=">=", type="Date")
+        where = W("age", 21)
+        query, params = Q(
+            "users",
+            select=["id", "name"],
+            prewhere=prewhere,
+            where=where,
+            limit=5,
+        )
+        expected_query = (
+            "SELECT id, name FROM users "
+            "PREWHERE status = {v0:String} AND created_at >= {v1:Date} "
+            "WHERE age = {v2:Int} LIMIT 5"
+        )
+        assert query == expected_query
+        assert params == {"v0": "active", "v1": "2023-01-01", "v2": 21}
+
 
 class TestJsonExtractedKey:
     def test_simple_key(self):
