@@ -64,7 +64,8 @@
     "prismjs": ">=1.30.0",
     "sha.js": ">=2.4.12",
     "cipher-base": ">=1.0.5",
-    "form-data": ">=4.0.4"
+    "form-data": ">=4.0.4",
+    "esbuild": ">=0.25.9"
   },
   "dependencies": {
     "dompurify": "^3.2.5"
