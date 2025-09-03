@@ -275,10 +275,15 @@ class TestCompletionFromDomain:
         assert completion.input.variables == {"input": "world"}
 
         assert completion.version.input_variables_schema == {
-            "input": {
-                "type": "string",
-                "description": "The input to the task",
+            "properties": {
+                "input": {
+                    "type": "string",
+                },
             },
+            "required": [
+                "input",
+            ],
+            "type": "object",
         }
 
         assert completion.version.prompt == [
