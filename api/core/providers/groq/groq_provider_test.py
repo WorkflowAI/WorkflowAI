@@ -13,7 +13,7 @@ from pytest_httpx import HTTPXMock, IteratorStream
 from core.domain.llm_usage import LLMUsage
 from core.domain.message import MessageDeprecated
 from core.domain.models import Model, Provider
-from core.domain.models.model_data import MaxTokensData, ModelData, QualityData
+from core.domain.models.model_data import MaxTokensData, ModelData, QualityData, SpeedData, SpeedIndex
 from core.domain.models.model_data_mapping import DisplayedProvider
 from core.domain.models.model_provider_data_mapping import GROQ_PROVIDER_DATA
 from core.domain.structured_output import StructuredOutput
@@ -350,6 +350,9 @@ class TestSanitizeModelData:
             max_tokens_data=MaxTokensData(source="", max_tokens=100),
             release_date=date(2024, 1, 1),
             quality_data=QualityData(index=100),
+            speed_data=SpeedData(
+                index=SpeedIndex(value=500),
+            ),
             provider_name=DisplayedProvider.GROQ.value,
             supports_tool_calling=True,
             fallback=None,

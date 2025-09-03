@@ -13,6 +13,8 @@ from core.domain.models.model_data import (
     ModelDataMapping,
     ModelReasoningBudget,
     QualityData,
+    SpeedData,
+    SpeedIndex,
 )
 from core.domain.models.model_provider_data import ModelProviderData, TextPricePerToken
 from core.domain.reasoning_effort import ReasoningEffort
@@ -44,7 +46,9 @@ def _md(**kwargs: Any) -> FinalModelData:
         icon_url="https://workflowai.blob.core.windows.net/workflowai-public/openai.svg",
         release_date=date(2024, 11, 6),
         quality_index=100,
+        speed_index=500,
         quality_data=QualityData(index=100),
+        speed_data=SpeedData(index=SpeedIndex(value=500)),
         provider_name=DisplayedProvider.OPEN_AI.value,
         supports_tool_calling=False,
         model=Model.GPT_3_5_TURBO_1106,
@@ -140,7 +144,9 @@ class TestFinalModelData:
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/openai.svg",
             release_date=date(2024, 11, 6),
             quality_data=QualityData(index=100),
+            speed_data=SpeedData(index=SpeedIndex(value=500)),
             quality_index=100,
+            speed_index=500,
             provider_name=DisplayedProvider.OPEN_AI.value,
             display_name="GPT-3.5 Turbo (1106)",
             supports_tool_calling=True,
@@ -205,6 +211,26 @@ class TestModelDataQualityIndex:
             Model.O3_2025_04_16_MEDIUM_REASONING_EFFORT: _md(quality_data=QualityData(index=100)),
         }
         assert quality_data.quality_index(mapping) == expected_index
+
+
+class TestModelDataSpeedIndex:
+    @pytest.mark.parametrize(
+        "speed_data, expected_index",
+        [
+            pytest.param(SpeedData(index=SpeedIndex(value=800)), 800, id="index"),
+            pytest.param(
+                SpeedData(equivalent_to=(Model.O3_2025_04_16_MEDIUM_REASONING_EFFORT, 50)),
+                650,
+                id="equivalent_to",
+            ),
+            pytest.param(SpeedData(), 500, id="default"),
+        ],
+    )
+    def test_speed_index(self, speed_data: SpeedData, expected_index: int):
+        mapping = {
+            Model.O3_2025_04_16_MEDIUM_REASONING_EFFORT: _md(speed_data=SpeedData(index=SpeedIndex(value=600))),
+        }
+        assert speed_data.speed_index(mapping) == expected_index
 
 
 @pytest.mark.parametrize("effort", list(ReasoningEffort))

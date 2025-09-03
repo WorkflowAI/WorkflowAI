@@ -165,7 +165,7 @@ export function TaskRunsContainer() {
     [redirectWithParams]
   );
 
-  const lastPageZeroingParamsRef = useRef('');
+  const lastPageZeroingParamsRef = useRef('none');
 
   useEffect(() => {
     let newPageZeroingParams = 'none';

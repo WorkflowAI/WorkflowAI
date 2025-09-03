@@ -55,7 +55,7 @@ _WAI_TOOLS = [
     "list_models",
     "list_agents",
     "get_agent",
-    "fetch_run_details",
+    "get_run",
     "get_agent_versions",
     "search_runs",
     "get_deployment_confirmation_url",

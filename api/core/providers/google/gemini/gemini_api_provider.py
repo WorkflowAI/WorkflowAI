@@ -76,6 +76,12 @@ class GoogleGeminiAPIProvider(GoogleProviderBase[GoogleGeminiAPIProviderConfig])
 
         return token_count
 
+    @property
+    def response_schema_allowed_string_formats(self) -> set[str] | None:
+        # Gemini API does not support all string formats in the response schemas
+        # see https://ai.google.dev/api/caching?hl=fr#Schema
+        return {"enum", "date-time"}
+
     @override
     def _compute_prompt_token_count(
         self,
