@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "dotenv -e ../.env -- next dev --turbo",
+    "dev": "yarn run dotenv -e ../.env -- next dev --turbo",
     "build": "next build && cp -r .next/static .next/standalone/client/.next && cp -r public .next/standalone/client/",
     "start": "node .next/standalone/client/server.js",
     "lint": "next lint",
@@ -123,6 +123,7 @@
     "@typescript-eslint/parser": "^7.0.1",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.17",
+    "dotenv-cli": "^10.0.0",
     "eslint": "^8.57.0",
     "eslint-config-next": "14.2.25",
     "eslint-config-prettier": "^9.1.0",

@@ -7,13 +7,12 @@ from api.jobs.common import (
     InternalTasksServiceDep,
     PaymentSystemServiceDep,
     ReviewsServiceDep,
+    RunsServiceDep,
     StorageDep,
 )
-from api.jobs.utils.anotherai_utils import post_run_to_anotherai
+from api.jobs.utils.anotherai_utils import AnotherAIService
 from api.jobs.utils.jobs_utils import get_task_run_str
 from api.services.slack_notifications import get_user_and_org_str
-from core.domain.consts import ANOTHERAI_API_URL
-from core.domain.errors import InternalError
 from core.domain.events import RunCreatedEvent
 from core.domain.task_group_update import TaskGroupUpdate
 from core.storage.models import TaskUpdate
@@ -120,22 +119,12 @@ async def run_task_run_moderation(
 
 
 @broker.task(retry_on_error=True)
-async def send_run_to_anotherai(event: RunCreatedEvent, storage: StorageDep):
-    if not ANOTHERAI_API_URL:
+async def send_run_to_anotherai(event: RunCreatedEvent, storage: StorageDep, runs_service: RunsServiceDep):
+    if not AnotherAIService.is_enabled():
         return
-    tenant = await storage.organizations.get_organization()
-    if not tenant.anotherai_api_key:
-        return
-    if not event.run.group.properties.task_variant_id:
-        raise InternalError("Task variant not found", fatal=True)
-    task_variant = await storage.task_version_resource_by_id(
-        task_id=event.run.task_id,
-        version_id=event.run.group.properties.task_variant_id,
-    )
-    if not task_variant:
-        raise InternalError("Task variant not found", fatal=True)
 
-    await post_run_to_anotherai(ANOTHERAI_API_URL, event.run, task_variant, tenant.anotherai_api_key)
+    svc = AnotherAIService(storage, runs_service)
+    await svc.import_run(event.run)
 
 
 JOBS = [
