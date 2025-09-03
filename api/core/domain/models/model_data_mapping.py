@@ -130,6 +130,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             supports_tool_calling=True,
             fallback=_openai_fallback("cheap"),
             reasoning=ModelReasoningBudget(),
+            speed_data=SpeedData(
+                equivalent_to=(Model.GPT_41_2025_04_14, 0),
+            ),
         ),
         Model.GPT_5_MINI_2025_08_07: ModelData(
             display_name="GPT-5 Mini (2025-08-07)",
@@ -153,6 +156,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             supports_tool_calling=True,
             fallback=_openai_fallback("cheapest"),
             reasoning=ModelReasoningBudget(),
+            speed_data=SpeedData(
+                equivalent_to=(Model.GPT_41_MINI_2025_04_14, 0),
+            ),
         ),
         Model.GPT_5_NANO_2025_08_07: ModelData(
             display_name="GPT-5 Nano (2025-08-07)",
@@ -176,6 +182,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             supports_tool_calling=True,
             fallback=_openai_fallback("cheapest"),
             reasoning=ModelReasoningBudget(),
+            speed_data=SpeedData(
+                equivalent_to=(Model.GPT_41_NANO_2025_04_14, 0),
+            ),
         ),
         Model.GPT_41_LATEST: LatestModel(
             model=Model.GPT_41_2025_04_14,
@@ -612,6 +621,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             supports_top_p=True,
             supports_presence_penalty=True,
             supports_frequency_penalty=True,
+            speed_data=SpeedData(
+                equivalent_to=(Model.GPT_41_NANO_2025_04_14, 0),
+            ),
         ),
         Model.GPT_OSS_120B: ModelData(
             display_name="GPT-OSS 120B",
@@ -641,6 +653,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             supports_top_p=True,
             supports_presence_penalty=True,
             supports_frequency_penalty=True,
+            speed_data=SpeedData(
+                equivalent_to=(Model.GPT_41_2025_04_14, 0),
+            ),
         ),
         # Model.O3_PRO_LATEST_HIGH_REASONING_EFFORT: LatestModel(
         #     model=Model.O3_PRO_2025_06_10_HIGH_REASONING_EFFORT,
@@ -1054,6 +1069,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             provider_name=DisplayedProvider.ANTHROPIC.value,
             supports_tool_calling=True,
             fallback=ModelFallback.default("expensive"),
+            speed_data=SpeedData(
+                equivalent_to=(Model.CLAUDE_4_OPUS_20250514, 0),
+            ),
         ),
         Model.CLAUDE_3_7_SONNET_LATEST: LatestModel(
             model=Model.CLAUDE_3_7_SONNET_20250219,
