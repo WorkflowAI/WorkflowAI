@@ -22,7 +22,7 @@ from core.domain.models.model_data import DeprecatedModel
 from core.domain.models.model_data_mapping import MODEL_DATAS
 from core.domain.task_group_properties import ReasoningEffort
 from core.domain.tool import Tool
-from core.domain.types import AgentOutput
+from core.domain.types import AgentInput, AgentOutput
 from core.runners.workflowai.internal_tool import InternalTool
 from core.tools import ToolKind
 from core.utils.dicts import set_at_keypath
@@ -382,3 +382,20 @@ def reasoning_step_mapper(x: Any, logger: logging.Logger | None = None) -> list[
         InternalReasoningStep.model_validate,
         logger=logger,
     )
+
+
+def remove_keys_from_input(
+    input_schema: dict[str, Any],
+    input: AgentInput,
+    used_input_keys: set[str],
+):
+    """Remove keys from the input and input schema. Only root keys are supported"""
+    input_schema_properties: dict[str, Any] = input_schema.get("properties", {})
+    input_schema_required: list[str] = input_schema.get("required", [])
+    for key in used_input_keys:
+        input.pop(key, None)
+        input_schema_properties.pop(key, None)
+        try:
+            input_schema_required.remove(key)
+        except ValueError:
+            pass
