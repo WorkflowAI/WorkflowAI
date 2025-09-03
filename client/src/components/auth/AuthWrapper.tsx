@@ -10,7 +10,7 @@ export async function AuthWrapper({ children }: { children: ReactNode }) {
     return <NoAuthProvider>{children}</NoAuthProvider>;
   }
   return (
-    <ClerkProvider>
+    <ClerkProvider allowedRedirectOrigins={['https://anotherai.dev']}>
       <ClerkLoader>{children}</ClerkLoader>
     </ClerkProvider>
   );

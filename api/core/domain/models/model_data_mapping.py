@@ -103,6 +103,89 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             supports_tool_calling=True,
             fallback=_openai_fallback("medium"),
         ),
+        Model.GPT_5_2025_08_07: ModelData(
+            display_name="GPT-5 (2025-08-07)",
+            supports_json_mode=True,
+            supports_input_image=True,
+            supports_input_pdf=False,
+            supports_input_audio=False,
+            supports_structured_output=True,
+            supports_temperature=False,
+            supports_top_p=False,
+            max_tokens_data=MaxTokensData(
+                max_tokens=400_000,
+                max_output_tokens=128_000,
+                source="https://platform.openai.com/docs/models/gpt-5",
+            ),
+            icon_url="https://workflowai.blob.core.windows.net/workflowai-public/openai.svg",
+            release_date=date(2025, 8, 7),
+            # https://openai.com/index/introducing-gpt-5/
+            # https://www.vals.ai/models/openai_gpt-5
+            quality_data=QualityData(
+                gpqa_diamond=87.3,
+                gpqa=85.6,
+                mmlu_pro=86,
+            ),
+            provider_name=DisplayedProvider.OPEN_AI.value,
+            supports_tool_calling=True,
+            fallback=_openai_fallback("cheap"),
+            reasoning=ModelReasoningBudget(),
+            speed_data=SpeedData(
+                equivalent_to=(Model.GPT_41_2025_04_14, 0),
+            ),
+        ),
+        Model.GPT_5_MINI_2025_08_07: ModelData(
+            display_name="GPT-5 Mini (2025-08-07)",
+            supports_json_mode=True,
+            supports_input_image=True,
+            supports_input_pdf=False,
+            supports_input_audio=False,
+            supports_structured_output=True,
+            supports_temperature=False,
+            supports_top_p=False,
+            max_tokens_data=MaxTokensData(
+                max_tokens=400_000,
+                max_output_tokens=128_000,
+                source="https://platform.openai.com/docs/models/gpt-5-mini",
+            ),
+            icon_url="https://workflowai.blob.core.windows.net/workflowai-public/openai.svg",
+            release_date=date(2025, 8, 7),
+            # https://www.vals.ai/models/openai_gpt-5-mini
+            quality_data=QualityData(gpqa=80.3, mmlu_pro=82.5),
+            provider_name=DisplayedProvider.OPEN_AI.value,
+            supports_tool_calling=True,
+            fallback=_openai_fallback("cheapest"),
+            reasoning=ModelReasoningBudget(),
+            speed_data=SpeedData(
+                equivalent_to=(Model.GPT_41_MINI_2025_04_14, 0),
+            ),
+        ),
+        Model.GPT_5_NANO_2025_08_07: ModelData(
+            display_name="GPT-5 Nano (2025-08-07)",
+            supports_json_mode=True,
+            supports_input_image=True,
+            supports_input_pdf=False,
+            supports_input_audio=False,
+            supports_structured_output=True,
+            supports_temperature=False,
+            supports_top_p=False,
+            max_tokens_data=MaxTokensData(
+                max_tokens=400_000,
+                max_output_tokens=128_000,
+                source="https://platform.openai.com/docs/models/gpt-5-nano",
+            ),
+            icon_url="https://workflowai.blob.core.windows.net/workflowai-public/openai.svg",
+            release_date=date(2025, 8, 7),
+            # https://www.vals.ai/models/openai_gpt-5-nano
+            quality_data=QualityData(gpqa=59.6, mmlu_pro=77.9),
+            provider_name=DisplayedProvider.OPEN_AI.value,
+            supports_tool_calling=True,
+            fallback=_openai_fallback("cheapest"),
+            reasoning=ModelReasoningBudget(),
+            speed_data=SpeedData(
+                equivalent_to=(Model.GPT_41_NANO_2025_04_14, 0),
+            ),
+        ),
         Model.GPT_41_LATEST: LatestModel(
             model=Model.GPT_41_2025_04_14,
             display_name="GPT-4.1 (latest)",
@@ -510,6 +593,70 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             replacement_model=Model.O3_2025_04_16,
             reasoning_effort=ReasoningEffort.LOW,
         ),
+        Model.GPT_OSS_20B: ModelData(
+            display_name="GPT-OSS 20B",
+            supports_json_mode=True,
+            supports_input_image=False,
+            supports_input_pdf=False,
+            supports_input_audio=False,
+            supports_structured_output=False,
+            release_date=date(2025, 8, 6),
+            quality_data=QualityData(
+                gpqa_diamond=71.5,
+                mmlu=85.3,
+                source="https://cdn.openai.com/pdf/419b6906-9da6-406c-a19d-1bb078ac7637/oai_gpt-oss_model_card.pdf",
+            ),
+            provider_name=DisplayedProvider.OPEN_AI.value,
+            icon_url="https://workflowai.blob.core.windows.net/workflowai-public/openai.svg",
+            max_tokens_data=MaxTokensData(
+                max_tokens=131_072,
+                max_output_tokens=32_768,
+                source="https://console.groq.com/docs/model/openai/gpt-oss-20b",
+            ),
+            supports_tool_calling=True,
+            supports_parallel_tool_calls=True,
+            fallback=_openai_fallback("cheap"),
+            reasoning=ModelReasoningBudget(),
+            supports_temperature=True,
+            supports_top_p=True,
+            supports_presence_penalty=True,
+            supports_frequency_penalty=True,
+            speed_data=SpeedData(
+                equivalent_to=(Model.GPT_41_NANO_2025_04_14, 0),
+            ),
+        ),
+        Model.GPT_OSS_120B: ModelData(
+            display_name="GPT-OSS 120B",
+            supports_json_mode=True,
+            supports_input_image=False,
+            supports_input_pdf=False,
+            supports_input_audio=False,
+            supports_structured_output=False,
+            release_date=date(2025, 8, 6),
+            quality_data=QualityData(
+                mmlu=90.0,
+                gpqa_diamond=80.1,
+                source="https://cdn.openai.com/pdf/419b6906-9da6-406c-a19d-1bb078ac7637/oai_gpt-oss_model_card.pdf",
+            ),
+            provider_name=DisplayedProvider.OPEN_AI.value,
+            icon_url="https://workflowai.blob.core.windows.net/workflowai-public/openai.svg",
+            max_tokens_data=MaxTokensData(
+                max_tokens=131_072,
+                max_output_tokens=32_768,
+                source="https://console.groq.com/docs/model/openai/gpt-oss-120b",
+            ),
+            supports_tool_calling=True,
+            supports_parallel_tool_calls=True,
+            fallback=_openai_fallback("cheap"),
+            reasoning=ModelReasoningBudget(),
+            supports_temperature=True,
+            supports_top_p=True,
+            supports_presence_penalty=True,
+            supports_frequency_penalty=True,
+            speed_data=SpeedData(
+                equivalent_to=(Model.GPT_41_2025_04_14, 0),
+            ),
+        ),
         # Model.O3_PRO_LATEST_HIGH_REASONING_EFFORT: LatestModel(
         #     model=Model.O3_PRO_2025_06_10_HIGH_REASONING_EFFORT,
         #     display_name="o3-pro (latest) - High reasoning effort",
@@ -884,7 +1031,7 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/anthropic.svg",
             release_date=date(2025, 5, 22),
             # https://www.anthropic.com/news/claude-4
-            # We only have the mmmlu for now...
+            # We only have the gpqa_diamond for now...
             quality_data=QualityData(gpqa_diamond=74.9),
             speed_data=SpeedData(
                 index=SpeedIndex.from_experiment(output_tokens=2648, duration_seconds=56.6),
@@ -898,6 +1045,33 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
                 max=32000,
             ),  # Claude docs mention that reasoning tokens 32k are rarely used.
             # https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking
+        ),
+        Model.CLAUDE_4_1_OPUS_20250805: ModelData(
+            display_name="Claude 4.1 Opus (2025-08-05)",
+            supports_json_mode=False,
+            supports_input_image=True,
+            supports_input_pdf=True,
+            supports_input_audio=False,
+            max_tokens_data=MaxTokensData(
+                max_tokens=200_000,
+                # See https://docs.anthropic.com/en/docs/about-claude/models/all-models
+                max_output_tokens=32_000,
+                source="https://docs.anthropic.com/en/docs/about-claude/models",
+            ),
+            icon_url="https://workflowai.blob.core.windows.net/workflowai-public/anthropic.svg",
+            release_date=date(2025, 8, 6),
+            quality_data=QualityData(
+                # https://www.anthropic.com/news/claude-opus-4-1
+                # Only have the gpqa_diamond for now
+                gpqa_diamond=80.9,
+                source="https://www.anthropic.com/news/claude-opus-4-1",
+            ),
+            provider_name=DisplayedProvider.ANTHROPIC.value,
+            supports_tool_calling=True,
+            fallback=ModelFallback.default("expensive"),
+            speed_data=SpeedData(
+                equivalent_to=(Model.CLAUDE_4_OPUS_20250514, 0),
+            ),
         ),
         Model.CLAUDE_3_7_SONNET_LATEST: LatestModel(
             model=Model.CLAUDE_3_7_SONNET_20250219,

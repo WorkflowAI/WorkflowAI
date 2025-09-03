@@ -15,6 +15,7 @@ from core.domain.message import MessageDeprecated
 from core.domain.models import Model, Provider
 from core.domain.models.model_data import MaxTokensData, ModelData, QualityData, SpeedData, SpeedIndex
 from core.domain.models.model_data_mapping import DisplayedProvider
+from core.domain.models.model_provider_data_mapping import GROQ_PROVIDER_DATA
 from core.domain.structured_output import StructuredOutput
 from core.domain.tool import Tool
 from core.providers.base.models import RawCompletion
@@ -30,7 +31,7 @@ from core.providers.base.provider_error import (
 )
 from core.providers.base.provider_options import ProviderOptions
 from core.providers.groq.groq_domain import Choice, CompletionResponse, GroqMessage, Usage
-from core.providers.groq.groq_provider import GroqConfig, GroqProvider
+from core.providers.groq.groq_provider import NAME_OVERRIDE_MAP, GroqConfig, GroqProvider
 from core.utils.json_utils import extract_json_str
 from tests.utils import fixture_bytes, fixtures_json
 
@@ -46,20 +47,6 @@ class TestGroqProvider(unittest.TestCase):
         self.assertEqual(GroqProvider.required_env_vars(), expected_vars)
 
 
-@pytest.mark.parametrize(
-    "model, expected_model_str",
-    [
-        (Model.LLAMA_3_1_70B, "llama-3.1-70b-versatile"),
-        (Model.LLAMA_3_1_8B, "llama-3.1-8b-instant"),
-        (Model.LLAMA3_70B_8192, "llama3-70b-8192"),
-        (Model.LLAMA3_8B_8192, "llama3-8b-8192"),
-        # (Model.MIXTRAL_8X7B_32768, "mixtral-8x7b-32768"),
-    ],
-)
-def test_model_str(model: Model, expected_model_str: str):
-    assert GroqProvider().model_str(model) == expected_model_str
-
-
 class TestStream:
     # Tests overlap with single stream above but check the entire structure
     async def test_stream(self, httpx_mock: HTTPXMock):
@@ -67,18 +54,18 @@ class TestStream:
             url="https://api.groq.com/openai/v1/chat/completions",
             stream=IteratorStream(
                 [
-                    b'data: {"id":"chatcmpl-96c29a0b-2a71-46fd-af4d-62d783cfc693","object":"chat.completion.chunk","created":1722540285,"model":"llama-3.1-70b-versatile","system_fingerprint":null,"choices":[{"index":0,"delta":{"role":"assistant","content":""},"logprobs":null,"finish_reason":null}],"x_groq":{"id":"req_01j47pdq9cerqbp0w6bzqwmytq","queue_length":1}}\n\ndata: {"id":"chatcmpl-96c29a0b-2a71-46fd-af4d-62d783cfc693","object":"chat.completion.chunk","created":1722540285,"model":"llama-3.1-70b-versatile","system_fingerprint":"fp_b3ae7e594e","choices":[{"index":0,"delta":{"content":"```"},"logprobs":null,"finish_reason":null}]}\n\n',
-                    b'data: {"id":"chatcmpl-96c29a0b-2a71-46fd-af4d-62d783cfc693","object":"chat.completion.chunk","created":1722540285,"model":"llama-3.1-70b-versatile","system_fingerprint":"fp_b3ae7e594e","choices":[{"index":0,"delta":{"content":"json"},"logprobs":null,"finish_reason":null}]}\n\n',
-                    b'data: {"id":"chatcmpl-96c29a0b-2a71-46fd-af4d-62d783cfc693","object":"chat.completion.chunk","created":1722540285,"model":"llama-3.1-70b-versatile","system_fingerprint":"fp_b3ae7e594e","choices":[{"index":0,"delta":{"content":" {"},"logprobs":null,"finish_reason":null}]}\n\n',
+                    b'data: {"id":"chatcmpl-96c29a0b-2a71-46fd-af4d-62d783cfc693","object":"chat.completion.chunk","created":1722540285,"model":"llama-3.3-70b-versatile","system_fingerprint":null,"choices":[{"index":0,"delta":{"role":"assistant","content":""},"logprobs":null,"finish_reason":null}],"x_groq":{"id":"req_01j47pdq9cerqbp0w6bzqwmytq","queue_length":1}}\n\ndata: {"id":"chatcmpl-96c29a0b-2a71-46fd-af4d-62d783cfc693","object":"chat.completion.chunk","created":1722540285,"model":"llama-3.3-70b-versatile","system_fingerprint":"fp_b3ae7e594e","choices":[{"index":0,"delta":{"content":"```"},"logprobs":null,"finish_reason":null}]}\n\n',
+                    b'data: {"id":"chatcmpl-96c29a0b-2a71-46fd-af4d-62d783cfc693","object":"chat.completion.chunk","created":1722540285,"model":"llama-3.3-70b-versatile","system_fingerprint":"fp_b3ae7e594e","choices":[{"index":0,"delta":{"content":"json"},"logprobs":null,"finish_reason":null}]}\n\n',
+                    b'data: {"id":"chatcmpl-96c29a0b-2a71-46fd-af4d-62d783cfc693","object":"chat.completion.chunk","created":1722540285,"model":"llama-3.3-70b-versatile","system_fingerprint":"fp_b3ae7e594e","choices":[{"index":0,"delta":{"content":" {"},"logprobs":null,"finish_reason":null}]}\n\n',
                     b'data: {"id":"chatcmpl-96c29a0b-2a71-46fd-af4d-62d783cfc693","object":"chat.completion.chunk","created":1722540285,"model":'
-                    b'"llama-3.1-70b-versatile","system_fingerprint":"fp_b3ae7e594e","choices":[{"index":0,"delta":{"content":" \\""},"logprobs":null,"finish_reason":null}]}\n\n',
-                    b'data: {"id":"chatcmpl-96c29a0b-2a71-46fd-af4d-62d783cfc693","object":"chat.completion.chunk","created":1722540285,"model":"llama-3.1-70b-versatile","system_fingerprint":"fp_b3ae7e594e","choices":[{"index":0,"delta":{"content":"sent"},"logprobs":null,"finish_reason":null}]}\n\n',
-                    b'data: {"id":"chatcmpl-96c29a0b-2a71-46fd-af4d-62d783cfc693","object":"chat.completion.chunk","created":1722540285,"model":"llama-3.1-70b-versatile","system_fingerprint":"fp_b3ae7e594e","choices":[{"index":0,"delta":{"content":"iment"},"logprobs":null,"finish_reason":null}]}\n\n',
-                    b'data: {"id":"chatcmpl-96c29a0b-2a71-46fd-af4d-62d783cfc693","object":"chat.completion.chunk","created":1722540285,"model":"llama-3.1-70b-versatile","system_fingerprint":"fp_b3ae7e594e","choices":[{"index":0,"delta":{"content":"\\":"},"logprobs":null,"finish_reason":null}]}\n\n',
-                    b'data: {"id":"chatcmpl-96c29a0b-2a71-46fd-af4d-62d783cfc693","object":"chat.completion.chunk","created":1722540285,"model":"llama-3.1-70b-versatile","system_fingerprint":"fp_b3ae7e594e","choices":[{"index":0,"delta":{"content":" \\""},"logprobs":null,"finish_reason":null}]}\n\n',
-                    b'data: {"id":"chatcmpl-96c29a0b-2a71-46fd-af4d-62d783cfc693","object":"chat.completion.chunk","created":1722540285,"model":"llama-3.1-70b-versatile","system_fingerprint":"fp_b3ae7e594e","choices":[{"index":0,"delta":{"content":"positive\\""},"logprobs":null,"finish_reason":null}]}\n\n',
-                    b'data: {"id":"chatcmpl-96c29a0b-2a71-46fd-af4d-62d783cfc693","object":"chat.completion.chunk","created":1722540285,"model":"llama-3.1-70b-versatile","system_fingerprint":"fp_b3ae7e594e","choices":[{"index":0,"delta":{"content":"}```"},"logprobs":null,"finish_reason":null}]}\n\n',
-                    b'data: {"id":"chatcmpl-96c29a0b-2a71-46fd-af4d-62d783cfc693","object":"chat.completion.chunk","created":1722540285,"model":"llama-3.1-70b-versatile","system_fingerprint":"fp_b3ae7e594e","choices":[{"index":0,"delta":{},"logprobs":null,"finish_reason":"stop"}],"x_groq":{"id":"req_01j47pdq9cerqbp0w6bzqwmytq","usage":{"queue_time":0.019005437000000007,"prompt_tokens":244,"prompt_time":0.058400983,"completion_tokens":15,"completion_time":0.06,"total_tokens":259,"total_time":0.11840098299999999}}}\n\n',
+                    b'"llama-3.3-70b-versatile","system_fingerprint":"fp_b3ae7e594e","choices":[{"index":0,"delta":{"content":" \\""},"logprobs":null,"finish_reason":null}]}\n\n',
+                    b'data: {"id":"chatcmpl-96c29a0b-2a71-46fd-af4d-62d783cfc693","object":"chat.completion.chunk","created":1722540285,"model":"llama-3.3-70b-versatile","system_fingerprint":"fp_b3ae7e594e","choices":[{"index":0,"delta":{"content":"sent"},"logprobs":null,"finish_reason":null}]}\n\n',
+                    b'data: {"id":"chatcmpl-96c29a0b-2a71-46fd-af4d-62d783cfc693","object":"chat.completion.chunk","created":1722540285,"model":"llama-3.3-70b-versatile","system_fingerprint":"fp_b3ae7e594e","choices":[{"index":0,"delta":{"content":"iment"},"logprobs":null,"finish_reason":null}]}\n\n',
+                    b'data: {"id":"chatcmpl-96c29a0b-2a71-46fd-af4d-62d783cfc693","object":"chat.completion.chunk","created":1722540285,"model":"llama-3.3-70b-versatile","system_fingerprint":"fp_b3ae7e594e","choices":[{"index":0,"delta":{"content":"\\":"},"logprobs":null,"finish_reason":null}]}\n\n',
+                    b'data: {"id":"chatcmpl-96c29a0b-2a71-46fd-af4d-62d783cfc693","object":"chat.completion.chunk","created":1722540285,"model":"llama-3.3-70b-versatile","system_fingerprint":"fp_b3ae7e594e","choices":[{"index":0,"delta":{"content":" \\""},"logprobs":null,"finish_reason":null}]}\n\n',
+                    b'data: {"id":"chatcmpl-96c29a0b-2a71-46fd-af4d-62d783cfc693","object":"chat.completion.chunk","created":1722540285,"model":"llama-3.3-70b-versatile","system_fingerprint":"fp_b3ae7e594e","choices":[{"index":0,"delta":{"content":"positive\\""},"logprobs":null,"finish_reason":null}]}\n\n',
+                    b'data: {"id":"chatcmpl-96c29a0b-2a71-46fd-af4d-62d783cfc693","object":"chat.completion.chunk","created":1722540285,"model":"llama-3.3-70b-versatile","system_fingerprint":"fp_b3ae7e594e","choices":[{"index":0,"delta":{"content":"}```"},"logprobs":null,"finish_reason":null}]}\n\n',
+                    b'data: {"id":"chatcmpl-96c29a0b-2a71-46fd-af4d-62d783cfc693","object":"chat.completion.chunk","created":1722540285,"model":"llama-3.3-70b-versatile","system_fingerprint":"fp_b3ae7e594e","choices":[{"index":0,"delta":{},"logprobs":null,"finish_reason":"stop"}],"x_groq":{"id":"req_01j47pdq9cerqbp0w6bzqwmytq","usage":{"queue_time":0.019005437000000007,"prompt_tokens":244,"prompt_time":0.058400983,"completion_tokens":15,"completion_time":0.06,"total_tokens":259,"total_time":0.11840098299999999}}}\n\n',
                     b"data: [DONE]",
                 ],
             ),
@@ -92,7 +79,7 @@ class TestStream:
                     content="Hello",
                 ),
             ],
-            options=ProviderOptions(model=Model.LLAMA_3_1_70B, max_tokens=1000, temperature=0, output_schema={}),
+            options=ProviderOptions(model=Model.LLAMA_3_3_70B, max_tokens=1000, temperature=0, output_schema={}),
             output_factory=lambda x, _: StructuredOutput(json.loads(extract_json_str(x))),
             partial_output_factory=lambda x: StructuredOutput(x),
         )
@@ -105,7 +92,7 @@ class TestStream:
         body = json.loads(request.read().decode())
         assert body == {
             "max_tokens": 1000,
-            "model": "llama-3.1-70b-versatile",
+            "model": "llama-3.3-70b-versatile",
             "messages": [
                 {
                     "content": "Hello",
@@ -128,7 +115,7 @@ class TestStream:
 
         streamer = provider.stream(
             [MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello")],
-            options=ProviderOptions(model=Model.LLAMA_3_1_70B, max_tokens=10, temperature=0),
+            options=ProviderOptions(model=Model.LLAMA_3_3_70B, max_tokens=10, temperature=0),
             output_factory=lambda x, _: StructuredOutput(json.loads(x)),
             partial_output_factory=lambda x: StructuredOutput(x),
         )
@@ -166,7 +153,7 @@ class TestComplete:
                     content="Hello",
                 ),
             ],
-            options=ProviderOptions(model=Model.LLAMA_3_1_70B, max_tokens=10, temperature=0),
+            options=ProviderOptions(model=Model.LLAMA_3_3_70B, max_tokens=10, temperature=0),
             output_factory=lambda x, _: StructuredOutput(json.loads(x)),
         )
         assert o.output == {"message": "Hello you"}
@@ -177,7 +164,7 @@ class TestComplete:
         body = json.loads(request.read().decode())
         assert body == {
             "max_tokens": 10,
-            "model": "llama-3.1-70b-versatile",
+            "model": "llama-3.3-70b-versatile",
             "messages": [
                 {
                     "content": "Hello",
@@ -212,7 +199,7 @@ class TestComplete:
                     content="Hello",
                 ),
             ],
-            options=ProviderOptions(model=Model.LLAMA_3_1_70B, temperature=0),
+            options=ProviderOptions(model=Model.LLAMA_3_3_70B, temperature=0),
             output_factory=lambda x, _: StructuredOutput(json.loads(x)),
         )
         assert o.output == {"message": "Hello you"}
@@ -223,7 +210,7 @@ class TestComplete:
         body = json.loads(request.read().decode())
 
         assert body == {
-            "model": "llama-3.1-70b-versatile",
+            "model": "llama-3.3-70b-versatile",
             "messages": [
                 {
                     "content": "Hello",
@@ -247,7 +234,7 @@ class TestComplete:
         with pytest.raises(ProviderInternalError) as e:
             await provider.complete(
                 [MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello")],
-                options=ProviderOptions(model=Model.LLAMA_3_1_70B, max_tokens=10, temperature=0),
+                options=ProviderOptions(model=Model.LLAMA_3_3_70B, max_tokens=10, temperature=0),
                 output_factory=lambda x, _: StructuredOutput(json.loads(x)),
             )
 
@@ -385,7 +372,7 @@ class TestFinishReasonLength:
         with pytest.raises(MaxTokensExceededError) as e:
             await provider.complete(
                 [MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello")],
-                options=ProviderOptions(model=Model.LLAMA_3_1_70B, max_tokens=10, temperature=0),
+                options=ProviderOptions(model=Model.LLAMA_3_3_70B, max_tokens=10, temperature=0),
                 output_factory=lambda x, _: StructuredOutput(json.loads(x)),
             )
         assert (
@@ -409,7 +396,7 @@ class TestFinishReasonLength:
                 output_factory=lambda x, _: StructuredOutput(json.loads(x)),
                 partial_output_factory=lambda x: StructuredOutput(x),
                 raw_completion=RawCompletion(response="", usage=LLMUsage()),
-                options=ProviderOptions(model=Model.LLAMA_3_1_70B, max_tokens=10, temperature=0),
+                options=ProviderOptions(model=Model.LLAMA_3_3_70B, max_tokens=10, temperature=0),
             ):
                 pass
 
@@ -424,7 +411,7 @@ class TestPrepareCompletion:
         """Test that the 'role' key appears before 'content' in the prepared request."""
         request = groq_provider._build_request(  # pyright: ignore[reportPrivateUsage]
             messages=[MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello")],
-            options=ProviderOptions(model=Model.LLAMA_3_1_70B, max_tokens=10, temperature=0),
+            options=ProviderOptions(model=Model.LLAMA_3_3_70B, max_tokens=10, temperature=0),
             stream=False,
         )
 
@@ -447,7 +434,7 @@ class TestBuildRequest:
     def test_build_request_with_max_tokens(self, groq_provider: GroqProvider):
         request = groq_provider._build_request(  # pyright: ignore[reportPrivateUsage]
             messages=[MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello")],
-            options=ProviderOptions(model=Model.LLAMA_3_1_70B, max_tokens=10, temperature=0),
+            options=ProviderOptions(model=Model.LLAMA_3_3_70B, max_tokens=10, temperature=0),
             stream=False,
         )
         dumped = request.model_dump()
@@ -458,7 +445,7 @@ class TestBuildRequest:
     def test_build_request_without_max_tokens(self, groq_provider: GroqProvider):
         request = groq_provider._build_request(  # pyright: ignore[reportPrivateUsage]
             messages=[MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello")],
-            options=ProviderOptions(model=Model.LLAMA_3_1_70B, temperature=0),
+            options=ProviderOptions(model=Model.LLAMA_3_3_70B, temperature=0),
             stream=False,
         )
         dumped = request.model_dump()
@@ -466,7 +453,7 @@ class TestBuildRequest:
         assert dumped["messages"][0]["content"] == "Hello"
         assert dumped["max_tokens"] is None
         # TODO[max-tokens]: add a test for the max tokens
-        # model_data = get_model_data(Model.LLAMA_3_1_70B)
+        # model_data = get_model_data(Model.LLAMA_3_3_70B)
         # if model_data.max_tokens_data.max_output_tokens:
         #     assert request.model_dump()["max_tokens"] == model_data.max_tokens_data.max_output_tokens
         # else:
@@ -540,3 +527,9 @@ class TestUnknownError:
 )
 def test_is_content_moderation_completion(message: str, expected_result: bool):
     assert GroqProvider.is_content_moderation_completion(message) == expected_result  # pyright: ignore [reportPrivateUsage]
+
+
+def test_name_override_map_exhaustive():
+    supported_models = set(GROQ_PROVIDER_DATA)
+    models_in_map = set(NAME_OVERRIDE_MAP)
+    assert supported_models == models_in_map

@@ -148,6 +148,7 @@ GOOGLE_PROVIDER_DATA: ProviderDataByModel = {
             release_date=datetime.date(year=2024, month=9, day=24),
             sunset_date=datetime.date(year=2025, month=9, day=24),
             source="https://cloud.google.com/vertex-ai/generative-ai/docs/learn/models#model_versions_and_lifecycle",
+            post_sunset_replacement_model=Model.GEMINI_2_5_PRO,
         ),
     ),
     # Model.GEMINI_1_5_FLASH_001: ModelProviderData(
@@ -270,6 +271,30 @@ OPENAI_PROVIDER_DATA: ProviderDataByModel = {
             prompt_cost_per_token=2.5 * ONE_MILLION_TH,
             prompt_cached_tokens_discount=0.5,
             completion_cost_per_token=10 * ONE_MILLION_TH,
+            source="https://openai.com/api/pricing/",
+        ),
+    ),
+    Model.GPT_5_2025_08_07: ModelProviderData(
+        text_price=TextPricePerToken(
+            prompt_cost_per_token=1.25 * ONE_MILLION_TH,
+            prompt_cached_tokens_discount=0.9,
+            completion_cost_per_token=10 * ONE_MILLION_TH,
+            source="https://openai.com/api/pricing/",
+        ),
+    ),
+    Model.GPT_5_MINI_2025_08_07: ModelProviderData(
+        text_price=TextPricePerToken(
+            prompt_cost_per_token=0.25 * ONE_MILLION_TH,
+            prompt_cached_tokens_discount=0.9,
+            completion_cost_per_token=2 * ONE_MILLION_TH,
+            source="https://openai.com/api/pricing/",
+        ),
+    ),
+    Model.GPT_5_NANO_2025_08_07: ModelProviderData(
+        text_price=TextPricePerToken(
+            prompt_cost_per_token=0.05 * ONE_MILLION_TH,
+            prompt_cached_tokens_discount=0.9,
+            completion_cost_per_token=0.4 * ONE_MILLION_TH,
             source="https://openai.com/api/pricing/",
         ),
     ),
@@ -599,6 +624,20 @@ GROQ_PROVIDER_DATA: ProviderDataByModel = {
             source="https://groq.com/pricing/",
         ),
     ),
+    Model.GPT_OSS_20B: ModelProviderData(
+        text_price=TextPricePerToken(
+            prompt_cost_per_token=0.10 * ONE_MILLION_TH,
+            completion_cost_per_token=0.50 * ONE_MILLION_TH,
+            source="https://console.groq.com/docs/model/openai/gpt-oss-20b",
+        ),
+    ),
+    Model.GPT_OSS_120B: ModelProviderData(
+        text_price=TextPricePerToken(
+            prompt_cost_per_token=0.15 * ONE_MILLION_TH,
+            completion_cost_per_token=0.75 * ONE_MILLION_TH,
+            source="https://console.groq.com/docs/model/openai/gpt-oss-120b",
+        ),
+    ),
 }
 
 MISTRAL_PROVIDER_DATA: ProviderDataByModel = {
@@ -736,6 +775,13 @@ ANTHROPIC_PROVIDER_DATA: ProviderDataByModel = {
             prompt_cost_per_token=15 * ONE_MILLION_TH,
             completion_cost_per_token=75 * ONE_MILLION_TH,
             source="https://docs.anthropic.com/en/docs/about-claude/models/all-models#model-comparison-table",
+        ),
+    ),
+    Model.CLAUDE_4_1_OPUS_20250805: ModelProviderData(
+        text_price=TextPricePerToken(
+            prompt_cost_per_token=15 * ONE_MILLION_TH,
+            completion_cost_per_token=75 * ONE_MILLION_TH,
+            source="https://www.anthropic.com/pricing#api",
         ),
     ),
     Model.CLAUDE_4_SONNET_20250514: ModelProviderData(

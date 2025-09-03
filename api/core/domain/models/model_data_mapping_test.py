@@ -324,6 +324,7 @@ class TestModelFallback:
         Model.GEMINI_2_5_FLASH_PREVIEW_0417,
         Model.GEMINI_2_5_FLASH_PREVIEW_0520,
         Model.GEMINI_2_5_FLASH_THINKING_PREVIEW_0417,
+        Model.GPT_5_NANO_2025_08_07,
     }
 
     _IGNORE_PROVIDERS = {
@@ -392,13 +393,13 @@ class TestModelFallback:
             max_price = 2 * current_text_price.prompt_cost_per_token
 
             # We never ignore the price for rate limit
-            if model_data.model in self._IGNORE_PRICE and fallback_type not in {"rate_limit", "default"}:
+            if model_data.model in self._IGNORE_PRICE and fallback_type not in {"default"}:
                 assert model_data.fallback.pricing_tier == "cheapest", (
                     "Fallback pricing tier should be cheapest when pricing is ignored"
                 )
             else:
                 assert fallback_text_price.prompt_cost_per_token <= max_price, (
-                    f"Fallback model {fallback_model} has a higher prompt cost per token than the current model {model_data.model}"
+                    f"Fallback model {fallback_model} has a higher prompt cost per token than the current model {model_data.model} and fallback type {fallback_type}"
                 )
 
 

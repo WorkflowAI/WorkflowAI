@@ -7,6 +7,7 @@ from core.domain.models import Model
 from core.domain.models.providers import Provider
 from tests.component.common import (
     IntegrationTestClient,
+    gemini_url,
     mock_gemini_call,
 )
 from tests.utils import approx, fixture_bytes, fixtures_json
@@ -83,3 +84,34 @@ async def test_prompt_cached_tokens(test_client: IntegrationTestClient):
     assert run["cost_usd"] == approx(
         (250 * 1.25 / 1_000_000) + (750 * 0.25 * 1.25 / 1_000_000) + (2_000 * 10 / 1_000_000),
     )
+
+
+async def test_reasoning_tokens(test_client: IntegrationTestClient):
+    task = await test_client.create_task()
+
+    mock_gemini_call(
+        httpx_mock=test_client.httpx_mock,
+        model=Model.GEMINI_2_5_PRO,
+        usage={
+            "promptTokenCount": 1_000,
+            "candidatesTokenCount": 2_000,
+            "cachedContentTokenCount": 750,
+        },
+    )
+
+    run = await test_client.run_task_v1(
+        task,
+        version={
+            "model": Model.GEMINI_2_5_PRO,
+            "provider": Provider.GOOGLE_GEMINI,
+            "reasoning_effort": "medium",
+        },
+    )
+    assert run
+
+    # Check that the correct reasoning budget is used
+    requests = test_client.get_request_bodies(
+        url=gemini_url(Model.GEMINI_2_5_PRO, api_version="v1beta"),
+    )
+    assert len(requests) == 1
+    assert requests[0]["generationConfig"]["thinking_config"]["thinkingBudget"] == approx(32_768 * 0.5)
