@@ -76,6 +76,8 @@ class TenantData(PublicOrganizationData):
 
     slack_channel_id: str | None = None
 
+    anotherai_api_key: str | None = None
+
     def should_send_low_credits_email(self, threshold_usd: float) -> bool:
         if self.current_credits_usd >= threshold_usd:
             return False
