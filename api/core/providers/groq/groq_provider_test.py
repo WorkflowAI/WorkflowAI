@@ -23,7 +23,6 @@ from core.providers.base.provider_error import (
     ContentModerationError,
     FailedGenerationError,
     MaxTokensExceededError,
-    ProviderBadRequestError,
     ProviderError,
     ProviderInternalError,
     ProviderInvalidFileError,
@@ -473,15 +472,26 @@ class TestUnknownError:
 
         return _build_unknown_error
 
-    def test_unknown_error(self, unknown_error_fn: Callable[[str | dict[str, Any]], ProviderError]):
+    @pytest.mark.parametrize(
+        "message",
+        [
+            'Get "http://localhost:3000/essai_ocr.jpeg": dial tcp: lookup localhost: no such host',
+            'Get "http://localhost:3000/essai_ocr.jpeg": read: connection reset by peer',
+        ],
+    )
+    def test_unknown_error_invalid_file(
+        self,
+        unknown_error_fn: Callable[[str | dict[str, Any]], ProviderError],
+        message: str,
+    ):
         payload = {
             "error": {
-                "message": 'Get "http://localhost:3000/rails/active_storage/blobs/redirect/eyJfcmFpbHMiOnsibWVzc2FnZSI6IkJBaHBBZzBCIiwiZXhwIjpudWxsLCJwdXIiOiJibG9iX2lkIn19--354b3e626fde895af1f8017b4750ad75f362d5ac/essai_ocr.jpeg": dial tcp: lookup localhost: no such host',
+                "message": message,
                 "type": "invalid_request_error",
             },
         }
         e = unknown_error_fn(payload)
-        assert isinstance(e, ProviderBadRequestError)
+        assert isinstance(e, ProviderInvalidFileError)
         assert e.capture is False
 
     def test_unknown_error_invalid_url(self, unknown_error_fn: Callable[[str | dict[str, Any]], ProviderError]):

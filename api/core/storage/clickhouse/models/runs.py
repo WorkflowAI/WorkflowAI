@@ -765,7 +765,7 @@ class ClickhouseRun(BaseModel):
         if exclude:
             exclude_fields: set[str] = {FIELD_TO_COLUMN[f] for f in exclude if f in FIELD_TO_COLUMN}
         else:
-            exclude_fields: set[str] = {
+            exclude_fields = {
                 "input",
                 "output",
                 "metadata",

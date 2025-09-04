@@ -5,11 +5,21 @@ from unittest.mock import Mock
 
 import pytest
 
-from api.jobs.utils.anotherai_utils import AnotherAIService, _Message
+from api.jobs.utils.anotherai_utils import AnotherAIService, _last_completion_to_messages, _Message
 from api.services.runs.runs_service import RunsService
 from core.domain.error_response import ErrorResponse
+from core.domain.llm_completion import LLMCompletion
+from core.domain.llm_usage import LLMUsage
+from core.domain.models import Provider
 from core.domain.task_io import SerializableTaskIO
 from core.domain.tool_call import ToolCallRequestWithID
+from core.providers.base.models import (
+    ImageContentDict,
+    StandardMessage,
+    TextContentDict,
+    ToolCallRequestDict,
+    ToolCallResultDict,
+)
 from core.storage.backend_storage import BackendStorage
 from tests import models as test_models
 
@@ -335,3 +345,197 @@ class TestCompletionFromDomain:
         ]
 
         assert completion.version.input_variables_schema is None
+
+
+def _llm_completion(
+    messages: list[dict[str, Any]] | None = None,
+    **kwargs: Any,
+) -> LLMCompletion:
+    """Helper function to create test LLMCompletion objects."""
+    return LLMCompletion(
+        messages=messages or [],
+        usage=LLMUsage(),
+        provider=Provider.OPEN_AI,
+        **kwargs,
+    )
+
+
+class TestLastCompletionToMessages:
+    """Test the _last_completion_to_messages function."""
+
+    def test_none_completions(self):
+        """Test with None completions."""
+        result = _last_completion_to_messages(None)
+        assert result == []
+
+    def test_empty_completions(self):
+        """Test with empty completions list."""
+        result = _last_completion_to_messages([])
+        assert result == []
+
+    def test_single_completion_with_text_message(self):
+        """Test with single completion containing text message."""
+        standard_message: StandardMessage = {
+            "role": "assistant",
+            "content": "Hello, world!",
+        }
+        completion = _llm_completion(messages=[dict(standard_message)])
+
+        result = _last_completion_to_messages([completion])
+
+        assert len(result) == 1
+        assert result[0].role == "assistant"
+        assert isinstance(result[0].content, str)
+        assert result[0].content == "Hello, world!"
+
+    def test_single_completion_with_list_content(self):
+        """Test with single completion containing list content."""
+        text_content: TextContentDict = {"type": "text", "text": "Hello"}
+        image_content: ImageContentDict = {
+            "type": "image_url",
+            "image_url": {"url": "https://example.com/image.jpg"},
+        }
+        standard_message: StandardMessage = {
+            "role": "user",
+            "content": [text_content, image_content],
+        }
+        completion = _llm_completion(messages=[dict(standard_message)])
+
+        result = _last_completion_to_messages([completion])
+
+        assert len(result) == 1
+        assert result[0].role == "user"
+        assert isinstance(result[0].content, list)
+        assert len(result[0].content) == 2
+        assert result[0].content[0].text == "Hello"
+        assert result[0].content[1].image_url == "https://example.com/image.jpg"
+
+    def test_single_completion_with_tool_calls(self):
+        """Test with single completion containing tool call messages."""
+        tool_call_request: ToolCallRequestDict = {
+            "type": "tool_call_request",
+            "id": "call_123",
+            "tool_name": "calculator",
+            "tool_input_dict": {"expression": "2 + 2"},
+        }
+        tool_call_result: ToolCallResultDict = {
+            "type": "tool_call_result",
+            "id": "call_123",
+            "result": "4",
+            "tool_name": "calculator",
+            "tool_input_dict": {"expression": "2 + 2"},
+            "error": None,
+        }
+
+        assistant_message: StandardMessage = {
+            "role": "assistant",
+            "content": [tool_call_request],
+        }
+        tool_message: StandardMessage = {
+            "role": "assistant",  # Tool results usually come back as assistant messages
+            "content": [tool_call_result],
+        }
+
+        completion = _llm_completion(messages=[dict(assistant_message), dict(tool_message)])
+
+        result = _last_completion_to_messages([completion])
+
+        assert len(result) == 2
+
+        # Check tool call request message
+        assert result[0].role == "assistant"
+        assert isinstance(result[0].content, list)
+        assert len(result[0].content) == 1
+        assert result[0].content[0].tool_call_request is not None
+        assert result[0].content[0].tool_call_request.id == "call_123"
+        assert result[0].content[0].tool_call_request.name == "calculator"
+
+        # Check tool call result message
+        assert result[1].role == "assistant"
+        assert isinstance(result[1].content, list)
+        assert len(result[1].content) == 1
+        assert result[1].content[0].tool_call_result is not None
+        assert result[1].content[0].tool_call_result.id == "call_123"
+        assert result[1].content[0].tool_call_result.output == "4"
+
+    def test_multiple_completions_uses_last(self):
+        """Test that with multiple completions, only the last one is used."""
+        first_message: StandardMessage = {"role": "assistant", "content": "First completion"}
+        second_message: StandardMessage = {"role": "assistant", "content": "Second completion"}
+        third_message: StandardMessage = {"role": "assistant", "content": "Third completion"}
+
+        first_completion = _llm_completion(messages=[dict(first_message)])
+        second_completion = _llm_completion(messages=[dict(second_message)])
+        third_completion = _llm_completion(messages=[dict(third_message)])
+
+        result = _last_completion_to_messages([first_completion, second_completion, third_completion])
+
+        assert len(result) == 1
+        assert result[0].role == "assistant"
+        assert result[0].content == "Third completion"
+
+    def test_completion_with_multiple_messages(self):
+        """Test completion with multiple messages in the last completion."""
+        system_message: StandardMessage = {"role": "system", "content": "You are a helpful assistant"}
+        user_message: StandardMessage = {"role": "user", "content": "Hello"}
+        assistant_message: StandardMessage = {"role": "assistant", "content": "Hi there!"}
+
+        completion = _llm_completion(
+            messages=[
+                dict(system_message),
+                dict(user_message),
+                dict(assistant_message),
+            ],
+        )
+
+        result = _last_completion_to_messages([completion])
+
+        assert len(result) == 3
+        assert result[0].role == "system"
+        assert result[0].content == "You are a helpful assistant"
+        assert result[1].role == "user"
+        assert result[1].content == "Hello"
+        assert result[2].role == "assistant"
+        assert result[2].content == "Hi there!"
+
+    @pytest.mark.parametrize(
+        "role,content,expected_role",
+        [
+            ("system", "System message", "system"),
+            ("user", "User message", "user"),
+            ("assistant", "Assistant message", "assistant"),
+            (None, "Default message", "user"),  # None role defaults to user
+        ],
+    )
+    def test_different_message_roles(self, role: str | None, content: str, expected_role: str):
+        """Test that different message roles are handled correctly."""
+        standard_message: StandardMessage = {"role": role, "content": content}  # type: ignore
+        completion = _llm_completion(messages=[dict(standard_message)])
+
+        result = _last_completion_to_messages([completion])
+
+        assert len(result) == 1
+        assert result[0].role == expected_role
+        assert result[0].content == content
+
+    def test_error_handling_returns_empty_list(self):
+        """Test that errors in conversion are caught and empty list is returned."""
+        # Create a malformed message that will cause an error during conversion
+        malformed_message = {
+            "role": "assistant",
+            "content": [{"type": "unknown_type", "data": "invalid"}],  # Invalid content type
+        }
+        completion = _llm_completion(messages=[malformed_message])
+
+        result = _last_completion_to_messages([completion])
+
+        # Should return empty list due to error handling in capture_errors
+        assert result == []
+
+    def test_empty_messages_in_completion(self):
+        """Test completion with empty messages list."""
+        completion = _llm_completion(messages=[])
+
+        result = _last_completion_to_messages([completion])
+
+        assert result == []
