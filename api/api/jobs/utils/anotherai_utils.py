@@ -1,3 +1,4 @@
+import logging
 from copy import deepcopy
 from enum import StrEnum
 from typing import Any, Literal, cast
@@ -12,6 +13,7 @@ from core.domain.consts import ANOTHERAI_API_URL
 from core.domain.error_response import ErrorResponse
 from core.domain.errors import InternalError
 from core.domain.fields.file import File
+from core.domain.llm_completion import LLMCompletion
 from core.domain.message import Message, MessageContent
 from core.domain.reasoning_effort import ReasoningEffort
 from core.domain.task_group import TaskGroup
@@ -20,10 +22,22 @@ from core.domain.task_io import RawJSONMessageSchema, RawStringMessageSchema, Se
 from core.domain.task_variant import SerializableTaskVariant
 from core.domain.tool import Tool
 from core.domain.tool_call import ToolCall, ToolCallRequestWithID
+from core.providers.base.models import (
+    AudioContentDict,
+    DocumentContentDict,
+    ImageContentDict,
+    StandardMessage,
+    TextContentDict,
+    ToolCallRequestDict,
+    ToolCallResultDict,
+)
 from core.runners.workflowai.utils import extract_files, remove_keys_from_input
 from core.storage.backend_storage import BackendStorage
 from core.tools import ToolKind
+from core.utils.coroutines import capture_errors
 from core.utils.templates import TemplateManager
+
+_logger = logging.getLogger(__name__)
 
 
 class _ToolCallRequest(BaseModel):
@@ -39,6 +53,14 @@ class _ToolCallRequest(BaseModel):
             arguments=tool_call_request.tool_input_dict,
         )
 
+    @classmethod
+    def from_standard(cls, tool_call_request: ToolCallRequestDict):
+        return cls(
+            id=tool_call_request["id"] or "",
+            name=tool_call_request["tool_name"],
+            arguments=tool_call_request["tool_input_dict"] or {},
+        )
+
 
 class _ToolCallResult(BaseModel):
     id: str = Field(description="The id of the tool call result")
@@ -51,6 +73,14 @@ class _ToolCallResult(BaseModel):
             id=tool_call_result.id,
             output=tool_call_result.result,
             error=tool_call_result.error,
+        )
+
+    @classmethod
+    def from_standard(cls, tool_call_result: ToolCallResultDict):
+        return cls(
+            id=tool_call_result["id"] or "",
+            output=tool_call_result["result"],
+            error=tool_call_result["error"],
         )
 
 
@@ -92,6 +122,31 @@ class _Message(BaseModel):
                 return cls(image_url=file.url)
             raise InternalError("Unknown file type", capture=True)
 
+        @classmethod
+        def from_standard(
+            cls,
+            content: TextContentDict
+            | ImageContentDict
+            | AudioContentDict
+            | DocumentContentDict
+            | ToolCallRequestDict
+            | ToolCallResultDict,
+        ):
+            match content["type"]:
+                case "text":
+                    return cls(text=content["text"])
+                case "image_url":
+                    return cls(image_url=content["image_url"]["url"])
+                case "audio_url":
+                    return cls(audio_url=content["audio_url"]["url"])
+                case "document_url":
+                    return cls(image_url=content["source"]["url"])
+                case "tool_call_request":
+                    return cls(tool_call_request=_ToolCallRequest.from_standard(content))
+                case "tool_call_result":
+                    return cls(tool_call_result=_ToolCallResult.from_standard(content))
+            raise InternalError("Unknown content type", capture=True)
+
     # Never a list[Any] to avoid conflicts with the list[Content]
     content: list[Content] | str | dict[str, Any]
 
@@ -100,6 +155,14 @@ class _Message(BaseModel):
         return cls(
             role=message.role,
             content=[cls.Content.from_domain(c) for c in message.content],
+        )
+
+    @classmethod
+    def from_standard(cls, message: StandardMessage):
+        content = message["content"]
+        return cls(
+            role=message.get("role") or "user",
+            content=content if isinstance(content, str) else [cls.Content.from_standard(c) for c in content],
         )
 
 
@@ -377,9 +440,19 @@ class _Completion(BaseModel):
             output=_Output.from_domain(run),
             cost_usd=run.cost_usd or 0,
             duration_seconds=run.duration_seconds,
-            # TODO: handle completions
-            messages=[],
+            messages=_last_completion_to_messages(run.llm_completions),
         )
+
+
+def _last_completion_to_messages(completions: list[LLMCompletion] | None) -> list[_Message]:
+    if not completions:
+        return []
+
+    last_completion = completions[-1]
+    last_messages = cast(list[StandardMessage], last_completion.messages)
+    with capture_errors(_logger, "Failed to convert last completion to messages"):
+        return [_Message.from_standard(m) for m in last_messages]
+    return []
 
 
 class AnotherAIService:
