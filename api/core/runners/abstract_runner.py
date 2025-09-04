@@ -134,7 +134,7 @@ class AbstractRunner(
     async def _from_cache_inner(
         self,
         input: AgentInput | Messages,
-        timeout: float | None = 0.1,  # noqa: ASYNC109
+        timeout: float = 0.1,  # noqa: ASYNC109
     ) -> Optional[AgentRun]:
         """
         Retrieve the output from the cache if it exists
@@ -151,7 +151,7 @@ class AbstractRunner(
                 input.to_input_dict() if isinstance(input, Messages) else input,
             ),
             group_id=self.properties.model_hash(),
-            timeout_ms=int(timeout * 1000) if timeout else None,
+            timeout_ms=int(timeout * 1000),
         )
         if cached:
             cached.from_cache = True
@@ -161,7 +161,7 @@ class AbstractRunner(
     async def from_cache(
         self,
         input: AgentInput | Messages,
-        timeout: float | None = 0.1,  # noqa: ASYNC109
+        timeout: float = 0.1,  # noqa: ASYNC109
     ) -> AgentRun | None:
         """
         Retrieve the output from the cache if it exists, with a timeout of 100ms.
@@ -227,7 +227,7 @@ class AbstractRunner(
     ) -> AgentRun | None:
         if not self._should_use_cache(cache):
             return None
-        from_cache = await self.from_cache(input, timeout=None)
+        from_cache = await self.from_cache(input, timeout=2 if cache == "only" else 0.1)
         if from_cache is not None:
             return from_cache
         if cache == "only":

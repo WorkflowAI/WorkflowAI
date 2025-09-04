@@ -72,6 +72,7 @@ from core.runners.workflowai.utils import (
     extract_files,
     reasoning_step_mapper,
     remove_files_from_schema,
+    remove_keys_from_input,
     sanitize_model_and_provider,
     split_tools,
 )
@@ -433,23 +434,6 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
         the input and input schema. Keys used by the template are added to the used_input_keys set"""
         return await self.template_manager.render_template(instructions, input)
 
-    async def _remove_keys_from_input(
-        self,
-        input_schema: dict[str, Any],
-        input: AgentInput,
-        used_input_keys: set[str],
-    ):
-        """Remove keys from the input and input schema. Only root keys are supported"""
-        input_schema_properties: dict[str, Any] = input_schema.get("properties", {})
-        input_schema_required: list[str] = input_schema.get("required", [])
-        for key in used_input_keys:
-            input.pop(key, None)
-            input_schema_properties.pop(key, None)
-            try:
-                input_schema_required.remove(key)
-            except ValueError:
-                pass
-
     async def _extract_image_options(
         self,
         input: AgentInput,
@@ -720,7 +704,7 @@ class WorkflowAIRunner(AbstractRunner[WorkflowAIRunnerOptions]):
             )
             keys_to_remove1.update(templated_keys)
 
-        await self._remove_keys_from_input(input_schema=input_schema, input=input_copy, used_input_keys=keys_to_remove1)
+        remove_keys_from_input(input_schema=input_schema, input=input_copy, used_input_keys=keys_to_remove1)
 
         template_config = get_template_content(template_name)
 

@@ -7,8 +7,10 @@ from api.jobs.common import (
     InternalTasksServiceDep,
     PaymentSystemServiceDep,
     ReviewsServiceDep,
+    RunsServiceDep,
     StorageDep,
 )
+from api.jobs.utils.anotherai_utils import AnotherAIService
 from api.jobs.utils.jobs_utils import get_task_run_str
 from api.services.slack_notifications import get_user_and_org_str
 from core.domain.events import RunCreatedEvent
@@ -116,6 +118,15 @@ async def run_task_run_moderation(
     )
 
 
+@broker.task(retry_on_error=True)
+async def send_run_to_anotherai(event: RunCreatedEvent, storage: StorageDep, runs_service: RunsServiceDep):
+    if not AnotherAIService.is_enabled():
+        return
+
+    svc = AnotherAIService(storage, runs_service)
+    await svc.import_run(event.run)
+
+
 JOBS = [
     decrement_credits,
     increment_run_count,
@@ -123,4 +134,5 @@ JOBS = [
     update_task_group_last_active_at,
     update_task_schema_last_active_at,
     run_task_run_moderation,
+    send_run_to_anotherai,
 ]

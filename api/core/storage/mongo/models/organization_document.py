@@ -153,6 +153,8 @@ class OrganizationDocument(BaseDocumentWithID):
 
     slack_channel_id: str | None = None
 
+    anotherai_api_key: str | None = None
+
     @classmethod
     def from_domain(cls, org_settings: TenantData, no_tasks_yet: bool | None = None) -> Self:
         return cls(
@@ -185,6 +187,7 @@ class OrganizationDocument(BaseDocumentWithID):
             if org_settings.low_credits_email_sent_by_threshold
             else None,
             slack_channel_id=org_settings.slack_channel_id or None,
+            anotherai_api_key=org_settings.anotherai_api_key or None,
         )
 
     def to_domain(self, encryption: Encryption | None) -> TenantData:
@@ -215,6 +218,7 @@ class OrganizationDocument(BaseDocumentWithID):
             if self.low_credits_email_sent
             else None,
             slack_channel_id=self.slack_channel_id or None,
+            anotherai_api_key=self.anotherai_api_key or None,
         )
 
     def to_domain_public(self) -> PublicOrganizationData:

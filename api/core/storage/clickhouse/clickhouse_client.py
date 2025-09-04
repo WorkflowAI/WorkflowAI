@@ -269,6 +269,7 @@ class ClickhouseClient(TaskRunStorage):
         timeout_ms: int | None,
         success_only: bool = True,
     ) -> AgentRun | None:
+        timeout_ms = timeout_ms or 200
         async with asyncio.timeout(timeout_ms):
             cache_hash = ClickhouseRun.compute_cache_hash(
                 self.tenant_uid,
@@ -294,7 +295,7 @@ class ClickhouseClient(TaskRunStorage):
                 w,
                 prewhere=prewhere,
                 limit=1,
-                settings={"max_memory_usage": 1024 * 1024 * 100, "max_execution_time": (timeout_ms or 1000) * 0.001},
+                settings={"max_memory_usage": 1024 * 1024 * 200, "max_execution_time": timeout_ms * 0.001},
             )
             if not result:
                 return None

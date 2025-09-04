@@ -22,6 +22,8 @@
       "cwd": "${workspaceFolder}/api",
       "args": [
         "api.main:app",
+        "--port",
+        "8001",
         "--reload",
         "--reload-dir",
         "api",
