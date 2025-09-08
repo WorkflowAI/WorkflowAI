@@ -346,6 +346,55 @@ class TestCompletionFromDomain:
 
         assert completion.version.input_variables_schema is None
 
+    async def test_completion_with_metadata(self, anotherai_service: AnotherAIService):
+        """Test that metadata is properly transferred from AgentRun to completion."""
+        metadata = {
+            "user_id": "user_123",
+            "session_id": "session_456",
+            "custom_field": {"nested": "value"},
+            "workflowai.internal": "should_be_included",
+        }
+        run = test_models.task_run_ser(
+            id="test_run_with_metadata",
+            task_id="test_task_id",
+            task_output="Response with metadata",
+            metadata=metadata,
+        )
+        task_variant = test_models.task_variant()
+
+        completion = await anotherai_service._convert_run(run, task_variant)
+
+        assert completion.metadata is not None
+        assert completion.metadata == metadata
+        assert completion.metadata["user_id"] == "user_123"
+        assert completion.metadata["session_id"] == "session_456"
+        assert completion.metadata["custom_field"]["nested"] == "value"
+        assert completion.metadata["workflowai.internal"] == "should_be_included"
+
+    async def test_completion_with_none_metadata(self, anotherai_service: AnotherAIService):
+        """Test that None metadata is handled correctly."""
+        run = test_models.task_run_ser(
+            task_output="Response without metadata",
+            metadata=None,
+        )
+        task_variant = test_models.task_variant()
+
+        completion = await anotherai_service._convert_run(run, task_variant)
+
+        assert completion.metadata is None
+
+    async def test_completion_with_empty_metadata(self, anotherai_service: AnotherAIService):
+        """Test that empty metadata dict is transferred correctly."""
+        run = test_models.task_run_ser(
+            task_output="Response with empty metadata",
+            metadata={},
+        )
+        task_variant = test_models.task_variant()
+
+        completion = await anotherai_service._convert_run(run, task_variant)
+
+        assert completion.metadata == {}
+
 
 def _llm_completion(
     messages: list[dict[str, Any]] | None = None,

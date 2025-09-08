@@ -481,6 +481,7 @@ class _Completion(BaseModel):
             duration_seconds=run.duration_seconds,
             messages=_last_completion_to_messages(run.llm_completions),
             traces=_llm_completions_to_traces(run.llm_completions),
+            metadata=run.metadata,
         )
 
 
