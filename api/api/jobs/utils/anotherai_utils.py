@@ -14,6 +14,7 @@ from core.domain.error_response import ErrorResponse
 from core.domain.errors import InternalError
 from core.domain.fields.file import File
 from core.domain.llm_completion import LLMCompletion
+from core.domain.llm_usage import LLMUsage
 from core.domain.message import Message, MessageContent
 from core.domain.reasoning_effort import ReasoningEffort
 from core.domain.task_group import TaskGroup
@@ -316,6 +317,42 @@ class _Version(BaseModel):
         )
 
 
+class _TokenUsage(BaseModel):
+    text_token_count: float | None = None
+    audio_token_count: float | None = None
+    audio_count: int | None = None
+    image_token_count: float | None = None
+    image_count: int | None = None
+    cost_usd: float
+
+
+class _CompletionUsage(_TokenUsage):
+    cached_token_count: float | None = None
+    reasoning_token_count: float | None = None
+
+
+class _InferenceUsage(BaseModel):
+    prompt: _TokenUsage
+    completion: _CompletionUsage
+
+
+class _Trace(BaseModel):
+    kind: Literal["llm", "tool"]
+    duration_seconds: float
+    cost_usd: float
+
+    model: str | None = None
+    provider: str | None = None
+    name: str | None = None
+    tool_input_preview: str | None = None
+    tool_output_preview: str | None = None
+
+    usage: _InferenceUsage | None = Field(
+        default=None,
+        description="The usage of the trace. Only present for LLM traces.",
+    )
+
+
 class _Error(BaseModel):
     error: str
 
@@ -418,6 +455,8 @@ class _Completion(BaseModel):
         description="The duration of the inference in seconds.",
     )
 
+    traces: list[_Trace] | None
+
     @classmethod
     def from_domain(
         cls,
@@ -441,6 +480,7 @@ class _Completion(BaseModel):
             cost_usd=run.cost_usd or 0,
             duration_seconds=run.duration_seconds,
             messages=_last_completion_to_messages(run.llm_completions),
+            traces=_llm_completions_to_traces(run.llm_completions),
         )
 
 
@@ -453,6 +493,43 @@ def _last_completion_to_messages(completions: list[LLMCompletion] | None) -> lis
     with capture_errors(_logger, "Failed to convert last completion to messages"):
         return [_Message.from_standard(m) for m in last_messages]
     return []
+
+
+def _usage_from_domain(usage: LLMUsage) -> _InferenceUsage:
+    return _InferenceUsage(
+        prompt=_TokenUsage(
+            text_token_count=usage.prompt_token_count,
+            audio_token_count=usage.prompt_audio_token_count,
+            audio_count=None,
+            image_token_count=usage.prompt_image_token_count,
+            image_count=usage.prompt_image_count,
+            cost_usd=usage.prompt_cost_usd or 0,
+        ),
+        completion=_CompletionUsage(
+            text_token_count=usage.completion_token_count,
+            audio_token_count=None,
+            audio_count=None,
+            image_token_count=usage.completion_image_token_count,
+            image_count=usage.completion_image_count,
+            cost_usd=usage.completion_cost_usd or 0,
+        ),
+    )
+
+
+def _llm_completions_to_traces(completions: list[LLMCompletion] | None) -> list[_Trace] | None:
+    if not completions:
+        return None
+    return [
+        _Trace(
+            kind="llm",
+            duration_seconds=completion.duration_seconds or 0,
+            cost_usd=completion.usage.cost_usd or 0,
+            model=completion.model,
+            provider=completion.provider,
+            usage=_usage_from_domain(completion.usage),
+        )
+        for completion in completions
+    ]
 
 
 class AnotherAIService:
