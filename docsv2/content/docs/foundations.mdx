@@ -191,3 +191,30 @@ print(f"Cost   ($): ${cost:.6f}")
 ## Debugging
 
 Inevitably, many agents will encounter issues or need optimizations at one time or another. If you encounter an issue with your agent, you can learn more about debugging strategies, common error solutions, and optimization techniques by reading the [Improving and Debugging Existing Agents](/use-cases/improving_and_debugging_existing_agent) section.
+
+## Best Practices
+
+### Reusing Inputs Across Experiments
+
+When running comparative experiments or testing different prompts with the same input data, use `run_query` instead of duplicating input variables to save tokens and costs:
+
+**❌ Inefficient - Duplicates input data:**
+```json
+{
+  "inputs": [{"variables": {"large_content": "..."}}],
+  "prompts": [...]
+}
+```
+
+**✅ Efficient - Reuses existing input:**
+```json
+{
+  "run_query": "SELECT * FROM runs WHERE id = 'run_12345'",
+  "prompts": [...]
+}
+```
+
+This approach:
+- Saves tokens by avoiding input duplication
+- Ensures perfect input consistency across experiments
+- Reduces experiment costs for comparative testing
