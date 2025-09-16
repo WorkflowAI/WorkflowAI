@@ -5,6 +5,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import { GeneralizedTaskInput } from '@/types';
 import { TaskID, TaskSchemaID, TenantID } from '@/types/aliases';
 import { buildScopeKey } from './utils';
+import { safeLocalStorageGetItem, safeLocalStorageSetItem, safeLocalStorageRemoveItem } from '@/lib/localStorage';
 
 type ParametersHistoryEntry = {
   instructions: string;
@@ -76,7 +77,11 @@ export const usePlaygroundHistoryStore = create<PlaygroundHistoryStore>()(
     }),
     {
       name: 'playground-history-storage',
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => ({
+        getItem: (name: string) => safeLocalStorageGetItem(name),
+        setItem: (name: string, value: string) => safeLocalStorageSetItem(name, value),
+        removeItem: (name: string) => safeLocalStorageRemoveItem(name),
+      })),
     }
   )
 );
