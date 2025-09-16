@@ -2,8 +2,8 @@ import { cx } from 'class-variance-authority';
 import { GeistMono } from 'geist/font/mono';
 import { GeistSans } from 'geist/font/sans';
 import type { Metadata } from 'next';
-import { NewTaskModal } from '@/components/NewTaskModal/NewTaskModal';
 import { PageViewTracker } from '@/components/PageViewTracker';
+import { ProxyNewAgentModal } from '@/components/ProxyNewAgentModal/ProxyNewAgentModal';
 import { AmplitudeConfigurator } from '@/components/amplitude/AmplitudeConfigurator';
 import { Toaster } from '@/components/ui/Sonner';
 import { AuthWrapper } from '../components/auth/AuthWrapper';
@@ -36,7 +36,7 @@ export default function RootLayout({
           <AmplitudeConfigurator>
             <PageViewTracker>
               {/* Only add unauthenticated components here. All the authenticated components are in the [tenant]/layout.tsx */}
-              <NewTaskModal />
+              <ProxyNewAgentModal />
               {children}
               <Toaster position='bottom-center' />
             </PageViewTracker>
