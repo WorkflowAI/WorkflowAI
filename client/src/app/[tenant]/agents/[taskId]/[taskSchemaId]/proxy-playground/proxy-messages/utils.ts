@@ -264,10 +264,11 @@ export function createEmptyMessageContent(type?: ContentType, previouseMessage?:
   }
 }
 
-export function createEmptyMessage(role: ExtendedMessageType, previouseMessage?: ProxyMessage): ProxyMessage {
+export function createEmptyMessage(role: ExtendedMessageType, previouseMessage?: ProxyMessage): ProxyMessageWithID {
   return {
     role: getMessageType(role),
     content: [createEmptyMessageContent(undefined, previouseMessage)],
+    internal_id: nanoid(),
   };
 }
 
