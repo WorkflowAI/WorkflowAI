@@ -30,8 +30,19 @@ from core.utils.json_utils import safe_extract_dict_from_json
 from core.utils.token_utils import tokens_from_string
 
 
+class MistralSchema(BaseModel):
+    strict: bool = True
+    name: str
+    schema_: dict[str, Any] = Field(alias="schema")
+
+
 class ResponseFormat(BaseModel):
-    type: Literal["json_object", "text"] = "json_object"
+    type: Literal["json_object", "text", "json_schema"]
+    json_schema: MistralSchema | None = None
+
+
+# Union type for all response formats
+ResponseFormatUnion = ResponseFormat
 
 
 class MistralTool(BaseModel):
@@ -292,13 +303,12 @@ class CompletionRequest(BaseModel):
     stop: str | None = None
     random_seed: int | None = None
     messages: list[MistralAIMessage | MistralToolMessage]
-    response_format: ResponseFormat = Field(default_factory=ResponseFormat)
+    response_format: ResponseFormat
     tools: list[MistralTool] | None = None
     tool_choice: MistralToolChoiceEnum | MistralToolChoice | None = None
     safe_prompt: bool | None = None
     presence_penalty: float | None = None
     frequency_penalty: float | None = None
-    top_p: float | None = None
     parallel_tool_calls: bool | None = None
 
     @classmethod

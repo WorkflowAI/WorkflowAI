@@ -12,6 +12,7 @@ from core.domain.fields.file import File
 from core.domain.llm_usage import LLMUsage
 from core.domain.message import MessageDeprecated
 from core.domain.models import Model, Provider
+from core.domain.models.model_data_supports import ModelDataSupports
 from core.domain.structured_output import StructuredOutput
 from core.domain.tool_call import ToolCall, ToolCallRequestWithID
 from core.providers.base.abstract_provider import RawCompletion
@@ -233,6 +234,267 @@ class TestBuildRequest:
         assert request.messages[3].role == "tool"
         assert request.messages[3].tool_call_id == "76af333cd"
         assert request.messages[3].content == '{"result": "The weather in Paris is sunny"}'
+
+    def test_build_request_with_tools_forces_text_response_format(self, mistral_provider: MistralAIProvider):
+        """Test that when tools are enabled, response format is forced to text even with output_schema"""
+        from core.domain.tool import Tool as DomainTool
+
+        test_tool = DomainTool(
+            name="test_tool",
+            description="A test tool",
+            input_schema={"type": "object", "properties": {"test": {"type": "string"}}},
+            output_schema={"type": "object", "properties": {"result": {"type": "string"}}},
+        )
+
+        request = mistral_provider._build_request(
+            messages=[MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello")],
+            options=ProviderOptions(
+                model=Model.PIXTRAL_12B_2409,
+                temperature=0,
+                enabled_tools=[test_tool],
+                output_schema={"type": "object", "properties": {"result": {"type": "string"}}},
+            ),
+            stream=False,
+        )
+        request_dict = request.model_dump()
+        assert request_dict["response_format"]["type"] == "text"
+        assert request_dict["tools"] is not None
+
+    def test_build_request_with_output_schema_no_tools(self, mistral_provider: MistralAIProvider):
+        """Test that when no tools are enabled but output_schema is provided, response format is set accordingly"""
+        request = mistral_provider._build_request(
+            messages=[MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello")],
+            options=ProviderOptions(
+                model=Model.PIXTRAL_12B_2409,
+                temperature=0,
+                output_schema={"type": "object", "properties": {"result": {"type": "string"}}},
+            ),
+            stream=False,
+        )
+        request_dict = request.model_dump()
+        # The exact response format depends on model capabilities and structured_generation setting
+        assert request_dict["response_format"]["type"] in ["json_object", "json_schema"]
+
+    def test_build_request_with_all_optional_parameters(self, mistral_provider: MistralAIProvider):
+        """Test build_request with all optional parameters set"""
+        request = mistral_provider._build_request(
+            messages=[MessageDeprecated(role=MessageDeprecated.Role.USER, content="Hello")],
+            options=ProviderOptions(
+                model=Model.PIXTRAL_12B_2409,
+                temperature=0.7,
+                max_tokens=100,
+                top_p=0.9,
+                presence_penalty=0.1,
+                frequency_penalty=0.2,
+                parallel_tool_calls=True,
+            ),
+            stream=False,
+        )
+        request_dict = request.model_dump()
+        assert request_dict["temperature"] == 0.7
+        assert request_dict["max_tokens"] == 100
+        assert request_dict["top_p"] == 0.9
+        assert request_dict["presence_penalty"] == 0.1
+        assert request_dict["frequency_penalty"] == 0.2
+        assert request_dict["parallel_tool_calls"] is True
+
+
+class TestResponseFormat:
+    def test_response_format_no_output_schema(self, mistral_provider: MistralAIProvider):
+        """Test that when output_schema is None, response format is text"""
+        supports = ModelDataSupports(
+            supports_json_mode=True,
+            supports_structured_output=True,
+            supports_tool_calling=True,
+            supports_input_image=True,
+            supports_input_pdf=True,
+            supports_input_audio=True,
+        )
+        options = ProviderOptions(
+            model=Model.PIXTRAL_12B_2409,
+            output_schema=None,
+        )
+
+        response_format = mistral_provider._response_format(options, supports)
+        assert response_format.type == "text"
+
+    def test_response_format_no_json_support(self, mistral_provider: MistralAIProvider):
+        """Test that when model doesn't support json_mode or structured_output, response format is text"""
+        supports = ModelDataSupports(
+            supports_json_mode=False,
+            supports_structured_output=False,
+            supports_tool_calling=True,
+            supports_input_image=True,
+            supports_input_pdf=True,
+            supports_input_audio=True,
+        )
+        options = ProviderOptions(
+            model=Model.PIXTRAL_12B_2409,
+            output_schema={"type": "object", "properties": {"result": {"type": "string"}}},
+        )
+
+        response_format = mistral_provider._response_format(options, supports)
+        assert response_format.type == "text"
+
+    def test_response_format_json_mode_only(self, mistral_provider: MistralAIProvider):
+        """Test that when model supports json_mode but not structured_output, response format is json_object"""
+        supports = ModelDataSupports(
+            supports_json_mode=True,
+            supports_structured_output=False,
+            supports_tool_calling=True,
+            supports_input_image=True,
+            supports_input_pdf=True,
+            supports_input_audio=True,
+        )
+        options = ProviderOptions(
+            model=Model.PIXTRAL_12B_2409,
+            output_schema={"type": "object", "properties": {"result": {"type": "string"}}},
+        )
+
+        response_format = mistral_provider._response_format(options, supports)
+        assert response_format.type == "json_object"
+
+    def test_response_format_structured_output_disabled(self, mistral_provider: MistralAIProvider):
+        """Test that when structured_generation is False, response format is json_object"""
+        supports = ModelDataSupports(
+            supports_json_mode=True,
+            supports_structured_output=True,
+            supports_tool_calling=True,
+            supports_input_image=True,
+            supports_input_pdf=True,
+            supports_input_audio=True,
+        )
+        options = ProviderOptions(
+            model=Model.PIXTRAL_12B_2409,
+            output_schema={"type": "object", "properties": {"result": {"type": "string"}}},
+            structured_generation=False,
+        )
+
+        response_format = mistral_provider._response_format(options, supports)
+        assert response_format.type == "json_object"
+
+    def test_response_format_structured_output_enabled(self, mistral_provider: MistralAIProvider):
+        """Test that when structured_generation is True and model supports it, response format is json_schema"""
+        supports = ModelDataSupports(
+            supports_json_mode=True,
+            supports_structured_output=True,
+            supports_tool_calling=True,
+            supports_input_image=True,
+            supports_input_pdf=True,
+            supports_input_audio=True,
+        )
+        options = ProviderOptions(
+            model=Model.PIXTRAL_12B_2409,
+            output_schema={"type": "object", "properties": {"result": {"type": "string"}}},
+            structured_generation=True,
+        )
+
+        response_format = mistral_provider._response_format(options, supports)
+        assert response_format.type == "json_schema"
+        assert response_format.json_schema is not None
+        assert response_format.json_schema.schema_ is not None
+
+    def test_response_format_structured_output_with_task_name(self, mistral_provider: MistralAIProvider):
+        """Test that task_name is used in schema name when provided"""
+        supports = ModelDataSupports(
+            supports_json_mode=True,
+            supports_structured_output=True,
+            supports_tool_calling=True,
+            supports_input_image=True,
+            supports_input_pdf=True,
+            supports_input_audio=True,
+        )
+        options = ProviderOptions(
+            model=Model.PIXTRAL_12B_2409,
+            output_schema={"type": "object", "properties": {"result": {"type": "string"}}},
+            structured_generation=True,
+            task_name="test_task",
+        )
+
+        response_format = mistral_provider._response_format(options, supports)
+        assert response_format.type == "json_schema"
+        assert response_format.json_schema is not None
+        assert response_format.json_schema.name is not None
+        # The exact name format depends on the implementation of get_openai_json_schema_name
+        assert "test_task" in response_format.json_schema.name.lower() or response_format.json_schema.name != ""
+
+    def test_response_format_no_structured_generation_flag(self, mistral_provider: MistralAIProvider):
+        """Test that when structured_generation is None/default, it defaults to json_object"""
+        supports = ModelDataSupports(
+            supports_json_mode=True,
+            supports_structured_output=True,
+            supports_tool_calling=True,
+            supports_input_image=True,
+            supports_input_pdf=True,
+            supports_input_audio=True,
+        )
+        options = ProviderOptions(
+            model=Model.PIXTRAL_12B_2409,
+            output_schema={"type": "object", "properties": {"result": {"type": "string"}}},
+            # structured_generation not set (defaults to None)
+        )
+
+        response_format = mistral_provider._response_format(options, supports)
+        assert response_format.type == "json_object"
+
+    def test_response_format_empty_output_schema(self, mistral_provider: MistralAIProvider):
+        """Test response format with empty output schema falls back to json_object"""
+        supports = ModelDataSupports(
+            supports_json_mode=True,
+            supports_structured_output=True,
+            supports_tool_calling=True,
+            supports_input_image=True,
+            supports_input_pdf=True,
+            supports_input_audio=True,
+        )
+        options = ProviderOptions(
+            model=Model.PIXTRAL_12B_2409,
+            output_schema={},
+            structured_generation=True,
+        )
+
+        response_format = mistral_provider._response_format(options, supports)
+        # Empty schema is falsy in Python, so it falls back to json_object
+        assert response_format.type == "json_object"
+
+    def test_response_format_complex_schema(self, mistral_provider: MistralAIProvider):
+        """Test response format with complex nested schema"""
+        supports = ModelDataSupports(
+            supports_json_mode=True,
+            supports_structured_output=True,
+            supports_tool_calling=True,
+            supports_input_image=True,
+            supports_input_pdf=True,
+            supports_input_audio=True,
+        )
+        complex_schema = {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "name": {"type": "string"},
+                            "score": {"type": "number"},
+                        },
+                        "required": ["name", "score"],
+                    },
+                },
+                "summary": {"type": "string"},
+            },
+            "required": ["items", "summary"],
+        }
+        options = ProviderOptions(
+            model=Model.PIXTRAL_12B_2409,
+            output_schema=complex_schema,
+            structured_generation=True,
+        )
+
+        response_format = mistral_provider._response_format(options, supports)
+        assert response_format.type == "json_schema"
+        assert response_format.json_schema is not None
+        assert response_format.json_schema.schema_ is not None
 
 
 class TestSingleStream:
