@@ -325,6 +325,7 @@ class TestModelFallback:
         Model.GEMINI_2_5_FLASH_PREVIEW_0520,
         Model.GEMINI_2_5_FLASH_THINKING_PREVIEW_0417,
         Model.GPT_5_NANO_2025_08_07,
+        Model.GPT_41_NANO_2025_04_14,
     }
 
     _IGNORE_PROVIDERS = {

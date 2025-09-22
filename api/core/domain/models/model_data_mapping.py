@@ -32,12 +32,12 @@ def _openai_fallback(pricing: PricingTier, context_exceeded: Model | Literal["no
     match pricing:
         case "cheap" | "cheapest":
             # Depending on the model, might have to set to "no" individually
-            model = Model.GEMINI_2_0_FLASH_LATEST
+            model = Model.GEMINI_2_5_FLASH
         case "medium":
             # Medium models usually have a 1M context window
             model = Model.CLAUDE_4_SONNET_LATEST
             if not context_exceeded:
-                context_exceeded = Model.GEMINI_1_5_PRO_LATEST
+                context_exceeded = Model.GEMINI_2_5_PRO
         case "expensive":
             # OpenAI expensive models usually have a 200k context window
             model = Model.CLAUDE_4_OPUS_LATEST
@@ -192,7 +192,7 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             quality_data=QualityData(mmlu=90.2, gpqa=66.3),
             provider_name=DisplayedProvider.OPEN_AI.value,
             supports_tool_calling=True,
-            fallback=_openai_fallback("medium"),
+            fallback=_openai_fallback("medium", context_exceeded="no"),
         ),
         Model.GPT_41_MINI_LATEST: LatestModel(
             model=Model.GPT_41_MINI_2025_04_14,
@@ -332,9 +332,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             aliases=[],
             fallback=ModelFallback(
                 # Falling back to Gemini 1.5 Pro to support audio
-                content_moderation=Model.GEMINI_1_5_PRO_002,
-                structured_output=Model.GEMINI_1_5_PRO_002,
-                rate_limit=Model.GEMINI_1_5_PRO_002,
+                content_moderation=Model.GEMINI_2_5_FLASH,
+                structured_output=Model.GEMINI_2_5_FLASH,
+                rate_limit=Model.GEMINI_2_5_FLASH,
                 context_exceeded=None,
             ),
             supports_temperature=False,
@@ -364,9 +364,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             aliases=["gpt-4o-audio-preview"],
             fallback=ModelFallback(
                 # Falling back to Gemini 1.5 Pro to support audio
-                content_moderation=Model.GEMINI_1_5_PRO_002,
-                structured_output=Model.GEMINI_1_5_PRO_002,
-                rate_limit=Model.GEMINI_1_5_PRO_002,
+                content_moderation=Model.GEMINI_2_5_PRO,
+                structured_output=Model.GEMINI_2_5_PRO,
+                rate_limit=Model.GEMINI_2_5_PRO,
                 context_exceeded=None,
             ),
             supports_temperature=False,
@@ -568,7 +568,7 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             ),
             supports_tool_calling=True,
             supports_parallel_tool_calls=True,
-            fallback=_openai_fallback("cheap"),
+            fallback=ModelFallback.default("cheapest"),
             reasoning=ModelReasoningBudget(),
             supports_temperature=True,
             supports_top_p=True,
@@ -690,7 +690,7 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
         #     supports_parallel_tool_calls=False,
         #     fallback=_openai_fallback("expensive"),
         # ),
-        Model.GEMINI_1_5_PRO_PREVIEW_0514: DeprecatedModel(replacement_model=Model.GEMINI_1_5_PRO_002),
+        Model.GEMINI_1_5_PRO_PREVIEW_0514: DeprecatedModel(replacement_model=Model.GEMINI_2_5_PRO),
         Model.GEMINI_2_0_FLASH_LITE_PREVIEW_2502: DeprecatedModel(replacement_model=Model.GEMINI_2_0_FLASH_LITE_001),
         Model.GEMINI_2_0_FLASH_LITE_001: ModelData(
             display_name="Gemini 2.0 Flash-Lite (001)",
@@ -839,69 +839,35 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
         Model.GEMINI_2_5_PRO_PREVIEW_0325: DeprecatedModel(replacement_model=Model.GEMINI_2_5_PRO),
         Model.GEMINI_2_5_PRO_EXP_0325: DeprecatedModel(replacement_model=Model.GEMINI_2_5_PRO),
         Model.GEMINI_2_0_PRO_EXP: DeprecatedModel(replacement_model=Model.GEMINI_2_5_PRO),
-        Model.GEMINI_2_0_FLASH_EXP: ModelData(
-            display_name="Gemini 2.0 Flash Exp (Image Generation)",
-            supports_json_mode=False,
-            supports_input_image=True,
-            supports_input_pdf=True,
-            supports_input_audio=True,
-            supports_output_image=True,
-            supports_structured_output=False,
-            supports_system_messages=False,
-            max_tokens_data=MaxTokensData(
-                max_tokens=1_048_576 + 8_192,
-                max_output_tokens=8_192,
-                source="https://ai.google.dev/gemini-api/docs/models/gemini#gemini-2.0-flash",
-            ),
-            icon_url="https://workflowai.blob.core.windows.net/workflowai-public/google.svg",
-            release_date=date(2025, 2, 5),
-            quality_data=QualityData(equivalent_to=(Model.GEMINI_2_0_FLASH_001, 0)),
-            provider_name=DisplayedProvider.GOOGLE.value,
-            supports_tool_calling=True,
-            is_default=True,
-            fallback=None,  # No fallback for exp models
+        Model.GEMINI_2_0_FLASH_EXP: DeprecatedModel(
+            replacement_model=Model.GEMINI_2_5_FLASH,
+            reasoning_effort=ReasoningEffort.DISABLED,
         ),
         Model.GEMINI_2_0_FLASH_LATEST: LatestModel(
             model=Model.GEMINI_2_0_FLASH_001,
             display_name="Gemini 2.0 Flash (latest)",
         ),
-        Model.GEMINI_1_5_PRO_LATEST: LatestModel(
-            model=Model.GEMINI_1_5_PRO_002,
-            display_name="Gemini 1.5 Pro (latest)",
-            is_default=True,
-        ),
+        Model.GEMINI_1_5_PRO_LATEST: DeprecatedModel(replacement_model=Model.GEMINI_2_5_PRO),
         Model.GEMINI_2_0_FLASH_THINKING_EXP_0121: DeprecatedModel(
             replacement_model=Model.GEMINI_2_5_PRO,
         ),
         Model.GEMINI_2_0_FLASH_THINKING_EXP_1219: DeprecatedModel(
             replacement_model=Model.GEMINI_2_5_PRO,
+            reasoning_effort=ReasoningEffort.LOW,
         ),
-        Model.GEMINI_1_5_PRO_002: ModelData(
-            display_name="Gemini 1.5 Pro (002)",
-            supports_json_mode=True,
-            supports_input_image=True,
-            supports_input_pdf=True,
-            supports_input_audio=True,
-            supports_structured_output=False,  # Model supports structured outputs, but we did not activate this feature for Google  yet
-            max_tokens_data=MaxTokensData(
-                max_tokens=2_097_152,
-                max_output_tokens=8_192,
-                source="https://cloud.google.com/vertex-ai/generative-ai/docs/learn/models#gemini-1.5-pro",
-            ),
-            icon_url="https://workflowai.blob.core.windows.net/workflowai-public/google.svg",
-            latest_model=Model.GEMINI_1_5_PRO_LATEST,
-            release_date=date(2024, 9, 24),
-            quality_data=QualityData(mmlu=85.14, gpqa=59.10),
-            provider_name=DisplayedProvider.GOOGLE.value,
-            supports_tool_calling=True,
-            fallback=ModelFallback.default("medium", content_moderation=Model.GPT_41_LATEST, context_exceeded="no"),
+        Model.GEMINI_1_5_PRO_002: DeprecatedModel(
+            replacement_model=Model.GEMINI_2_5_PRO,
+            reasoning_effort=ReasoningEffort.LOW,
         ),
-        Model.GEMINI_1_5_PRO_001: DeprecatedModel(replacement_model=Model.GEMINI_1_5_PRO_002),
-        Model.GEMINI_1_5_PRO_PREVIEW_0409: DeprecatedModel(replacement_model=Model.GEMINI_1_5_PRO_002),
-        Model.GEMINI_1_5_FLASH_PREVIEW_0514: DeprecatedModel(replacement_model=Model.GEMINI_1_5_FLASH_002),
-        Model.GEMINI_1_5_FLASH_LATEST: LatestModel(
-            model=Model.GEMINI_1_5_FLASH_002,
-            display_name="Gemini 1.5 Flash (latest)",
+        Model.GEMINI_1_5_PRO_001: DeprecatedModel(replacement_model=Model.GEMINI_2_5_PRO),
+        Model.GEMINI_1_5_PRO_PREVIEW_0409: DeprecatedModel(replacement_model=Model.GEMINI_2_5_PRO),
+        Model.GEMINI_1_5_FLASH_PREVIEW_0514: DeprecatedModel(
+            replacement_model=Model.GEMINI_2_5_FLASH,
+            reasoning_effort=ReasoningEffort.DISABLED,
+        ),
+        Model.GEMINI_1_5_FLASH_LATEST: DeprecatedModel(
+            replacement_model=Model.GEMINI_2_5_FLASH,
+            reasoning_effort=ReasoningEffort.DISABLED,
         ),
         Model.CLAUDE_4_SONNET_LATEST: LatestModel(
             model=Model.CLAUDE_4_SONNET_20250514,
@@ -1026,34 +992,26 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             supports_tool_calling=True,
             fallback=ModelFallback.default("medium"),
         ),
-        Model.GEMINI_1_5_FLASH_002: ModelData(
-            display_name="Gemini 1.5 Flash (002)",
-            supports_json_mode=True,
-            supports_input_image=True,
-            supports_input_pdf=True,
-            supports_input_audio=True,
-            supports_structured_output=False,  # Model supports structured outputs, but we did not activate this feature for Google  yet
-            max_tokens_data=MaxTokensData(
-                max_tokens=1048576,
-                max_output_tokens=8192,
-                source="https://cloud.google.com/vertex-ai/generative-ai/docs/learn/models#gemini-1.5-flash",
-            ),
-            icon_url="https://workflowai.blob.core.windows.net/workflowai-public/google.svg",
-            latest_model=Model.GEMINI_1_5_FLASH_LATEST,
-            release_date=date(2024, 9, 24),
-            quality_data=QualityData(mmlu=78.9, gpqa=51),
-            provider_name=DisplayedProvider.GOOGLE.value,
-            supports_tool_calling=True,
-            fallback=ModelFallback.default(
-                "cheapest",
-                content_moderation=Model.GPT_41_NANO_LATEST,
-                context_exceeded="no",
-            ),
+        Model.GEMINI_1_5_FLASH_002: DeprecatedModel(
+            replacement_model=Model.GEMINI_2_5_FLASH,
+            reasoning_effort=ReasoningEffort.DISABLED,
         ),
-        Model.GEMINI_1_5_FLASH_001: DeprecatedModel(replacement_model=Model.GEMINI_1_5_PRO_002),
-        Model.GEMINI_1_0_PRO_VISION_001: DeprecatedModel(replacement_model=Model.GEMINI_1_5_PRO_002),
-        Model.GEMINI_1_0_PRO_001: DeprecatedModel(replacement_model=Model.GEMINI_1_5_PRO_002),
-        Model.GEMINI_1_0_PRO_002: DeprecatedModel(replacement_model=Model.GEMINI_1_5_PRO_002),
+        Model.GEMINI_1_5_FLASH_001: DeprecatedModel(
+            replacement_model=Model.GEMINI_2_5_FLASH,
+            reasoning_effort=ReasoningEffort.LOW,
+        ),
+        Model.GEMINI_1_0_PRO_VISION_001: DeprecatedModel(
+            replacement_model=Model.GEMINI_2_5_PRO,
+            reasoning_effort=ReasoningEffort.LOW,
+        ),
+        Model.GEMINI_1_0_PRO_001: DeprecatedModel(
+            replacement_model=Model.GEMINI_2_5_PRO,
+            reasoning_effort=ReasoningEffort.LOW,
+        ),
+        Model.GEMINI_1_0_PRO_002: DeprecatedModel(
+            replacement_model=Model.GEMINI_2_5_PRO,
+            reasoning_effort=ReasoningEffort.LOW,
+        ),
         Model.CLAUDE_3_5_SONNET_LATEST: LatestModel(
             model=Model.CLAUDE_3_5_SONNET_20241022,
             display_name="Claude 3.5 Sonnet (latest)",
@@ -1256,27 +1214,9 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
         Model.LLAMA_3_2_3B_PREVIEW: DeprecatedModel(replacement_model=Model.LLAMA_4_SCOUT_BASIC),
         Model.LLAMA_3_2_1B_PREVIEW: DeprecatedModel(replacement_model=Model.LLAMA_4_SCOUT_BASIC),
         Model.LLAMA_3_2_90B_VISION_PREVIEW: DeprecatedModel(replacement_model=Model.LLAMA_4_MAVERICK_BASIC),
-        Model.GEMINI_1_5_FLASH_8B: ModelData(
-            display_name="Gemini 1.5 Flash (8B)",
-            supports_json_mode=True,
-            supports_input_image=True,
-            supports_input_pdf=True,
-            supports_input_audio=True,
-            supports_structured_output=False,  # Model supports structured output but we did not activate for Gemini yet
-            max_tokens_data=MaxTokensData(
-                max_tokens=128000,
-                source="https://ai.google.dev/gemini-api/docs/models/gemini",
-            ),
-            icon_url="https://workflowai.blob.core.windows.net/workflowai-public/google.svg",
-            release_date=date(2024, 10, 3),
-            quality_data=QualityData(mmlu=58.7, gpqa=38.4),
-            provider_name=DisplayedProvider.GOOGLE.value,
-            supports_tool_calling=True,
-            fallback=ModelFallback.default(
-                "cheapest",
-                rate_limit=Model.GEMINI_2_0_FLASH_EXP,
-                content_moderation=Model.GPT_41_NANO_LATEST,
-            ),
+        Model.GEMINI_1_5_FLASH_8B: DeprecatedModel(
+            replacement_model=Model.GEMINI_2_5_FLASH_LITE_PREVIEW_0617,
+            reasoning_effort=ReasoningEffort.DISABLED,
         ),
         Model.GEMINI_EXP_1206: DeprecatedModel(replacement_model=Model.GEMINI_2_5_PRO),
         Model.GEMINI_EXP_1121: DeprecatedModel(replacement_model=Model.GEMINI_2_5_PRO),

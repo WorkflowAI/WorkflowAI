@@ -1,5 +1,3 @@
-import datetime
-
 from core.domain.models import Model, Provider
 from core.providers.google.google_provider_domain import GOOGLE_CHARS_PER_TOKEN
 
@@ -7,12 +5,9 @@ from .model_provider_data import (
     AudioPricePerSecond,
     AudioPricePerToken,
     ImageFixedPrice,
-    LifecycleData,
     ModelDataSupportsOverride,
     ModelProviderData,
     TextPricePerToken,
-    ThresholdedAudioPricePerSecond,
-    ThresholdedImageFixedPrice,
     ThresholdedTextPricePerToken,
 )
 
@@ -118,39 +113,39 @@ GOOGLE_PROVIDER_DATA: ProviderDataByModel = {
     #         post_sunset_replacement_model=Model.GEMINI_1_5_PRO_002,
     #     ),
     # ),
-    Model.GEMINI_1_5_PRO_002: ModelProviderData(
-        text_price=TextPricePerToken(
-            prompt_cost_per_token=0.000_000_312_5 * GOOGLE_CHARS_PER_TOKEN,
-            completion_cost_per_token=0.000_001_25 * GOOGLE_CHARS_PER_TOKEN,
-            thresholded_prices=[
-                # Price per token > 128k
-                ThresholdedTextPricePerToken(
-                    threshold=128_000,
-                    prompt_cost_per_token_over_threshold=0.625 * ONE_MILLION_TH * GOOGLE_CHARS_PER_TOKEN,
-                    completion_cost_per_token_over_threshold=2.5 * ONE_MILLION_TH * GOOGLE_CHARS_PER_TOKEN,
-                ),
-            ],
-            source="https://cloud.google.com/vertex-ai/generative-ai/pricing",
-        ),
-        image_price=ImageFixedPrice(
-            cost_per_image=0.000_328_75,
-            thresholded_prices=[
-                ThresholdedImageFixedPrice(threshold=128000, cost_per_image_over_threshold=0.000_6575),
-            ],
-        ),
-        audio_price=AudioPricePerSecond(
-            cost_per_second=0.000_031_25,
-            thresholded_prices=[
-                ThresholdedAudioPricePerSecond(threshold=128000, cost_per_second_over_threshold=0.000_0625),
-            ],
-        ),
-        lifecycle_data=LifecycleData(
-            release_date=datetime.date(year=2024, month=9, day=24),
-            sunset_date=datetime.date(year=2025, month=9, day=24),
-            source="https://cloud.google.com/vertex-ai/generative-ai/docs/learn/models#model_versions_and_lifecycle",
-            post_sunset_replacement_model=Model.GEMINI_2_5_PRO,
-        ),
-    ),
+    # Model.GEMINI_1_5_PRO_002: ModelProviderData(
+    #     text_price=TextPricePerToken(
+    #         prompt_cost_per_token=0.000_000_312_5 * GOOGLE_CHARS_PER_TOKEN,
+    #         completion_cost_per_token=0.000_001_25 * GOOGLE_CHARS_PER_TOKEN,
+    #         thresholded_prices=[
+    #             # Price per token > 128k
+    #             ThresholdedTextPricePerToken(
+    #                 threshold=128_000,
+    #                 prompt_cost_per_token_over_threshold=0.625 * ONE_MILLION_TH * GOOGLE_CHARS_PER_TOKEN,
+    #                 completion_cost_per_token_over_threshold=2.5 * ONE_MILLION_TH * GOOGLE_CHARS_PER_TOKEN,
+    #             ),
+    #         ],
+    #         source="https://cloud.google.com/vertex-ai/generative-ai/pricing",
+    #     ),
+    #     image_price=ImageFixedPrice(
+    #         cost_per_image=0.000_328_75,
+    #         thresholded_prices=[
+    #             ThresholdedImageFixedPrice(threshold=128000, cost_per_image_over_threshold=0.000_6575),
+    #         ],
+    #     ),
+    #     audio_price=AudioPricePerSecond(
+    #         cost_per_second=0.000_031_25,
+    #         thresholded_prices=[
+    #             ThresholdedAudioPricePerSecond(threshold=128000, cost_per_second_over_threshold=0.000_0625),
+    #         ],
+    #     ),
+    #     lifecycle_data=LifecycleData(
+    #         release_date=datetime.date(year=2024, month=9, day=24),
+    #         sunset_date=datetime.date(year=2025, month=9, day=24),
+    #         source="https://cloud.google.com/vertex-ai/generative-ai/docs/learn/models#model_versions_and_lifecycle",
+    #         post_sunset_replacement_model=Model.GEMINI_2_5_PRO,
+    #     ),
+    # ),
     # Model.GEMINI_1_5_FLASH_001: ModelProviderData(
     #     text_price=TextPricePerToken(
     #         prompt_cost_per_token=0.000_000_018_75 * GOOGLE_CHARS_PER_TOKEN,
@@ -183,38 +178,38 @@ GOOGLE_PROVIDER_DATA: ProviderDataByModel = {
     #         post_sunset_replacement_model=Model.GEMINI_2_0_FLASH_001,
     #     ),
     # ),
-    Model.GEMINI_1_5_FLASH_002: ModelProviderData(
-        text_price=TextPricePerToken(
-            prompt_cost_per_token=0.000_000_018_75 * GOOGLE_CHARS_PER_TOKEN,
-            completion_cost_per_token=0.000_000_075 * GOOGLE_CHARS_PER_TOKEN,
-            thresholded_prices=[
-                ThresholdedTextPricePerToken(
-                    threshold=128000,
-                    prompt_cost_per_token_over_threshold=0.000_000_037_5 * GOOGLE_CHARS_PER_TOKEN,
-                    completion_cost_per_token_over_threshold=0.15 * ONE_MILLION_TH * GOOGLE_CHARS_PER_TOKEN,
-                ),
-            ],
-            source="https://cloud.google.com/vertex-ai/generative-ai/pricing",
-        ),
-        image_price=ImageFixedPrice(
-            cost_per_image=0.000_02,
-            thresholded_prices=[
-                ThresholdedImageFixedPrice(threshold=128000, cost_per_image_over_threshold=0.000_04),
-            ],
-        ),
-        audio_price=AudioPricePerSecond(
-            cost_per_second=0.000_002,
-            thresholded_prices=[
-                ThresholdedAudioPricePerSecond(threshold=128000, cost_per_second_over_threshold=0.000_004),
-            ],
-        ),
-        lifecycle_data=LifecycleData(
-            release_date=datetime.date(year=2024, month=9, day=24),
-            sunset_date=datetime.date(year=2025, month=9, day=24),
-            source="https://cloud.google.com/vertex-ai/generative-ai/docs/learn/models#model_versions_and_lifecycle",
-            post_sunset_replacement_model=Model.GEMINI_2_0_FLASH_001,
-        ),
-    ),
+    # Model.GEMINI_1_5_FLASH_002: ModelProviderData(
+    #     text_price=TextPricePerToken(
+    #         prompt_cost_per_token=0.000_000_018_75 * GOOGLE_CHARS_PER_TOKEN,
+    #         completion_cost_per_token=0.000_000_075 * GOOGLE_CHARS_PER_TOKEN,
+    #         thresholded_prices=[
+    #             ThresholdedTextPricePerToken(
+    #                 threshold=128000,
+    #                 prompt_cost_per_token_over_threshold=0.000_000_037_5 * GOOGLE_CHARS_PER_TOKEN,
+    #                 completion_cost_per_token_over_threshold=0.15 * ONE_MILLION_TH * GOOGLE_CHARS_PER_TOKEN,
+    #             ),
+    #         ],
+    #         source="https://cloud.google.com/vertex-ai/generative-ai/pricing",
+    #     ),
+    #     image_price=ImageFixedPrice(
+    #         cost_per_image=0.000_02,
+    #         thresholded_prices=[
+    #             ThresholdedImageFixedPrice(threshold=128000, cost_per_image_over_threshold=0.000_04),
+    #         ],
+    #     ),
+    #     audio_price=AudioPricePerSecond(
+    #         cost_per_second=0.000_002,
+    #         thresholded_prices=[
+    #             ThresholdedAudioPricePerSecond(threshold=128000, cost_per_second_over_threshold=0.000_004),
+    #         ],
+    #     ),
+    #     lifecycle_data=LifecycleData(
+    #         release_date=datetime.date(year=2024, month=9, day=24),
+    #         sunset_date=datetime.date(year=2025, month=9, day=24),
+    #         source="https://cloud.google.com/vertex-ai/generative-ai/docs/learn/models#model_versions_and_lifecycle",
+    #         post_sunset_replacement_model=Model.GEMINI_2_0_FLASH_001,
+    #     ),
+    # ),
     Model.LLAMA_3_1_405B: ModelProviderData(
         text_price=TextPricePerToken(
             prompt_cost_per_token=0.000_005,
@@ -927,18 +922,6 @@ GOOGLE_GEMINI_API_PROVIDER_DATA: ProviderDataByModel = {
             prompt_cached_tokens_discount=0.75,
         ),
     ),
-    Model.GEMINI_2_0_FLASH_EXP: ModelProviderData(
-        # Exp models are free
-        text_price=TextPricePerToken(
-            prompt_cost_per_token=0,
-            completion_cost_per_token=0,
-            completion_image_cost_per_token=0,
-            source="https://ai.google.dev/gemini-api/docs/pricing#2_0flash_lite",
-        ),
-        image_price=ImageFixedPrice(
-            cost_per_image=0,
-        ),
-    ),
     Model.GEMINI_2_0_FLASH_001: ModelProviderData(
         text_price=TextPricePerToken(
             prompt_cost_per_token=0.10 * ONE_MILLION_TH,
@@ -950,35 +933,35 @@ GOOGLE_GEMINI_API_PROVIDER_DATA: ProviderDataByModel = {
             audio_input_cost_per_token=0.70 * ONE_MILLION_TH,
         ),
     ),
-    Model.GEMINI_1_5_FLASH_8B: ModelProviderData(
-        text_price=TextPricePerToken(
-            prompt_cost_per_token=0.0375 * ONE_MILLION_TH,
-            completion_cost_per_token=0.15 * ONE_MILLION_TH,
-            thresholded_prices=[
-                ThresholdedTextPricePerToken(
-                    threshold=128000,
-                    prompt_cost_per_token_over_threshold=0.075 * ONE_MILLION_TH,
-                    completion_cost_per_token_over_threshold=0.3 * ONE_MILLION_TH,
-                ),
-            ],
-            source="https://ai.google.dev/pricing#1_5flash-8B",
-        ),
-    ),
-    Model.GEMINI_1_5_PRO_002: ModelProviderData(
-        text_price=TextPricePerToken(
-            prompt_cost_per_token=1.25 * ONE_MILLION_TH,
-            completion_cost_per_token=5 * ONE_MILLION_TH,
-            thresholded_prices=[
-                # Price per token > 128k
-                ThresholdedTextPricePerToken(
-                    threshold=128_000,
-                    prompt_cost_per_token_over_threshold=2.5 * ONE_MILLION_TH,
-                    completion_cost_per_token_over_threshold=10 * ONE_MILLION_TH,
-                ),
-            ],
-            source="https://ai.google.dev/pricing#1_5pro",
-        ),
-    ),
+    # Model.GEMINI_1_5_FLASH_8B: ModelProviderData(
+    #     text_price=TextPricePerToken(
+    #         prompt_cost_per_token=0.0375 * ONE_MILLION_TH,
+    #         completion_cost_per_token=0.15 * ONE_MILLION_TH,
+    #         thresholded_prices=[
+    #             ThresholdedTextPricePerToken(
+    #                 threshold=128000,
+    #                 prompt_cost_per_token_over_threshold=0.075 * ONE_MILLION_TH,
+    #                 completion_cost_per_token_over_threshold=0.3 * ONE_MILLION_TH,
+    #             ),
+    #         ],
+    #         source="https://ai.google.dev/pricing#1_5flash-8B",
+    #     ),
+    # ),
+    # Model.GEMINI_1_5_PRO_002: ModelProviderData(
+    #     text_price=TextPricePerToken(
+    #         prompt_cost_per_token=1.25 * ONE_MILLION_TH,
+    #         completion_cost_per_token=5 * ONE_MILLION_TH,
+    #         thresholded_prices=[
+    #             # Price per token > 128k
+    #             ThresholdedTextPricePerToken(
+    #                 threshold=128_000,
+    #                 prompt_cost_per_token_over_threshold=2.5 * ONE_MILLION_TH,
+    #                 completion_cost_per_token_over_threshold=10 * ONE_MILLION_TH,
+    #             ),
+    #         ],
+    #         source="https://ai.google.dev/pricing#1_5pro",
+    #     ),
+    # ),
     # Model.GEMINI_1_5_FLASH_001: ModelProviderData(
     #     text_price=TextPricePerToken(
     #         prompt_cost_per_token=0.075 * ONE_MILLION_TH,
@@ -993,20 +976,20 @@ GOOGLE_GEMINI_API_PROVIDER_DATA: ProviderDataByModel = {
     #         source="https://ai.google.dev/pricing#1_5flash",
     #     ),
     # ),
-    Model.GEMINI_1_5_FLASH_002: ModelProviderData(
-        text_price=TextPricePerToken(
-            prompt_cost_per_token=0.075 * ONE_MILLION_TH,
-            completion_cost_per_token=0.30 * ONE_MILLION_TH,
-            thresholded_prices=[
-                ThresholdedTextPricePerToken(
-                    threshold=128000,
-                    prompt_cost_per_token_over_threshold=0.15 * ONE_MILLION_TH,
-                    completion_cost_per_token_over_threshold=0.60 * ONE_MILLION_TH,
-                ),
-            ],
-            source="https://ai.google.dev/pricing#1_5flash",
-        ),
-    ),
+    # Model.GEMINI_1_5_FLASH_002: ModelProviderData(
+    #     text_price=TextPricePerToken(
+    #         prompt_cost_per_token=0.075 * ONE_MILLION_TH,
+    #         completion_cost_per_token=0.30 * ONE_MILLION_TH,
+    #         thresholded_prices=[
+    #             ThresholdedTextPricePerToken(
+    #                 threshold=128000,
+    #                 prompt_cost_per_token_over_threshold=0.15 * ONE_MILLION_TH,
+    #                 completion_cost_per_token_over_threshold=0.60 * ONE_MILLION_TH,
+    #             ),
+    #         ],
+    #         source="https://ai.google.dev/pricing#1_5flash",
+    #     ),
+    # ),
 }
 
 FIREWORKS_PROVIDER_DATA: ProviderDataByModel = {
