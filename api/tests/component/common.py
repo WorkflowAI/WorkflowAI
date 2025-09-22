@@ -636,7 +636,7 @@ def vertex_url(model: str | Model, region: str = "us-central1", publisher: str =
 def mock_vertex_call(
     httpx_mock: HTTPXMock,
     json: dict[str, Any] | None = None,
-    model: str | Model = "gemini-1.5-pro-002",
+    model: str | Model = "gemini-2.5-pro",
     parts: list[dict[str, Any]] | None = None,
     region: str = "us-central1",
     usage: dict[str, Any] | None = None,
@@ -957,7 +957,7 @@ class IntegrationTestClient:
         if autowait:
             await wait_for_completed_tasks(self.patched_broker)
 
-    DEFAULT_VERTEX_MODEL = Model.GEMINI_1_5_FLASH_002.value
+    DEFAULT_VERTEX_MODEL = Model.GEMINI_2_5_FLASH.value
 
     def mock_vertex_call(
         self,

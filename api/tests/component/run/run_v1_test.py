@@ -54,7 +54,7 @@ async def test_run_with_metadata(test_client: IntegrationTestClient):
 
     test_client.mock_vertex_call(
         publisher="google",
-        model="gemini-1.5-pro-002",
+        model="gemini-2.5-pro",
         latency=0.01,
     )
 
@@ -74,7 +74,7 @@ async def test_run_with_metadata(test_client: IntegrationTestClient):
     # Check groups
     groups = (await test_client.get(task_schema_url(task, "groups")))["items"]
     assert len(groups) == 1
-    assert groups[0]["properties"]["model"] == "gemini-1.5-pro-002"
+    assert groups[0]["properties"]["model"] == "gemini-2.5-pro"
     assert "provider" not in groups[0]["properties"]
     assert groups[0]["run_count"] == 1
 
@@ -110,7 +110,7 @@ async def test_run_with_metadata(test_client: IntegrationTestClient):
         "group": {
             "few_shot": False,
             "iteration": 1,
-            "model": "gemini-1.5-pro-002",
+            "model": "gemini-2.5-pro",
             "temperature": 0.0,
         },
         "input_tokens_count": 110.25,
@@ -163,7 +163,7 @@ async def test_usage_for_per_char_model(
     await create_task(int_api_client, patched_broker, httpx_mock)
 
     httpx_mock.add_response(
-        url="https://us-central1-aiplatform.googleapis.com/v1/projects/worfklowai/locations/us-central1/publishers/google/models/gemini-1.5-pro-002:generateContent",
+        url="https://us-central1-aiplatform.googleapis.com/v1/projects/worfklowai/locations/us-central1/publishers/google/models/gemini-2.5-pro:generateContent",
         json=CompletionResponse(
             candidates=[Candidate(content=Content(role="model", parts=[Part(text='{"greeting": "Hello John!"}')]))],
             usageMetadata=UsageMetadata(promptTokenCount=222, candidatesTokenCount=9, totalTokenCount=231),
@@ -176,7 +176,7 @@ async def test_usage_for_per_char_model(
         task_id="greet",
         task_schema_id=1,
         task_input={"name": "John", "age": 30},
-        model="gemini-1.5-pro-002",
+        model="gemini-2.5-pro",
     )
 
     assert task_run["cost_usd"] == pytest.approx(0.000169, abs=1e-6)  # pyright: ignore[reportUnknownMemberType]
@@ -366,7 +366,7 @@ class TestChainOfThought:
     async def setup_task_and_version(
         self,
         test_client: IntegrationTestClient,
-        model: str = "gemini-1.5-pro-002",
+        model: str = "gemini-2.5-pro",
         should_use_chain_of_thought: bool = True,
     ):
         task = await test_client.create_task()
@@ -388,7 +388,7 @@ class TestChainOfThought:
         task, iteration = await self.setup_task_and_version(test_client)
 
         test_client.mock_vertex_call(
-            model="gemini-1.5-pro-002",
+            model="gemini-2.5-pro",
             parts=[
                 {
                     "text": '{"internal_agent_run_result": {"status": "success", "error": None},"internal_reasoning_steps": [{"title": "step title", "explaination": "step explaination", "output": "step output"}], "greeting": "Hello John!"}',
@@ -500,7 +500,7 @@ class TestChainOfThought:
         task, iteration = await self.setup_task_and_version(test_client, should_use_chain_of_thought=False)
 
         test_client.mock_vertex_call(
-            model="gemini-1.5-pro-002",
+            model="gemini-2.5-pro",
             parts=[{"text": '{"greeting": "Hello John!"}', "inlineData": None}],
             usage={"promptTokenCount": 222, "candidatesTokenCount": 9, "totalTokenCount": 231},
         )

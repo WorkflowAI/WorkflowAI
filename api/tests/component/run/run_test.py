@@ -88,7 +88,7 @@ async def test_run_with_metadata_and_labels(
         "group": {
             "few_shot": False,
             "iteration": 1,
-            "model": "gemini-1.5-pro-002",
+            "model": "gemini-2.5-pro",
             "temperature": 0.0,
         },
         "input_tokens_count": 110.25,
@@ -159,7 +159,7 @@ async def test_usage_for_per_char_model(
         task_id="greet",
         task_schema_id=1,
         task_input={"name": "John", "age": 30},
-        group={"properties": {"model": "gemini-1.5-pro-002"}},
+        group={"properties": {"model": "gemini-2.5-pro"}},
     )
 
     _check_run(task_run)
