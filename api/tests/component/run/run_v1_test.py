@@ -1278,19 +1278,19 @@ async def test_no_provider_for_model(test_client: IntegrationTestClient):
 async def test_latest_gemini_model(test_client: IntegrationTestClient):
     task = await test_client.create_task()
 
-    test_client.mock_vertex_call(model=Model.GEMINI_1_5_PRO_002)
-    run = await test_client.run_task_v1(task, model=Model.GEMINI_1_5_PRO_LATEST)
+    test_client.mock_vertex_call(model=Model.GEMINI_2_5_PRO)
+    run = await test_client.run_task_v1(task, model=Model.GEMINI_2_5_PRO)
     # Run will not fail here if the Gemini 1.5 Pro 002 is used since latest does not point to anything
     assert run
 
     # Fetch the version and check the model
     version = result_or_raise(await test_client.int_api_client.get(task_schema_url(task, "groups")))["items"][0]
-    assert version["properties"]["model"] == Model.GEMINI_1_5_PRO_LATEST
+    assert version["properties"]["model"] == Model.GEMINI_2_5_PRO
 
     # Also fetch the run and check the model
     fetched_run = await test_client.fetch_run(task, run_id=run["id"])
-    assert fetched_run["group"]["properties"]["model"] == Model.GEMINI_1_5_PRO_LATEST
-    assert fetched_run["metadata"][METADATA_KEY_USED_MODEL] == Model.GEMINI_1_5_PRO_002
+    assert fetched_run["group"]["properties"]["model"] == Model.GEMINI_2_5_PRO
+    assert fetched_run["metadata"][METADATA_KEY_USED_MODEL] == Model.GEMINI_2_5_PRO
 
 
 async def test_tool_call_recursion(test_client: IntegrationTestClient):
@@ -1468,7 +1468,7 @@ async def test_unknown_error_invalid_argument_max_tokens(test_client: Integratio
 
     version = await test_client.create_version(
         task,
-        {"model": Model.GEMINI_1_5_FLASH_002},
+        {"model": Model.GEMINI_2_5_FLASH},
     )
     with pytest.raises(HTTPStatusError) as exc_info:
         await test_client.run_task_v1(task, version=version["iteration"])
@@ -1694,7 +1694,7 @@ async def test_image_not_found(test_client: IntegrationTestClient):
         # Sending an image URL without a content type will force the runner to download the file
         await test_client.run_task_v1(
             task,
-            model=Model.GEMINI_1_5_FLASH_LATEST,
+            model=Model.GEMINI_2_5_FLASH,
             task_input={"image": {"url": "https://media3.giphy.com/media/giphy"}},
         )
 
@@ -1965,7 +1965,7 @@ async def test_invalid_base64_data(test_client: IntegrationTestClient):
         # Sending an image URL without a content type will force the runner to download the file
         await test_client.run_task_v1(
             task,
-            model=Model.GEMINI_1_5_FLASH_LATEST,
+            model=Model.GEMINI_2_5_FLASH,
             task_input={"image": {"data": "iamnotbase64"}},
         )
 

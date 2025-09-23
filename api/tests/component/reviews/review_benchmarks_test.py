@@ -59,11 +59,11 @@ async def test_review_benchmarks(test_client: IntegrationTestClient):
     # The output will match the first run, so we should get 2 positive reviews
     test_client.mock_vertex_call(
         parts=[{"text": '{"greeting": "Hello James!"}'}],
-        model=Model.GEMINI_1_5_PRO_002,
+        model=Model.GEMINI_2_5_PRO,
         is_reusable=True,
     )
 
-    v = await test_client.create_version(task, {"model": Model.GEMINI_1_5_PRO_002}, autowait=True)
+    v = await test_client.create_version(task, {"model": Model.GEMINI_2_5_PRO}, autowait=True)
     assert v["iteration"] == 2, "sanity"
     await test_client.patch(
         task_schema_url(task, "reviews/benchmark"),
@@ -80,9 +80,9 @@ async def test_review_benchmarks(test_client: IntegrationTestClient):
     assert second_result["positive_review_count"] == 1, "no new positive reviews for second version"
 
     # Now we add a third version, with a different output, an AI review should be triggered
-    test_client.mock_vertex_call(model=Model.GEMINI_1_5_FLASH_002, is_reusable=True)
+    test_client.mock_vertex_call(model=Model.GEMINI_2_5_FLASH, is_reusable=True)
     test_client.mock_ai_review(outcome="unsure", is_reusable=True)
-    v = await test_client.create_version(task, {"model": Model.GEMINI_1_5_FLASH_002})
+    v = await test_client.create_version(task, {"model": Model.GEMINI_2_5_FLASH})
 
     await test_client.patch(
         task_schema_url(task, "reviews/benchmark"),

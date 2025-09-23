@@ -83,10 +83,10 @@ async def test_vertex_prompt_feedback(test_client: IntegrationTestClient):
     task = await test_client.create_task()
 
     test_client.mock_vertex_call(
-        model=Model.GEMINI_1_5_PRO_002,
+        model=Model.GEMINI_2_5_PRO,
         status_code=200,
         json={
-            "modelVersion": "gemini-2.0-flash-thinking-exp-01-21",
+            "modelVersion": "gemini-2.5-pro",
             "promptFeedback": {
                 "blockReason": "OTHER",
             },
@@ -98,7 +98,7 @@ async def test_vertex_prompt_feedback(test_client: IntegrationTestClient):
     )
 
     with pytest.raises(HTTPStatusError) as e:
-        await test_client.run_task_v1(task, model=Model.GEMINI_1_5_PRO_002)
+        await test_client.run_task_v1(task, model=Model.GEMINI_2_5_PRO)
     assert e.value.response.status_code == 400
 
     res = e.value.response.json()
