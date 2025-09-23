@@ -15,7 +15,6 @@ from taskiq import InMemoryBroker
 
 from core.domain.consts import METADATA_KEY_USED_MODEL
 from core.domain.models import Model, Provider
-from core.domain.models.model_data_mapping import MODEL_DATAS
 from core.domain.models.model_provider_data_mapping import OPENAI_PROVIDER_DATA
 from core.providers.factory.local_provider_factory import LocalProviderFactory
 from core.providers.google.google_provider_domain import (
@@ -62,12 +61,12 @@ async def test_run_with_metadata(test_client: IntegrationTestClient):
     task_run = await test_client.run_task_v1(
         task,
         task_input={"name": "John", "age": 30},
-        model=Model.GEMINI_1_5_PRO_002,
+        model=Model.GEMINI_2_5_PRO,
         metadata={"key1": "value1", "key2": "value2"},
     )
 
     # Check returned cost
-    assert task_run["cost_usd"] == pytest.approx(0.000169, abs=1e-6)  # pyright: ignore[reportUnknownMemberType]
+    assert task_run["cost_usd"] == pytest.approx(0.0002, abs=1e-6)  # pyright: ignore[reportUnknownMemberType]
 
     await test_client.wait_for_completed_tasks()
 
@@ -86,7 +85,6 @@ async def test_run_with_metadata(test_client: IntegrationTestClient):
 
     assert fetched_task_run["metadata"]["key1"] == "value1"
     assert fetched_task_run["metadata"]["key2"] == "value2"
-    assert fetched_task_run["metadata"]["workflowai.vertex_api_region"] == "us-central1"
     assert fetched_task_run["metadata"]["workflowai.providers"] == ["google"]
     assert fetched_task_run["metadata"]["workflowai.provider"] == "google"
 
@@ -106,7 +104,7 @@ async def test_run_with_metadata(test_client: IntegrationTestClient):
     assert latency_seconds > 0
 
     assert event["event_properties"] == {
-        "cost_usd": pytest.approx(0.000169, abs=1e-6),  # pyright: ignore[reportUnknownMemberType]
+        "cost_usd": pytest.approx(0.00020, abs=1e-6),  # pyright: ignore[reportUnknownMemberType]
         "group": {
             "few_shot": False,
             "iteration": 1,
@@ -155,6 +153,7 @@ async def test_decrement_credits(httpx_mock: HTTPXMock, int_api_client: AsyncCli
     assert org["current_credits_usd"] == 10.0 - 0.000135
 
 
+@pytest.mark.skip(reason="Per char models are deprecated")
 async def test_usage_for_per_char_model(
     int_api_client: AsyncClient,
     httpx_mock: HTTPXMock,
@@ -163,7 +162,7 @@ async def test_usage_for_per_char_model(
     await create_task(int_api_client, patched_broker, httpx_mock)
 
     httpx_mock.add_response(
-        url="https://us-central1-aiplatform.googleapis.com/v1/projects/worfklowai/locations/us-central1/publishers/google/models/gemini-2.5-pro:generateContent",
+        url="https://aiplatform.googleapis.com/v1/projects/worfklowai/locations/us-central1/publishers/google/models/gemini-2.5-pro:generateContent",
         json=CompletionResponse(
             candidates=[Candidate(content=Content(role="model", parts=[Part(text='{"greeting": "Hello John!"}')]))],
             usageMetadata=UsageMetadata(promptTokenCount=222, candidatesTokenCount=9, totalTokenCount=231),
@@ -213,6 +212,7 @@ async def test_usage_for_per_token_model(
         httpx_mock,
         publisher="meta",
         model="llama3-405b-instruct-maas",
+        region="us-central1",
         parts=[{"text": '{"greeting": "Hello John!"}', "inlineData": None}],
         usage={"promptTokenCount": 222, "candidatesTokenCount": 9, "totalTokenCount": 231},
     )
@@ -1274,6 +1274,7 @@ async def test_no_provider_for_model(test_client: IntegrationTestClient):
     assert groups[0]["iteration"] == 1
 
 
+@pytest.mark.skip(reason="Latest Gemini model is deprecated")
 async def test_latest_gemini_model(test_client: IntegrationTestClient):
     task = await test_client.create_task()
 
@@ -1478,18 +1479,6 @@ async def test_unknown_error_invalid_argument_max_tokens(test_client: Integratio
         content_json["error"]["message"]
         == "The input token count (1189051) exceeds the maximum number of tokens allowed (1000000)."
     )
-
-
-async def test_latest_model(test_client: IntegrationTestClient):
-    task = await test_client.create_task()
-
-    test_client.mock_vertex_call(model=MODEL_DATAS[Model.GEMINI_1_5_FLASH_LATEST].model)  # type:ignore
-
-    run = await test_client.run_task_v1(task, model=Model.GEMINI_1_5_FLASH_LATEST)
-    fetched_run = await test_client.fetch_run(task, run_id=run["id"])
-
-    assert fetched_run["cost_usd"] > 0
-    assert fetched_run["llm_completions"][0]["usage"]["model_context_window_size"] > 0
 
 
 async def test_partial_output(test_client: IntegrationTestClient):
@@ -2369,17 +2358,17 @@ async def test_no_model_fallback_on_provider_internal_error_gemini(
 
     # Vertex is only configured on a single region here so we only need to mock one call
     test_client.mock_vertex_call(
-        model=Model.GEMINI_1_5_PRO_002,
+        model=Model.GEMINI_2_5_PRO,
         status_code=google_status,  # Force an error
-        url=vertex_url(Model.GEMINI_1_5_PRO_002.value),
+        url=vertex_url(Model.GEMINI_2_5_PRO.value),
         is_reusable=True,
     )
 
     # Gemini will also return a 500
     test_client.mock_vertex_call(
-        model=Model.GEMINI_1_5_PRO_002,
+        model=Model.GEMINI_2_5_PRO,
         status_code=google_status,  # Force an  error
-        url=gemini_url(Model.GEMINI_1_5_PRO_002.value),
+        url=gemini_url(Model.GEMINI_2_5_PRO.value),
         is_reusable=True,
     )
 
@@ -2388,14 +2377,14 @@ async def test_no_model_fallback_on_provider_internal_error_gemini(
 
     res = await test_client.run_task_v1(
         task,
-        model=Model.GEMINI_1_5_PRO_002,
+        model=Model.GEMINI_2_5_PRO,
         use_fallback=None,  # auto
     )
 
     assert res
 
-    vertex_reqs = test_client.httpx_mock.get_requests(url=vertex_url(Model.GEMINI_1_5_PRO_002.value))
-    gemini_reqs = test_client.httpx_mock.get_requests(url=gemini_url(Model.GEMINI_1_5_PRO_002.value))
+    vertex_reqs = test_client.httpx_mock.get_requests(url=vertex_url(Model.GEMINI_2_5_PRO.value))
+    gemini_reqs = test_client.httpx_mock.get_requests(url=gemini_url(Model.GEMINI_2_5_PRO.value))
     openai_reqs = test_client.httpx_mock.get_requests(url=openai_endpoint())
     assert len(vertex_reqs) >= 1
     assert len(gemini_reqs) >= 1

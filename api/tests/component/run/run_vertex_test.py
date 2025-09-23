@@ -17,6 +17,7 @@ from tests.component.common import (
 from tests.utils import request_json_body
 
 
+@pytest.mark.skip(reason="Mixed region modes are deprecated")
 @patch.dict(os.environ, {"GOOGLE_VERTEX_AI_LOCATION": "us-central1,us-east4,us-west1"})
 @patch(
     "core.providers.google.vertex_base_config.VertexBaseConfig.all_available_regions",
@@ -35,11 +36,11 @@ async def test_vertex_region_switch(
     monkeypatch.setattr(VertexBaseConfig, "_get_random_region", lambda self, choices: next(region_iter))  # type: ignore
 
     # Mock only one failed region at a time
-    test_client.mock_vertex_call(model=Model.GEMINI_1_5_PRO_002, status_code=429, regions=["us-central1", "us-west1"])
-    test_client.mock_vertex_call(model=Model.GEMINI_1_5_PRO_002, status_code=200, regions=["us-east4"])
+    test_client.mock_vertex_call(model=Model.GEMINI_2_5_PRO, status_code=429, regions=["us-central1", "us-west1"])
+    test_client.mock_vertex_call(model=Model.GEMINI_2_5_PRO, status_code=200, regions=["us-east4"])
     # provider = GoogleProvider()
     # assert provider.config.vertex_location == ["us-central1", "us-east4", "us-west1"]
-    run = await test_client.run_task_v1(task, model=Model.GEMINI_1_5_PRO_002)
+    run = await test_client.run_task_v1(task, model=Model.GEMINI_2_5_PRO)
     assert run
     assert sorted(run["metadata"]["workflowai.vertex_api_excluded_regions"].split(",")) == ["us-central1", "us-west1"]
     assert run["metadata"]["workflowai.vertex_api_region"] == "us-east4"

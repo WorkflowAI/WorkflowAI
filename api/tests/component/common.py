@@ -617,14 +617,15 @@ def vertex_url_matcher(model: str | Model, region: str | None = None, publisher:
     path = "streamGenerateContent?alt=sse" if stream else "generateContent"
     model = model.value if isinstance(model, Model) else model
     if region:
-        return f"https://{region}-aiplatform.googleapis.com/v1/projects/worfklowai/locations/{region}/publishers/{publisher}/models/{model}:{path}"
+        region_prefix = "" if region == "global" else f"{region}-"
+        return f"https://{region_prefix}aiplatform.googleapis.com/v1/projects/worfklowai/locations/{region}/publishers/{publisher}/models/{model}:{path}"
 
     escape_1 = re.escape("-aiplatform.googleapis.com/v1/projects/worfklowai/locations/")
     escape_2 = re.escape(f"/publishers/{publisher}/models/{model}:{path}")
     return re.compile(f"https://[^/]+{escape_1}[^/]+{escape_2}")
 
 
-def vertex_url(model: str | Model, region: str = "us-central1", publisher: str = "google", stream: bool = False):
+def vertex_url(model: str | Model, region: str = "global", publisher: str = "google", stream: bool = False):
     path = "streamGenerateContent?alt=sse" if stream else "generateContent"
     model = model.value if isinstance(model, Model) else model
 
@@ -638,7 +639,7 @@ def mock_vertex_call(
     json: dict[str, Any] | None = None,
     model: str | Model = "gemini-2.5-pro",
     parts: list[dict[str, Any]] | None = None,
-    region: str = "us-central1",
+    region: str = "global",
     usage: dict[str, Any] | None = None,
     publisher: str = "google",
     url: str | re.Pattern[str] | None = None,
@@ -671,8 +672,7 @@ def mock_vertex_call(
 
     httpx_mock.add_callback(
         _response,
-        url=url
-        or f"https://{region}-aiplatform.googleapis.com/v1/projects/worfklowai/locations/{region}/publishers/{publisher}/models/{model_str}:generateContent",
+        url=url or vertex_url(model_str, region, publisher, False),
         is_reusable=is_reusable,
     )
 
@@ -988,7 +988,7 @@ class IntegrationTestClient:
             return
 
         if not regions:
-            regions = os.environ.get("GOOGLE_VERTEX_AI_LOCATION", "us-central1").split(",")
+            regions = ["global"]
 
         for region in regions:
             mock_vertex_call(
