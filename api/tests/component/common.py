@@ -620,7 +620,7 @@ def vertex_url_matcher(model: str | Model, region: str | None = None, publisher:
         region_prefix = "" if region == "global" else f"{region}-"
         return f"https://{region_prefix}aiplatform.googleapis.com/v1/projects/worfklowai/locations/{region}/publishers/{publisher}/models/{model}:{path}"
 
-    escape_1 = re.escape("-aiplatform.googleapis.com/v1/projects/worfklowai/locations/")
+    escape_1 = re.escape("aiplatform.googleapis.com/v1/projects/worfklowai/locations/")
     escape_2 = re.escape(f"/publishers/{publisher}/models/{model}:{path}")
     return re.compile(f"https://[^/]+{escape_1}[^/]+{escape_2}")
 
@@ -1108,6 +1108,7 @@ class IntegrationTestClient:
         deltas: list[bytes | str | tuple[str | None, dict[str, Any]]] | IteratorStream,
         template: dict[str, Any] | None = None,
         model: str = DEFAULT_VERTEX_MODEL,
+        region: str = "global",
     ):
         tpl = template or {
             "candidates": [
@@ -1135,7 +1136,7 @@ class IntegrationTestClient:
             return f"data: {json.dumps(t)}\r\n\r\n".encode()
 
         self.httpx_mock.add_response(
-            url=vertex_url_matcher(model, stream=True),
+            url=vertex_url_matcher(model, stream=True, region=region),
             stream=IteratorStream([build_chunk(c) for c in deltas]),
         )
 

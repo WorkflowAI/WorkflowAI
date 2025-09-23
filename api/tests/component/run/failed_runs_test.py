@@ -205,6 +205,7 @@ async def test_max_context_exceeded_gemini_stream(test_client: IntegrationTestCl
             'g": "h',
             ("", {"finishReason": "MAX_TOKENS"}),
         ],
+        region="global",
     )
 
     chunks: list[dict[str, Any]] = []
@@ -247,6 +248,7 @@ async def test_max_context_exceeded_gemini_stream_no_content(test_client: Integr
         deltas=[
             (None, {"finishReason": "MAX_TOKENS"}),
         ],
+        region="global",
     )
 
     chunks: list[dict[str, Any]] = []

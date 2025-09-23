@@ -10,7 +10,8 @@ from tests.utils import request_json_body
 
 async def test_tools(test_client: IntegrationTestClient, openai_client: AsyncOpenAI):
     """Check that tool calls are correctly handled"""
-    test_client.mock_vertex_call()
+    v_url = vertex_url_matcher(test_client.DEFAULT_VERTEX_MODEL, region="global")
+    test_client.mock_vertex_call(url=v_url)
 
     res = await openai_client.chat.completions.create(
         model=f"my-agent/{test_client.DEFAULT_VERTEX_MODEL}",
@@ -46,7 +47,7 @@ async def test_tools(test_client: IntegrationTestClient, openai_client: AsyncOpe
     )
     assert res.choices[0].message.content
 
-    call = test_client.httpx_mock.get_request(url=vertex_url_matcher(test_client.DEFAULT_VERTEX_MODEL))
+    call = test_client.httpx_mock.get_request(url=v_url)
     assert call
 
     payload = request_json_body(call)

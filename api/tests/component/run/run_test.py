@@ -133,6 +133,7 @@ async def test_decrement_credits(httpx_mock: HTTPXMock, int_api_client: AsyncCli
     assert org["current_credits_usd"] == 9.999865
 
 
+@pytest.mark.skip(reason="deprecated endpoint")
 async def test_usage_for_per_char_model(
     int_api_client: AsyncClient,
     httpx_mock: HTTPXMock,
@@ -174,6 +175,7 @@ async def test_usage_for_per_char_model(
     _check_run(fetched_task_run)
 
 
+@pytest.mark.skip(reason="deprecated endpoint")
 async def test_usage_for_per_token_model(
     test_client: IntegrationTestClient,
 ):
