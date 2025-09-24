@@ -43,7 +43,7 @@ async def test_deploy_one_version_one_environment(
         int_api_client,
         task_id="greet",
         task_schema_id=1,
-        version_properties={"instructions": "some instructions", "model": "gemini-1.5-pro-002"},
+        version_properties={"instructions": "some instructions", "model": "gemini-2.5-pro"},
     )
     assert version["iteration"] == 1
     res = await int_api_client.post(
@@ -73,7 +73,7 @@ async def test_deploy_version(test_client: IntegrationTestClient):
     # Create a version and deploy it
     version = await test_client.create_version(
         task,
-        version_properties={"instructions": "some instructions", "model": "gemini-1.5-pro-002"},
+        version_properties={"instructions": "some instructions", "model": "gemini-2.5-pro"},
         save=True,
     )
     for environment in ["dev", "staging", "production"]:
@@ -96,7 +96,7 @@ async def test_deploy_version(test_client: IntegrationTestClient):
     # Now create another, because the instructions are different it will create a new major version
     version2 = await test_client.create_version(
         task,
-        version_properties={"instructions": "some instructions 1", "model": "gemini-1.5-pro-001"},
+        version_properties={"instructions": "some instructions 1", "model": "gemini-2.5-pro"},
         save=True,
     )
     deployment = await test_client.post(
@@ -149,7 +149,7 @@ async def test_deploy_to_multiple_environments(
         int_api_client,
         task_id=task["task_id"],
         task_schema_id=task["task_schema_id"],
-        version_properties={"instructions": "some instructions", "model": "gemini-1.5-pro-002"},
+        version_properties={"instructions": "some instructions", "model": "gemini-2.5-pro"},
     )
     res = await int_api_client.post(
         f"/chiefofstaff.ai/agents/{task['task_id']}/schemas/{task['task_schema_id']}/versions/{version['iteration']}/deploy",
@@ -189,13 +189,13 @@ async def test_deploy_multiple_versions_one_environment_one_schema(
         int_api_client,
         task_id=task["task_id"],
         task_schema_id=task["task_schema_id"],
-        version_properties={"instructions": "some instructions", "model": "gemini-1.5-pro-002"},
+        version_properties={"instructions": "some instructions", "model": "gemini-2.5-pro"},
     )
     version2 = await create_version(
         int_api_client,
         task_id=task["task_id"],
         task_schema_id=task["task_schema_id"],
-        version_properties={"instructions": "some instructions 1", "model": "gemini-1.5-pro-001"},
+        version_properties={"instructions": "some instructions 1", "model": "gemini-2.5-pro"},
     )
 
     res = await int_api_client.post(

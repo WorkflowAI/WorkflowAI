@@ -2615,7 +2615,7 @@ class TestBuildOptions:
     def test_build_options_with_deprecated_tools(self):
         deprecated_tools_properties = TaskGroupProperties.model_validate(
             {
-                "model": "gemini-1.5-pro-latest",
+                "model": "gemini-2.5-pro",
                 "temperature": 0,
                 "instructions": "You are a helpful assistant.",
                 "runner_name": "WorkflowAI",
@@ -2639,7 +2639,7 @@ class TestBuildOptions:
             task=test_models.task_variant(),
             properties=deprecated_tools_properties,
         )  # pyright: ignore[reportPrivateUsage]
-        assert options.model == "gemini-1.5-pro-latest"
+        assert options.model == "gemini-2.5-pro"
         assert options.instructions == "You are a helpful assistant."
 
 

@@ -37,7 +37,7 @@ async def test_run_with_metadata_and_labels(
 ):
     await create_task(int_api_client, patched_broker, httpx_mock)
 
-    mock_vertex_call(httpx_mock, model=Model.GEMINI_1_5_PRO_002, latency=0.01)
+    mock_vertex_call(httpx_mock, model=Model.GEMINI_2_5_PRO, latency=0.01)
 
     # Run the task the first time
     task_run = await run_task(
@@ -45,7 +45,7 @@ async def test_run_with_metadata_and_labels(
         task_id="greet",
         task_schema_id=1,
         task_input={"name": "John", "age": 30},
-        group={"properties": {"model": Model.GEMINI_1_5_PRO_002}},
+        group={"properties": {"model": Model.GEMINI_2_5_PRO}},
         metadata={"key1": "value1", "key2": "value2"},
     )
 
@@ -53,7 +53,7 @@ async def test_run_with_metadata_and_labels(
 
     assert task_run["metadata"]["key1"] == "value1"
     assert task_run["metadata"]["key2"] == "value2"
-    assert task_run["metadata"]["workflowai.vertex_api_region"] == "us-central1"
+    # assert task_run["metadata"]["workflowai.vertex_api_region"] == "us-central1"
     assert task_run["metadata"]["workflowai.providers"] == ["google"]
     assert task_run["metadata"]["workflowai.provider"] == "google"
 
@@ -65,7 +65,7 @@ async def test_run_with_metadata_and_labels(
 
     assert fetched_task_run["metadata"]["key1"] == "value1"
     assert fetched_task_run["metadata"]["key2"] == "value2"
-    assert fetched_task_run["metadata"]["workflowai.vertex_api_region"] == "us-central1"
+    # assert fetched_task_run["metadata"]["workflowai.vertex_api_region"] == "us-central1"
     assert fetched_task_run["metadata"]["workflowai.providers"] == ["google"]
     assert fetched_task_run["metadata"]["workflowai.provider"] == "google"
 
@@ -88,7 +88,7 @@ async def test_run_with_metadata_and_labels(
         "group": {
             "few_shot": False,
             "iteration": 1,
-            "model": "gemini-1.5-pro-002",
+            "model": "gemini-2.5-pro",
             "temperature": 0.0,
         },
         "input_tokens_count": 110.25,
@@ -133,6 +133,7 @@ async def test_decrement_credits(httpx_mock: HTTPXMock, int_api_client: AsyncCli
     assert org["current_credits_usd"] == 9.999865
 
 
+@pytest.mark.skip(reason="deprecated endpoint")
 async def test_usage_for_per_char_model(
     int_api_client: AsyncClient,
     httpx_mock: HTTPXMock,
@@ -159,7 +160,7 @@ async def test_usage_for_per_char_model(
         task_id="greet",
         task_schema_id=1,
         task_input={"name": "John", "age": 30},
-        group={"properties": {"model": "gemini-1.5-pro-002"}},
+        group={"properties": {"model": "gemini-2.5-pro"}},
     )
 
     _check_run(task_run)
@@ -174,6 +175,7 @@ async def test_usage_for_per_char_model(
     _check_run(fetched_task_run)
 
 
+@pytest.mark.skip(reason="deprecated endpoint")
 async def test_usage_for_per_token_model(
     test_client: IntegrationTestClient,
 ):

@@ -391,7 +391,7 @@ async def test_failed_runs(test_client: IntegrationTestClient):
 
 #     mock_vertex_call(
 #         httpx_mock,
-#         model="gemini-1.5-pro-002",
+#         model="gemini-2.5-pro",
 #         parts=[{"text": '{"greeting": "hello sir !"}', "inlineData": None}],
 #         usage={"promptTokenCount": None, "candidatesTokenCount": None, "totalTokenCount": None},
 #     )
@@ -402,7 +402,7 @@ async def test_failed_runs(test_client: IntegrationTestClient):
 #         task_id="greet",
 #         task_schema_id=1,
 #         task_input=task_input,
-#         model="gemini-1.5-pro-002",
+#         model="gemini-2.5-pro",
 #     )
 
 #     await wait_for_completed_tasks(patched_broker)
@@ -459,7 +459,7 @@ async def test_failed_runs(test_client: IntegrationTestClient):
 
 #     mock_vertex_call(
 #         httpx_mock,
-#         model="gemini-1.5-pro-002",
+#         model="gemini-2.5-pro",
 #         parts=[{"text": return_str, "inlineData": None}],
 #         usage={"promptTokenCount": None, "candidatesTokenCount": None, "totalTokenCount": None},
 #     )
@@ -470,7 +470,7 @@ async def test_failed_runs(test_client: IntegrationTestClient):
 #         task_id="greet",
 #         task_schema_id=1,
 #         task_input={"name": "John", "age": 30},
-#         model="gemini-1.5-pro-002",
+#         model="gemini-2.5-pro",
 #     )
 
 #     await wait_for_completed_tasks(patched_broker)

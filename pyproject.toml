@@ -141,6 +141,7 @@ html2text = "^2024.2.26"
 jinja2 = "^3.1.5"
 clickhouse-connect = "^0.8.16"
 fastmcp = "^2.9.0"
+authlib = ">=1.6.4"
 
 [tool.poetry.group.dev.dependencies]
 freezegun = "^1.5.1"

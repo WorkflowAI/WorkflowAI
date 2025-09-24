@@ -42,7 +42,7 @@ async def test_save_version(test_client: IntegrationTestClient):
     v2 = await test_client.create_version(
         task=task,
         version_properties={
-            "model": Model.GEMINI_1_5_PRO_002,
+            "model": Model.GEMINI_2_5_PRO,
             "instructions": "You are a helpful assistant.",
         },
     )

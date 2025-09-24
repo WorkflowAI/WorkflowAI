@@ -169,10 +169,10 @@ async def test_deployed_task_when_new_variant(test_client: IntegrationTestClient
 
     fetched_task_run = await fetch_run(test_client.int_api_client, task, task_run)
     assert fetched_task_run["group"]["iteration"] == 1
-    assert fetched_task_run["group"]["id"] == "4b3804c632aa828c865f9f1c3b7010ae"
+    assert fetched_task_run["group"]["id"] == "615b995550026684b268eb645f54813e"
 
     # Making sure by fetching the version
-    version = await test_client.get(task_url_v1(task, "versions/4b3804c632aa828c865f9f1c3b7010ae"))
+    version = await test_client.get(task_url_v1(task, "versions/615b995550026684b268eb645f54813e"))
     assert version["id"] == fetched_task_run["group"]["id"], "sanity"
     assert version["properties"]["task_variant_id"] == variant_id
 
@@ -254,4 +254,4 @@ async def test_deployed_task_when_new_variant(test_client: IntegrationTestClient
     )
     fetch2 = await fetch_run(test_client.int_api_client, task, run2)
     # We should still be using the same variant id
-    assert fetch2["group"]["id"] == "4b3804c632aa828c865f9f1c3b7010ae"
+    assert fetch2["group"]["id"] == "615b995550026684b268eb645f54813e"
