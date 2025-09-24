@@ -328,9 +328,9 @@ class TestProviderIterator:
             pytest.param(None, [(Provider.ANTHROPIC, Model.CLAUDE_4_OPUS_20250514)], id="None"),
             pytest.param(
                 # Deepseek will raise
-                [Model.DEEPSEEK_R1_2501, Model.GEMINI_2_0_FLASH_001],
+                [Model.DEEPSEEK_R1_0528, Model.GEMINI_2_0_FLASH_001],
                 [
-                    (Provider.FIREWORKS, Model.DEEPSEEK_R1_2501),
+                    (Provider.FIREWORKS, Model.DEEPSEEK_R1_0528),
                     (Provider.GOOGLE, Model.GEMINI_2_0_FLASH_001),
                 ],
                 id="list with first model raising",
