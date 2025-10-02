@@ -446,6 +446,7 @@ async def test_automatic_payment_failure_with_retry_single_user(
         "tenant_uid": str(test_client.tenant_uid),
         "trigger": "automatic",
         "owner_id": "user_1234",
+        "app": "workflowai",
     }
 
     task = await test_client.create_task()
