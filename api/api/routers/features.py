@@ -164,7 +164,7 @@ async def get_feature_schemas(
 async def preview_models() -> Page[ModelResponse]:
     # Models to be included that are not default
     _include_models = {
-        Model.DEEPSEEK_R1_2501_BASIC,
+        Model.DEEPSEEK_R1_0528,
         Model.MISTRAL_LARGE_2_LATEST,
         Model.LLAMA_4_MAVERICK_BASIC,
         Model.GROK_3_BETA,

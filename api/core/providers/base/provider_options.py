@@ -34,7 +34,7 @@ class ProviderOptions(BaseModel):
         if self.reasoning_effort is not None or self.reasoning_budget is not None:
             # TODO: remove warning
             # That could be linked to user error and so we should not log it. Logging for now to spot inconsistencies
-            logging.getLogger(__name__).warning(
+            logging.getLogger(__name__).info(
                 "Version has reasoning configured but the model does not support reasoning",
                 extra={"options": safe_dump_pydantic_model(self)},
             )

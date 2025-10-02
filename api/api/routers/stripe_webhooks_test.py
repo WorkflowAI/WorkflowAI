@@ -1,10 +1,13 @@
+# pyright: reportPrivateUsage=false
+
+from typing import Any
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 import stripe
 from httpx import AsyncClient
 
-from api.routers.stripe_webhooks import verify_stripe_signature
+from api.routers.stripe_webhooks import _skip_webhook, verify_stripe_signature
 from core.domain.errors import DefaultError
 
 
@@ -67,6 +70,26 @@ class TestVerifyStripeSignature:
                 request=Mock(body=AsyncMock(return_value="test_body")),
                 stripe_signature="invalid_signature",
             )
+
+
+def _mock_event(obj: dict[str, Any]):
+    return stripe.Event.construct_from(
+        {
+            "id": "evt_123",
+            "type": "payment_intent.succeeded",
+            "data": {
+                "object": {
+                    "object": "payment_intent",
+                    "id": "pi_123",
+                    "amount": 1000,
+                    "metadata": {"tenant": "test-tenant"},
+                    "status": "succeeded",
+                    **obj,
+                },
+            },
+        },
+        key="evt_123",
+    )
 
 
 class TestWebhook:
@@ -167,3 +190,20 @@ class TestWebhook:
 
         assert response.status_code == 200
         patch_storage.return_value.organizations.add_credits_to_tenant.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("metadata", "expected"),
+    [
+        ({"webhook_ignore": "true"}, True),
+        ({"app": "workflowai"}, False),
+        ({"webhook_ignore": "true", "app": "workflowai"}, True),
+        ({"webhook_ignore": "true", "app": "workflowai"}, True),
+        ({"app": None}, False),
+        ({"app": "other"}, True),
+        ({}, False),
+    ],
+)
+async def test_skip_webhook(metadata: dict[str, Any], expected: bool):
+    event = _mock_event({"metadata": metadata})
+    assert _skip_webhook(event) == expected

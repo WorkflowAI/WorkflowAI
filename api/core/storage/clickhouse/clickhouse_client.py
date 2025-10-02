@@ -5,6 +5,7 @@ from typing import Any, AsyncIterator, Literal, NotRequired, Sequence, TypedDict
 
 from clickhouse_connect.driver import create_async_client  # pyright: ignore[reportUnknownVariableType]
 from clickhouse_connect.driver.asyncclient import AsyncClient
+from clickhouse_connect.driver.exceptions import DatabaseError
 from clickhouse_connect.driver.external import ExternalData
 from pydantic import BaseModel
 
@@ -289,14 +290,22 @@ class ClickhouseClient(TaskRunStorage):
 
             prewhere = W("cache_hash", type="String", value=cache_hash)
 
-            result = await self._runs(
-                task_id[0],
-                ClickhouseRun.select_not_heavy(),
-                w,
-                prewhere=prewhere,
-                limit=1,
-                settings={"max_memory_usage": 1024 * 1024 * 200, "max_execution_time": timeout_ms * 0.001},
-            )
+            try:
+                result = await self._runs(
+                    task_id[0],
+                    ClickhouseRun.select_not_heavy(),
+                    w,
+                    prewhere=prewhere,
+                    limit=1,
+                    settings={"max_memory_usage": 1024 * 1024 * 300, "max_execution_time": timeout_ms * 0.001},
+                )
+            except DatabaseError as e:
+                if "Code: 241" in str(e):
+                    # Memory limit exceeded
+                    # TODO: send metric
+                    self._logger.info("Error fetching cached run", extra={"error": e})
+                    return None
+                raise e
             if not result:
                 return None
             return result[0]

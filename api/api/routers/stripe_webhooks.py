@@ -63,8 +63,14 @@ async def verify_stripe_signature(
 
 def _skip_webhook(event: stripe.Event) -> bool:
     try:
-        webhook_ignore = event.data.object.get("metadata", {}).get("webhook_ignore")
-        return webhook_ignore == "true"
+        metadata = event.data.object.get("metadata", {})
+        webhook_ignore = metadata.get("webhook_ignore")
+        if webhook_ignore == "true":
+            return True
+        app = metadata.get("app")
+        if app and app != "workflowai":
+            return True
+        return False
     except Exception:
         return False
 
