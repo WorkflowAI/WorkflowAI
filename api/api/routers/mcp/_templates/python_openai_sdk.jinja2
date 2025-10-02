@@ -1,0 +1,64 @@
+from openai import OpenAI # needed if instantiating a client
+
+{%if json_schema and not has_existing_response_format_object %}
+# Import for pydantic for structured generation
+from pydantic import BaseModel, Field
+{% endif %}
+# Instantiate a client and set the base URL and api key
+# It might be possible to import an existing client instead of creating a new one
+client = OpenAI(
+    api_key=os.environ["WORKFLOWAI_API_KEY"],
+    base_url="{{ run_url }}/v1",
+)
+# it is also possible to set default values for the the openai library
+# import openai
+#
+# openai.api_key = os.environ["WORKFLOWAI_API_KEY"]
+# openai.base_url = f"{{ run_url }}/v1"
+
+{% if json_schema and not has_existing_response_format_object -%}
+class {{ response_format_object_name }}(BaseModel):
+    # Here you should generate a pyndatic object that matches the following JSON schema:
+    # {{ json_schema }}
+
+# beta is needed for using pydantic model in the response format
+completion = client.beta.chat.completions.parse(
+    response_format={{ response_format_object_name }},
+{%- else %}
+completion = client.chat.completions.create(
+{%- endif %}
+{%- if deployment %}
+    # When using a deployment, messages included in the deployed version should
+    # not be included in the messages list. Any added message will be appended
+    # to messages contained in the deployment.
+    messages=[]
+{%- else %}
+    # Completion request messages
+    # When relevant, the text, image_url or audio data content can be a jinja2 template
+    # Template variables should be passed as extra_body in the input field.
+    messages=[...]
+{%- endif %}
+    model="{{ model }}",
+    metadata={
+        "agent_id": "{{ agent_id }}",
+    },
+{%- if input_schema %}
+    extra_body={
+       "input": {
+        # Input dictionary should match the following JSON schema:
+        # {{ input_schema }}
+       }
+    }
+{%- elif input_doc %}
+    extra_body={
+        "input": {} # contains template variables when relevant
+    }
+{%- endif %}
+)
+
+{% if json_schema -%}
+result = completion.choices[0].message.parsed
+{% else -%}
+result = completion.choices[0].message.content
+{%endif -%}
+print(result)
