@@ -207,6 +207,7 @@ def _assert_payment_created(
             "trigger": "automatic",
             "slug": test_client.org.get("slug") or None,
             "owner_id": test_client.org.get("owner_id") or None,
+            "app": "workflowai",
         }
     mock_stripe.PaymentIntent.create_async.assert_called_once_with(
         amount=approx(usd * 100, abs=1),  # ok at 1 cent diff
