@@ -502,6 +502,20 @@ class TestUnknownError:
         assert isinstance(e, ProviderInvalidFileError)
         assert e.capture is False
 
+    def test_unknown_error_invalid_image_data(
+        self,
+        unknown_error_fn: Callable[[str | dict[str, Any]], ProviderError],
+    ):
+        payload = {
+            "error": {
+                "message": "Invalid image data",
+                "type": "invalid_request_error",
+            },
+        }
+        e = unknown_error_fn(payload)
+        assert isinstance(e, ProviderInvalidFileError)
+        assert e.capture is False
+
     def test_413_status_code(self, unknown_error_fn: Callable[[str | dict[str, Any], int], ProviderError]):
         e = unknown_error_fn("Request Entity Too Large", 413)
         assert isinstance(e, MaxTokensExceededError)

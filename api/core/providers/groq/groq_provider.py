@@ -282,6 +282,9 @@ class GroqProvider(HTTPXProvider[GroqConfig, CompletionResponse]):
                 case m if m.startswith('get "') and ("read: connection reset by peer" in m or "no such host" in m):
                     base_cls = ProviderInvalidFileError
                     capture = False
+                case m if "invalid image data" in m:
+                    base_cls = ProviderInvalidFileError
+                    capture = False
                 case _:
                     pass
 
