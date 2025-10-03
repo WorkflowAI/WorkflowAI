@@ -9,6 +9,7 @@ from urllib.parse import urlparse
 
 import bson
 import pytest
+from clickhouse_connect.driver.exceptions import DatabaseError
 
 from core.domain.agent_run import AgentRun
 from core.domain.error_response import ErrorResponse
@@ -58,8 +59,6 @@ def read_sql_commands() -> list[str]:
 
 
 async def fresh_clickhouse_client(dsn: str | None = None):
-    from clickhouse_connect.driver.exceptions import DatabaseError
-
     if not dsn:
         dsn = os.getenv("CLICKHOUSE_TEST_CONNECTION_STRING", "clickhouse://default:admin@localhost:8123/db_test")
 
@@ -727,6 +726,38 @@ class TestFetchCachedRun:
         )
         assert fetched_run
         assert fetched_run.id == str(uuid1)
+
+    @pytest.mark.parametrize(
+        "error_message",
+        [
+            pytest.param("Query memory limit exceeded; Code: 241", id="memory_limit_exceeded"),
+            pytest.param(
+                "Code: 159. DB::Exception: Timeout exceeded: elapsed 107.128962 ms, maximum: 100 ms. (TIMEOUT_EXCEEDED) (version 25.6.2.6151 (official build))",
+                id="timeout_exceeded",
+            ),
+        ],
+    )
+    async def test_fetch_cached_run_silences_errors(
+        self,
+        clickhouse_client: ClickhouseClient,
+        monkeypatch: pytest.MonkeyPatch,
+        error_message: str,
+    ):
+        run = task_run_ser(task_uid=1, task_input={"name": "test"})
+
+        async def _raise(*args: Any, **kwargs: Any):
+            raise DatabaseError(error_message)
+
+        monkeypatch.setattr(clickhouse_client, "_runs", _raise)
+
+        fetched_run = await clickhouse_client.fetch_cached_run(
+            _TASK_TUPLE,
+            1,
+            run.task_input_hash,
+            run.group.id,
+            None,
+        )
+        assert fetched_run is None
 
 
 def _ck_run(task_uid: int = 1, tenant_uid: int = 1, created_at: datetime.datetime | None = None, **kwargs: Any):

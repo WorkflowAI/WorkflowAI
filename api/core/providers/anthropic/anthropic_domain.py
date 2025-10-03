@@ -23,6 +23,7 @@ from core.providers.base.provider_error import (
     MaxTokensExceededError,
     ProviderBadRequestError,
     ProviderInternalError,
+    ProviderInvalidFileError,
     ServerOverloadedError,
     UnknownProviderError,
 )
@@ -132,7 +133,10 @@ class ErrorDetails(BaseModel):
                 capture = False
                 message = "Image does not match the provided media type"
                 error_cls = ProviderBadRequestError
-            case msg if "prompt is too long" in msg:
+            case msg if "input should be 'image/jpeg', 'image/png', 'image/gif' or 'image/webp'" in msg:
+                capture = False
+                error_cls = ProviderInvalidFileError
+            case msg if "prompt is too long" in msg or "exceed context limit" in msg:
                 error_cls = MaxTokensExceededError
                 capture = False
             case msg if "credit balance is too low" in msg:

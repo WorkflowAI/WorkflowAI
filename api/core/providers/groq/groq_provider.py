@@ -275,15 +275,31 @@ class GroqProvider(HTTPXProvider[GroqConfig, CompletionResponse]):
 
         if payload.error.message:
             lower_msg = payload.error.message.lower()
-            match lower_msg:
-                case m if "failed to retrieve media" in m:
-                    base_cls = ProviderInvalidFileError
-                    capture = False
-                case m if m.startswith('get "') and ("read: connection reset by peer" in m or "no such host" in m):
-                    base_cls = ProviderInvalidFileError
-                    capture = False
-                case _:
-                    pass
+
+            invalid_file_phrases = (
+                "failed to retrieve media",
+                "invalid image data",
+                "image too large",
+                "media file too large",
+                "too many images provided",
+                "failed to decode image",
+                "cannot identify image file",
+                "cannot decode or download image",
+            )
+
+            if any(phrase in lower_msg for phrase in invalid_file_phrases):
+                base_cls = ProviderInvalidFileError
+                capture = False
+            elif lower_msg.startswith('get "') and (
+                "read: connection reset by peer" in lower_msg or "no such host" in lower_msg
+            ):
+                base_cls = ProviderInvalidFileError
+                capture = False
+            elif "input length" in lower_msg and "context limit" in lower_msg:
+                return MaxTokensExceededError(
+                    msg=payload.error.message or "Context length exceeded",
+                    response=response,
+                )
 
         return base_cls(
             msg=payload.error.message or "Unknown error",

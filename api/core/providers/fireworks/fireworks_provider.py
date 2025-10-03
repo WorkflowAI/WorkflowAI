@@ -22,6 +22,7 @@ from core.providers.base.provider_error import (
     InvalidGenerationError,
     MaxTokensExceededError,
     MissingModelError,
+    ProviderInvalidFileError,
     UnknownProviderError,
 )
 from core.providers.base.provider_options import ProviderOptions
@@ -271,6 +272,11 @@ class FireworksAIProvider(HTTPXProvider[FireworksConfig, CompletionResponse]):
             )
         if "model not found, inaccessible, and/or not deployed" in lower_msg:
             return MissingModelError(
+                msg=payload.error.message,
+                response=response,
+            )
+        if "cannot decode or download image" in lower_msg or "incorrect padding" in lower_msg:
+            return ProviderInvalidFileError(
                 msg=payload.error.message,
                 response=response,
             )
