@@ -1023,7 +1023,7 @@ class TestUnknownError:
         err = unknown_error_fn(payload)
 
         assert isinstance(err, MaxTokensExceededError)
-        assert str(err) == "prompt is too long: 201135 tokens > 200000 maximum"
+        assert str(err) == error_message
         assert not err.capture
 
     def test_image_too_large(self, unknown_error_fn: Callable[[dict[str, Any]], ProviderError]):
