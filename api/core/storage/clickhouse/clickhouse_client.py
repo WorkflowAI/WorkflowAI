@@ -1,7 +1,16 @@
 import asyncio
 import logging
 from datetime import datetime, timedelta
-from typing import Any, AsyncIterator, Literal, NotRequired, Sequence, TypedDict, cast, override
+from typing import (
+    Any,
+    AsyncIterator,
+    Literal,
+    NotRequired,
+    Sequence,
+    TypedDict,
+    cast,
+    override,
+)
 
 from clickhouse_connect.driver import create_async_client  # pyright: ignore[reportUnknownVariableType]
 from clickhouse_connect.driver.asyncclient import AsyncClient
@@ -300,12 +309,14 @@ class ClickhouseClient(TaskRunStorage):
                     settings={"max_memory_usage": 1024 * 1024 * 300, "max_execution_time": timeout_ms * 0.001},
                 )
             except DatabaseError as e:
-                if "Code: 241" in str(e):
-                    # Memory limit exceeded
+                error_message = str(e)
+                # 241 is memory limit exceeded
+                # 159 is timeout
+                if "Code: 241" in error_message or "Code: 159" in error_message:
                     # TODO: send metric
                     self._logger.info("Error fetching cached run", extra={"error": e})
                     return None
-                raise e
+                raise
             if not result:
                 return None
             return result[0]
