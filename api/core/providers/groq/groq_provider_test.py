@@ -516,6 +516,61 @@ class TestUnknownError:
         assert isinstance(e, ProviderInvalidFileError)
         assert e.capture is False
 
+    def test_unknown_error_image_too_large(
+        self,
+        unknown_error_fn: Callable[[str | dict[str, Any]], ProviderError],
+    ):
+        payload = {
+            "error": {
+                "message": "Image too large - images can contain at most 33177600 pixels. but image contained 84232904",
+                "type": "invalid_request_error",
+            },
+        }
+        e = unknown_error_fn(payload)
+        assert isinstance(e, ProviderInvalidFileError)
+        assert e.capture is False
+
+    def test_unknown_error_media_file_too_large(
+        self,
+        unknown_error_fn: Callable[[str | dict[str, Any]], ProviderError],
+    ):
+        payload = {
+            "error": {
+                "message": "media file too large - size limit: 20971520, actual size: 30073401",
+                "type": "invalid_request_error",
+            },
+        }
+        e = unknown_error_fn(payload)
+        assert isinstance(e, ProviderInvalidFileError)
+        assert e.capture is False
+
+    def test_unknown_error_too_many_images(
+        self,
+        unknown_error_fn: Callable[[str | dict[str, Any]], ProviderError],
+    ):
+        payload = {
+            "error": {
+                "message": "Too many images provided.  This model supports up to 5 images",
+                "type": "invalid_request_error",
+            },
+        }
+        e = unknown_error_fn(payload)
+        assert isinstance(e, ProviderInvalidFileError)
+        assert e.capture is False
+
+    def test_unknown_error_context_limit(
+        self,
+        unknown_error_fn: Callable[[str | dict[str, Any]], ProviderError],
+    ):
+        payload = {
+            "error": {
+                "message": "input length and `max_tokens` exceed context limit: 198338 + 8192 > 200000, decrease input length or `max_tokens` and try again",
+                "type": "invalid_request_error",
+            },
+        }
+        e = unknown_error_fn(payload)
+        assert isinstance(e, MaxTokensExceededError)
+
     def test_413_status_code(self, unknown_error_fn: Callable[[str | dict[str, Any], int], ProviderError]):
         e = unknown_error_fn("Request Entity Too Large", 413)
         assert isinstance(e, MaxTokensExceededError)

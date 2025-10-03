@@ -5,6 +5,7 @@ from typing import Any, cast
 from unittest.mock import patch
 
 import pytest
+from httpx import Response
 from pytest import MonkeyPatch
 from pytest_httpx import HTTPXMock, IteratorStream
 
@@ -233,6 +234,25 @@ class TestBuildRequest:
         assert request.messages[3].role == "tool"
         assert request.messages[3].tool_call_id == "76af333cd"
         assert request.messages[3].content == '{"result": "The weather in Paris is sunny"}'
+
+
+class TestUnknownError:
+    def test_prompt_too_large_error_maps_to_max_tokens(self, mistral_provider: MistralAIProvider):
+        payload = {
+            "detail": [
+                {
+                    "type": "invalid_request_error",
+                    "msg": "Prompt contains 1006429 tokens and 0 draft tokens, too large for model with 40960 maximum context length",
+                },
+            ],
+        }
+
+        error = mistral_provider._unknown_error(  # pyright: ignore[reportPrivateUsage]
+            Response(status_code=400, text=json.dumps(payload)),
+        )
+
+        assert isinstance(error, MaxTokensExceededError)
+        assert str(error) == payload["detail"][0]["msg"]
 
 
 class TestSingleStream:

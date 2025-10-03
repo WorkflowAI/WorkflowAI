@@ -37,6 +37,7 @@ from core.providers.base.provider_error import (
     ProviderBadRequestError,
     ProviderError,
     ProviderInternalError,
+    ProviderInvalidFileError,
     ServerOverloadedError,
 )
 from core.providers.base.provider_options import ProviderOptions
@@ -1000,10 +1001,21 @@ class TestUnknownError:
         assert str(err) == "messages.1.content.1.image.source.base64: invalid base64 data"
         assert err.capture
 
-    def test_unknown_error_max_tokens_exceeded(self, unknown_error_fn: Callable[[dict[str, Any]], ProviderError]):
+    @pytest.mark.parametrize(
+        "error_message",
+        [
+            "prompt is too long: 201135 tokens > 200000 maximum",
+            "input length and `max_tokens` exceed context limit: 198437 + 8192 > 200000, decrease input length or `max_tokens` and try again",
+        ],
+    )
+    def test_unknown_error_max_tokens_exceeded(
+        self,
+        unknown_error_fn: Callable[[dict[str, Any]], ProviderError],
+        error_message: str,
+    ):
         payload = {
             "error": {
-                "message": "prompt is too long: 201135 tokens > 200000 maximum",
+                "message": error_message,
                 "type": "invalid_request_error",
             },
             "type": "error",
@@ -1026,6 +1038,20 @@ class TestUnknownError:
 
         assert isinstance(err, ProviderBadRequestError)
         assert str(err) == "Image exceeds the maximum size"
+        assert not err.capture
+
+    def test_invalid_image_media_type(self, unknown_error_fn: Callable[[dict[str, Any]], ProviderError]):
+        payload = {
+            "error": {
+                "message": "messages.0.content.1.image.source.base64.media_type: Input should be 'image/jpeg', 'image/png', 'image/gif' or 'image/webp'",
+                "type": "invalid_request_error",
+            },
+            "type": "error",
+        }
+
+        err = unknown_error_fn(payload)
+
+        assert isinstance(err, ProviderInvalidFileError)
         assert not err.capture
 
 
