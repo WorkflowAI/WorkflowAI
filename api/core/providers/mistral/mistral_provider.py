@@ -183,6 +183,18 @@ class MistralAIProvider(HTTPXProvider[MistralAIConfig, CompletionResponse]):
                 )
             case _:
                 pass
+        if error_message:
+            normalized_message = error_message.lower()
+            if any(
+                phrase in normalized_message
+                for phrase in (
+                    "too large for model",
+                    "context limit",
+                    "prompt contains",
+                )
+            ):
+                return MaxTokensExceededError(msg=error_message, response=response)
+
         return UnknownProviderError(error_message or "Unknown error", response=response)
 
     @override
