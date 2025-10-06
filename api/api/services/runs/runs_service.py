@@ -89,7 +89,7 @@ class RunsService:
             provider_obj = self._provider_factory.get_provider(provider)
             return cast(list[dict[str, Any]], provider_obj.standardize_messages(messages))
         except Exception:
-            _logger.exception(
+            _logger.info(
                 "Error sanitizing messages for provider",
                 extra={
                     "provider": provider,
