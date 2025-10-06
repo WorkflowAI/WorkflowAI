@@ -26,6 +26,7 @@ from core.providers.base.provider_error import (
     MaxTokensExceededError,
     MissingModelError,
     ProviderInternalError,
+    ProviderInvalidFileError,
     UnknownProviderError,
 )
 from core.providers.base.provider_options import ProviderOptions
@@ -1097,6 +1098,29 @@ class TestUnknownError:
         assert isinstance(e, MaxTokensExceededError)
         assert e.capture is False
         assert e.store_task_run
+
+    @pytest.mark.parametrize(
+        "message",
+        [
+            "Cannot decode or download image Incorrect padding",
+            "Failed to decode image cannot identify image file <_io.BytesIO object at 0x7fa71ede77e0>, supported images types are jpeg, png, ppm, gif, tiff and bmp",
+        ],
+    )
+    def test_invalid_file_error(self, fireworks_provider: FireworksAIProvider, message: str):
+        payload = {
+            "error": {
+                "message": message,
+                "type": "invalid_request_error",
+            },
+        }
+        error = fireworks_provider._unknown_error(  # pyright: ignore[reportPrivateUsage]
+            Response(
+                status_code=400,
+                text=json.dumps(payload),
+            ),
+        )
+        assert isinstance(error, ProviderInvalidFileError)
+        assert str(error) == message
 
 
 class TestExtractAndLogRateLimits:

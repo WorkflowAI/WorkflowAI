@@ -35,6 +35,7 @@ class PaymentIntent(NamedTuple):
 
 
 class _CustomerMetadata(BaseModel):
+    app: str | None = "workflowai"
     tenant: str
     tenant_uid: int = 0
     slug: str | None = None

@@ -84,6 +84,7 @@ class TestCreateCustomer:
             name="Test Org",
             email="test@example.com",
             metadata={
+                "app": "workflowai",
                 "tenant": "test-tenant",
                 "slug": "test-org",
                 "tenant_uid": "1",
@@ -322,6 +323,7 @@ class TestCreatePaymentIntent:
                 "slug": "test-org",
                 "trigger": "manual",
                 "tenant_uid": "1",
+                "app": "workflowai",
             },
         )
 

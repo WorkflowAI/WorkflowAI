@@ -207,6 +207,7 @@ def _assert_payment_created(
             "trigger": "automatic",
             "slug": test_client.org.get("slug") or None,
             "owner_id": test_client.org.get("owner_id") or None,
+            "app": "workflowai",
         }
     mock_stripe.PaymentIntent.create_async.assert_called_once_with(
         amount=approx(usd * 100, abs=1),  # ok at 1 cent diff
@@ -445,6 +446,7 @@ async def test_automatic_payment_failure_with_retry_single_user(
         "tenant_uid": str(test_client.tenant_uid),
         "trigger": "automatic",
         "owner_id": "user_1234",
+        "app": "workflowai",
     }
 
     task = await test_client.create_task()
