@@ -1099,10 +1099,17 @@ class TestUnknownError:
         assert e.capture is False
         assert e.store_task_run
 
-    def test_invalid_file_error(self, fireworks_provider: FireworksAIProvider):
+    @pytest.mark.parametrize(
+        "message",
+        [
+            "Cannot decode or download image Incorrect padding",
+            "Failed to decode image cannot identify image file <_io.BytesIO object at 0x7fa71ede77e0>, supported images types are jpeg, png, ppm, gif, tiff and bmp",
+        ],
+    )
+    def test_invalid_file_error(self, fireworks_provider: FireworksAIProvider, message: str):
         payload = {
             "error": {
-                "message": "Cannot decode or download image Incorrect padding,",
+                "message": message,
                 "type": "invalid_request_error",
             },
         }
@@ -1113,7 +1120,7 @@ class TestUnknownError:
             ),
         )
         assert isinstance(error, ProviderInvalidFileError)
-        assert str(error) == "Cannot decode or download image Incorrect padding,"
+        assert str(error) == message
 
 
 class TestExtractAndLogRateLimits:
