@@ -42,7 +42,7 @@ GOOGLE_PROVIDER_DATA: ProviderDataByModel = {
             ],
         ),
     ),
-    Model.GEMINI_2_5_FLASH_LITE_PREVIEW_0617: ModelProviderData(
+    Model.GEMINI_2_5_FLASH_LITE: ModelProviderData(
         text_price=TextPricePerToken(
             prompt_cost_per_token=0.1 * ONE_MILLION_TH,
             completion_cost_per_token=0.40 * ONE_MILLION_TH,
@@ -904,7 +904,7 @@ GOOGLE_GEMINI_API_PROVIDER_DATA: ProviderDataByModel = {
             ],
         ),
     ),
-    Model.GEMINI_2_5_FLASH_LITE_PREVIEW_0617: ModelProviderData(
+    Model.GEMINI_2_5_FLASH_LITE: ModelProviderData(
         text_price=TextPricePerToken(
             prompt_cost_per_token=0.1 * ONE_MILLION_TH,
             completion_cost_per_token=0.40 * ONE_MILLION_TH,
