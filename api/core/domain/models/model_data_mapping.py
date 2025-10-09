@@ -805,20 +805,20 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             # https://cloud.google.com/vertex-ai/generative-ai/docs/thinking
             reasoning=ModelReasoningBudget(min=128, max=32_768),
         ),
-        Model.GEMINI_2_5_FLASH_LITE_PREVIEW_0617: ModelData(
-            display_name="Gemini 2.5 Flash Lite Preview (06-17)",
+        Model.GEMINI_2_5_FLASH_LITE: ModelData(
+            display_name="Gemini 2.5 Flash Lite",
             supports_json_mode=True,
             supports_input_image=True,
             supports_input_pdf=True,
             supports_input_audio=True,
-            supports_structured_output=False,
+            supports_structured_output=True,
             max_tokens_data=MaxTokensData(
                 max_tokens=1_048_576 + 65_536,
                 max_output_tokens=65_536,
                 source="https://cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/2-5-flash-lite",
             ),
             icon_url="https://workflowai.blob.core.windows.net/workflowai-public/google.svg",
-            release_date=date(2025, 6, 18),
+            release_date=date(2025, 7, 22),
             quality_data=QualityData(
                 gpqa_diamond=66.7,
                 mmlu=84.5,
@@ -834,6 +834,7 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             # https://cloud.google.com/vertex-ai/generative-ai/docs/thinking
             reasoning=ModelReasoningBudget(disabled=0, min=512, max=24_576),
         ),
+        Model.GEMINI_2_5_FLASH_LITE_PREVIEW_0617: DeprecatedModel(replacement_model=Model.GEMINI_2_5_FLASH_LITE),
         Model.GEMINI_2_5_PRO_PREVIEW_0605: DeprecatedModel(replacement_model=Model.GEMINI_2_5_PRO),
         Model.GEMINI_2_5_PRO_PREVIEW_0506: DeprecatedModel(replacement_model=Model.GEMINI_2_5_PRO),
         Model.GEMINI_2_5_PRO_PREVIEW_0325: DeprecatedModel(replacement_model=Model.GEMINI_2_5_PRO),
@@ -1215,7 +1216,7 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
         Model.LLAMA_3_2_1B_PREVIEW: DeprecatedModel(replacement_model=Model.LLAMA_4_SCOUT_BASIC),
         Model.LLAMA_3_2_90B_VISION_PREVIEW: DeprecatedModel(replacement_model=Model.LLAMA_4_MAVERICK_BASIC),
         Model.GEMINI_1_5_FLASH_8B: DeprecatedModel(
-            replacement_model=Model.GEMINI_2_5_FLASH_LITE_PREVIEW_0617,
+            replacement_model=Model.GEMINI_2_5_FLASH_LITE,
             reasoning_effort=ReasoningEffort.DISABLED,
         ),
         Model.GEMINI_EXP_1206: DeprecatedModel(replacement_model=Model.GEMINI_2_5_PRO),
