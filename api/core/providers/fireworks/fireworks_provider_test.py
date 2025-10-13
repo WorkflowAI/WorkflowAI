@@ -1081,6 +1081,15 @@ class TestUnknownError:
         assert isinstance(e, MaxTokensExceededError)
         assert str(e) == "Prompt is too long"
 
+    def test_invalid_request_with_code(self, fireworks_provider: FireworksAIProvider):
+        e = fireworks_provider._unknown_error(  # pyright: ignore[reportPrivateUsage]
+            Response(
+                status_code=400,
+                text="""{"error":{"code":"invalid_request_error","message":"The prompt is too long: 551475, model maximum context length: 163839","object":"error","type":"invalid_request_error"}}""",
+            ),
+        )
+        assert isinstance(e, MaxTokensExceededError)
+
     def test_prompt_too_long(self, fireworks_provider: FireworksAIProvider):
         payload = {
             "error": {
