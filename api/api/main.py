@@ -1,4 +1,3 @@
-import contextlib
 import logging
 import os
 import time
@@ -73,18 +72,6 @@ async def _prepare_storage():
 _ONLY_RUN_ROUTES = os.getenv("ONLY_RUN_ROUTES") == "true"
 
 
-def _mcp_app():
-    if _ONLY_RUN_ROUTES:
-        return None
-
-    from .routers.mcp.mcp_server import mcp_http_app
-
-    return mcp_http_app()
-
-
-mcp_app = _mcp_app()
-
-
 @asynccontextmanager
 async def _lifespan(app: FastAPI):
     metrics_service = await setup_metrics()
@@ -114,21 +101,6 @@ async def _lifespan(app: FastAPI):
     await HTTPXProviderBase.close()
 
 
-if mcp_app:
-
-    @asynccontextmanager
-    async def _combined_lifespan(app: FastAPI):
-        async with contextlib.AsyncExitStack() as stack:
-            await stack.enter_async_context(_lifespan(app))
-            if mcp_app:
-                await stack.enter_async_context(mcp_app.lifespan(app))  # pyright: ignore [reportUnknownMemberType]
-            yield
-
-    lifespan = _combined_lifespan
-else:
-    lifespan = _lifespan
-
-
 app = FastAPI(
     title="WorkflowAI",
     description="Structured AI workflows",
@@ -149,11 +121,8 @@ app = FastAPI(
     ]
     if not _ONLY_RUN_ROUTES
     else [],
-    lifespan=lifespan,
+    lifespan=_lifespan,
 )
-
-if mcp_app:
-    app.mount("/mcp", mcp_app)
 
 
 WORKFLOWAI_ALLOWED_ORIGINS = os.environ.get("WORKFLOWAI_ALLOWED_ORIGINS", os.environ.get("WORKFLOWAI_APP_URL"))

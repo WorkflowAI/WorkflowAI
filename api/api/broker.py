@@ -144,4 +144,7 @@ async def worker_startup(state: TaskiqState):
 async def worker_shutdown(state: TaskiqState):
     await close_metrics(state.metrics_service)
     await close_analytics()
+    from api.jobs.utils.anotherai_utils import AnotherAIService
+
+    await AnotherAIService.close()
     await wait_for_background_tasks()

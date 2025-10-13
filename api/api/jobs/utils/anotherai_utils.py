@@ -534,7 +534,11 @@ def _llm_completions_to_traces(completions: list[LLMCompletion] | None) -> list[
 
 
 class AnotherAIService:
-    template_manager: TemplateManager = TemplateManager()
+    _template_manager: TemplateManager = TemplateManager()
+    _client: httpx.AsyncClient = httpx.AsyncClient(
+        base_url=ANOTHERAI_API_URL or "",
+        timeout=httpx.Timeout(write=300.0, read=300.0, connect=300.0, pool=300.0),
+    )
 
     @classmethod
     def is_enabled(cls) -> bool:
@@ -543,6 +547,11 @@ class AnotherAIService:
     def __init__(self, storage: BackendStorage, runs_service: RunsService):
         self._storage = storage
         self._runs_service = runs_service
+
+    @classmethod
+    async def close(cls):
+        with capture_errors(_logger, "Failed to close AnotherAI client"):
+            await cls._client.aclose()
 
     @classmethod
     def _extract_files(cls, json_schema: dict[str, Any], input: dict[str, Any]) -> list[File]:
@@ -564,7 +573,7 @@ class AnotherAIService:
         # Instructions go into the first system message
         prompt: list[_Message] = []
         prompt.append(_Message(role="system", content=instructions))
-        _, extracted_keys = await cls.template_manager.render_template(instructions, input)
+        _, extracted_keys = await cls._template_manager.render_template(instructions, input)
         # Extracted keys will be handled by the system message template
         # We remove them from the input copy to see if there is anything left
 
@@ -647,12 +656,10 @@ class AnotherAIService:
 
         # Replace completions dict with the OpenAI dict
         completion = await self._convert_run(agent_run, task_variant)
-        async with httpx.AsyncClient(
-            base_url=ANOTHERAI_API_URL,
+
+        response = await self._client.post(
+            "/v1/completions",
+            json=completion.model_dump(exclude_none=True),
             headers={"Authorization": f"Bearer {tenant.anotherai_api_key}"},
-        ) as client:
-            response = await client.post(
-                "/v1/completions",
-                json=completion.model_dump(exclude_none=True),
-            )
+        )
         response.raise_for_status()

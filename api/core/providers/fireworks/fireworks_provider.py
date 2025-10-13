@@ -302,7 +302,7 @@ class FireworksAIProvider(HTTPXProvider[FireworksConfig, CompletionResponse]):
                 # We still bin with max tokens exceeded since it is related
                 error_cls = MaxTokensExceededError
 
-            case None:
+            case None | "invalid_request_error":
                 if err := self._invalid_request_error(payload, response):
                     return err
 
