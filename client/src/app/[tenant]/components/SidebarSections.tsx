@@ -1,4 +1,6 @@
 import {
+  ArrowSyncFilled,
+  ArrowSyncRegular,
   ArrowSwapFilled,
   ArrowSwapRegular,
   ClipboardTaskListLtr20Filled,
@@ -35,6 +37,7 @@ import {
   taskCostRoute,
   taskDeploymentsRoute,
   taskFeedbackRoute,
+  taskMigrationRoute,
   taskReviewsRoute,
   taskRunsRoute,
   taskSchemasRoute,
@@ -176,6 +179,17 @@ export function generateSections(showActivityIndicator: boolean, isInDemoMode: b
       title: 'INTEGRATE',
       showActivityIndicator: false,
       items: [
+        {
+          title: 'Migration',
+          icon: <ArrowSyncRegular className={iconClassName} />,
+          iconSelected: <ArrowSyncFilled className={iconClassName} />,
+          routeBuilder: taskMigrationRoute,
+          // Should match /tasks/:taskId/:taskSchemaId/migration
+          matchRegex: pageRegexMap[Page.Migration],
+          isEnabled: true,
+          isHidden: false,
+          style: SectionItemStyle.Link,
+        },
         {
           title: 'Code',
           icon: <CodeRegular className={iconClassName} />,
