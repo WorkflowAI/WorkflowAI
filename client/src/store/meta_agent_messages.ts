@@ -4,6 +4,7 @@ import { Method, SSEClient } from '@/lib/api/client';
 import { TaskID, TaskSchemaID, TenantID } from '@/types/aliases';
 import { MetaAgentChatMessage, MetaAgentChatRequest, PlaygroundState, Provider } from '../types/workflowAI/models';
 import { rootTaskPathNoProxy } from './utils';
+import { safeLocalStorageGetItem, safeLocalStorageSetItem } from '@/lib/localStorage';
 
 function isBrowser(): boolean {
   return typeof window !== 'undefined';
@@ -69,7 +70,7 @@ const loadMetaAgentChatFromStorage = (): Partial<MetaAgentChatState> => {
   }
 
   try {
-    const stored = localStorage.getItem('persistedMetaAgentMessages');
+    const stored = safeLocalStorageGetItem('persistedMetaAgentMessages');
     if (stored) {
       const parsed = JSON.parse(stored);
       return {
@@ -102,7 +103,7 @@ export const useMetaAgentChat = create<MetaAgentChatState>((set, get) => ({
           messagesByTaskId: state.messagesByTaskId,
         });
 
-        localStorage.setItem('persistedMetaAgentMessages', item);
+        safeLocalStorageSetItem('persistedMetaAgentMessages', item);
       })
     );
   },
@@ -194,7 +195,7 @@ export const useMetaAgentChat = create<MetaAgentChatState>((set, get) => ({
           state.isLoadingByTaskId[taskId] = false;
           state.isInitializedByTaskId[taskId] = true;
 
-          localStorage.setItem(
+          safeLocalStorageSetItem(
             'persistedMetaAgentMessages',
             JSON.stringify({
               isInitializedByTaskId: state.isInitializedByTaskId,
@@ -253,7 +254,7 @@ export const useMetaAgentChat = create<MetaAgentChatState>((set, get) => ({
           messagesByTaskId: state.messagesByTaskId,
         });
 
-        localStorage.setItem('persistedMetaAgentMessages', item);
+        safeLocalStorageSetItem('persistedMetaAgentMessages', item);
       })
     );
   },
