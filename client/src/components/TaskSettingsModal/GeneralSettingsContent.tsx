@@ -1,7 +1,9 @@
 import { X } from 'lucide-react';
+import { useMemo } from 'react';
 import { SerializableTask } from '@/types/workflowAI';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
+import { SimpleTooltip } from '../ui/Tooltip';
 
 type DangerZoneCellProps = {
   title: string;
@@ -46,6 +48,26 @@ export function GeneralSettingsContent(props: GeneralSettingsContentProps) {
     setVisibilityConfirmModal,
     setDeleteConfirmModal,
   } = props;
+
+  const isChangingOfNameDisabled = useMemo(() => task?.name === 'default', [task?.name]);
+
+  const tooltipContent = isChangingOfNameDisabled ? (
+    <div className='flex flex-col items-center justify-center'>
+      <div className='text-[12px] whitespace-break-spaces flex max-w-[250px] text-center'>
+        This agent is an unnamed agent - it cannot be renamed. If you would like your runs to be grouped by agent name,
+        update your model parameter to include an agent prefix.
+      </div>
+      <a
+        className='text-[12px] underline'
+        href='https://docs.workflowai.com/~/revisions/2twEznUX8fKm6Gqod0V8/proxy/proxy#organizing-runs-with-agent-prefixes'
+        target='_blank'
+        rel='noreferrer'
+      >
+        Learn more.
+      </a>
+    </div>
+  ) : undefined;
+
   return (
     <div className='w-[530px] px-6 py-4 flex flex-col'>
       <div className='flex items-center justify-between w-full border-b pb-4'>
@@ -55,8 +77,10 @@ export function GeneralSettingsContent(props: GeneralSettingsContentProps) {
       <div className='py-4 flex flex-col gap-4 text-slate-700 text-sm'>
         <div>AI Agent Name</div>
         <div className='pl-4 py-2 pr-8 gap-[34px] flex items-center'>
-          <Input value={currentTaskName} onChange={onTaskNameChange} />
-          <Button disabled={renameDisabled} onClick={onRenameTask}>
+          <SimpleTooltip content={tooltipContent} tooltipDelay={0}>
+            <Input value={currentTaskName} onChange={onTaskNameChange} disabled={isChangingOfNameDisabled} />
+          </SimpleTooltip>
+          <Button disabled={renameDisabled || isChangingOfNameDisabled} onClick={onRenameTask}>
             Rename
           </Button>
         </div>
