@@ -176,10 +176,8 @@ function replacePlaceholders(
     }
   }
 
-  // Properly escape for JavaScript string literal if we found any instructions
-  if (instructions) {
-    instructions = JSON.stringify(instructions);
-  }
+  // Always wrap in JSON.stringify to ensure valid JavaScript string literal
+  instructions = JSON.stringify(instructions);
 
   result = result.replace(/__INSTRUCTIONS__/g, instructions);
 
