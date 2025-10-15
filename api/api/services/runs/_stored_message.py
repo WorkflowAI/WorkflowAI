@@ -1,4 +1,3 @@
-import hashlib
 import json
 from typing import Any, Iterator, Self
 
@@ -8,11 +7,7 @@ from core.domain.consts import INPUT_KEY_MESSAGES
 from core.domain.fields.file import File
 from core.domain.message import Message, MessageContent
 from core.domain.task_group_properties import TaskGroupProperties
-
-
-def _hash(data: str) -> str:
-    # Using blake2s for speed. We don't need security here
-    return hashlib.blake2s(data.encode()).hexdigest()
+from core.utils.strings import hash_string
 
 
 def _content_sort_key(content: MessageContent) -> int:
@@ -63,7 +58,7 @@ class StoredMessage(Message):
         copy.content.sort(key=_content_sort_key)
 
         # Be careful of omitting all fields that might be added by us
-        return _hash(copy.model_dump_json(exclude_none=True, include=_MESSAGE_INCLUDE_FOR_HASH))
+        return hash_string(copy.model_dump_json(exclude_none=True, include=_MESSAGE_INCLUDE_FOR_HASH))
 
 
 class StoredMessages(BaseModel):
@@ -84,7 +79,7 @@ class StoredMessages(BaseModel):
         # Computes the hash from the model extras
         if not self.model_extra:
             return ""
-        return _hash(json.dumps(self.model_extra, sort_keys=True))
+        return hash_string(json.dumps(self.model_extra, sort_keys=True))
 
     def compute_hashes(self, properties: TaskGroupProperties):
         """Compute a hash for each message that depends on the previous messages."""
@@ -93,7 +88,7 @@ class StoredMessages(BaseModel):
         if properties.model:
             computed.append(properties.model)
         if properties.messages:
-            computed.append(_hash(RootModel(properties.messages).model_dump_json()))
+            computed.append(hash_string(RootModel(properties.messages).model_dump_json()))
         if extra := self._extra_hash():
             computed.append(extra)
         for message in self.messages:
@@ -106,7 +101,7 @@ class StoredMessages(BaseModel):
     @classmethod
     def aggregate_hashes(cls, hashes: list[str]) -> str:
         """Aggregate the hashes of a list of messages"""
-        return _hash(str(hashes))
+        return hash_string(str(hashes))
 
     def file_iterator(self) -> Iterator[File]:
         for m in self.messages:
