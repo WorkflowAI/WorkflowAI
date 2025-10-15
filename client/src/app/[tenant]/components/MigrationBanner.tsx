@@ -20,7 +20,8 @@ export function MigrationBanner({ tenant }: MigrationBannerProps) {
           The WorkflowAI run endpoint and SDK will stop working on January 31st, 2026.
           {migrationUrl ? (
             <>
-              {' '}Here are the instructions on how to migrate out of WorkflowAI.{' '}
+              {' '}
+              Here are the instructions on how to migrate out of WorkflowAI.{' '}
               <a href={migrationUrl} className='underline font-medium hover:text-yellow-900 transition-colors'>
                 View migration guide
               </a>
