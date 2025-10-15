@@ -45,9 +45,9 @@ export default function Layout({ children }: Readonly<{ children: React.ReactNod
       <StripeWrapper>
         <ApiKeysModal />
         <div className='flex flex-col h-full max-h-screen overflow-hidden bg-custom-gradient-1'>
+          <MigrationBanner tenant={tenant} />
           {showBanner && <LoggedOutBanner />}
           {showTaskBanner && <LoggedOutBannerForDemoTask name={task?.name ?? taskId} />}
-          {isSignedIn && <MigrationBanner tenant={tenant} />}
           {!!modelsToAdvertise && !paymentBannerState && <ModelBanner models={modelsToAdvertise} onClose={dismiss} />}
           {!!paymentBannerState && <PaymentBanner state={paymentBannerState} />}
           <div className='flex flex-1 sm:flex-row flex-col overflow-hidden'>

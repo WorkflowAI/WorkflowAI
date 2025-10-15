@@ -17,15 +17,16 @@ export function MigrationBanner({ tenant }: MigrationBannerProps) {
     <div className='bg-yellow-100 border-b border-yellow-200 px-4 py-3 text-sm text-yellow-800'>
       <div className='max-w-7xl mx-auto flex items-center justify-center text-center'>
         <span>
-          The WorkflowAI run endpoint and SDK will stop working on January 31st, 2026. Here are the instructions on how
-          to migrate out of WorkflowAI.
-          {migrationUrl && (
+          The WorkflowAI run endpoint and SDK will stop working on January 31st, 2026.
+          {migrationUrl ? (
             <>
-              {' '}
+              {' '}Here are the instructions on how to migrate out of WorkflowAI.{' '}
               <a href={migrationUrl} className='underline font-medium hover:text-yellow-900 transition-colors'>
                 View migration guide
               </a>
             </>
+          ) : (
+            ' Select an agent to view migration instructions.'
           )}
         </span>
       </div>
