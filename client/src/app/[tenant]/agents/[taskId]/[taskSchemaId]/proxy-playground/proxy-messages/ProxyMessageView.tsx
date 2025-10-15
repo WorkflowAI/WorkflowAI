@@ -14,6 +14,7 @@ import { TaskID } from '@/types/aliases';
 import { ProxyMessage, ProxyMessageContent } from '@/types/workflowAI';
 import { ProxyMessageViewHeader } from './ProxyMessageViewHeader';
 import { ProxyFile } from './components/ProxyFile';
+import { ProxyInputVaribleURLContent } from './components/ProxyInputVaribleURLContent';
 import { ProxyMessageRunFooter } from './components/ProxyMessageRunFooter';
 import { ProxyTextarea } from './components/ProxyTextarea';
 import { ProxyToolCallRequest } from './components/ProxyToolCallRequest';
@@ -22,6 +23,7 @@ import { ProxyToolCallResultInstantEditView } from './components/ProxyToolCallRe
 import {
   ContentType,
   ExtendedMessageType,
+  checkForInputVaribleInURLs,
   createEmptyMessageContent,
   getContentToCopy,
   getContentTypeForContent,
@@ -237,6 +239,21 @@ export function ProxyMessageView(props: Props) {
         />
         <div className='flex flex-col gap-[10px]'>
           {message.content.map((content, index) => {
+            if (checkForInputVaribleInURLs(content)) {
+              return (
+                <ProxyInputVaribleURLContent
+                  key={index}
+                  content={content}
+                  setContent={(content) => onMessageChange(index, content)}
+                  readOnly={readonly}
+                  inputVariblesKeys={inputVariblesKeys}
+                  supportInputVaribles={supportInputVaribles}
+                  onFocus={onTextareaFocus}
+                  onBlur={onTextareaBlur}
+                />
+              );
+            }
+
             return (
               <div key={index} className='flex flex-col gap-[10px]'>
                 {content.text !== undefined && (
