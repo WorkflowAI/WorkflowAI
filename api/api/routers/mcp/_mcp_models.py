@@ -241,7 +241,7 @@ class AgentResponse(BaseModel):
         )
 
 
-T = TypeVar("T", bound=BaseModel)
+T = TypeVar("T", bound=BaseModel | str)
 NullableT = TypeVar("NullableT", bound=BaseModel | None)
 ItemT = TypeVar("ItemT", bound=BaseModel)
 

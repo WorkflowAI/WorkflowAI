@@ -1,0 +1,81 @@
+import OpenAI from 'openai'; // needed if instantiating a client
+
+{%if json_schema and not has_existing_response_format_object %}
+// Import zod for structured generation
+import { zodResponseFormat } from 'openai/helpers/zod';
+import { z } from 'zod';
+{% endif %}
+
+// Instantiate a client and set the base URL and api key
+// It might be possible to import an existing client instead of creating a new one
+const client = new OpenAI({
+    apiKey: process.env.WORKFLOWAI_API_KEY,
+    baseURL: "{{ run_url }}/v1",
+});
+
+{% if json_schema and not has_existing_response_format_object -%}
+const {{ response_format_object_name }} = z.object({
+    // Here you should generate a Zod schema that matches the following JSON schema:
+    // {{ json_schema }}
+});
+
+// beta is needed for using zod schema in the response format
+const completion = await client.beta.chat.completions.parse({
+    response_format: zodResponseFormat({{ response_format_object_name }}, '{{ response_format_object_name }}'),
+
+// if the user does not want to use zod or the beta client, it is also
+// possible to pass the json schema to the response format object.
+// response_format: {
+//     type: "json_schema",
+//     json_schema: {
+//         name: "{{ response_format_object_name }}",
+//         schema: {
+//             // JSON schema should match the following:
+//             // {{ json_schema }}
+//         }
+//     }
+// },
+{%- else %}
+const completion = await client.chat.completions.create({
+{%- endif %}
+{%- if deployment %}
+    // When using a deployment, messages included in the deployed version should
+    // not be included in the messages list. Any added message will be appended
+    // to messages contained in the deployment.
+    messages: []
+{%- else %}
+    // Completion request messages
+    // When relevant, the text, image_url or audio data content can be a jinja2 template
+    // Template variables should be passed in the input field.
+    messages: [
+        // Add your messages here
+    ]
+{%- endif %},
+    model: "{{ model }}",
+    metadata: {
+        agent_id: "{{ agent_id }}",
+    },
+{%- if input_schema %}
+    // Input dictionary should match the following JSON schema:
+    // {{ input_schema }}
+    input: {
+        // Input data goes here
+    }
+{%- elif input_doc %}
+    input: {} // contains template variables when relevant
+{%- endif %}
+});
+
+{% if json_schema -%}
+const result = completion.choices[0].message.parsed;
+// If not using the beta client with `completions.parse` you will have to parse the result manually
+// const result = JSON.parse(completion.choices[0].message.content);
+// If you need to add typing, `https://github.com/ThomasAribart/json-schema-to-ts` is a good library
+// with no overhead since it only generates types
+// import { FromSchema } from "json-schema-to-ts";
+// type {{ response_format_object_name}} = FromSchema<typeof the-json-schema-from-above>;
+// const result: {{ response_format_object_name}} = JSON.parse(completion.choices[0].message.content);
+{% else -%}
+const result = completion.choices[0].message.content;
+{%endif -%}
+console.log(result); 
