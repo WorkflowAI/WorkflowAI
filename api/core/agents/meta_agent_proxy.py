@@ -531,6 +531,16 @@ class ProxyMetaAgentOutput(BaseModel):
         description="The directly generated version messages, if any",
     )
 
+    updated_output_schema_structure: dict[str, Any] | None = Field(
+        default=None,
+        description="The updated output schema structure, if any",
+    )
+
+    updated_output_schema_description_and_examples: dict[str, Any] | None = Field(
+        default=None,
+        description="The updated output schema description and examples, if any",
+    )
+
 
 class ParsedToolCall(NamedTuple):
     """Result of parsing a tool call from the OpenAI streaming response."""
@@ -542,17 +552,21 @@ class ParsedToolCall(NamedTuple):
     run_trigger_config: ProxyMetaAgentOutput.RunTriggerConfig | None = None
     generate_input_request: GenerateAgentInputToolCallRequest | None = None
     updated_version_messages: list[dict[str, Any]] | None = None
+    updated_output_schema_structure: dict[str, Any] | None = None
+    updated_output_schema_description_and_examples: dict[str, Any] | None = None
 
 
 def parse_tool_call(tool_call: Any) -> ParsedToolCall:
     """Parse a tool call and return the extracted data.
 
     Returns a ParsedToolCall with the parsed tool data. Fields are populated based on tool type:
-    - update_version_messages: updated_version_messages, example_input
+    - update_version_messages: improvement_instructions
+    - update_version_messages_hosted_tools: updated_version_messages
     - create_custom_tool: tool_name, tool_description, tool_parameters
     - run_agent_on_model: run_trigger_config
     - generate_agent_input: generate_input_request
-    - updated_version_messages: updated_version_messages
+    - edit_output_schema_structure: updated_output_schema_structure
+    - edit_output_schema_description_and_examples: updated_output_schema_description_and_examples
     """
     if not tool_call.function or not tool_call.function.arguments:
         return ParsedToolCall()
@@ -591,6 +605,16 @@ def parse_tool_call(tool_call: Any) -> ParsedToolCall:
             generate_input_request=GenerateAgentInputToolCallRequest(
                 instructions=arguments.get("instructions"),
             ),
+        )
+
+    if function_name == "edit_output_schema_structure":
+        return ParsedToolCall(
+            updated_output_schema_structure=arguments.get("updated_output_schema"),
+        )
+
+    if function_name == "edit_output_schema_description_and_examples":
+        return ParsedToolCall(
+            updated_output_schema_description_and_examples=arguments.get("updated_output_schema"),
         )
 
     return ParsedToolCall()
@@ -851,15 +875,14 @@ When users experience issues or ask for help, several factors commonly impact ag
 <schema_editing_rules>
 IMPORTANT distinctions for schema editing:
 - INPUT SCHEMA EDITS: Always use 'update_version_messages' (input variables/definitions are in version messages)
-- OUTPUT SCHEMA EDITS: You CANNOT edit output schemas. When users request output schema changes, inform them that you cannot make this change and direct them to:
-  - **(Recommended)** Update the agent's code in your codebase directly, with the help of Cursor and the WorkflowAI MCP
-  - To edit in the web app:
-    - Go to the **Schemas** tab in the sidebar
-    - Select **Add or Update Fields** button on the Schemas page
+- OUTPUT SCHEMA EDITS: You can edit output schemas using two specialized tools:
+  - For structural changes (adding/removing fields, changing field types): use 'edit_output_schema_structure'
+  - For updating descriptions and examples: use 'edit_output_schema_description_and_examples'
+
 
 IMPORTANT: Before calling any of these tools, the user must clearly explain what they want to change. Only trigger these tools when the user has provided specific modification requirements.
 
-COMMUNICATION RULE: Never mention tool names directly to users (e.g., "I will use update_version_messages"). Instead, use natural language (e.g., "I will update your agent's messages").
+COMMUNICATION RULE: Never mention tool names directly to users (e.g., "I will use update_version_messages"). Instead, use natural language (e.g., "I will update your agent's messages", "I will modify your output schema").
 </schema_editing_rules>
 
 <input_variables>
@@ -869,15 +892,14 @@ COMMUNICATION RULE: Never mention tool names directly to users (e.g., "I will us
 {% else %}
 - Agent is NOT using input variables. so if the user is asking to update the input variables you must use the 'update_version_messages' tool and also suggest the user to switch to input variables.
 {% endif %}
+
+- IMPORTANT: INPUT schema edits must always use 'update_version_messages' since input variables and input schema definitions are embedded within the version messages.
 </input_variables>
 
 <structured_output>
-- Agent output schema CANNOT be edited directly through this interface. When users request output schema changes, inform them that you cannot make this change and direct them to:
-  - **(Recommended)** Update the agent's code in your codebase directly, with the help of Cursor and the WorkflowAI MCP
-  - To edit in the web app:
-    - Go to the **Schemas** tab in the sidebar
-    - Select **Add or Update Fields** button on the Schemas page
-- IMPORTANT: INPUT schema edits must always use 'update_version_messages' since input variables and input schema definitions are embedded within the version messages.
+- Agent output schema can be edited using specialized tools:
+  - For structural changes (adding/removing fields, changing types): use 'edit_output_schema_structure'
+  - For updating descriptions and examples: use 'edit_output_schema_description_and_examples'
 </structured_output>
 
 <deployments>
@@ -957,16 +979,17 @@ There are two distinct types of schema modifications that require different appr
 INPUT SCHEMA MODIFICATIONS:
 - Input schema changes must ALWAYS be done using 'update_version_messages'
 - This is because input variables and input schema definitions are embedded within the agent's messages
-- Examples: changing input field names, adding/removing input fields
+- Example: changing input field names, adding/removing input fields
 - Example: "I want to change the input field from 'source_text' to 'document_content'" → use 'update_version_messages'
 - ONLY trigger when user explicitly requests input schema changes
 
 OUTPUT SCHEMA MODIFICATIONS:
-- The agent CANNOT edit output schemas directly. When users request output schema changes, inform them that you cannot make this change and provide these alternatives:
-  - **(Recommended)** Update the agent's code in your codebase directly, with the help of Cursor and the WorkflowAI MCP
-  - To edit in the web app:
-    - Go to the **Schemas** tab in the sidebar
-    - Select **Add or Update Fields** button on the Schemas page
+- You can edit output schemas using two specialized tools:
+  - For structural changes (adding/removing fields, changing field types): use 'edit_output_schema_structure'
+  - For updating descriptions and examples: use 'edit_output_schema_description_and_examples'
+- Example: "I want to add a confidence score field to the output" → use 'edit_output_schema_structure'
+- Example: "I want to update the description of the summary field" → use 'edit_output_schema_description_and_examples'
+- ONLY trigger when user explicitly requests output schema changes
 </improving_agent_input_and_output_schemas>
 
 
@@ -1142,6 +1165,44 @@ TOOL_DEFINITIONS: list[ChatCompletionToolParam] = [
             "strict": True,
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "edit_output_schema_structure",
+            "description": "Edit the structure of the output schema for the current agent. This allows modifying the JSON schema structure, including adding, removing, or changing field types and properties.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "updated_output_schema": {
+                        "type": "object",
+                        "description": "The complete updated output schema structure as a JSON schema object.",
+                    },
+                },
+                "required": ["updated_output_schema"],
+                "additionalProperties": False,
+            },
+            "strict": True,
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "edit_output_schema_description_and_examples",
+            "description": "Edit the descriptions and examples within the output schema for the current agent. This allows updating field descriptions and examples, without changing the schema structure.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "updated_output_schema": {
+                        "type": "object",
+                        "description": "The complete updated output schema with modified descriptions and examples as a JSON schema object.",
+                    },
+                },
+                "required": ["updated_output_schema"],
+                "additionalProperties": False,
+            },
+            "strict": True,
+        },
+    },
     VERSION_MESSAGES_HOSTED_TOOL_UPDATE_TOOL,
 ]
 
@@ -1261,4 +1322,6 @@ async def proxy_meta_agent(
             run_trigger_config=parsed_tool_call.run_trigger_config,
             generate_input_request=parsed_tool_call.generate_input_request,
             updated_version_messages=parsed_tool_call.updated_version_messages,
+            updated_output_schema_structure=parsed_tool_call.updated_output_schema_structure,
+            updated_output_schema_description_and_examples=parsed_tool_call.updated_output_schema_description_and_examples,
         )
