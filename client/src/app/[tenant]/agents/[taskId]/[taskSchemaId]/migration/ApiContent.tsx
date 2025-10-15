@@ -143,7 +143,9 @@ const output = await __AGENT_FUNCTION__(input);
 
 function replacePlaceholders(
   markdown: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   selectedVersion: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   taskSchema: any,
   tenant: string | undefined,
   taskId: string
@@ -194,7 +196,6 @@ function replacePlaceholders(
 
   // Generate type names based on task
   const taskName = taskSchema?.name || taskId || 'Task';
-  const camelCaseName = taskName.charAt(0).toLowerCase() + taskName.slice(1);
   const pascalCaseName = taskName.charAt(0).toUpperCase() + taskName.slice(1);
 
   result = result.replace(/__INPUT_TYPE_NAME__/g, `${pascalCaseName}Input`);
@@ -215,7 +216,6 @@ export function ApiContent(props: ApiContentProps) {
     setSelectedVersionToDeploy,
     taskId,
     taskSchema,
-    taskSchemaId,
     tenant,
   } = props;
 

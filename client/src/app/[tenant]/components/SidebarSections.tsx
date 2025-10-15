@@ -1,8 +1,8 @@
 import {
-  ArrowSyncFilled,
-  ArrowSyncRegular,
   ArrowSwapFilled,
   ArrowSwapRegular,
+  ArrowSyncFilled,
+  ArrowSyncRegular,
   ClipboardTaskListLtr20Filled,
   ClipboardTaskListLtr20Regular,
   CloudFilled,

@@ -1,7 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useLocalStorage } from 'usehooks-ts';
+import { useMemo } from 'react';
 import { Loader } from '@/components/ui/Loader';
 import { useOrFetchSchema, useOrFetchVersion, useOrFetchVersions } from '@/store';
 import { TaskID, TaskSchemaID, TenantID } from '@/types/aliases';
