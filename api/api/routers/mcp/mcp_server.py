@@ -10,6 +10,7 @@ from starlette.exceptions import HTTPException
 from starlette.middleware import Middleware
 
 from api.dependencies.task_info import TaskTuple
+from api.routers.mcp._mcp_codegen import SDK
 from api.routers.mcp._mcp_dependencies import get_mcp_service
 from api.routers.mcp._mcp_errors import MCPError, mcp_wrap
 from api.routers.mcp._mcp_models import (
@@ -32,10 +33,13 @@ from api.routers.mcp._mcp_serializer import tool_serializer
 from api.routers.openai_proxy._openai_proxy_models import (
     OpenAIProxyChatCompletionRequest,
     OpenAIProxyChatCompletionResponse,
+    OpenAIProxyMessage,
 )
 from api.services.documentation_service import DocumentationService
 from api.services.tools_service import ToolsService
+from core.domain.models.model_data_mapping import get_model_id
 from core.domain.tool import Tool
+from core.domain.version_environment import VersionEnvironment
 from core.storage.backend_storage import BackendStorage
 from core.utils.schema_formatter import format_schema_as_yaml_description
 
@@ -179,7 +183,7 @@ async def get_agent(
 
 
 @_mcp.tool()
-async def fetch_run_details(
+async def get_run(
     agent_id: Annotated[
         str | None,
         Field(
@@ -239,7 +243,7 @@ async def fetch_run_details(
     This data structure provides everything needed for debugging, performance analysis, cost tracking, and understanding the complete execution context of your WorkflowAI agent.
     </returns>"""
     service = await get_mcp_service()
-    return await mcp_wrap(service.fetch_run_details(agent_id, run_id, run_url, truncate=truncate))
+    return await mcp_wrap(service.get_run(agent_id, run_id, run_url, truncate=truncate))
 
 
 @_mcp.tool()
@@ -754,6 +758,110 @@ async def test_agent(
 
     service = await get_mcp_service()
     return await mcp_wrap(service.create_completion(agent_id, original_run_id, request, start_time=start_time))
+
+
+@_mcp.tool()
+async def get_code(
+    agent_id: str = Field(
+        description="The id of the agent. Example: 'agent_id': 'email-filtering-agent' in metadata, or 'email-filtering-agent' in 'model=email-filtering-agent/gpt-4o-latest'.",
+    ),
+    model: str | None = Field(description="An AI model if any", default=None),
+    # TODO: figure out why using an int and the enum did not work
+    schema_id: str | None = Field(description="A schema id if any. Required when using a deployment", default=None),
+    environment: str | None = Field(
+        description="A deployment environment if any. Either 'dev', 'staging', or 'production'",
+        default=None,
+    ),
+    existing_response_format_object: str | None = Field(
+        description="When using structured output, the name of an already existing object that the user wants"
+        "to generate from their completion request",
+        default=None,
+    ),
+    sdk: SDK = Field(
+        default="curl",
+        description="The SDK to use for the code generation. If you are unsure or the used SDK is not listed, "
+        "`curl` should contain all the information to generate the code.",
+    ),
+) -> MCPToolReturn[str]:
+    """Generate a code sample for a WorkflowAI agent. The sample will not be directlyexecutable but
+    will contain all the information required to generate the final code.
+
+    <when_to_use>
+    Use when the user asks for a code change or when you need to get a code example.
+    </when_to_use>
+    <returns>
+    Returns a code sample for the WorkflowAI agent.
+    </returns>"""
+    service = await get_mcp_service()
+    return await mcp_wrap(
+        service.generate_code(
+            sdk=sdk,
+            agent_id=agent_id,
+            model=model,
+            schema_id=int(schema_id) if schema_id else None,
+            environment=VersionEnvironment(environment) if environment else None,
+            existing_response_format_object=existing_response_format_object,
+        ),
+    )
+
+
+@_mcp.tool()
+async def playground(
+    models: str = Field(description="The models to use for the playground (comma-separated)"),
+    lists_of_messages: list[list[OpenAIProxyMessage]] = Field(
+        description="One or several list of messages to use for the playground. Messages can be templated using Jinja2 templates. When using prompt templating, all lists of messages but accept the same set of variables.",
+    ),
+    sets_of_inputs: list[dict[str, Any]] = Field(
+        default_factory=list,
+        description="Optional list of input variables for prompt templating",
+    ),
+    output_schema: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Optional JSON Schema for structured output",
+    ),
+    metadata: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Optional metadata to attach to all completion requests (passing an 'agent_id' is highly recommended)",
+    ),
+    # TODO: That might be a LOT of tokens. We might need to paginate
+) -> list[OpenAIProxyChatCompletionResponse | MCPError] | MCPError:
+    """
+    You have access to a playground to create a matrix of completions. A run will be executed per:
+    - list of messages
+    - input dictionary
+    - model
+    All runs will be executed in parallel.
+    For example if you supply:
+    - 2 models
+    - 2 lists of messages
+    - 2 sets of input variables
+    You will get 2x2x2=8 completions.
+
+    Supports structured output via response_format parameter.
+    Supports metadata attachment for tracking and observability.
+
+    <when_to_use>
+    Use when you want to test a model with different messages, inputs, and response formats.
+    </when_to_use>
+    <returns>
+    Returns a list of OpenAIProxyChatCompletionResponse objects.
+    </returns>
+    """
+
+    # Parse the models string into a list
+    try:
+        model_list = [get_model_id(model.strip()) for model in models.split(",")]
+    except ValueError as e:
+        return MCPError(str(e))
+
+    service = await get_mcp_service()
+    return await service.playground(
+        models=model_list,
+        lists_of_messages=lists_of_messages,
+        sets_of_inputs=sets_of_inputs,
+        output_schema=output_schema,
+        metadata=metadata,
+    )
 
 
 def mcp_http_app():

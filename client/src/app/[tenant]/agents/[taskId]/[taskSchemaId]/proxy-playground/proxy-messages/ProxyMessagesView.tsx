@@ -1,5 +1,5 @@
 import { Add16Regular } from '@fluentui/react-icons';
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useState } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 import { ProxyMessage } from '@/types/workflowAI';
@@ -107,6 +107,8 @@ export const ProxyMessagesView = forwardRef(function ProxyMessagesView(props: Pr
     [cleanedMessages, setMessages]
   );
 
+  const newMessageIdRef = useRef<string | undefined>(undefined);
+
   const addMessage = useCallback(
     (index?: number) => {
       if (!setMessages) {
@@ -128,6 +130,7 @@ export const ProxyMessagesView = forwardRef(function ProxyMessagesView(props: Pr
       }
 
       const newMessage = createEmptyMessage(newMessageType, previouseMessage);
+      newMessageIdRef.current = newMessage.internal_id;
 
       if (index === undefined || index >= allMessages.length) {
         setMessages([...allMessages, newMessage]);
@@ -181,6 +184,7 @@ export const ProxyMessagesView = forwardRef(function ProxyMessagesView(props: Pr
           supportOpeningInPlayground={supportOpeningInPlayground}
           onTextareaFocus={handleFocus}
           onTextareaBlur={handleBlur}
+          autofocus={newMessageIdRef.current === message.internal_id}
         />
       ))}
       {showAddMessageButton && (

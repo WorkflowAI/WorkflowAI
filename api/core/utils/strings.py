@@ -1,5 +1,6 @@
 import base64
 import contextlib
+import hashlib
 import re
 import string
 import unicodedata
@@ -124,3 +125,10 @@ def obfuscate(input_str: str, max_chars: int):
     if len(input_str) <= max_chars:
         return "***"
     return input_str[:max_chars] + "***"
+
+
+def hash_string(data: str) -> str:
+    """A simple hash function that returns a string of 16 characters.
+    Not for security."""
+    # Using blake2s for speed. We don't need security here
+    return hashlib.blake2s(data.encode()).hexdigest()
