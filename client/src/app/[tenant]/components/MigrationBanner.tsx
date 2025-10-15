@@ -22,7 +22,12 @@ export function MigrationBanner({ tenant }: MigrationBannerProps) {
             <>
               {' '}
               Here are the instructions on how to migrate out of WorkflowAI.{' '}
-              <a href={migrationUrl} className='underline font-medium hover:text-yellow-900 transition-colors'>
+              <a
+                href={migrationUrl}
+                target='_blank'
+                rel='noopener noreferrer'
+                className='underline font-medium hover:text-yellow-900 transition-colors'
+              >
                 View migration guide
               </a>
             </>
