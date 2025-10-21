@@ -1,7 +1,12 @@
 ![header](/assets/readme-header.png)
 
+# ⚠️⚠️ Sunset notice
+
+**WorkflowAI will be shut down on January 31, 2026.**
+
+We want to thank everyone for putting your trust in our team and our product; and we loved seeing everything WorkflowAI helped build.
+
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Discord](https://img.shields.io/badge/Discord-Join%20Server-7289DA?logo=discord&logoColor=white)](https://discord.gg/auuf8DREZh)
 
 ## Demo: build an AI feature in 1 minute
 
