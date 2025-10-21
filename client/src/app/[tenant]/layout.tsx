@@ -10,6 +10,7 @@ import { TENANT_PLACEHOLDER } from '@/lib/routeFormatter';
 import { useOrFetchTask } from '@/store';
 import { looksLikeURL } from '../landing/sections/SuggestedFeatures/utils';
 import { LoggedOutBanner, LoggedOutBannerForDemoTask } from './components/LoggedOutBanner';
+import { MigrationBanner } from './components/MigrationBanner';
 import { ModelBanner } from './components/ModelBanner';
 import { PaymentBanner } from './components/PaymentBanner';
 import { RedirectForTenant } from './components/RedirectForTenant';
@@ -44,6 +45,7 @@ export default function Layout({ children }: Readonly<{ children: React.ReactNod
       <StripeWrapper>
         <ApiKeysModal />
         <div className='flex flex-col h-full max-h-screen overflow-hidden bg-custom-gradient-1'>
+          <MigrationBanner tenant={tenant} />
           {showBanner && <LoggedOutBanner />}
           {showTaskBanner && <LoggedOutBannerForDemoTask name={task?.name ?? taskId} />}
           {!!modelsToAdvertise && !paymentBannerState && <ModelBanner models={modelsToAdvertise} onClose={dismiss} />}

@@ -9,6 +9,7 @@ import { signUpRoute } from '@/lib/routeFormatter';
 import { useOrFetchUptime } from '@/store/fetchers';
 import { ModelBanner } from '../[tenant]/components/ModelBanner';
 import { useModelToAdvertise } from '../[tenant]/components/useModelToAdvertise';
+import { LandingMigrationBanner } from './components/LandingMigrationBanner';
 import { LandingPageContainer } from './container/LandingPageContainer';
 import { CompaniesMoneyComponent } from './sections/Components/CompaniesMoneyComponent';
 import { ComparePriceComponent } from './sections/Components/ComparePriceComponent';
@@ -68,6 +69,7 @@ export function LandingPage() {
 
   return (
     <div className='flex flex-col w-full h-full'>
+      <LandingMigrationBanner />
       {!!modelsToAdvertise && (
         <ModelBanner models={modelsToAdvertise} onClose={dismiss} routeForSignUp={routeForSignUp} />
       )}

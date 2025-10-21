@@ -106,6 +106,9 @@ export const taskSideBySideRoute = (tenant: TenantID, taskId: TaskID, taskSchema
 export const taskFeedbackRoute = (tenant: TenantID, taskId: TaskID, taskSchemaId: TaskSchemaID, params?: Params) =>
   `${taskSchemaRoute(tenant, taskId, taskSchemaId)}/feedback${stringifyQueryParams(params)}`;
 
+export const taskMigrationRoute = (tenant: TenantID, taskId: TaskID, taskSchemaId: TaskSchemaID, params?: Params) =>
+  `${taskSchemaRoute(tenant, taskId, taskSchemaId)}/migration${stringifyQueryParams(params)}`;
+
 export const taskApiRoute = (tenant: TenantID, taskId: TaskID, taskSchemaId: TaskSchemaID, params?: Params) =>
   `${taskSchemaRoute(tenant, taskId, taskSchemaId)}/code${stringifyQueryParams(params)}`;
 

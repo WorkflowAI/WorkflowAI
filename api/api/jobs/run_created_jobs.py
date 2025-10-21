@@ -133,6 +133,7 @@ JOBS = [
     evaluate_run_review,
     update_task_group_last_active_at,
     update_task_schema_last_active_at,
-    run_task_run_moderation,
-    send_run_to_anotherai,
+    # run_task_run_moderation,
+    # Removing that job but not touching the underlying function to avoid not dequeing events during the transition
+    # send_run_to_anotherai,
 ]

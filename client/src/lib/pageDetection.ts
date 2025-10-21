@@ -5,6 +5,7 @@ export enum Page {
   Versions = 'versions',
   Runs = 'runs',
   Schemas = 'schemas',
+  Migration = 'migration',
   Code = 'code',
   Deployments = 'deployments',
   Benchmarks = 'benchmarks',
@@ -24,6 +25,7 @@ export const pageRegexMap: Record<Page, RegExp> = {
   [Page.Runs]: /\/agents\/[^/]+\/[^/]+\/runs$/,
   [Page.Benchmarks]: /\/agents\/[^/]+\/[^/]+\/benchmarks$/,
   [Page.Reviews]: /\/agents\/[^/]+\/[^/]+\/reviews$/,
+  [Page.Migration]: /\/agents\/[^/]+\/[^/]+\/migration$/,
   [Page.Code]: /\/agents\/[^/]+\/[^/]+\/code$/,
   [Page.Deployments]: /\/agents\/[^/]+\/[^/]+\/deployments$/,
   [Page.Tasks]: /\/agents$/,
@@ -38,6 +40,7 @@ export function detectPage(pathname: string): Page | undefined {
 
 export function detectPageIsUsingNewDesign(pathname: string): boolean {
   const pagesUsingNewDesign = [
+    Page.Migration,
     Page.Code,
     Page.Cost,
     Page.Versions,
