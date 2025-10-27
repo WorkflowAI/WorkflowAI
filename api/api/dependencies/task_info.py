@@ -19,7 +19,7 @@ async def task_info_dependency(
         return await storage.tasks.get_task_info(agent_id)
     except Exception as e:
         # TODO: we should remove the exception here
-        logger.error(
+        logger.info(
             "Error getting task info",
             extra={
                 "agent_id": agent_id,
