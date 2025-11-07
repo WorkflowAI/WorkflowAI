@@ -10,6 +10,7 @@ import { useUpload } from '@/store/upload';
 import { TaskID } from '@/types/aliases';
 import { TenantID } from '@/types/aliases';
 import { JsonSchema } from '@/types/json_schema';
+import { fixProxyInputIfNeeded } from '../proxy-messages/utils';
 
 type Props = {
   inputSchema: JsonSchema | undefined;
@@ -23,28 +24,33 @@ type Props = {
 export function ProxyInputVariables(props: Props) {
   const { inputSchema, setInputSchema, input, setInput, tenant, taskId } = props;
 
+  const fixedInput = useMemo(() => {
+    if (!input) return input;
+    return fixProxyInputIfNeeded(input);
+  }, [input]);
+
   const voidInput = useMemo(() => {
     if (!inputSchema) return undefined;
     return initInputFromSchema(inputSchema, inputSchema.$defs, InitInputFromSchemaMode.VOID);
   }, [inputSchema]);
 
   const generatedInputWithVoid = useMemo(() => {
-    if (!input) return voidInput;
-    return mergeTaskInputAndVoid(input, voidInput);
-  }, [input, voidInput]);
+    if (!fixedInput) return voidInput;
+    return mergeTaskInputAndVoid(fixedInput, voidInput);
+  }, [fixedInput, voidInput]);
 
   const handleEdit = useCallback(
     (keyPath: string, newVal: unknown) => {
-      const newInput = cloneDeep(input) || {};
+      const newInput = cloneDeep(fixedInput) || {};
       set(newInput, keyPath, newVal);
       setInput(newInput);
     },
-    [input, setInput]
+    [fixedInput, setInput]
   );
 
   const handleTypeChange = useCallback(
     (keyPath: string, newType: FieldType) => {
-      const newInput = cloneDeep(input) || {};
+      const newInput = cloneDeep(fixedInput) || {};
       set(newInput, keyPath, undefined);
       setInput(newInput);
 
@@ -53,7 +59,7 @@ export function ProxyInputVariables(props: Props) {
         setInputSchema(newSchema);
       }
     },
-    [input, setInput, inputSchema, setInputSchema]
+    [fixedInput, setInput, inputSchema, setInputSchema]
   );
 
   const fetchAudioTranscription = useAudioTranscriptions((state) => state.fetchAudioTranscription);

@@ -2,10 +2,11 @@ import { cn } from '@/lib/utils';
 import { ProxyMessage } from '@/types/workflowAI';
 import { ProxyMessageViewHeader } from '../../proxy-messages/ProxyMessageViewHeader';
 import { ProxyFile } from '../../proxy-messages/components/ProxyFile';
+import { ProxyInputVaribleURLContent } from '../../proxy-messages/components/ProxyInputVaribleURLContent';
 import { ProxyTextarea } from '../../proxy-messages/components/ProxyTextarea';
 import { ProxyToolCallRequest } from '../../proxy-messages/components/ProxyToolCallRequest';
 import { ProxyToolCallResultView } from '../../proxy-messages/components/ProxyToolCallResult';
-import { getExtendedMessageType } from '../../proxy-messages/utils';
+import { checkForInputVaribleInURLs, getExtendedMessageType } from '../../proxy-messages/utils';
 import { ProxyDiffTextarea } from './ProxyDiffTextarea';
 
 type Props = {
@@ -47,6 +48,10 @@ export function ProxyDiffMessageView(props: Props) {
         />
         <div className='flex flex-col gap-[10px]'>
           {messageToUse?.content.map((content, index) => {
+            if (checkForInputVaribleInURLs(content)) {
+              return <ProxyInputVaribleURLContent key={index} content={content} />;
+            }
+
             return (
               <div key={index} className='flex flex-col gap-[10px]'>
                 {content.text !== undefined && !showDiffTextarea && (
