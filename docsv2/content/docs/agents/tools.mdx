@@ -41,13 +41,13 @@ WorkflowAI currently supports tools for:
 
 To add a hosted tool to your agent, find the tool name (`@tool`) and add it to your agent prompt.
 
-For example, to use the `@google-search` tool, you can add the following to your agent prompt:
+For example, to use the `@search-google` tool, you can add the following to your agent prompt:
 
 ```python
 messages = [
 {
   "role": "system",
-  "content": "Use @google-search to find the weather in {{location}}."
+  "content": "Use @search-google to find the weather in {{location}}."
 },
 ]
 ```
@@ -67,7 +67,7 @@ Tools can be added in the Playground by either:
 ### Web search
 
 WorkflowAI supports two web search tools:
-- `@google-search` makes a web search using Google
+- `@search-google` makes a web search using Google
 - `@perplexity-sonar-pro` makes a web search using Perplexity's Sonar Pro model
 
 <Tabs items={["Google Search", "Perplexity"]}>
@@ -76,7 +76,7 @@ WorkflowAI supports two web search tools:
   messages = [
       {
           "role": "system",
-          "content": "Use @google-search to find the weather in {{location}}."
+          "content": "Use @search-google to find the weather in {{location}}."
       }
   ]
   ```
@@ -112,12 +112,12 @@ messages = [
 
 ### All tools
 
-TODO: make a table with all the tools using the `/v1/tools/hosted` endpoint
+TODO: make a table (including pricing) with all the tools using the `/v1/tools/hosted` endpoint
 
 ### List hosted tools programmatically
 
 You can list all the hosted tools programmatically:
-- by calling the `list_hosted_tools` tool from the MCP server
+- by calling the `list_hosted_tools` tool from the MCP server (returns pricing information)
 - by calling the `/v1/tools/hosted` endpoint (no authentication required)
 
 ```bash
