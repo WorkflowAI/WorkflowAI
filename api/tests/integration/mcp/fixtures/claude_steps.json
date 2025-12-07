@@ -23,7 +23,7 @@
       "WebSearch",
       "mcp__workflowai__list_models",
       "mcp__workflowai__list_agents",
-      "mcp__workflowai__fetch_run_details",
+      "mcp__workflowai__get_run",
       "mcp__workflowai__get_agent_versions",
       "mcp__workflowai__ask_ai_engineer",
       "mcp__workflowai__deploy_agent_version",
