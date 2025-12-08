@@ -276,7 +276,7 @@ class OpenAIProxyHandler:
             final_input=input or {},
         )
 
-    async def _prepare_for_model(
+    async def prepare_for_model(
         self,
         agent_ref: ModelRef,
         tenant_data: PublicOrganizationData,
@@ -420,7 +420,7 @@ class OpenAIProxyHandler:
                 # TODO: Adding to the body is not great. We should add metadata to the prepared run and even remove the 'full_metadata'
                 body.register_metadata({METADATA_KEY_DEPLOYMENT_ENVIRONMENT: agent_ref.environment})
             else:
-                prepared_run = await self._prepare_for_model(
+                prepared_run = await self.prepare_for_model(
                     agent_ref=agent_ref,
                     tenant_data=tenant_data,
                     messages=messages,

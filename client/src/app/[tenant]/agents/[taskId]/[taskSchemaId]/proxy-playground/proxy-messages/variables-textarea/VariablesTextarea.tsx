@@ -17,6 +17,7 @@ type Props = {
   supportInputVaribles?: boolean;
   onFocus?: () => void;
   onBlur?: () => void;
+  autofocus?: boolean;
 };
 
 export function VariablesTextarea(props: Props) {
@@ -29,6 +30,7 @@ export function VariablesTextarea(props: Props) {
     supportInputVaribles = true,
     onFocus,
     onBlur,
+    autofocus = false,
   } = props;
 
   const [tagPosition, setTagPosition] = useState<TagPosition | undefined>(undefined);
@@ -83,6 +85,7 @@ export function VariablesTextarea(props: Props) {
     parseOptions: {
       preserveWhitespace: 'full',
     },
+    autofocus: autofocus,
     extensions: [
       StarterKit.configure({
         hardBreak: {

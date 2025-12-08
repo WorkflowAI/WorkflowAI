@@ -16,6 +16,7 @@ type ProxyTextareaProps = {
   supportObjectViewerIfPossible?: boolean;
   onFocus?: () => void;
   onBlur?: () => void;
+  autofocus?: boolean;
 };
 
 export function ProxyTextarea(props: ProxyTextareaProps) {
@@ -29,6 +30,7 @@ export function ProxyTextarea(props: ProxyTextareaProps) {
     supportObjectViewerIfPossible = false,
     onFocus,
     onBlur,
+    autofocus = false,
   } = props;
 
   const onChange = useCallback(
@@ -87,6 +89,7 @@ export function ProxyTextarea(props: ProxyTextareaProps) {
       supportInputVaribles={supportInputVaribles}
       onFocus={onFocus}
       onBlur={onBlur}
+      autofocus={autofocus}
     />
   );
 }

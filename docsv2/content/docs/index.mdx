@@ -61,10 +61,14 @@ Cursor UI should now look like this (note the green indicator and the number of 
 2. Type the following to install:
 
 ```bash
-claude mcp add workflowai https://api.workflowai.com/mcp/ --transport http -H "Authorization: Bearer YOUR_API_KEY_HERE"
+claude mcp add workflowai -s user https://api.workflowai.com/mcp/ --transport http -H "Authorization: Bearer YOUR_API_KEY_HERE"
 ```
 
 Replace `YOUR_API_KEY_HERE` with your WorkflowAI API key.
+
+<Callout type="info">
+**Installation Scopes**: The `-s user` flag installs WorkflowAI for your personal use across all projects. For team projects, you can use `-s project` instead to create a shared `.mcp.json` file that can be committed to version control and shared with your team members. Learn more about MCP scopes in the [Anthropic documentation](https://docs.anthropic.com/en/docs/claude-code/mcp#user-scope).
+</Callout>
 
 3. Type the following to verify the server is properly connected:
 

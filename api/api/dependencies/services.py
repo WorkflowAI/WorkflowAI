@@ -22,6 +22,7 @@ from api.services.analytics import AnalyticsService, analytics_service
 from api.services.api_keys import APIKeyService
 from api.services.feedback_svc import FeedbackService, FeedbackTokenGenerator
 from api.services.groups import GroupService
+from api.services.internal_tasks.agent_creation_service import AgentCreationService
 from api.services.internal_tasks.integration_service import IntegrationService
 from api.services.internal_tasks.internal_tasks_service import InternalTasksService
 from api.services.internal_tasks.meta_agent_service import MetaAgentService
@@ -118,6 +119,16 @@ def internal_tasks(
 
 
 InternalTasksServiceDep = Annotated[InternalTasksService, Depends(internal_tasks)]
+
+
+def agent_creation_service(
+    storage: StorageDep,
+    event_router: EventRouterDep,
+) -> AgentCreationService:
+    return AgentCreationService(storage=storage, event_router=event_router)
+
+
+AgentCreationServiceDep = Annotated[AgentCreationService, Depends(agent_creation_service)]
 
 
 def runs_service(
