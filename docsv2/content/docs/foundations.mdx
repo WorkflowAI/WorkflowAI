@@ -146,21 +146,24 @@ completion = client.chat.completions.create(
 `response_format`: (optional) ensures AI models generate responses that perfectly match your defined JSON Schema. Instead of hoping the model follows formatting instructions, you get guaranteed compliance with your data structure. Use structured outputs when you need reliable data extraction, classification, or any scenario requiring consistent JSON format.
 
 ```python
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-class UserInfo(BaseModel):
-    name: str
-    age: int
-    email: str
+class CalendarEvent(BaseModel):
+    title: str = Field(description="The title or subject of the calendar event", example="Quarterly Planning Meeting")
+    organizer: str = Field(description="Name and email of the event organizer", example="Sarah Johnson <sarah.johnson@company.com>")
+    start_time: str = Field(description="When the event starts in ISO format", example="2024-03-15T14:00:00")
+    duration: int = Field(description="Duration of the event in minutes", example=90)
 
 completion = client.beta.chat.completions.parse(
     model="gpt-4o-mini",
-    messages=[{"role": "user", "content": "Extract user info: John Doe, 30, john@example.com"}],
-    response_format=UserInfo  # Guarantees valid UserInfo object
+    messages=[{"role": "user", "content": "Extract calendar event from this email: 'Hi team, please join our quarterly planning meeting on March 15th at 2:00 PM. The session will run for 90 minutes. Best regards, Sarah Johnson (sarah.johnson@company.com)'"}],
+    response_format=CalendarEvent  # Guarantees valid CalendarEvent object
 )
 
-user = completion.choices[0].message.parsed  # Direct access to typed object
+event = completion.choices[0].message.parsed  # Direct access to typed object
 ```
+
+**Pro tip:** Field descriptions and examples are incredibly helpful for guiding the LLM to extract data correctly and consistently. They provide clear context about what each field should contain and the expected format.
 
 Learn more about structured outputs in the [Structured Outputs](/inference/structured-outputs) section.
 

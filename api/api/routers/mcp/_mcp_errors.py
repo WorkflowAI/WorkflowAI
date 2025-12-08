@@ -1,8 +1,8 @@
 import json
 from collections.abc import Callable, Coroutine
-from typing import Any
+from typing import Any, TypeVar
 
-from core.utils.generics import BM
+from pydantic import BaseModel
 
 
 class MCPError(Exception):
@@ -18,9 +18,12 @@ class MCPError(Exception):
         return base
 
 
+_T = TypeVar("_T", bound=BaseModel | str)
+
+
 async def mcp_wrap(
-    coro: Coroutine[Any, Any, BM],
-    message: Callable[[BM], str | None] | None = None,
+    coro: Coroutine[Any, Any, _T],
+    message: Callable[[_T], str | None] | None = None,
 ):
     """Wraps a coroutine to return a MCPToolReturn and handle MCPError"""
     # TODO: fix circular import
@@ -29,7 +32,7 @@ async def mcp_wrap(
     try:
         value = await coro
     except MCPError as e:
-        return MCPToolReturn[BM](
+        return MCPToolReturn[_T](
             success=False,
             error=str(e),
         )
