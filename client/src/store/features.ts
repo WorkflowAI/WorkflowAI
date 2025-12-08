@@ -6,6 +6,7 @@ import { Method } from '@/lib/api/client';
 import { API_URL } from '@/lib/constants';
 import { BaseFeature } from '@/types/workflowAI/models';
 import { FeatureSectionPreview, FeatureSectionResponse } from '../types/workflowAI/models';
+import { safeLocalStorageGetItem, safeLocalStorageSetItem } from '@/lib/localStorage';
 
 function isBrowser(): boolean {
   return typeof window !== 'undefined';
@@ -196,7 +197,7 @@ const loadPreviewFromStorage = (): Partial<FeaturePreviewState> => {
   }
 
   try {
-    const stored = localStorage.getItem('featurePreviews');
+    const stored = safeLocalStorageGetItem('featurePreviews');
     if (stored) {
       const parsed = JSON.parse(stored);
       return {
@@ -269,7 +270,7 @@ export const useFeaturePreview = create<FeaturePreviewState>((set, get) => ({
           state.previewByScope.set(scopeKey, response);
           state.isInitializedByScope.set(scopeKey, true);
 
-          localStorage.setItem(
+          safeLocalStorageSetItem(
             'featurePreviews',
             JSON.stringify({
               previewByScope: Object.fromEntries(state.previewByScope),
@@ -315,7 +316,7 @@ const loadSchemasFromStorage = (): Partial<FeatureSchemasState> => {
   }
 
   try {
-    const stored = localStorage.getItem('featurePreviews');
+    const stored = safeLocalStorageGetItem('featurePreviews');
     if (stored) {
       const parsed = JSON.parse(stored);
       return {
@@ -387,7 +388,7 @@ export const useFeatureSchemas = create<FeatureSchemasState>((set, get) => ({
           state.schemasByScope.set(scopeKey, response);
           state.isInitializedByScope.set(scopeKey, true);
 
-          localStorage.setItem(
+          safeLocalStorageSetItem(
             'featureSchemas',
             JSON.stringify({
               schemasByScope: Object.fromEntries(state.schemasByScope),
