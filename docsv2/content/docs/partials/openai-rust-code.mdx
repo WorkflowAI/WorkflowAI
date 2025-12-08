@@ -25,7 +25,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     "content": "Hello, how are you?"
                 }
             ]
-            // your existing parameters
+            // TODO: add structured output, metadata, input variables
+            // response cost, latency
+            // ...
         }))
         .send()
         .await?;
