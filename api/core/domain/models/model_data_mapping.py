@@ -750,7 +750,7 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             supports_input_image=True,
             supports_input_pdf=True,
             supports_input_audio=True,
-            supports_structured_output=False,
+            supports_structured_output=True,
             max_tokens_data=MaxTokensData(
                 max_tokens=1_048_576 + 65_536,
                 max_output_tokens=65_536,
@@ -782,7 +782,7 @@ def _raw_model_data() -> dict[Model, ModelData | LatestModel | DeprecatedModel]:
             supports_input_image=True,
             supports_input_pdf=True,
             supports_input_audio=True,
-            supports_structured_output=False,
+            supports_structured_output=True,
             max_tokens_data=MaxTokensData(
                 max_tokens=1_048_576 + 65_536,
                 max_output_tokens=65_536,
@@ -1567,3 +1567,13 @@ MODEL_ALIASES = _build_aliases()
 
 
 MODEL_COUNT = len([model for model in MODEL_DATAS.values() if isinstance(model, FinalModelData)])
+
+
+def get_model_id(model: str) -> Model:
+    if m := MODEL_ALIASES.get(model):
+        return m
+
+    try:
+        return Model(model)
+    except ValueError:
+        raise ValueError(f"Invalid model: {model}")
