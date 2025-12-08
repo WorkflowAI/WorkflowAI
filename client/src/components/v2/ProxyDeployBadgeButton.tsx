@@ -1,7 +1,7 @@
 import { ArrowCircleUp16Regular } from '@fluentui/react-icons';
 import { useCallback, useMemo, useState } from 'react';
 import { useIsAllowed } from '@/lib/hooks/useIsAllowed';
-import { environmentsForVersion, getEnvironmentFullName, isVersionSaved } from '@/lib/versionUtils';
+import { environmentsForVersion, getEnvironmentCapitalizedFullName, isVersionSaved } from '@/lib/versionUtils';
 import { useVersions } from '@/store/versions';
 import { TaskID } from '@/types/aliases';
 import { TenantID } from '@/types/aliases';
@@ -55,7 +55,8 @@ export function ProxyDeployBadgeButton(props: ProxyDeployBadgeButtonProps) {
   }, [environments]);
 
   const tooltipContent = useMemo(() => {
-    const deployedEnvironments = environments?.map((environment) => getEnvironmentFullName(environment)) || [];
+    const deployedEnvironments =
+      environments?.map((environment) => getEnvironmentCapitalizedFullName(environment)) || [];
 
     if (deployedEnvironments.length > 0) {
       const envList = deployedEnvironments.join(', ').replace(/, ([^,]*)$/, ' and $1');

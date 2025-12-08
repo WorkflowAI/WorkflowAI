@@ -1,4 +1,5 @@
 import { Save16Regular } from '@fluentui/react-icons';
+import Image from 'next/image';
 import { DebouncedState } from 'usehooks-ts';
 import { useDemoMode } from '@/lib/hooks/useDemoMode';
 import { isVersionSaved } from '@/lib/versionUtils';
@@ -17,6 +18,7 @@ type ProxySaveBadgeButtonProps = {
   taskId: TaskID;
   handleUpdateNotes?: DebouncedState<(versionId: string, notes: string) => Promise<void>> | undefined;
   onSave: () => void;
+  onSendToCursor?: () => void;
   setVersionIdForCode?: (versionId: string | undefined) => void;
   showLabels?: boolean;
   tallButtons?: boolean;
@@ -27,6 +29,7 @@ export function ProxySaveBadgeButton(props: ProxySaveBadgeButtonProps) {
     version,
     handleUpdateNotes,
     onSave,
+    onSendToCursor,
     tenant,
     taskId,
     setVersionIdForCode,
@@ -40,6 +43,30 @@ export function ProxySaveBadgeButton(props: ProxySaveBadgeButtonProps) {
 
   return (
     <div className='flex items-center'>
+      {onSendToCursor && (
+        <SimpleTooltip content='Send to Cursor' tooltipDelay={100}>
+          <Button
+            variant='newDesign'
+            size='sm'
+            onClick={onSendToCursor}
+            disabled={isInDemoMode}
+            className='rounded-l-[2px] border-r-0 rounded-r-none shadow-none'
+            style={{
+              height: tallButtons ? '38px' : '28px',
+            }}
+          >
+            <div className='flex items-center justify-center w-[16px] h-[32px]'>
+              <Image
+                src={'https://workflowai.blob.core.windows.net/workflowai-public/CursorMCPIcon.png'}
+                alt='Cursor Icon'
+                className='flex items-center justify-center w-[14px] h-[14px]'
+                width={32}
+                height={32}
+              />
+            </div>
+          </Button>
+        </SimpleTooltip>
+      )}
       {!isSaved && (
         <SimpleTooltip
           content={
